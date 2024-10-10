@@ -23,8 +23,9 @@ Las trayectorias se procesarán en varias máquinas virtuales, cada una ejecutan
 
 3. Crea un archivo .env en la raíz del proyecto y define las direcciones de las máquinas virtuales, asegurándote de que los puertos están configurados correctamente. Ejemplo:
     ```env
-    VM1=http://direccion_ip_vm1:puerto
-    VM2=http://direccion_ip_vm2:puerto
+    VM01_ADDRESS=http://192.168.1.10:4000
+    VM02_ADDRESS=http://192.168.1.11:4000
+    VM03_ADDRESS=http://192.168.1.12:4000
 
 ## Uso
 
