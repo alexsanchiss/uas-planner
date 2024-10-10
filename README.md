@@ -29,10 +29,7 @@ Las trayectorias se procesarán en varias máquinas virtuales, cada una ejecutan
 
 ## Uso
 
-Para ejecutar la aplicación, utiliza el siguiente comando:
-    ```bash
-    npm run dev
-    ```
+Para ejecutar la aplicación, utiliza el siguiente comando: ```npm run dev```
 Luego, abre tu navegador y dirígete a http://localhost:3000.
 
 ## Componentes
