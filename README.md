@@ -31,8 +31,8 @@ Las trayectorias se procesarán en varias máquinas virtuales, cada una ejecutan
 
 Para ejecutar la aplicación, utiliza el siguiente comando:
     ```bash
-    Copiar código
     npm run dev
+    ```
 Luego, abre tu navegador y dirígete a http://localhost:3000.
 
 ## Componentes
