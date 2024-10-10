@@ -3,15 +3,16 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --background: #0a0a0a; /* Fondo oscuro */
+  --foreground: #ededed; /* Texto claro */
+  --input-bg: #1a1a1a; /* Fondo oscuro para inputs */
+  --button-bg: #0070f3; /* Azul para botones */
+  --button-hover-bg: #005bb5; /* Azul más oscuro para hover en botones */
+  --card-bg: #1a1a1a; /* Fondo oscuro para cards */
+  --border-color: #333; /* Color para bordes */
+  --success-color: #28a745; /* Verde para éxito */
+  --warning-color: #ffc107; /* Amarillo para advertencia */
+  --error-color: #dc3545; /* Rojo para errores */
 }
 
 body {
@@ -20,8 +21,47 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+input {
+  background-color: var(--input-bg);
+  color: var(--foreground);
+  border: 1px solid var(--border-color);
+  padding: 10px;
+  border-radius: 5px;
+}
+
+button {
+  background-color: var(--button-bg);
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: var(--button-hover-bg);
+}
+
+.card {
+  background-color: var(--card-bg);
+  border: 1px solid var(--border-color);
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.status-sin-procesar {
+  background-color: var(--border-color);
+}
+
+.status-en-cola {
+  background-color: var(--warning-color);
+}
+
+.status-procesando {
+  background-color: #007bff;
+}
+
+.status-procesado {
+  background-color: var(--success-color);
 }
