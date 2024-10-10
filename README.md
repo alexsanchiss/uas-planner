@@ -1,36 +1,43 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# UAS - PLANNER
 
-## Getting Started
+## Descripción
 
-First, run the development server:
+Esta aplicación es una interfaz de usuario para operadores de drones, diseñada para procesar planes de vuelo basados en waypoints. Los usuarios pueden cargar sus planes de vuelo desde QGroundControl y recibir trayectorias realistas y completas. Aunque actualmente la funcionalidad se centra en el procesamiento de planes de vuelo, el objetivo final es crear una aplicación completa que permita:
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- Generar planes de vuelo.
+- Procesar trayectorias.
+- Enviar planes a las autoridades para la aprobación.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Las trayectorias se procesarán en varias máquinas virtuales, cada una ejecutando el script [traj-runner](https://github.com/0xMastxr/traj-runner), que se encarga de recibir y procesar las trayectorias en orden.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Instalación
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Clona este repositorio:
+   ```bash
+   git clone git@github.com:0xMastxr/uas-planner.git
+   cd uas-planner
 
-## Learn More
+2. Instala las dependencias:
+    ```bash
+    npm install
 
-To learn more about Next.js, take a look at the following resources:
+3. Crea un archivo .env en la raíz del proyecto y define las direcciones de las máquinas virtuales, asegurándote de que los puertos están configurados correctamente. Ejemplo:
+    ```env
+    VM1=http://direccion_ip_vm1:puerto
+    VM2=http://direccion_ip_vm2:puerto
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Uso
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Para ejecutar la aplicación, utiliza el siguiente comando:
+    ```bash
+    Copiar código
+    npm run dev
+Luego, abre tu navegador y dirígete a http://localhost:3000.
 
-## Deploy on Vercel
+## Componentes
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### FlightUploader.tsx
+Este es el componente principal que permite a los usuarios subir planes de vuelo, asignar nombres personalizados y procesar las trayectorias. El estado de cada plan se muestra en función de su proceso actual: sin procesar, en cola, procesado, o error. Los resultados se pueden descargar como archivos CSV una vez procesados.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### API
+La API se encuentra en pages/api/traj-assigner.ts. Esta maneja las solicitudes de procesamiento de los planes de vuelo. Cuando se recibe un POST, se agrega el plan a una cola y se procesa en una máquina virtual disponible. Se maneja la posibilidad de errores y se notifica el resultado al usuario.
