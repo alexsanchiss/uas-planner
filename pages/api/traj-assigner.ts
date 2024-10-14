@@ -6,22 +6,38 @@ interface FlightPlan {
   file: string;
   index: number;
   csvResult?: string;
+  res: NextApiResponse;  // Guardamos la respuesta para enviarla al final
 }
 
 let processingQueue: FlightPlan[] = [];
 let busyMachines: Set<string> = new Set();
+let isProcessing = false; // Flag para saber si se está procesando
 
 const machines = Object.entries(process.env)
   .filter(([key]) => key.startsWith('VM'))
   .map(([, value]) => value) as string[];
 
-const processNextPlan = async (flightPlan: FlightPlan): Promise<string | null> => {
-  const freeMachine = machines.find((machine) => !busyMachines.has(machine));
-  if (!freeMachine) return null;
+// Procesar el siguiente plan en la cola
+const processNextInQueue = async () => {
+  if (isProcessing || processingQueue.length === 0) return; // Evitar múltiples ejecuciones
 
-  busyMachines.add(freeMachine);
+  const flightPlan = processingQueue.shift(); // Sacamos el primer plan de la cola
+  if (!flightPlan) return;
+
+  isProcessing = true;
+
+  // Esperar hasta que haya una máquina disponible
+  let freeMachine: string | undefined;
+  while (!freeMachine) {
+    freeMachine = machines.find((machine) => !busyMachines.has(machine));
+    if (!freeMachine) {
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Esperar 1 segundo antes de volver a intentar
+    }
+  }
+
+  busyMachines.add(freeMachine); // Reservar la máquina
   try {
-    // Simular el procesamiento y obtener el CSV
+    // Hacer la solicitud POST a la máquina virtual
     const response = await axios.post(`${freeMachine}/upload_plan`, {
       name: flightPlan.name,
       ...JSON.parse(flightPlan.file),
@@ -31,16 +47,25 @@ const processNextPlan = async (flightPlan: FlightPlan): Promise<string | null> =
     });
 
     if (response.status === 200) {
-      const csvResult = response.data;  // Supongamos que el CSV viene en el body
-      return csvResult;  // Devolvemos el resultado del CSV
+      const csvResult = response.data;  // Obtenemos el CSV resultante
+      flightPlan.csvResult = csvResult;
+
+      // Enviar la respuesta con el CSV cuando esté listo
+      flightPlan.res.status(200).json({ success: true, csv: csvResult });
+      console.log(`Plan ${flightPlan.name} procesado en ${freeMachine}`);
+    } else {
+      console.error(`Error en el procesamiento de ${flightPlan.name}`);
+      flightPlan.res.status(500).json({ success: false, message: 'Error procesando la trayectoria.' });
     }
   } catch (e) {
     console.error(`Error procesando el plan ${flightPlan.name}:`, (e as Error).message);
+    flightPlan.res.status(500).json({ success: false, message: 'Error interno al procesar la trayectoria.' });
   } finally {
-    busyMachines.delete(freeMachine);  // Liberar la máquina
+    busyMachines.delete(freeMachine); // Liberar la máquina
+    isProcessing = false;
+    // Procesar el siguiente en cola
+    await processNextInQueue();
   }
-
-  return null;
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -52,21 +77,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return;
     }
 
-    const flightPlan: FlightPlan = { name, file, index };
+    const flightPlan: FlightPlan = { name, file, index, res };
 
     // Añadimos el plan a la cola
     processingQueue.push(flightPlan);
     console.log(`Plan ${name} añadido a la cola.`);
 
-    // Esperamos a que esté listo
-    const csvResult = await processNextPlan(flightPlan);
-
-    if (csvResult) {
-      res.status(200).json({ success: true, csv: csvResult });
-    } else {
-      res.status(500).json({ success: false, message: 'Error procesando la trayectoria.' });
-    }
+    // Intentamos procesar el siguiente plan
+    await processNextInQueue();
   } else {
     res.status(405).json({ error: 'Método no permitido' });
   }
-}
+};
