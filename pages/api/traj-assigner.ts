@@ -43,7 +43,7 @@ const processNextInQueue = async () => {
       ...JSON.parse(flightPlan.file),
     }, {
       headers: { 'Content-Type': 'application/json' },
-      timeout: 200000,  // Hasta 200 segundos de espera
+      timeout: 200000000,  // Hasta 200000 segundos de espera
     });
 
     if (response.status === 200) {

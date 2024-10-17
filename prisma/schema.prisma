@@ -1,0 +1,24 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Define tu modelo de datos aquí
+model FlightPlan {
+  id          Int      @id @default(autoincrement())
+  customName  String
+  status      String
+  fileContent String
+  csvResult   String?
+  createdAt   DateTime @default(now())
+}
