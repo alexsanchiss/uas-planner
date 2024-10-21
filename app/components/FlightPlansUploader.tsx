@@ -6,7 +6,7 @@ import axios from 'axios';
 interface FlightPlan {
   file: File;
   customName: string;
-  status: 'sin procesar' | 'en cola' | 'procesado' | 'error';
+  status: 'sin procesar' | 'en cola' | 'procesando' | 'procesado' | 'error';
   csvResult?: string;
 }
 
