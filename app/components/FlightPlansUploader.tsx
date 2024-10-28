@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 
 interface FlightPlan {
+  id: number;
   file: File;
   customName: string;
   status: 'sin procesar' | 'en cola' | 'procesando' | 'procesado' | 'error';
@@ -13,25 +14,40 @@ interface FlightPlan {
 const FlightPlansUploader = () => {
   const [flightPlans, setFlightPlans] = useState<FlightPlan[]>([]);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  useEffect(() => {
+    // Cargar planes de vuelo guardados al inicio
+    const fetchFlightPlans = async () => {
+      const { data } = await axios.get('/api/flightPlans');
+      setFlightPlans(data);
+    };
+    fetchFlightPlans();
+  }, []);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      const newPlans: FlightPlan[] = Array.from(files).map((file) => ({
-        file,
-        customName: file.name.replace(/\.[^/.]+$/, ""),
-        status: 'sin procesar',
-      }));
+      const newPlans = await Promise.all(
+        Array.from(files).map(async (file) => {
+          const response = await axios.post('/api/flightPlans', {
+            customName: file.name.replace(/\.[^/.]+$/, ""),
+            status: 'sin procesar',
+            fileContent: await file.text(),
+          });
+          return { ...response.data, file };
+        })
+      );
       setFlightPlans([...flightPlans, ...newPlans]);
     }
   };
 
-  const handleCustomNameChange = (index: number, newName: string) => {
-    setFlightPlans((prevPlans) =>
-      prevPlans.map((plan, i) =>
-        i === index ? { ...plan, customName: newName } : plan
-      )
-    );
+  const handleCustomNameChange = async (index: number, newName: string) => {
+    const updatedPlan = { ...flightPlans[index], customName: newName };
+    await axios.put(`/api/flightPlans/${updatedPlan.id}`, {
+      customName: newName,
+    });
+    setFlightPlans((prevPlans) => prevPlans.map((plan, i) => (i === index ? updatedPlan : plan)));
   };
+
 
   const handleProcessTrajectory = async (index: number) => {
     setFlightPlans((prevPlans) =>
