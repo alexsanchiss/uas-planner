@@ -1,4 +1,3 @@
-// pages/api/traj-assigner.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 import axios from 'axios';
 
@@ -13,7 +12,6 @@ interface FlightPlan {
 
 let processingQueue: FlightPlan[] = [];
 let busyMachines: Set<string> = new Set();
-let isProcessing = false;
 
 const machines = Object.entries(process.env)
   .filter(([key]) => key.startsWith('VM'))
@@ -21,12 +19,9 @@ const machines = Object.entries(process.env)
 
 // Procesar el siguiente plan en la cola
 const processNextInQueue = async () => {
-  if (isProcessing || processingQueue.length === 0) return;
 
   const flightPlan = processingQueue.shift();
   if (!flightPlan) return;
-
-  isProcessing = true;
 
   // Esperar hasta que haya una máquina disponible
   let freeMachine: string | undefined;
@@ -38,41 +33,30 @@ const processNextInQueue = async () => {
   }
 
   busyMachines.add(freeMachine);
-
+  console.log(`Procesando plan con ID ${flightPlan.id} en máquina ${freeMachine}`);
   try {
-    // Enviar solicitud POST a la máquina virtual
+    // Enviar solicitud POST a la máquina virtual con el ID del plan de vuelo
     const response = await axios.post(
-      `${freeMachine}/upload_plan`,
+      `${freeMachine}/upload_plan/`,
+      { id: flightPlan.id },  // Enviar solo el ID en el cuerpo del POST
       {
-        id: flightPlan.id,
-        fileContent: flightPlan.fileContent,
-      },
-      {
+        timeout: 2000000,
         headers: { 'Content-Type': 'application/json' },
-        timeout: 200000000,
       }
     );
-
     if (response.status === 200) {
-      const csvResult = response.data;
-      flightPlan.csvResult = csvResult;
-
+      console.log("Recibido");
       // Actualizar estado en base de datos y enviar respuesta
-      flightPlan.status = 'procesado';
-      flightPlan.res.status(200).json({ success: true, csv: csvResult });
-      console.log(`Plan ${flightPlan.customName} procesado en ${freeMachine}`);
+      flightPlan.res.status(200).json({ success: true, message: 'Trayectoria procesada correctamente.' });
     } else {
-      console.error(`Error en el procesamiento de ${flightPlan.customName}`);
-      flightPlan.status = 'error';
+      console.log("Error 1");
       flightPlan.res.status(500).json({ success: false, message: 'Error procesando la trayectoria.' });
     }
   } catch (e) {
-    console.error(`Error procesando el plan ${flightPlan.customName}:`, (e as Error).message);
-    flightPlan.status = 'error';
+    console.error(`Error procesando el plan con ID ${flightPlan.id}:`, (e as Error).message);
     flightPlan.res.status(500).json({ success: false, message: 'Error interno al procesar la trayectoria.' });
   } finally {
     busyMachines.delete(freeMachine);
-    isProcessing = false;
 
     // Procesar el siguiente en cola
     await processNextInQueue();
@@ -83,49 +67,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === 'POST') {
     const { id } = req.body;
 
-    // Obtener el plan de vuelo desde la base de datos
-    const flightPlan = await obtenerPlanDeVueloPorId(id);
-    if (!flightPlan) {
-      res.status(404).json({ error: 'Plan de vuelo no encontrado' });
-      return;
-    }
-
-    // Configurar el plan de vuelo y actualizar su estado a "en cola"
-    const plan: FlightPlan = {
-      ...flightPlan,
-      status: 'en cola',
-      res,
-    };
-
-    // Añadir el plan a la cola de procesamiento
-    processingQueue.push(plan);
-    console.log(`Plan ${flightPlan.customName} añadido a la cola.`);
+    // Añadir el ID a la cola de procesamiento
+    processingQueue.push({ id, res } as FlightPlan);  // Agrega el objeto completo a la cola
+    console.log(`Plan con ID ${id} añadido a la cola.`);
 
     // Intentar procesar el siguiente plan en cola
     await processNextInQueue();
+
+    res.status(200).json({ success: true, message: `Plan con ID ${id} añadido a la cola.` });
   } else {
     res.status(405).json({ error: 'Método no permitido' });
-  }
-}
-
-// Función para obtener el plan de vuelo desde la base de datos
-async function obtenerPlanDeVueloPorId(id: number): Promise<FlightPlan | null> {
-  try {
-    const response = await axios.get(`http://localhost:3000/api/flightPlans/${id}`);
-    if (response.status === 200) {
-      const { id, fileContent, customName, status, csvResult } = response.data;
-      return {
-        id,
-        fileContent,
-        customName,
-        status,
-        csvResult,
-        res: {} as NextApiResponse, // Placeholder, se sobreescribe al añadir a la cola
-      };
-    }
-    return null;
-  } catch (error) {
-    console.error(`Error al obtener el plan de vuelo con ID ${id}:`, error);
-    return null;
   }
 }
