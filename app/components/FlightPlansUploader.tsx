@@ -5,7 +5,7 @@ import axios from 'axios';
 
 interface FlightPlan {
   id: number;
-  file: File;
+  fileContent: File;
   customName: string;
   status: 'sin procesar' | 'en cola' | 'procesando' | 'procesado' | 'error';
   csvResult?: string;
@@ -13,6 +13,7 @@ interface FlightPlan {
 
 const FlightPlansUploader = () => {
   const [flightPlans, setFlightPlans] = useState<FlightPlan[]>([]);
+  const [selectedPlans, setSelectedPlans] = useState<number[]>([]);
 
   useEffect(() => {
     // Cargar planes de vuelo guardados al inicio
@@ -40,52 +41,65 @@ const FlightPlansUploader = () => {
     }
   };
 
-  const handleCustomNameChange = async (index: number, newName: string) => {
-    const updatedPlan = { ...flightPlans[index], customName: newName };
-    await axios.put(`/api/flightPlans/${updatedPlan.id}`, {
-      customName: newName,
-    });
-    setFlightPlans((prevPlans) => prevPlans.map((plan, i) => (i === index ? updatedPlan : plan)));
+  const handleCustomNameChange = async (id: number, newName: string) => {
+    const updatedPlan = flightPlans.find((plan) => plan.id === id);
+    if (updatedPlan) {
+      await axios.put(`/api/flightPlans/${id}`, { customName: newName });
+      setFlightPlans((prevPlans) =>
+        prevPlans.map((plan) => (plan.id === id ? { ...plan, customName: newName } : plan))
+      );
+    }
   };
 
+  const handleDeletePlan = async (id: number) => {
+    if (confirm('¿Estás seguro de que deseas eliminar este plan de vuelo?')) {
+      await axios.delete(`/api/flightPlans/${id}`);
+      setFlightPlans(flightPlans.filter((plan) => plan.id !== id));
+    }
+  };
 
-  const handleProcessTrajectory = async (index: number) => {
+  const handleSelectPlan = (id: number) => {
+    setSelectedPlans((prevSelected) =>
+      prevSelected.includes(id) ? prevSelected.filter((planId) => planId !== id) : [...prevSelected, id]
+    );
+  };
+
+  const handleDeleteSelectedPlans = async () => {
+    if (confirm('¿Estás seguro de que deseas eliminar los planes de vuelo seleccionados?')) {
+      await Promise.all(selectedPlans.map((id) => axios.delete(`/api/flightPlans/${id}`)));
+      setFlightPlans(flightPlans.filter((plan) => !selectedPlans.includes(plan.id)));
+      setSelectedPlans([]);
+    }
+  };
+
+  const handleProcessTrajectory = async (id: number) => {
     setFlightPlans((prevPlans) =>
-      prevPlans.map((plan, i) =>
-        i === index ? { ...plan, status: 'en cola' } : plan
-      )
+      prevPlans.map((plan) => (plan.id === id ? { ...plan, status: 'en cola' } : plan))
     );
 
     try {
-      const flightPlan = flightPlans[index];
+      const flightPlan = flightPlans.find((plan) => plan.id === id);
+      if (flightPlan) {
+        const response = await axios.post('/api/traj-assigner', {
+          id: flightPlan.id,
+        });
 
-      // Enviamos el plan para procesarlo
-      const response = await axios.post('/api/traj-assigner', {
-        name: flightPlan.customName,
-        file: await flightPlan.file.text(),
-        index: index,
-      });
-
-      if (response.data.success) {
-        // Actualizamos el estado a "procesado" cuando tenemos la respuesta
-        setFlightPlans((prevPlans) =>
-          prevPlans.map((plan, i) =>
-            i === index ? { ...plan, status: 'procesado', csvResult: response.data.csv } : plan
-          )
-        );
-      } else {
-        setFlightPlans((prevPlans) =>
-          prevPlans.map((plan, i) =>
-            i === index ? { ...plan, status: 'error' } : plan
-          )
-        );
+        if (response.data.success) {
+          setFlightPlans((prevPlans) =>
+            prevPlans.map((plan) =>
+              plan.id === id ? { ...plan, status: 'procesado', csvResult: response.data.csv } : plan
+            )
+          );
+        } else {
+          setFlightPlans((prevPlans) =>
+            prevPlans.map((plan) => (plan.id === id ? { ...plan, status: 'error' } : plan))
+          );
+        }
       }
     } catch (error) {
       console.error('Error procesando la trayectoria:', error);
       setFlightPlans((prevPlans) =>
-        prevPlans.map((plan, i) =>
-          i === index ? { ...plan, status: 'error' } : plan
-        )
+        prevPlans.map((plan) => (plan.id === id ? { ...plan, status: 'error' } : plan))
       );
     }
   };
@@ -127,19 +141,25 @@ const FlightPlansUploader = () => {
         className="mb-5 p-2 border rounded bg-gray-800 text-white"
       />
       <div className="w-full max-w-3xl">
-        {flightPlans.map((plan, index) => (
-          <div key={index} className="relative mb-5 p-4 bg-gray-900 text-white shadow rounded-lg">
-            <p><strong>Fichero:</strong> {plan.file.name}</p>
+        {flightPlans.map((plan) => (
+          <div key={plan.id} className="relative mb-5 p-4 bg-gray-900 text-white shadow rounded-lg">
+            <input
+              type="checkbox"
+              checked={selectedPlans.includes(plan.id)}
+              onChange={() => handleSelectPlan(plan.id)}
+            />
+            <p><strong>Fichero:</strong> {plan.customName}</p>
             <input
               type="text"
               value={plan.customName}
-              onChange={(e) => handleCustomNameChange(index, e.target.value)}
+              onChange={(e) => handleCustomNameChange(plan.id, e.target.value)}
               placeholder="Nombre personalizado"
               className="border p-2 rounded w-full mb-2 bg-gray-800 text-white"
             />
+            <button onClick={() => handleDeletePlan(plan.id)}>❌</button>
             <div className="flex justify-between items-center">
               <button
-                onClick={() => handleProcessTrajectory(index)}
+                onClick={() => handleProcessTrajectory(plan.id)}
                 className="bg-blue-500 text-white py-2 px-4 rounded"
               >
                 Procesar Trayectoria
@@ -148,7 +168,6 @@ const FlightPlansUploader = () => {
                 {plan.status}
               </div>
 
-              {/* Botón de descarga */}
               <button
                 onClick={() => plan.csvResult && downloadCsv(plan.csvResult!, `${plan.customName}.csv`)}
                 className={`absolute right-4 bottom-4 p-2 rounded border transition-all
@@ -172,6 +191,9 @@ const FlightPlansUploader = () => {
           </div>
         ))}
       </div>
+      {selectedPlans.length > 0 && (
+        <button onClick={handleDeleteSelectedPlans}>Eliminar seleccionados</button>
+      )}
     </div>
   );
 };
