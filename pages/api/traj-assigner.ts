@@ -1,81 +1,80 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import axios from 'axios';
+import { PrismaClient } from '@prisma/client';
 
-interface FlightPlan {
-  id: number;
-  fileContent: string; // Almacenar el contenido como string ya que proviene de la base de datos
-  customName: string;
-  status: 'sin procesar' | 'en cola' | 'procesando' | 'procesado' | 'error';
-  csvResult?: string;
-  res: NextApiResponse;
-}
+const prisma = new PrismaClient();
 
-let processingQueue: FlightPlan[] = [];
-let busyMachines: Set<string> = new Set();
+// Función para asignar el siguiente plan en la cola
+const assignNextPlan = async () => {
+  // Buscar el siguiente plan en estado 'en cola' y una máquina disponible
+  const nextPlan = await prisma.flightPlan.findFirst({
+    where: { status: 'en cola' },
+    orderBy: { createdAt: 'asc' },
+  });
 
-const machines = Object.entries(process.env)
-  .filter(([key]) => key.startsWith('VM'))
-  .map(([, value]) => value) as string[];
+  if (!nextPlan) return; // No hay planes en cola
 
-// Procesar el siguiente plan en la cola
-const processNextInQueue = async () => {
+  const availableMachine = await prisma.machine.findFirst({
+    where: { status: 'Disponible' },
+  });
 
-  const flightPlan = processingQueue.shift();
-  if (!flightPlan) return;
+  if (!availableMachine) return; // No hay máquinas disponibles
 
-  // Esperar hasta que haya una máquina disponible
-  let freeMachine: string | undefined;
-  while (!freeMachine) {
-    freeMachine = machines.find((machine) => !busyMachines.has(machine));
-    if (!freeMachine) {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-    }
-  }
-
-  busyMachines.add(freeMachine);
-  console.log(`Procesando plan con ID ${flightPlan.id} en máquina ${freeMachine}`);
   try {
-    // Enviar solicitud POST a la máquina virtual con el ID del plan de vuelo
-    const response = await axios.post(
-      `${freeMachine}/upload_plan/`,
-      { id: flightPlan.id },  // Enviar solo el ID en el cuerpo del POST
-      {
-        timeout: 2000000,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
-    if (response.status === 200) {
-      console.log("Recibido");
-      // Actualizar estado en base de datos y enviar respuesta
-      flightPlan.res.status(200).json({ success: true, message: 'Trayectoria procesada correctamente.' });
-    } else {
-      console.log("Error 1");
-      flightPlan.res.status(500).json({ success: false, message: 'Error procesando la trayectoria.' });
-    }
-  } catch (e) {
-    console.error(`Error procesando el plan con ID ${flightPlan.id}:`, (e as Error).message);
-    flightPlan.res.status(500).json({ success: false, message: 'Error interno al procesar la trayectoria.' });
-  } finally {
-    busyMachines.delete(freeMachine);
+    // Asignar el plan a la máquina y actualizar los estados
+    await prisma.flightPlan.update({
+      where: { id: nextPlan.id },
+      data: {
+        status: 'procesando',
+        machineAssignedId: availableMachine.id,
+      },
+    });
 
-    // Procesar el siguiente en cola
-    await processNextInQueue();
+    await prisma.machine.update({
+      where: { id: availableMachine.id },
+      data: { status: 'Ocupada' },
+    });
+
+    console.log(`Asignado el plan con ID ${nextPlan.id} a la máquina ${availableMachine.id}`);
+    // Procesar el plan (simulamos el procesamiento y la creación del CSV resultante)
+    await processFlightPlan(nextPlan.id, availableMachine.id);
+  } catch (error) {
+    console.error(`Error al asignar el plan con ID ${nextPlan.id}:`, error);
   }
 };
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method === 'POST') {
-    const { id } = req.body;
+// Función para simular el procesamiento del plan y la generación del CSV
+const processFlightPlan = async (planId: number, machineId: number) => {
+  // Simulación del tiempo de procesamiento
+  await new Promise((resolve) => setTimeout(resolve, 5000));
 
-    // Añadir el ID a la cola de procesamiento
-    processingQueue.push({ id, res } as FlightPlan);  // Agrega el objeto completo a la cola
-    console.log(`Plan con ID ${id} añadido a la cola.`);
+  const csvResult = 'Datos procesados del CSV'; // Simulación del CSV generado
 
-    // Intentar procesar el siguiente plan en cola
-    await processNextInQueue();
+  // Actualizar el plan y la máquina en la base de datos después de procesar
+  await prisma.flightPlan.update({
+    where: { id: planId },
+    data: {
+      status: 'procesado',
+      csvResult: csvResult,
+    },
+  });
 
-    res.status(200).json({ success: true, message: `Plan con ID ${id} añadido a la cola.` });
-  } else {
-    res.status(405).json({ error: 'Método no permitido' });
-  }
-}
+  await prisma.machine.update({
+    where: { id: machineId },
+    data: { status: 'Disponible' },
+  });
+
+  console.log(`Plan con ID ${planId} procesado y máquina ${machineId} disponible`);
+};
+
+// Función principal que se ejecuta periódicamente para asignar planes
+const main = async () => {
+  // Ejecutar asignaciones cada cierto intervalo
+  setInterval(async () => {
+    await assignNextPlan();
+  }, 1000); // Cada segundo se revisa la cola de planes
+};
+
+// Iniciar el asignador de planes
+main().catch((e) => {
+  console.error(e);
+  prisma.$disconnect();
+});
