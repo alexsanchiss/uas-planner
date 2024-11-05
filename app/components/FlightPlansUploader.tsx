@@ -73,29 +73,14 @@ const FlightPlansUploader = () => {
   };
 
   const handleProcessTrajectory = async (id: number) => {
+    // Actualizar el estado local del plan de vuelo a 'en cola'
     setFlightPlans((prevPlans) =>
       prevPlans.map((plan) => (plan.id === id ? { ...plan, status: 'en cola' } : plan))
     );
 
     try {
-      const flightPlan = flightPlans.find((plan) => plan.id === id);
-      if (flightPlan) {
-        const response = await axios.post('/api/traj-assigner', {
-          id: flightPlan.id,
-        });
-
-        if (response.data.success) {
-          setFlightPlans((prevPlans) =>
-            prevPlans.map((plan) =>
-              plan.id === id ? { ...plan, status: 'procesado', csvResult: response.data.csv } : plan
-            )
-          );
-        } else {
-          setFlightPlans((prevPlans) =>
-            prevPlans.map((plan) => (plan.id === id ? { ...plan, status: 'error' } : plan))
-          );
-        }
-      }
+      // Actualizar el estado del plan en la base de datos
+      await axios.put(`/api/flightPlans/${id}`, { status: 'en cola' });
     } catch (error) {
       console.error('Error procesando la trayectoria:', error);
       setFlightPlans((prevPlans) =>
@@ -103,7 +88,7 @@ const FlightPlansUploader = () => {
       );
     }
   };
-
+  
   const downloadCsv = (csvData: string, fileName: string) => {
     const blob = new Blob([csvData], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);

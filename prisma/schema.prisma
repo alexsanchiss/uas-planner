@@ -13,6 +13,12 @@ generator client {
   provider = "prisma-client-js"
 }
 
+model Machine {
+  id       Int      @id @default(autoincrement())
+  name     String   @unique
+  status   String   @default("Disponible") // Estados posibles: Disponible, Ocupada, Error, Apagada
+}
+
 // Define tu modelo de datos aquí
 model FlightPlan {
   id          Int      @id @default(autoincrement())
@@ -21,4 +27,5 @@ model FlightPlan {
   fileContent String
   csvResult   String?
   createdAt   DateTime @default(now())
+  machineAssignedId Int?
 }
