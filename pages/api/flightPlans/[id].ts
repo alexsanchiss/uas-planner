@@ -31,11 +31,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.status(500).json({ error: 'Error eliminando el plan de vuelo' });
     }
   } else if (req.method === 'PUT') {
-    const { customName, status, csvResult } = req.body;
+    const { customName, status, csvResult, machineAssignedName } = req.body;
     try {
       const updatedPlan = await prisma.flightPlan.update({
         where: { id: Number(id) },
-        data: { customName, status, csvResult },
+        data: { customName, status, csvResult, machineAssignedName },
       });
       res.json(updatedPlan);
     } catch (error) {
@@ -45,3 +45,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.status(405).json({ error: 'Method not allowed' });
   }
 }
+
+export const config = {
+    api: {
+        bodyParser: {
+            sizeLimit: '50mb', 
+        },
+    },
+};
