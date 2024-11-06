@@ -1,29 +1,25 @@
-import { PrismaClient } from '@prisma/client';
-
+const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-let isProcessing = false; // Bandera para controlar si el asignador está en ejecución
+let isProcessing = false;
 
-// Función para asignar el siguiente plan en la cola
 const assignNextPlan = async () => {
-  if (isProcessing) return; // Evita la ejecución si ya se está procesando
+  if (isProcessing) return;
   isProcessing = true;
 
   try {
-    // Buscar el siguiente plan en estado 'en cola' y una máquina disponible
     const nextPlan = await prisma.flightPlan.findFirst({
       where: { status: 'en cola' },
       orderBy: { createdAt: 'asc' },
     });
 
-    if (!nextPlan) return; // No hay planes en cola
+    if (!nextPlan) return;
 
     const availableMachine = await prisma.machine.findFirst({
       where: { status: 'Disponible' },
     });
 
-    if (!availableMachine) return; // No hay máquinas disponibles
+    if (!availableMachine) return;
 
-    // Asignar el plan a la máquina y actualizar los estados
     await prisma.flightPlan.update({
       where: { id: nextPlan.id },
       data: {
@@ -41,19 +37,16 @@ const assignNextPlan = async () => {
   } catch (error) {
     console.error(`Error al asignar el plan:`, error);
   } finally {
-    isProcessing = false; // Libera la bandera al finalizar
+    isProcessing = false;
   }
 };
 
-// Función principal que se ejecuta periódicamente para asignar planes
 const main = async () => {
-  // Ejecutar asignaciones cada cierto intervalo
   setInterval(async () => {
     await assignNextPlan();
-  }, 1000); // Cada segundo se revisa la cola de planes
+  }, 1000);
 };
 
-// Iniciar el asignador de planes
 main().catch((e) => {
   console.error(e);
   prisma.$disconnect();

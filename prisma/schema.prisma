@@ -27,5 +27,5 @@ model FlightPlan {
   fileContent String
   csvResult   String?
   createdAt   DateTime @default(now())
-  machineAssignedId Int?
+  machineAssignedName String?
 }
