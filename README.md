@@ -23,15 +23,11 @@ Las trayectorias se procesarán en varias máquinas virtuales, cada una ejecutan
 
 ## Uso
 
-Para ejecutar la aplicación, utiliza el siguiente comando: ```npm run dev```
+Para ejecutar la aplicación, utiliza el siguiente comando: ```npm run dev```. También debes ejecutar ```node traj-assigner``` para ejecutar el manejador de solicitudes.
+    
 Luego, abre tu navegador y dirígete a http://localhost:3000.
 
 ## Componentes
 
 ### FlightUploader.tsx
 Este es el componente principal que permite a los usuarios subir planes de vuelo, asignar nombres personalizados y procesar las trayectorias. El estado de cada plan se muestra en función de su proceso actual: sin procesar, en cola, procesando, procesado, o error. Los resultados se pueden descargar como archivos CSV una vez procesados.
-
-### traj-assigner.js
-Este maneja las solicitudes de procesamiento de los planes de vuelo. Debe ejecutarse conjuntamente con la aplicación para que funcione correctamente, con el comando:
-    ```bash
-    node traj-assigner
