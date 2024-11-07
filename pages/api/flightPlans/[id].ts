@@ -19,7 +19,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       res.json(flightPlan);
     } catch (error) {
-      res.status(500).json({ error: 'Error obteniendo el plan de vuelo' });
+      res.status(500).json({ error: 'Error obteniendo el plan de vuelo', details: (error as Error).message});
     }
   } else if (req.method === 'DELETE') {
     try {
@@ -28,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
       res.status(204).end();
     } catch (error) {
-      res.status(500).json({ error: 'Error eliminando el plan de vuelo' });
+      res.status(500).json({ error: 'Error eliminando el plan de vuelo', details: (error as Error).message});
     }
   } else if (req.method === 'PUT') {
     const { customName, status, csvResult, machineAssignedName } = req.body;
@@ -39,7 +39,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
       res.json(updatedPlan);
     } catch (error) {
-      res.status(500).json({ error: 'Error actualizando el plan de vuelo' });
+      res.status(500).json({ error: 'Error actualizando el plan de vuelo', details: (error as Error).message});
     }
   } else {
     res.status(405).json({ error: 'Method not allowed' });

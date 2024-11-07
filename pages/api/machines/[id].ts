@@ -14,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
       res.json(updatedMachine);
     } catch (error) {
-      res.status(500).json({ error: 'Error actualizando el estado de la máquina' });
+      res.status(500).json({ error: 'Error actualizando el estado de la máquina', details: (error as Error).message});
     }
   } else {
     res.status(405).json({ error: 'Método no permitido' });
