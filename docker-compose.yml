@@ -1,0 +1,22 @@
+version: '3'
+
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"  # Mapea puerto 3000 para Next.js
+    command: /bin/sh -c "git pull origin master && npm start"  # Ejecuta git pull y luego inicia Next.js
+
+  traj-assigner:
+    build: .
+    command: /bin/sh -c "git pull origin master && node traj-assigner.ts"  # Ejecuta git pull y luego el script traj-assigner
+    depends_on:
+      - app
+
+  prisma-studio:
+    build: .
+    ports:
+      - "5555:5555"  # Mapea puerto 5555 para Prisma Studio
+    command: /bin/sh -c "git pull origin master && npx prisma studio"  # Ejecuta git pull y luego Prisma Studio
+    depends_on:
+      - app
