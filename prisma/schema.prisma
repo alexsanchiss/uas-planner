@@ -7,6 +7,7 @@
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 generator client {
@@ -27,4 +28,9 @@ model flightPlan {
   csvResult           String?
   createdAt           DateTime @default(now())
   machineAssignedName String?
+}
+
+model csvResult {
+  id        Int    @id @default(autoincrement())
+  csvResult String
 }
