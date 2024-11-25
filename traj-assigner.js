@@ -33,9 +33,9 @@ const assignNextPlan = async () => {
       data: { status: 'Ocupada' },
     });
 
-    console.log(`Asignado el plan con ID ${nextPlan.id} a la máquina ${availableMachine.name}`);
+    console.log("Asignado el plan con ID ${nextPlan.id} a la máquina ${availableMachine.name}");
   } catch (error) {
-    console.error(`Error al asignar el plan:`, error);
+    console.error("Error al asignar el plan:", error);
   } finally {
     isProcessing = false;
   }

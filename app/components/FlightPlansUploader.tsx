@@ -89,16 +89,30 @@ const FlightPlansUploader = () => {
     }
   };
   
-  const downloadCsv = (csvData: string, fileName: string) => {
-    const blob = new Blob([csvData], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.setAttribute('hidden', '');
-    a.setAttribute('href', url);
-    a.setAttribute('download', fileName);
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+  const downloadCsv = async (planId: number, fileName: string) => {
+    try {
+      // Hacer la solicitud GET a la API para obtener el CSV correspondiente
+      const response = await axios.get(`/api/csvResult/${planId}`);
+
+      if (response.status === 200) {
+        const csvData = response.data.csvResult;  // CSV obtenido de la base de datos
+
+        // Crear un Blob a partir de los datos CSV y crear el enlace de descarga
+        const blob = new Blob([csvData], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.setAttribute('hidden', '');
+        a.setAttribute('href', url);
+        a.setAttribute('download', fileName);
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      } else {
+        console.error('Error al obtener el CSV:', response.status);
+      }
+    } catch (error) {
+      console.error('Error en la descarga del CSV:', error);
+    }
   };
 
   const statusColor = (status: FlightPlan['status']) => {
@@ -154,7 +168,7 @@ const FlightPlansUploader = () => {
               </div>
 
               <button
-                onClick={() => plan.csvResult && downloadCsv(plan.csvResult!, `${plan.customName}.csv`)}
+                onClick={() => plan.csvResult && downloadCsv(plan.id!, `${plan.customName}.csv`)}
                 className={`absolute right-4 bottom-4 p-2 rounded border transition-all
                 ${plan.status === 'procesado' ? 'bg-green-500 hover:bg-green-600 cursor-pointer' : 'bg-transparent'}`}
                 style={{ pointerEvents: plan.status === 'procesado' ? 'auto' : 'none' }}

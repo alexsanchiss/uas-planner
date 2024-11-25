@@ -1,6 +1,16 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
 
-const supabaseUrl = 'https://gkjjegbhetkybajfjcva.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdramplZ2JoZXRreWJhamZqY3ZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjkxNTc5MTcsImV4cCI6MjA0NDczMzkxN30.xihCj1PQDSftUmgmrDcOknu4SMwT5tqYmpcNBVPwH30';
+// Cargar las variables de entorno desde el archivo .env
+dotenv.config();
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+// Asegurarse de que las variables de entorno están definidas
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_KEY;
+
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  throw new Error('Missing Supabase environment variables');
+}
+
+// Crear el cliente de Supabase
+export const supabase: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
