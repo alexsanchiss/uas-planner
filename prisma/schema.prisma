@@ -5,7 +5,7 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -13,19 +13,18 @@ generator client {
   provider = "prisma-client-js"
 }
 
-model Machine {
+model machine {
   id       Int      @id @default(autoincrement())
   name     String   @unique
-  status   String   @default("Disponible") // Estados posibles: Disponible, Ocupada, Error, Apagada
+  status   String   @default("Disponible")
 }
 
-// Define tu modelo de datos aquí
-model FlightPlan {
-  id          Int      @id @default(autoincrement())
-  customName  String
-  status      String
-  fileContent String
-  csvResult   String?
-  createdAt   DateTime @default(now())
+model flightPlan {
+  id                  Int      @id @default(autoincrement())
+  customName          String
+  status              String
+  fileContent         String
+  csvResult           String?
+  createdAt           DateTime @default(now())
   machineAssignedName String?
 }
