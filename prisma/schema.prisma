@@ -34,3 +34,10 @@ model csvResult {
   id        Int    @id @default(autoincrement())
   csvResult String
 }
+
+model user {
+  id        Int     @id @default(autoincrement())
+  email     String  @unique
+  password  String
+  createdAt DateTime @default(now())
+}
