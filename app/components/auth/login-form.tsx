@@ -4,43 +4,43 @@ import { useState } from 'react'
 import { Input } from '../ui/input'
 import { Button } from '../ui/button'
 import { PasswordReset } from './password-reset'
-import { serialize } from 'cookie';
 
 interface LoginFormProps {
-  onLogin: () => void
+  onLoginSuccess: () => void
 }
 
-export function LoginForm({ onLogin }: LoginFormProps) {
+export function LoginForm({ onLoginSuccess }: LoginFormProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
+    setError('')
 
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
-      });
+      })
 
-      if (!response.ok) {
-        const error = await response.json();
-        alert(error.message);
-        return;
+      if (response.ok) {
+        const { token } = await response.json()
+        localStorage.setItem('authToken', token)
+        onLoginSuccess()
+      } else {
+        const data = await response.json()
+        setError(data.error || 'An error occurred during login')
       }
-
-      console.log('Login exitoso');
-      onLogin(); // Cambia el estado de la aplicación para usuario autenticado
     } catch (error) {
-      console.error('Error durante el login:', error);
-      alert('Hubo un problema al iniciar sesión.');
+      setError('An error occurred during login')
     }
-  };
-
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {error && <p className="text-red-500 text-sm">{error}</p>}
       <Input
         type="email"
         placeholder="Email"

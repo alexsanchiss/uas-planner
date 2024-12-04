@@ -7,12 +7,20 @@ import { Button } from '../ui/button'
 export function PasswordReset() {
   const [isResetting, setIsResetting] = useState(false)
   const [email, setEmail] = useState('')
+  const [message, setMessage] = useState('')
 
-  const handleReset = (e: React.FormEvent) => {
+  const handleReset = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Handle password reset logic here
-    console.log('Reset password for:', email)
-    setIsResetting(false)
+    setMessage('')
+
+    try {
+      // Implement password reset logic here
+      // For now, we'll just show a message
+      setMessage('If an account exists for this email, a password reset link has been sent.')
+      setIsResetting(false)
+    } catch (error) {
+      setMessage('An error occurred while requesting a password reset.')
+    }
   }
 
   if (!isResetting) {
@@ -30,6 +38,7 @@ export function PasswordReset() {
 
   return (
     <form onSubmit={handleReset} className="space-y-4">
+      {message && <p className="text-sm text-blue-500">{message}</p>}
       <Input
         type="email"
         placeholder="Email"

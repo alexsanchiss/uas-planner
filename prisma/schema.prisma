@@ -28,6 +28,7 @@ model flightPlan {
   csvResult           String?
   createdAt           DateTime @default(now())
   machineAssignedName String?
+  userId              Int
 }
 
 model csvResult {

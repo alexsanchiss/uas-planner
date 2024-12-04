@@ -5,20 +5,22 @@ import { Input } from '../ui/input'
 import { Button } from '../ui/button'
 
 interface SignupFormProps {
-  onSignup: () => void
+  onSignupSuccess: () => void
 }
 
-export function SignupForm({ onSignup }: SignupFormProps) {
+export function SignupForm({ onSignupSuccess }: SignupFormProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [error, setError] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
+    setError('')
 
     if (password !== confirmPassword) {
-      alert('Las contraseñas no coinciden');
-      return;
+      setError('Passwords do not match')
+      return
     }
 
     try {
@@ -26,25 +28,22 @@ export function SignupForm({ onSignup }: SignupFormProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
-      });
+      })
 
-      if (!response.ok) {
-        const error = await response.json();
-        alert(error.message);
-        return;
+      if (response.ok) {
+        onSignupSuccess()
+      } else {
+        const data = await response.json()
+        setError(data.error || 'An error occurred during signup')
       }
-
-      console.log('Signup exitoso');
-      onSignup(); // Cambia el estado de la aplicación para usuario autenticado
     } catch (error) {
-      console.error('Error durante el registro:', error);
-      alert('Hubo un problema al registrarse.');
+      setError('An error occurred during signup')
     }
-  };
-
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {error && <p className="text-red-500 text-sm">{error}</p>}
       <Input
         type="email"
         placeholder="Email"
