@@ -1,30 +1,42 @@
-'use client';
+'use client'
 
-import { useState, useEffect } from 'react';
-import axios from 'axios';
+import { useState, useEffect } from 'react'
+import axios from 'axios'
+import { useAuth } from '../hooks/useAuth'
 
 interface FlightPlan {
-  id: number;
-  fileContent: File;
-  customName: string;
-  status: 'sin procesar' | 'en cola' | 'procesando' | 'procesado' | 'error';
-  csvResult?: string;
+  id: number
+  fileContent: File
+  customName: string
+  status: 'sin procesar' | 'en cola' | 'procesando' | 'procesado' | 'error'
+  csvResult?: string
 }
 
-const FlightPlansUploader = () => {
-  const [flightPlans, setFlightPlans] = useState<FlightPlan[]>([]);
-  const [selectedPlans, setSelectedPlans] = useState<number[]>([]);
+export function FlightPlansUploader() {
+  const [flightPlans, setFlightPlans] = useState<FlightPlan[]>([])
+  const [selectedPlans, setSelectedPlans] = useState<number[]>([])
+  const { user } = useAuth()
 
   useEffect(() => {
-    // Cargar planes de vuelo guardados al inicio
     const fetchFlightPlans = async () => {
-      const { data } = await axios.get('/api/flightPlans');
-      setFlightPlans(data);
-    };
-    fetchFlightPlans();
-  }, []);
+      if (user?.id) {
+        try {
+          console.log('Fetching flight plans for user:', user.id)
+          const { data } = await axios.get(`/api/flightPlans/user/${user.id}`)
+          console.log('Flight plans:', data)
+          setFlightPlans(data)
+        } catch (error) {
+          console.error('Error fetching flight plans:', error)
+        }
+      }
+    }
+    console.log('Fetching flight plans for user:', user)
+    fetchFlightPlans()
+  }, [user])
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Rest of the component implementation remains the same
+  // ...
+const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
       const newPlans = await Promise.all(
@@ -40,7 +52,6 @@ const FlightPlansUploader = () => {
       setFlightPlans([...flightPlans, ...newPlans]);
     }
   };
-
   const handleCustomNameChange = async (id: number, newName: string) => {
     const updatedPlan = flightPlans.find((plan) => plan.id === id);
     if (updatedPlan) {
@@ -50,20 +61,17 @@ const FlightPlansUploader = () => {
       );
     }
   };
-
   const handleDeletePlan = async (id: number) => {
     if (confirm('¿Estás seguro de que deseas eliminar este plan de vuelo?')) {
       await axios.delete(`/api/flightPlans/${id}`);
       setFlightPlans(flightPlans.filter((plan) => plan.id !== id));
     }
   };
-
   const handleSelectPlan = (id: number) => {
     setSelectedPlans((prevSelected) =>
       prevSelected.includes(id) ? prevSelected.filter((planId) => planId !== id) : [...prevSelected, id]
     );
   };
-
   const handleDeleteSelectedPlans = async () => {
     if (confirm('¿Estás seguro de que deseas eliminar los planes de vuelo seleccionados?')) {
       await Promise.all(selectedPlans.map((id) => axios.delete(`/api/flightPlans/${id}`)));
@@ -71,13 +79,11 @@ const FlightPlansUploader = () => {
       setSelectedPlans([]);
     }
   };
-
   const handleProcessTrajectory = async (id: number) => {
     // Actualizar el estado local del plan de vuelo a 'en cola'
     setFlightPlans((prevPlans) =>
       prevPlans.map((plan) => (plan.id === id ? { ...plan, status: 'en cola' } : plan))
     );
-
     try {
       // Actualizar el estado del plan en la base de datos
       await axios.put(`/api/flightPlans/${id}`, { status: 'en cola' });
@@ -88,15 +94,12 @@ const FlightPlansUploader = () => {
       );
     }
   };
-  
   const downloadCsv = async (planId: number, fileName: string) => {
     try {
       // Hacer la solicitud GET a la API para obtener el CSV correspondiente
       const response = await axios.get(`/api/csvResult/${planId}`);
-
       if (response.status === 200) {
         const csvData = response.data.csvResult;  // CSV obtenido de la base de datos
-
         // Crear un Blob a partir de los datos CSV y crear el enlace de descarga
         const blob = new Blob([csvData], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
@@ -114,7 +117,6 @@ const FlightPlansUploader = () => {
       console.error('Error en la descarga del CSV:', error);
     }
   };
-
   const statusColor = (status: FlightPlan['status']) => {
     switch (status) {
       case 'sin procesar':
@@ -130,10 +132,12 @@ const FlightPlansUploader = () => {
     }
   };
 
-  return (
+return (
     <div className="flex flex-col items-center py-10">
       <h1 className="text-3xl font-bold mb-5">Subir Planes de Vuelo</h1>
-      <input
+      {user ? (
+        <>
+        <input
         type="file"
         multiple
         onChange={handleFileUpload}
@@ -166,7 +170,6 @@ const FlightPlansUploader = () => {
               <div className={`py-2 px-4 mr-12 rounded ${statusColor(plan.status)}`}>
                 {plan.status}
               </div>
-
               <button
                 onClick={() => plan.csvResult && downloadCsv(plan.id!, `${plan.customName}.csv`)}
                 className={`absolute right-4 bottom-4 p-2 rounded border transition-all
@@ -190,11 +193,14 @@ const FlightPlansUploader = () => {
           </div>
         ))}
       </div>
-      {selectedPlans.length > 0 && (
+            {selectedPlans.length > 0 && (
         <button onClick={handleDeleteSelectedPlans}>Eliminar seleccionados</button>
+      )}
+      </>
+      ) : (
+        <p className="text-red-500">Debes iniciar sesión para subir planes de vuelo</p>
       )}
     </div>
   );
 };
-
 export default FlightPlansUploader;
