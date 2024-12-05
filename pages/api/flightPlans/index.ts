@@ -7,9 +7,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const flightPlans = await prisma.flightPlan.findMany();
     res.json(flightPlans);
   } else if (req.method === 'POST') {
-    const { customName, status, fileContent } = req.body;
+    const { customName, status, fileContent, userId } = req.body;
     const newPlan = await prisma.flightPlan.create({
-      data: { customName, status, fileContent },
+      data: { customName, status, fileContent, userId },
     });
     res.status(201).json(newPlan);
   } else {

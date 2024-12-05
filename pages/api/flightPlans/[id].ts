@@ -31,11 +31,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.status(500).json({ error: 'Error eliminando el plan de vuelo', details: (error as Error).message});
     }
   } else if (req.method === 'PUT') {
-    const { customName, status, csvResult, machineAssignedName } = req.body;
+    const { customName, status, csvResult, machineAssignedId } = req.body;
     try {
       const updatedPlan = await prisma.flightPlan.update({
         where: { id: Number(id) },
-        data: { customName, status, csvResult, machineAssignedName },
+        data: { customName, status, csvResult, machineAssignedId },
       });
       res.json(updatedPlan);
     } catch (error) {

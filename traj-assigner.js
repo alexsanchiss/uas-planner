@@ -24,7 +24,7 @@ const assignNextPlan = async () => {
       where: { id: nextPlan.id },
       data: {
         status: 'procesando',
-        machineAssignedName: availableMachine.name,
+        machineAssignedId: availableMachine.id,
       },
     });
 
@@ -33,7 +33,7 @@ const assignNextPlan = async () => {
       data: { status: 'Ocupada' },
     });
 
-    console.log("Asignado el plan con ID ${nextPlan.id} a la máquina ${availableMachine.name}");
+    console.log(`Asignado el plan con ID ${nextPlan.id} a la máquina con ID ${availableMachine.id}`);
   } catch (error) {
     console.error("Error al asignar el plan:", error);
   } finally {
