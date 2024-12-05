@@ -4,12 +4,19 @@ import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { useAuth } from '../hooks/useAuth'
 
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
+import { Button } from "./ui/button"
+import { Input } from "./ui/input"
+import { Checkbox } from "./ui/checkbox"
+import { Badge } from "./ui/badge"
+import { DownloadIcon, Trash2Icon, RefreshCwIcon } from 'lucide-react'
+
 interface FlightPlan {
   id: number
   fileContent: File
   customName: string
   status: 'sin procesar' | 'en cola' | 'procesando' | 'procesado' | 'error'
-  csvResult?: string
+  csvResult?: number
 }
 
 export function FlightPlansUploader() {
@@ -45,6 +52,7 @@ const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
             customName: file.name.replace(/\.[^/.]+$/, ""),
             status: 'sin procesar',
             fileContent: await file.text(),
+            userId: user?.id
           });
           return { ...response.data, file };
         })
@@ -86,7 +94,7 @@ const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     );
     try {
       // Actualizar el estado del plan en la base de datos
-      await axios.put(`/api/flightPlans/${id}`, { status: 'en cola' });
+      await axios.put(`/api/flightPlans/${id}`, { csvResult: 0, status: 'en cola' });
     } catch (error) {
       console.error('Error procesando la trayectoria:', error);
       setFlightPlans((prevPlans) =>
@@ -133,73 +141,95 @@ const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
   };
 
 return (
-    <div className="flex flex-col items-center py-10">
-      <h1 className="text-3xl font-bold mb-5">Subir Planes de Vuelo</h1>
-      {user ? (
-        <>
-        <input
-        type="file"
-        multiple
-        onChange={handleFileUpload}
-        className="mb-5 p-2 border rounded bg-gray-800 text-white"
-      />
-      <div className="w-full max-w-3xl">
-        {flightPlans.map((plan) => (
-          <div key={plan.id} className="relative mb-5 p-4 bg-gray-900 text-white shadow rounded-lg">
-            <input
-              type="checkbox"
-              checked={selectedPlans.includes(plan.id)}
-              onChange={() => handleSelectPlan(plan.id)}
-            />
-            <p><strong>Fichero:</strong> {plan.customName}</p>
-            <input
-              type="text"
-              value={plan.customName}
-              onChange={(e) => handleCustomNameChange(plan.id, e.target.value)}
-              placeholder="Nombre personalizado"
-              className="border p-2 rounded w-full mb-2 bg-gray-800 text-white"
-            />
-            <button onClick={() => handleDeletePlan(plan.id)}>❌</button>
-            <div className="flex justify-between items-center">
-              <button
-                onClick={() => handleProcessTrajectory(plan.id)}
-                className="bg-blue-500 text-white py-2 px-4 rounded"
-              >
-                Procesar Trayectoria
-              </button>
-              <div className={`py-2 px-4 mr-12 rounded ${statusColor(plan.status)}`}>
-                {plan.status}
-              </div>
-              <button
-                onClick={() => plan.csvResult && downloadCsv(plan.id!, `${plan.customName}.csv`)}
-                className={`absolute right-4 bottom-4 p-2 rounded border transition-all
-                ${plan.status === 'procesado' ? 'bg-green-500 hover:bg-green-600 cursor-pointer' : 'bg-transparent'}`}
-                style={{ pointerEvents: plan.status === 'procesado' ? 'auto' : 'none' }}
-                aria-label="Descargar CSV"
-                disabled={plan.status !== 'procesado'}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={2}
-                  stroke="currentColor"
-                  className="w-6 h-6"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-              </button>
+    <div className="min-h-screen bg-gray-900 p-6">
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-2xl font-semibold text-white mb-6">Subir Planes de Vuelo</h1>
+        {user ? (
+          <>
+            <div className="mb-6">
+              <Input
+                type="file"
+                multiple
+                onChange={handleFileUpload}
+                className="bg-gray-800 border-gray-700 text-white file:bg-blue-500 file:text-white file:border-0 file:rounded file:px-4 file:py-2 hover:file:bg-blue-600"
+              />
             </div>
-          </div>
-        ))}
-      </div>
+            <div className="space-y-4">
+              {flightPlans.map((plan) => (
+                <Card key={plan.id} className="bg-gray-800 border-gray-700">
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-3 mb-4">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          checked={selectedPlans.includes(plan.id)}
+                          onCheckedChange={() => handleSelectPlan(plan.id)}
+                          className="border-gray-600"
+                        />
+                        <span className="text-white font-medium">{plan.customName}</span>
+                      </div>
+                      <Input
+                        type="text"
+                        value={plan.customName}
+                        onChange={(e) => handleCustomNameChange(plan.id, e.target.value)}
+                        placeholder="Nombre personalizado"
+                        className="flex-1 bg-gray-700 border-gray-600 text-white"
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeletePlan(plan.id)}
+                        className="text-gray-400 hover:text-white"
+                      >
+                        <Trash2Icon className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Button
+                        onClick={() => handleProcessTrajectory(plan.id)}
+                        className="bg-blue-500 hover:bg-blue-600 text-white"
+                      >
+                        <RefreshCwIcon className="mr-2 h-4 w-4" />
+                        Procesar Trayectoria
+                      </Button>
+                      <div className="flex items-center space-x-4">
+                        <Badge className={`px-3 py-1 ${statusColor(plan.status)}`}>
+                          {plan.status}
+                        </Badge>
+                        <Button
+                          onClick={() => plan.csvResult && downloadCsv(plan.id, `${plan.customName}.csv`)}
+                          disabled={plan.status !== 'procesado'}
+                          variant="ghost"
+                          size="icon"
+                          className={`text-gray-400 hover:text-white ${
+                            plan.status === 'procesado' ? 'opacity-100' : 'opacity-50'
+                          }`}
+                        >
+                          <DownloadIcon className="h-5 w-5" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
             {selectedPlans.length > 0 && (
-        <button onClick={handleDeleteSelectedPlans}>Eliminar seleccionados</button>
-      )}
-      </>
-      ) : (
-        <p className="text-red-500">Debes iniciar sesión para subir planes de vuelo</p>
-      )}
+              <div className="mt-6">
+                <Button
+                  onClick={handleDeleteSelectedPlans}
+                  variant="destructive"
+                  className="w-full"
+                >
+                  Eliminar {selectedPlans.length} {selectedPlans.length === 1 ? 'plan seleccionado' : 'planes seleccionados'}
+                </Button>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-red-500">Debes iniciar sesión para subir planes de vuelo</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
