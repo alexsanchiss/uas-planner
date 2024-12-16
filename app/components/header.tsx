@@ -1,28 +1,55 @@
-'use client'
+'use client';
 
-import Image from 'next/image'
-import Link from 'next/link'
-import { Button } from './ui/button'
-import { useAuth } from '../hooks/useAuth'
+import Image from 'next/image';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { Button } from './ui/button';
+import { useAuth } from '../hooks/useAuth';
 
 export function Header() {
-  const { user, logout } = useAuth()
+  const { user, logout } = useAuth();
+  const pathname = usePathname();
+
+  const isActive = (path: string) => pathname === path;
 
   return (
     <header className="bg-gray-800 shadow-md">
-      <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+      <div className="container mx-auto px-4 py-3 grid grid-cols-3 items-center">
+        {/* Navegación a la izquierda */}
         <div className="flex items-center space-x-4">
-          <Link href="/" className="text-gray-300 hover:text-white transition-colors">
+          <Link
+            href="/"
+            className={`px-3 py-2 rounded-md text-sm font-medium ${
+              isActive('/') ? 'bg-gray-700 text-white' : 'text-gray-300 hover:text-white'
+            }`}
+          >
             Home
           </Link>
-          <Link href="/trajectory-generator" className="text-gray-300 hover:text-white transition-colors">
+          <Link
+            href="/plan-generator"
+            className={`px-3 py-2 rounded-md text-sm font-medium ${
+              isActive('/plan-generator') ? 'bg-gray-700 text-white' : 'text-gray-300 hover:text-white'
+            }`}
+          >
+            Plan Generator
+          </Link>
+          <Link
+            href="/trajectory-generator"
+            className={`px-3 py-2 rounded-md text-sm font-medium ${
+              isActive('/trajectory-generator') ? 'bg-gray-700 text-white' : 'text-gray-300 hover:text-white'
+            }`}
+          >
             Trajectory Generator
           </Link>
         </div>
-        <div className="flex-shrink-0">
+
+        {/* Logo centrado */}
+        <div className="flex justify-center">
           <Image src="/images/logo.jpg" alt="UAS PLANNER Logo" width={150} height={50} />
         </div>
-        <div className="flex items-center space-x-4">
+
+        {/* Botones de usuario a la derecha */}
+        <div className="flex justify-end items-center space-x-4">
           {user ? (
             <>
               <div className="flex items-center space-x-2">
@@ -43,5 +70,5 @@ export function Header() {
         </div>
       </div>
     </header>
-  )
+  );
 }

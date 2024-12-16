@@ -5,19 +5,19 @@ import { AppChoice } from './components/app-choice'
 import { useRouter } from 'next/navigation'
 
 const apps = [
-  {
-    name: 'Trajectory Generator',
-    description: 'Plan and manage your UAS missions efficiently.',
-    image: '/images/uas-planner.jpg'
-  },
-  {
-    name: 'Flight Tracker',
-    description: 'Real-time tracking and analytics for your flights.',
+    {
+    name: 'Plan Generator',
+    description: 'Generate your QGC plan file',
     image: '/images/flight-tracker.jpg'
   },
   {
-    name: 'Maintenance Log',
-    description: 'Keep detailed maintenance records for your UAS fleet.',
+    name: 'Trajectory Generator',
+    description: 'Generate your trajectory from a QGC plan file.',
+    image: '/images/uas-planner.jpg'
+  },
+  {
+    name: 'Lorem Impum',
+    description: 'Lorem Ipsum dolor sit amet, consectetur adipiscing elit.',
     image: '/images/maintenance-log.jpg'
   }
 ]
@@ -31,6 +31,9 @@ export default function MainPage() {
     // For example, navigate to the trajectory-generator page when launching UAS Planner
     if (appName === 'Trajectory Generator') {
       router.push('/trajectory-generator')
+    }
+    if (appName === 'Plan Generator') {
+      router.push('/plan-generator')
     }
   }
   

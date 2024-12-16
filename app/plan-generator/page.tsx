@@ -1,13 +1,13 @@
 'use client'
 
 import { Header } from '../components/header'
-import { FlightPlansUploader } from '../components/FlightPlansUploader'
+import QGroundControl from '../components/QGroundControl'
 
 export default function TrajectoryGenerator() {
   return (
     <div className="min-h-screen bg-gray-900">
       <Header />
-      <FlightPlansUploader />
+      <QGroundControl />
     </div>
   )
 }
