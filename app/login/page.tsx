@@ -19,7 +19,7 @@ export default function Login() {
 
     const success = await login(email, password)
     if (success) {
-      router.push('/trajectory-generator')
+      router.push('/')
     } else {
       setError('Invalid email or password')
     }

@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { useAuth } from '../hooks/useAuth'
+import JSZip from 'jszip'
+import { saveAs } from 'file-saver'
 
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
 import { Button } from "./ui/button"
@@ -26,24 +28,19 @@ export function FlightPlansUploader() {
 
   useEffect(() => {
     const fetchFlightPlans = async () => {
-      if (user?.id) {
-        try {
-          console.log('Fetching flight plans for user:', user.id)
-          const { data } = await axios.get(`/api/flightPlans/user/${user.id}`)
-          console.log('Flight plans:', data)
-          setFlightPlans(data)
-        } catch (error) {
-          console.error('Error fetching flight plans:', error)
-        }
+    if (user?.id) {
+      try {
+        const { data } = await axios.get(`/api/flightPlans/user/${user.id}`);
+        setFlightPlans(data.sort((a, b) => a.id - b.id)); // Ordenar al cargar
+      } catch (error) {
+        console.error('Error fetching flight plans:', error);
       }
     }
-    console.log('Fetching flight plans for user:', user)
-    fetchFlightPlans()
+  };
+  fetchFlightPlans();
   }, [user])
 
-  // Rest of the component implementation remains the same
-  // ...
-const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
       const newPlans = await Promise.all(
@@ -60,6 +57,7 @@ const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       setFlightPlans([...flightPlans, ...newPlans]);
     }
   };
+
   const handleCustomNameChange = async (id: number, newName: string) => {
     const updatedPlan = flightPlans.find((plan) => plan.id === id);
     if (updatedPlan) {
@@ -69,31 +67,73 @@ const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       );
     }
   };
+
   const handleDeletePlan = async (id: number) => {
     if (confirm('¿Estás seguro de que deseas eliminar este plan de vuelo?')) {
-      await axios.delete(`/api/flightPlans/${id}`);
-      setFlightPlans(flightPlans.filter((plan) => plan.id !== id));
+      const plan = flightPlans.find((p) => p.id === id);
+      if (plan?.csvResult) {
+        try {
+          await axios.delete(`/api/csvResult/${id}`);
+        } catch (error) {
+          console.error(`Error al eliminar el CSV para el plan ${id}:`, error);
+        }
+      }
+
+      try {
+        await axios.delete(`/api/flightPlans/${id}`);
+        setFlightPlans(flightPlans.filter((plan) => plan.id !== id));
+      } catch (error) {
+        console.error(`Error al eliminar el plan ${id}:`, error);
+      }
     }
   };
+
+
   const handleSelectPlan = (id: number) => {
     setSelectedPlans((prevSelected) =>
       prevSelected.includes(id) ? prevSelected.filter((planId) => planId !== id) : [...prevSelected, id]
     );
   };
+
+  const handleSelectAllPlans = () => {
+    setSelectedPlans(flightPlans.map(plan => plan.id))
+  }
+
+  const handleDeselectAllPlans = () => {
+    setSelectedPlans([])
+  }
+
   const handleDeleteSelectedPlans = async () => {
     if (confirm('¿Estás seguro de que deseas eliminar los planes de vuelo seleccionados?')) {
-      await Promise.all(selectedPlans.map((id) => axios.delete(`/api/flightPlans/${id}`)));
+      await Promise.all(
+        selectedPlans.map(async (id) => {
+          const plan = flightPlans.find((p) => p.id === id);
+          if (plan?.csvResult) {
+            try {
+              await axios.delete(`/api/csvResult/${id}`);
+            } catch (error) {
+              console.error(`Error al eliminar el CSV para el plan ${id}:`, error);
+            }
+          }
+          try {
+            await axios.delete(`/api/flightPlans/${id}`);
+          } catch (error) {
+            console.error(`Error al eliminar el plan ${id}:`, error);
+          }
+        })
+      );
+
       setFlightPlans(flightPlans.filter((plan) => !selectedPlans.includes(plan.id)));
       setSelectedPlans([]);
     }
   };
+
+
   const handleProcessTrajectory = async (id: number) => {
-    // Actualizar el estado local del plan de vuelo a 'en cola'
     setFlightPlans((prevPlans) =>
       prevPlans.map((plan) => (plan.id === id ? { ...plan, status: 'en cola' } : plan))
     );
     try {
-      // Actualizar el estado del plan en la base de datos
       await axios.put(`/api/flightPlans/${id}`, { csvResult: 0, status: 'en cola' });
     } catch (error) {
       console.error('Error procesando la trayectoria:', error);
@@ -102,13 +142,18 @@ const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       );
     }
   };
+
+  const handleProcessSelectedPlans = async () => {
+    await Promise.all(
+      selectedPlans.map((id) => handleProcessTrajectory(id))
+    );
+  };
+
   const downloadCsv = async (planId: number, fileName: string) => {
     try {
-      // Hacer la solicitud GET a la API para obtener el CSV correspondiente
       const response = await axios.get(`/api/csvResult/${planId}`);
       if (response.status === 200) {
-        const csvData = response.data.csvResult;  // CSV obtenido de la base de datos
-        // Crear un Blob a partir de los datos CSV y crear el enlace de descarga
+        const csvData = response.data.csvResult;
         const blob = new Blob([csvData], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -118,13 +163,40 @@ const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-      } else {
-        console.error('Error al obtener el CSV:', response.status);
       }
     } catch (error) {
       console.error('Error en la descarga del CSV:', error);
     }
   };
+
+  const handleDownloadSelectedPlans = async () => {
+    if (selectedPlans.length === 0) {
+      alert("No hay planes seleccionados para descargar.")
+      return
+    }
+
+    const zip = new JSZip()
+    await Promise.all(
+      selectedPlans.map(async (id) => {
+        const plan = flightPlans.find((p) => p.id === id)
+        if (plan?.status === 'procesado' && plan.csvResult) {
+          try {
+            const response = await axios.get(`/api/csvResult/${id}`)
+            if (response.status === 200) {
+              zip.file(`${plan.customName}.csv`, response.data.csvResult)
+            }
+          } catch (error) {
+            console.error(`Error descargando CSV del plan ${id}:`, error)
+          }
+        }
+      })
+    )
+
+    zip.generateAsync({ type: 'blob' }).then((content) => {
+      saveAs(content, 'planes_seleccionados.zip')
+    })
+  }
+
   const statusColor = (status: FlightPlan['status']) => {
     switch (status) {
       case 'sin procesar':
@@ -140,97 +212,104 @@ const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     }
   };
 
-return (
+  return (
     <div className="min-h-screen bg-gray-900 p-6">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-2xl font-semibold text-white mb-6">Subir Planes de Vuelo</h1>
         {user ? (
           <>
-            <div className="mb-6">
-              <Input
-                type="file"
-                multiple
-                onChange={handleFileUpload}
-                className="bg-gray-800 border-gray-700 text-white file:bg-blue-500 file:text-white file:border-0 file:rounded file:px-4 file:py-2 hover:file:bg-blue-600"
-              />
-            </div>
-            <div className="space-y-4">
-              {flightPlans.map((plan) => (
-                <Card key={plan.id} className="bg-gray-800 border-gray-700">
-                  <CardContent className="p-4">
-                    <div className="flex items-center space-x-3 mb-4">
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          checked={selectedPlans.includes(plan.id)}
-                          onCheckedChange={() => handleSelectPlan(plan.id)}
-                          className="border-gray-600"
-                        />
-                        <span className="text-white font-medium">{plan.customName}</span>
-                      </div>
-                      <Input
-                        type="text"
-                        value={plan.customName}
-                        onChange={(e) => handleCustomNameChange(plan.id, e.target.value)}
-                        placeholder="Nombre personalizado"
-                        className="flex-1 bg-gray-700 border-gray-600 text-white"
-                      />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDeletePlan(plan.id)}
-                        className="text-gray-400 hover:text-white"
-                      >
-                        <Trash2Icon className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <Button
-                        onClick={() => handleProcessTrajectory(plan.id)}
-                        className="bg-blue-500 hover:bg-blue-600 text-white"
-                      >
-                        <RefreshCwIcon className="mr-2 h-4 w-4" />
-                        Procesar Trayectoria
-                      </Button>
-                      <div className="flex items-center space-x-4">
-                        <Badge className={`px-3 py-1 ${statusColor(plan.status)}`}>
-                          {plan.status}
-                        </Badge>
-                        <Button
-                          onClick={() => plan.csvResult && downloadCsv(plan.id, `${plan.customName}.csv`)}
-                          disabled={plan.status !== 'procesado'}
-                          variant="ghost"
-                          size="icon"
-                          className={`text-gray-400 hover:text-white ${
-                            plan.status === 'procesado' ? 'opacity-100' : 'opacity-50'
-                          }`}
-                        >
-                          <DownloadIcon className="h-5 w-5" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+          <div className="mb-4 flex justify-between">
+              <Button
+                onClick={handleSelectAllPlans}
+                className="bg-blue-500 hover:bg-blue-600 text-white"
+              >
+                Seleccionar todos los planes
+              </Button>
+              <Button
+                onClick={handleDeselectAllPlans}
+                className="bg-gray-500 hover:bg-gray-600 text-white"
+              >
+                Deseleccionar todos los planes
+              </Button>
+
+          </div>
+            <Input
+              type="file"
+              multiple
+              onChange={handleFileUpload}
+              className="mb-6 bg-gray-800 border-gray-700 text-white file:bg-blue-500 file:text-white file:border-0 file:rounded file:px-4 file:py-2 hover:file:bg-blue-600"
+            />
+            {flightPlans.map((plan) => (
+              <Card key={plan.id} className="mb-4 bg-gray-800 border-gray-700">
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-3 mb-4">
+                    <Checkbox
+                      checked={selectedPlans.includes(plan.id)}
+                      onCheckedChange={() => handleSelectPlan(plan.id)}
+                      className="border-gray-600"
+                    />
+                    <Input
+                      type="text"
+                      value={plan.customName}
+                      onChange={(e) => handleCustomNameChange(plan.id, e.target.value)}
+                      className="flex-1 bg-gray-700 border-gray-600 text-white"
+                    />
+                    <Button variant="ghost" size="icon" onClick={() => handleDeletePlan(plan.id)}>
+                      <Trash2Icon className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Button
+                      onClick={() => handleProcessTrajectory(plan.id)}
+                      className="bg-blue-500 hover:bg-blue-600 text-white"
+                    >
+                      Procesar Trayectoria
+                    </Button>
+                    <Badge className={`px-3 py-1 ${statusColor(plan.status)}`}>
+                      {plan.status}
+                    </Badge>
+                    <Button
+                      onClick={() =>
+                        plan.csvResult && downloadCsv(plan.id, `${plan.customName}.csv`)
+                      }
+                      disabled={plan.status !== 'procesado'}
+                    >
+                      <DownloadIcon className="h-5 w-5" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
             {selectedPlans.length > 0 && (
-              <div className="mt-6">
+              <div className="mt-6 flex space-x-2">
                 <Button
                   onClick={handleDeleteSelectedPlans}
                   variant="destructive"
                   className="w-full"
                 >
-                  Eliminar {selectedPlans.length} {selectedPlans.length === 1 ? 'plan seleccionado' : 'planes seleccionados'}
+                  Eliminar {selectedPlans.length} planes seleccionados
+                </Button>
+                <Button
+                  onClick={handleProcessSelectedPlans}
+                  className="w-full bg-blue-500 hover:bg-blue-600 text-white"
+                >
+                  Procesar {selectedPlans.length} planes seleccionados
+                </Button>
+                <Button
+                  onClick={handleDownloadSelectedPlans}
+                  className="w-full bg-green-500 hover:bg-green-600 text-white"
+                >
+                  Descargar {selectedPlans.length} planes seleccionados
                 </Button>
               </div>
             )}
           </>
         ) : (
-          <div className="text-center py-8">
-            <p className="text-red-500">Debes iniciar sesión para subir planes de vuelo</p>
-          </div>
+          <div className="text-center py-8 text-red-500">Debes iniciar sesión para subir planes de vuelo</div>
         )}
       </div>
     </div>
   );
-};
+}
+
 export default FlightPlansUploader;
