@@ -1,17 +1,24 @@
 import React, { useEffect, useRef } from 'react';
 
 const QGroundControl: React.FC = () => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
-    import('novnc-core').then((VNC) => {
-      const rfb = new VNC.RFB(canvasRef.current!, 'ws://localhost:5900');
-      rfb.scaleViewport = true;
-      rfb.viewOnly = true;
-    });
+    // Asegúrate de que noVNC esté corriendo en localhost:6080
+    if (iframeRef.current) {
+      iframeRef.current.src = 'http://localhost:6080/';
+    }
   }, []);
 
-  return <canvas ref={canvasRef} style={{ width: '100%', height: '100%' }} />;
+  return (
+    <div style={{ width: '100%', height: '100%', border: 'none' }}>
+      <iframe
+        ref={iframeRef}
+        style={{ width: '100%', height: '100%', border: 'none' }}
+        title="QGroundControl VNC"
+      />
+    </div>
+  );
 };
 
 export default QGroundControl;
