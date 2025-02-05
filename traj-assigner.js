@@ -33,7 +33,8 @@ const assignNextPlan = async () => {
       data: { status: 'Ocupada' },
     });
 
-    console.log(`Asignado el plan con ID ${nextPlan.id} a la máquina con ID ${availableMachine.id}`);
+    const currentTime = new Date().toLocaleString(); // Obtiene la hora y la fecha en formato local
+    console.log(`[${currentTime}] Asignado el plan con ID ${nextPlan.id} a la máquina con ID ${availableMachine.id}`);
   } catch (error) {
     console.error("Error al asignar el plan:", error);
   } finally {
