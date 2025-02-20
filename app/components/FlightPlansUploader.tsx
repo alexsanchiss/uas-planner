@@ -70,14 +70,6 @@ export function FlightPlansUploader() {
 
   const handleDeletePlan = async (id: number) => {
     if (confirm('¿Estás seguro de que deseas eliminar este plan de vuelo?')) {
-      const plan = flightPlans.find((p) => p.id === id);
-      if (plan?.csvResult) {
-        try {
-          await axios.delete(`/api/csvResult/${id}`);
-        } catch (error) {
-          console.error(`Error al eliminar el CSV para el plan ${id}:`, error);
-        }
-      }
 
       try {
         await axios.delete(`/api/flightPlans/${id}`);
@@ -107,14 +99,6 @@ export function FlightPlansUploader() {
     if (confirm('¿Estás seguro de que deseas eliminar los planes de vuelo seleccionados?')) {
       await Promise.all(
         selectedPlans.map(async (id) => {
-          const plan = flightPlans.find((p) => p.id === id);
-          if (plan?.csvResult) {
-            try {
-              await axios.delete(`/api/csvResult/${id}`);
-            } catch (error) {
-              console.error(`Error al eliminar el CSV para el plan ${id}:`, error);
-            }
-          }
           try {
             await axios.delete(`/api/flightPlans/${id}`);
           } catch (error) {
@@ -233,6 +217,29 @@ export function FlightPlansUploader() {
               </Button>
 
           </div>
+          {selectedPlans.length > 0 && (
+              <div className="mt-6 flex space-x-2">
+                <Button
+                  onClick={handleDeleteSelectedPlans}
+                  variant="destructive"
+                  className="w-full"
+                >
+                  Eliminar {selectedPlans.length} planes seleccionados
+                </Button>
+                <Button
+                  onClick={handleProcessSelectedPlans}
+                  className="w-full bg-blue-500 hover:bg-blue-600 text-white"
+                >
+                  Procesar {selectedPlans.length} planes seleccionados
+                </Button>
+                <Button
+                  onClick={handleDownloadSelectedPlans}
+                  className="w-full bg-green-500 hover:bg-green-600 text-white"
+                >
+                  Descargar {selectedPlans.length} planes seleccionados
+                </Button>
+              </div>
+            )}
             <Input
               type="file"
               multiple
@@ -280,29 +287,6 @@ export function FlightPlansUploader() {
                 </CardContent>
               </Card>
             ))}
-            {selectedPlans.length > 0 && (
-              <div className="mt-6 flex space-x-2">
-                <Button
-                  onClick={handleDeleteSelectedPlans}
-                  variant="destructive"
-                  className="w-full"
-                >
-                  Eliminar {selectedPlans.length} planes seleccionados
-                </Button>
-                <Button
-                  onClick={handleProcessSelectedPlans}
-                  className="w-full bg-blue-500 hover:bg-blue-600 text-white"
-                >
-                  Procesar {selectedPlans.length} planes seleccionados
-                </Button>
-                <Button
-                  onClick={handleDownloadSelectedPlans}
-                  className="w-full bg-green-500 hover:bg-green-600 text-white"
-                >
-                  Descargar {selectedPlans.length} planes seleccionados
-                </Button>
-              </div>
-            )}
           </>
         ) : (
           <div className="text-center py-8 text-red-500">Debes iniciar sesión para subir planes de vuelo</div>
