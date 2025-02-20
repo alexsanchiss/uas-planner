@@ -26,7 +26,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       await prisma.csvResult.delete({
         where: { id: parseInt(id, 10) },
       });
-      return res.status(204).end(); // 204 No Content
+      res.status(204).end(); // 204 No Content
+      return;
     } else {
       return res.status(405).json({ error: 'Método no permitido' });
     }

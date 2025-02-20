@@ -21,9 +21,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     } catch (error) {
       res.status(500).json({ error: 'Error obteniendo el plan de vuelo', details: (error as Error).message});
     }
-  } else if (req.method === 'DELETE') {
-    try {
+  } else if (req.method === 'DELETE') { 
+    try { // Da 500 si no hay csvresult, pero elimina correctamente. Comprobar si existe un csvresult con ese ID consume mucho tiempo
       await prisma.flightPlan.delete({
+        where: { id: Number(id) },
+      });
+      await prisma.csvResult.delete({
         where: { id: Number(id) },
       });
       res.status(204).end();

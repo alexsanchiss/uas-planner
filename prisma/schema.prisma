@@ -33,6 +33,7 @@ model flightPlan {
 model csvResult {
   id        Int    @id @default(autoincrement())
   csvResult String
+  createdAt DateTime @default(now())
 }
 
 model user {
