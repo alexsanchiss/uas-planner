@@ -19,6 +19,16 @@ model machine {
   status   String   @default("Disponible")
 }
 
+model folder {
+  id          Int         @id @default(autoincrement())
+  name        String
+  userId      Int
+  createdAt   DateTime    @default(now())
+  flightPlans flightPlan[]
+  minScheduledAt DateTime?
+  maxScheduledAt DateTime?
+}
+
 model flightPlan {
   id                  Int      @id @default(autoincrement())
   customName          String
@@ -28,6 +38,13 @@ model flightPlan {
   createdAt           DateTime @default(now())
   machineAssignedId   Int?
   userId              Int
+  folderId            Int?
+  folder              folder?  @relation(fields: [folderId], references: [id])
+  uplan                 Json?    // JSON calculado
+  authorizationStatus   String   @default("sin autorización") // Estado de autorización
+  authorizationMessage  Json?    // Mensaje de autorización (JSON, puede ser largo)
+  scheduledAt           DateTime? // <-- Nueva línea: fecha y hora de vuelo (opcional)
+  externalResponseNumber String?
 }
 
 model csvResult {
