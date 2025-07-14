@@ -155,22 +155,6 @@ export function FlightPlansUploader() {
     );
   };
 
-  const handleSelectFolderPlans = (folderId: number) => {
-    const folderPlans = flightPlans.filter(
-      (plan) => plan.folderId === folderId
-    );
-    const folderPlanIds = folderPlans.map((plan) => plan.id);
-    setSelectedPlans((prev) => [...prev, ...folderPlanIds]);
-  };
-
-  const handleSelectFolderProcessingPlans = (folderId: number) => {
-    const folderPlans = flightPlans.filter(
-      (plan) => plan.folderId === folderId && plan.status === "procesando"
-    );
-    const folderPlanIds = folderPlans.map((plan) => plan.id);
-    setSelectedPlans((prev) => [...prev, ...folderPlanIds]);
-  };
-
   const handleDeselectFolderPlans = (folderId: number) => {
     const folderPlans = flightPlans.filter(
       (plan) => plan.folderId === folderId
@@ -684,35 +668,53 @@ export function FlightPlansUploader() {
     const folderPlans = flightPlans.filter(
       (plan) => plan.folderId === folderId
     );
-    const updates = await Promise.all(
-      folderPlans.map(async (plan) => {
-        const randomTime = new Date(min + Math.random() * (max - min));
-        const iso = randomTime.toISOString();
-        try {
+    try {
+      // Generar y enviar todas las actualizaciones en paralelo
+      const updates = await Promise.all(
+        folderPlans.map(async (plan) => {
+          const randomTime = new Date(min + Math.random() * (max - min));
+          const iso = randomTime.toISOString();
           await axios.put(`/api/flightPlans/${plan.id}`, { scheduledAt: iso });
           return { ...plan, scheduledAt: iso };
-        } catch {
-          return plan;
-        }
-      })
-    );
-    setFlightPlans(
-      flightPlans.map((plan) => {
-        const updated = updates.find((u) => u.id === plan.id);
-        return updated ? updated : plan;
-      })
-    );
+        })
+      );
+      // Actualizar el estado local solo después de que todas las peticiones hayan sido exitosas
+      setFlightPlans((prevPlans) =>
+        prevPlans.map((plan) => {
+          const updated = updates.find((u) => u.id === plan.id);
+          return updated ? updated : plan;
+        })
+      );
+    } catch (error) {
+      console.error("Error randomizando horas:", error);
+      fetchData();
+    }
   };
 
   const handleSelectFolderPlansByStatus = (
     folderId: number,
     status: string
   ) => {
-    const folderPlans = flightPlans.filter(
-      (plan) =>
-        plan.folderId === folderId &&
-        (status === "Todos" || plan.status === status)
-    );
+    const folderPlans = flightPlans.filter((plan) => {
+      if (status === "Todos") return plan.folderId === folderId;
+      if (
+        [
+          "sin procesar",
+          "en cola",
+          "procesando",
+          "procesado",
+          "error",
+        ].includes(status)
+      ) {
+        return plan.folderId === folderId && plan.status === status;
+      }
+      if (["sin autorización", "aprobado", "denegado"].includes(status)) {
+        return (
+          plan.folderId === folderId && plan.authorizationStatus === status
+        );
+      }
+      return false;
+    });
     const folderPlanIds = folderPlans.map((plan) => plan.id);
     setSelectedPlans((prev) => [
       ...prev,
@@ -729,6 +731,65 @@ export function FlightPlansUploader() {
       ...prev,
       [folderId]: Math.max(1, Math.min(newPage, total)),
     }));
+  };
+
+  const handleRequestAuthorizationSelected = async () => {
+    for (const planId of selectedPlans) {
+      const plan = flightPlans.find((p) => p.id === planId);
+      if (
+        plan &&
+        plan.status === "procesado" &&
+        (!plan.authorizationStatus ||
+          plan.authorizationStatus === "sin autorización")
+      ) {
+        await handleRequestAuthorization(planId);
+      }
+    }
+  };
+  // 1. Cambiar los handlers para recibir folderId y descargar todos los autorizados/denegados de la carpeta
+  const handleDownloadUplansFolder = async (folderId: number) => {
+    const plans = flightPlans.filter(
+      (p) =>
+        p.folderId === folderId &&
+        p.authorizationStatus === "aprobado" &&
+        p.uplan
+    );
+    if (plans.length === 0) {
+      alert("No hay U-Plans autorizados en esta carpeta.");
+      return;
+    }
+    const zip = new JSZip();
+    plans.forEach((plan) => {
+      zip.file(
+        `${plan.customName}_uplan.json`,
+        JSON.stringify(plan.uplan, null, 2)
+      );
+    });
+    const content = await zip.generateAsync({ type: "blob" });
+    saveAs(content, `uplans_autorizados_${folderId}.zip`);
+  };
+  const handleDownloadDenegationMessagesFolder = async (folderId: number) => {
+    const plans = flightPlans.filter(
+      (p) =>
+        p.folderId === folderId &&
+        p.authorizationStatus === "denegado" &&
+        p.authorizationMessage
+    );
+    if (plans.length === 0) {
+      alert("No hay mensajes de denegación en esta carpeta.");
+      return;
+    }
+    const zip = new JSZip();
+    plans.forEach((plan) => {
+      zip.file(
+        `${plan.customName}_authorization_error.json`,
+        typeof plan.authorizationMessage === "string"
+          ? plan.authorizationMessage
+          : JSON.stringify(plan.authorizationMessage, null, 2)
+      );
+    });
+    const content = await zip.generateAsync({ type: "blob" });
+    saveAs(content, `mensajes_denegacion_${folderId}.zip`);
   };
 
   return (
@@ -980,44 +1041,12 @@ export function FlightPlansUploader() {
                               <option value="procesando">Procesando</option>
                               <option value="procesado">Procesado</option>
                               <option value="error">Error</option>
+                              <option value="sin autorización">
+                                Sin autorización
+                              </option>
+                              <option value="aprobado">Autorizado</option>
+                              <option value="denegado">Denegado</option>
                             </select>
-                            <Button
-                              variant="outline"
-                              onClick={() =>
-                                handleSelectFolderPlansByStatus(
-                                  folder.id,
-                                  folderSelectStatus[folder.id] || "Todos"
-                                )
-                              }
-                              className="text-blue-400/80 hover:bg-blue-500/80 hover:text-white border-blue-400/30 hover:border-blue-500 transition-all duration-200 text-sm h-[60px] px-3 whitespace-normal"
-                            >
-                              <div className="flex items-center">
-                                <CheckCircleIcon className="h-3.5 w-3.5 mr-1.5" />
-                                Seleccionar por estado
-                              </div>
-                            </Button>
-                            <Button
-                              variant="outline"
-                              onClick={() => handleSelectFolderPlans(folder.id)}
-                              className="text-blue-400/80 hover:bg-blue-500/80 hover:text-white border-blue-400/30 hover:border-blue-500 transition-all duration-200 text-sm h-[60px] px-3 whitespace-normal"
-                            >
-                              <div className="flex items-center">
-                                <CheckCircleIcon className="h-3.5 w-3.5 mr-1.5" />
-                                Seleccionar todos
-                              </div>
-                            </Button>
-                            <Button
-                              variant="outline"
-                              onClick={() =>
-                                handleSelectFolderProcessingPlans(folder.id)
-                              }
-                              className="text-blue-400/80 hover:bg-blue-500/80 hover:text-white border-blue-400/30 hover:border-blue-500 transition-all duration-200 text-sm h-[60px] px-3 whitespace-normal"
-                            >
-                              <div className="flex items-center">
-                                <ClockIcon className="h-3.5 w-3.5 mr-1.5" />
-                                Seleccionar en proceso
-                              </div>
-                            </Button>
                             <Button
                               variant="outline"
                               onClick={() =>
@@ -1040,21 +1069,44 @@ export function FlightPlansUploader() {
                             <Button
                               variant="outline"
                               className="text-violet-400/80 hover:bg-violet-500/80 hover:text-white border-violet-400/30 hover:border-violet-500 transition-all duration-200 text-sm h-[48px] px-3 whitespace-normal"
-                              disabled
+                              onClick={handleRequestAuthorizationSelected}
+                              disabled={selectedPlans.length === 0}
                             >
                               Solicitar autorización seleccionados
                             </Button>
                             <Button
                               variant="outline"
                               className="text-green-400/80 hover:bg-green-500/80 hover:text-white border-green-400/30 hover:border-green-500 transition-all duration-200 text-sm h-[48px] px-3 whitespace-normal"
-                              disabled
+                              onClick={() =>
+                                handleDownloadUplansFolder(folder.id)
+                              }
+                              disabled={
+                                !flightPlans.some(
+                                  (p) =>
+                                    p.folderId === folder.id &&
+                                    p.authorizationStatus === "aprobado" &&
+                                    p.uplan
+                                )
+                              }
                             >
                               Descargar U-Plans autorizados
                             </Button>
                             <Button
                               variant="outline"
                               className="text-rose-400/80 hover:bg-rose-500/80 hover:text-white border-rose-400/50 hover:border-rose-500 transition-all duration-200 text-sm h-[48px] px-3 whitespace-normal"
-                              disabled
+                              onClick={() =>
+                                handleDownloadDenegationMessagesFolder(
+                                  folder.id
+                                )
+                              }
+                              disabled={
+                                !flightPlans.some(
+                                  (p) =>
+                                    p.folderId === folder.id &&
+                                    p.authorizationStatus === "denegado" &&
+                                    p.authorizationMessage
+                                )
+                              }
                             >
                               Descargar mensajes denegación
                             </Button>
@@ -1117,43 +1169,6 @@ export function FlightPlansUploader() {
                               Aleatorizar horas
                             </Button>
                           </div>
-                        </div>
-                        <div className="flex justify-end gap-2 w-full">
-                          <Button
-                            variant="outline"
-                            className="text-blue-400/80 hover:bg-blue-500/80 hover:text-white border-blue-400/30 hover:border-blue-500 transition-all duration-200 text-sm h-[48px] px-3 whitespace-normal"
-                            disabled
-                          >
-                            Seleccionar todos autorización
-                          </Button>
-                          <Button
-                            variant="outline"
-                            className="text-violet-400/80 hover:bg-violet-500/80 hover:text-white border-violet-400/30 hover:border-violet-500 transition-all duration-200 text-sm h-[48px] px-3 whitespace-normal"
-                            disabled
-                          >
-                            Seleccionar en proceso autorización
-                          </Button>
-                          <Button
-                            variant="outline"
-                            className="text-green-400/80 hover:bg-green-500/80 hover:text-white border-green-400/30 hover:border-green-500 transition-all duration-200 text-sm h-[48px] px-3 whitespace-normal"
-                            disabled
-                          >
-                            Seleccionar autorizados
-                          </Button>
-                          <Button
-                            variant="outline"
-                            className="text-rose-400/80 hover:bg-rose-500/80 hover:text-white border-rose-400/50 hover:border-rose-500 transition-all duration-200 text-sm h-[48px] px-3 whitespace-normal"
-                            disabled
-                          >
-                            Seleccionar denegados
-                          </Button>
-                          <Button
-                            variant="outline"
-                            className="text-gray-400/80 hover:bg-gray-500/80 hover:text-white border-gray-400/30 hover:border-gray-500 transition-all duration-200 text-sm h-[48px] px-3 whitespace-normal"
-                            disabled
-                          >
-                            Deseleccionar autorización
-                          </Button>
                         </div>
                       </div>
 

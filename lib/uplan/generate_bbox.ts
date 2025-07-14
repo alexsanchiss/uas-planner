@@ -104,8 +104,8 @@ export function generate_bbox(
         bbox.time[`${i},${k}`] = [t1 - tbuf, t2 + tbuf];
       } else {
         bbox.time[`${i},${k}`] = [
-          init_time + t1 / 100 - tbuf,
-          init_time + t2 / 100 + tbuf,
+          init_time + t1 - tbuf,
+          init_time + t2 + tbuf,
         ];
       }
     }
