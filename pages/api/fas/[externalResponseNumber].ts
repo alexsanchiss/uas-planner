@@ -13,7 +13,7 @@ export default async function handler(
 
   try {
     const { state, message } = req.body;
-    if (!state || !message) {
+    if (!state) {
       return res.status(400).json({ error: "Faltan datos en el body" });
     }
 
