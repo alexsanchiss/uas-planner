@@ -26,7 +26,15 @@ export default async function handler(
       res.status(500).json({ error: "Error fetching flight plans" });
     }
   } else if (req.method === "POST") {
-    const { customName, status, fileContent, userId, folderId } = req.body;
+    const {
+      customName,
+      status,
+      fileContent,
+      userId,
+      folderId,
+      uplan,
+      scheduledAt,
+    } = req.body;
 
     if (!customName || !status || !fileContent || !userId) {
       return res.status(400).json({ error: "Missing required fields" });
@@ -40,6 +48,8 @@ export default async function handler(
           fileContent,
           userId,
           folderId: folderId || null,
+          uplan: uplan || null,
+          scheduledAt: scheduledAt || null,
         },
       });
       res.status(201).json(newPlan);

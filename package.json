@@ -1,6 +1,6 @@
 {
-  "name": "uas-planner",
-  "version": "0.1.0",
+  "name": "UPPS",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev -H 0.0.0.0",
@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@hello-pangea/dnd": "^18.0.1",
     "@novnc/novnc": "^1.5.0",
     "@prisma/client": "^5.22.0",
     "@supabase/supabase-js": "^2.46.1",
@@ -21,16 +22,19 @@
     "geodesy": "^2.4.0",
     "jsonwebtoken": "^9.0.2",
     "jszip": "^3.10.1",
+    "leaflet": "^1.9.4",
     "lucide-react": "^0.465.0",
     "next": "^14.2.21",
     "novnc-core": "^0.3.0",
     "papaparse": "^5.5.3",
     "react": "^18",
     "react-dom": "^18",
+    "react-leaflet": "^4.2.1",
     "sqlite3": "^5.1.7"
   },
   "devDependencies": {
     "@types/file-saver": "^2.0.7",
+    "@types/leaflet": "^1.9.20",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",

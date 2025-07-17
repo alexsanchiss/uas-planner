@@ -9,3 +9,10 @@ body {
 
 /* Add any other global styles your application needs */
 
+/* App sidebar background color (used for all left columns) */
+:root {
+  --app-sidebar-bg: #111827; /* Tailwind gray-900, matches FlightPlansUploader */
+}
+.bg-app-sidebar {
+  background-color: var(--app-sidebar-bg) !important;
+}
