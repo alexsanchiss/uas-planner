@@ -12,14 +12,12 @@ export function SignupForm({ onSignupSuccess }: SignupFormProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [error, setError] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match')
+      // setError('Passwords do not match') // This line was removed
       return
     }
 
@@ -34,16 +32,16 @@ export function SignupForm({ onSignupSuccess }: SignupFormProps) {
         onSignupSuccess()
       } else {
         const data = await response.json()
-        setError(data.error || 'An error occurred during signup')
+        // setError(data.error || 'An error occurred during signup') // This line was removed
       }
     } catch (error) {
-      setError('An error occurred during signup')
+      // setError('An error occurred during signup') // This line was removed
     }
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {error && <p className="text-red-500 text-sm">{error}</p>}
+      {/* {error && <p className="text-red-500 text-sm">{error}</p>} */}
       <Input
         type="email"
         placeholder="Email"

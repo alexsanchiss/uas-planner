@@ -10,7 +10,7 @@ function formatDate(date: Date | number | string) {
   return d.toISOString().replace(/\..*Z$/, "");
 }
 
-export function generateJSON(bbox: BBox, waypoints: Waypoint[], uplan: any) {
+export function generateJSON(bbox: BBox, waypoints: Waypoint[], uplan: unknown) {
   if (!waypoints || waypoints.length === 0) {
     throw new Error("Waypoints array is empty or undefined.");
   }
@@ -18,15 +18,15 @@ export function generateJSON(bbox: BBox, waypoints: Waypoint[], uplan: any) {
   const jsonData: any = {};
 
   // Data Owner Identifier
-  jsonData.dataOwnerIdentifier = uplan.dataOwnerIdentifier || {
+  jsonData.dataOwnerIdentifier = (uplan as any).dataOwnerIdentifier || {
     sac: "",
     sic: "",
   };
-  jsonData.dataSourceIdentifier = uplan.dataSourceIdentifier || {
+  jsonData.dataSourceIdentifier = (uplan as any).dataSourceIdentifier || {
     sac: "",
     sic: "",
   };
-  jsonData.contactDetails = uplan.contactDetails || {
+  jsonData.contactDetails = (uplan as any).contactDetails || {
     firstName: "",
     lastName: "",
     phones: [],
@@ -34,10 +34,10 @@ export function generateJSON(bbox: BBox, waypoints: Waypoint[], uplan: any) {
   };
   // Corrige privateFlight a número y claves en minúsculas en flightCharacteristics
   jsonData.flightDetails = {
-    mode: uplan.flightDetails?.mode || "",
-    category: uplan.flightDetails?.category || "",
-    specialOperation: uplan.flightDetails?.specialOperation || "",
-    privateFlight: uplan.flightDetails?.privateFlight ? 1 : 0,
+    mode: (uplan as any).flightDetails?.mode || "",
+    category: (uplan as any).flightDetails?.category || "",
+    specialOperation: (uplan as any).flightDetails?.specialOperation || "",
+    privateFlight: (uplan as any).flightDetails?.privateFlight ? 1 : 0,
   };
   jsonData.takeoffLocation = {
     type: "Point",
@@ -52,11 +52,11 @@ export function generateJSON(bbox: BBox, waypoints: Waypoint[], uplan: any) {
     ],
     properties: { altitude: waypoints[waypoints.length - 1].h },
   };
-  jsonData.gcsLocation = uplan.gcsLocation || {
+  jsonData.gcsLocation = (uplan as any).gcsLocation || {
     type: "Point",
     coordinates: [-0.337337, 39.479984],
   };
-  jsonData.uas = uplan.uas || {
+  jsonData.uas = (uplan as any).uas || {
     registrationNumber: "",
     serialNumber: "",
     flightCharacteristics: {
@@ -121,10 +121,10 @@ export function generateJSON(bbox: BBox, waypoints: Waypoint[], uplan: any) {
     }
   }
   jsonData.operationVolumes = operationVolumes;
-  jsonData.operatorId = uplan.operatorId || "";
-  jsonData.state = uplan.state || "SENT";
+  jsonData.operatorId = (uplan as any).operatorId || "";
+  jsonData.state = (uplan as any).state || "SENT";
   const now = new Date();
-  jsonData.creationTime = formatDate(uplan.creationTime || now);
-  jsonData.updateTime = formatDate(uplan.updateTime || now);
+  jsonData.creationTime = formatDate((uplan as any).creationTime || now);
+  jsonData.updateTime = formatDate((uplan as any).updateTime || now);
   return jsonData;
 }
