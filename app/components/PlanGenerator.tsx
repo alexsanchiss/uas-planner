@@ -14,6 +14,7 @@ import {
   Popup,
   Polyline,
   useMapEvents,
+  Rectangle, // <-- add Rectangle
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -28,7 +29,6 @@ L.Icon.Default.mergeOptions({
 
 import { useAuth } from "../hooks/useAuth";
 import axios from "axios";
-import { Header } from "./header";
 import {
   DragDropContext,
   Droppable,
@@ -36,6 +36,9 @@ import {
   DropResult,
 } from "@hello-pangea/dnd";
 import { HelpCircle } from "lucide-react";
+import dynamic from 'next/dynamic';
+
+const PlanMap = dynamic(() => import('./PlanMap'), { ssr: false });
 
 const waypointTypes = [
   { value: "takeoff", label: "Takeoff" },
@@ -61,12 +64,7 @@ const FLIGHT_MODES = ["VLOS", "BVLOS"];
 const FLIGHT_CATEGORIES = [
   "OPENA1",
   "OPENA2",
-  "OPENA3",
-  "LUC",
-  "LIMITEDOPEN",
-  "CERTIFIED",
-  "SPECIFIC",
-  "STS",
+  "OPENA3", 'SAIL_I-II', 'SAIL_III-IV', 'SAIL_V-VI', 'Certi_No_Pass', 'Certi_Pass',
 ];
 const SPECIAL_OPERATIONS = [
   "POLICE_AND_CUSTOMS",
@@ -117,64 +115,26 @@ const initialFlightPlanDetails = {
   operatorId: "",
 };
 
-function WaypointMarkers({
-  waypoints,
-  onSelect,
-  onDragEndMarker,
-}: {
-  waypoints: Waypoint[];
-  onSelect: (idx: number) => void;
-  onDragEndMarker: (idx: number, lat: number, lng: number) => void;
-}) {
-  return waypoints.map((wp, idx) => (
-    <Marker
-      key={idx}
-      position={[wp.lat, wp.lng]}
-      eventHandlers={{
-        click: () => onSelect(idx),
-        dragend: (e) => {
-          const marker = e.target;
-          const { lat, lng } = marker.getLatLng();
-          onDragEndMarker(idx, lat, lng);
-        },
-      }}
-      draggable
-    >
-      <Popup>
-        <div>
-          <div>
-            <b>Type:</b> {waypointTypes.find((t) => t.value === wp.type)?.label}
-          </div>
-          <div>
-            <b>Altitude:</b> {wp.altitude} m
-          </div>
-          <div>
-            <b>Speed:</b> {wp.speed} m/s
-          </div>
-        </div>
-      </Popup>
-    </Marker>
-  ));
+// FAS Service limits
+const SERVICE_LIMITS = [-0.4257, 39.415, -0.280, 39.4988]; // [minLng, minLat, maxLng, maxLat]
+const ALT_LIMITS = [0, 200];
+
+// Helper to check if a point is inside the limits
+function isWithinServiceLimits(lat: number, lng: number) {
+  return (
+    lat >= SERVICE_LIMITS[1] && lat <= SERVICE_LIMITS[3] &&
+    lng >= SERVICE_LIMITS[0] && lng <= SERVICE_LIMITS[2]
+  );
 }
 
-function MapClickHandler({
-  onAddWaypoint,
-}: {
-  onAddWaypoint: (wp: Waypoint) => void;
-}) {
-  useMapEvents({
-    click(e: any) {
-      onAddWaypoint({
-        lat: e.latlng.lat,
-        lng: e.latlng.lng,
-        type: "cruise",
-        altitude: 100,
-        speed: 5,
-      });
-    },
-  });
-  return null;
+function clampAltitude(alt: number) {
+  return Math.max(ALT_LIMITS[0], Math.min(ALT_LIMITS[1], alt));
 }
+
+// Remove all react-leaflet and leaflet imports
+// Remove WaypointMarkers and MapClickHandler definitions
+// Remove leaflet icon fix
+// Only keep dynamic import of PlanMap and pass props to it
 
 function generateQGCPlan(waypoints: Waypoint[]): any {
   if (waypoints.length === 0) return {};
@@ -270,23 +230,40 @@ export default function PlanGenerator() {
   );
   const [detailsOpen, setDetailsOpen] = useState(false);
 
+  // Map bounds and center
+  const bounds = [
+    [SERVICE_LIMITS[1], SERVICE_LIMITS[0]], // SW: [minLat, minLng]
+    [SERVICE_LIMITS[3], SERVICE_LIMITS[2]], // NE: [maxLat, maxLng]
+  ];
+  const center = [
+    (SERVICE_LIMITS[1] + SERVICE_LIMITS[3]) / 2,
+    (SERVICE_LIMITS[0] + SERVICE_LIMITS[2]) / 2,
+  ];
+
   const handleAddWaypoint = (wp: Waypoint) => {
+    // Only add if within limits
+    if (!isWithinServiceLimits(wp.lat, wp.lng)) {
+      setToast("Waypoints must be within the FAS service area.");
+      return;
+    }
     setWaypoints((prev) => {
       let newWps = [...prev, wp];
       // First waypoint is always takeoff
       if (newWps.length === 1) {
         newWps[0].type = "takeoff";
       }
+      // If exactly 2, default the second to landing if not set
+      if (newWps.length === 2) {
+        if (!newWps[1].type || newWps[1].type === "cruise") {
+          newWps[1] = { ...newWps[1], type: "landing", altitude: 0 };
+        }
+      }
       // If 3 or more, only the last is landing, previous last reverts to cruise if it was landing
       if (newWps.length >= 3) {
         newWps = newWps.map((w, i) => {
           if (i === 0) return { ...w, type: "takeoff" };
-          if (i === newWps.length - 1)
-            return { ...w, type: "landing", altitude: 0 };
-          // If previous last was landing, revert to cruise
-          if (w.type === "landing")
-            return { ...w, type: "cruise", altitude: 100 };
-          return w;
+          if (i === newWps.length - 1) return { ...w, type: "landing", altitude: 0 };
+          return { ...w, type: "cruise", altitude: w.altitude === 0 ? 100 : w.altitude };
         });
       }
       return newWps;
@@ -308,6 +285,24 @@ export default function PlanGenerator() {
           // Do not allow changing landing altitude
           return wp;
         }
+        if (field === "altitude") {
+          const clamped = clampAltitude(Number(value));
+          if (clamped !== Number(value)) {
+            setToast(`Altitude must be between ${ALT_LIMITS[0]} and ${ALT_LIMITS[1]} meters.`);
+            return { ...wp, altitude: clamped };
+          }
+          return { ...wp, altitude: clamped };
+        }
+        if ((field === "lat" || field === "lng")) {
+          // Only allow if within limits
+          const newLat = field === "lat" ? Number(value) : wp.lat;
+          const newLng = field === "lng" ? Number(value) : wp.lng;
+          if (!isWithinServiceLimits(newLat, newLng)) {
+            setToast("Waypoints must be within the FAS service area.");
+            return wp; // revert
+          }
+          return { ...wp, [field]: Number(value) };
+        }
         return { ...wp, [field]: value };
       })
     );
@@ -319,6 +314,10 @@ export default function PlanGenerator() {
       // First waypoint is always takeoff
       if (newWps.length > 0) {
         newWps[0].type = "takeoff";
+      }
+      // If exactly 2, default the second to landing
+      if (newWps.length === 2) {
+        newWps[1] = { ...newWps[1], type: "landing", altitude: 0 };
       }
       // If 3 or more, only the last is landing, previous last reverts to cruise if it was landing
       if (newWps.length >= 3) {
@@ -376,6 +375,11 @@ export default function PlanGenerator() {
 
   // Update waypoint position from marker drag
   const handleMarkerDragEnd = (idx: number, lat: number, lng: number) => {
+    // Only allow if within limits
+    if (!isWithinServiceLimits(lat, lng)) {
+      setToast("Waypoints must be within the FAS service area.");
+      return;
+    }
     setWaypoints((wps) =>
       wps.map((wp, i) => (i === idx ? { ...wp, lat, lng } : wp))
     );
@@ -399,8 +403,13 @@ export default function PlanGenerator() {
       setToast("The plan must have at least one takeoff waypoint.");
       return;
     }
-    if (!waypoints.some((wp) => wp.type === "cruise")) {
-      setToast("The plan must have at least one cruise waypoint.");
+    // Only one takeoff and one landing allowed
+    if (waypoints.filter((wp) => wp.type === "takeoff").length > 1) {
+      setToast("The plan cannot have more than one takeoff waypoint.");
+      return;
+    }
+    if (waypoints.filter((wp) => wp.type === "landing").length > 1) {
+      setToast("The plan cannot have more than one landing waypoint.");
       return;
     }
     if (waypoints.length === 10) {
@@ -466,35 +475,35 @@ export default function PlanGenerator() {
     }
   }, [toast]);
 
-  const asideRef = useRef<HTMLDivElement>(null);
-  const [asideHeight, setAsideHeight] = useState<number | undefined>(undefined);
-
-  // Detect header height automatically
-  useLayoutEffect(() => {
-    function updateHeight() {
-      const header = document.querySelector("header");
-      if (header) {
-        const headerHeight = header.getBoundingClientRect().height;
-        setAsideHeight(window.innerHeight - headerHeight);
-      } else {
-        setAsideHeight(window.innerHeight);
-      }
-    }
-    updateHeight();
-    window.addEventListener("resize", updateHeight);
-    return () => window.removeEventListener("resize", updateHeight);
-  }, []);
-
   // Header height: 56px (py-3 on header)
   const HEADER_HEIGHT = 120.67;
+  // Add login check at the top of the return
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-zinc-900">
+        <div className="text-2xl text-white font-semibold">You must be logged in to access the Plan Generator.</div>
+      </div>
+    );
+  }
   return (
     <div className="w-full bg-zinc-900 overflow-x-hidden">
+      {/* Toast notification */}
+      {toast && (
+        <div
+          className={`fixed top-6 left-1/2 transform -translate-x-1/2 z-[2000] px-6 py-3 rounded shadow-lg text-base font-semibold animate-fade-in ${
+            toast.includes('has been saved in the Plan Generator folder in Trajectory Generator.')
+              ? 'bg-green-600 text-white'
+              : 'bg-red-600 text-white'
+          }`}
+        >
+          {toast}
+        </div>
+      )}
       {/* Help Button */}
       <a
         href="/how-it-works#plan-generator-help"
         target="_self"
-        className="fixed top-24 right-8 bg-blue-700 hover:bg-blue-800 text-white rounded-full p-3 shadow-lg flex items-center gap-2 transition-all duration-200"
-        style={{ zIndex: 1001 }}
+        className="fixed top-24 right-8 z-[2000] bg-blue-700 hover:bg-blue-800 text-white rounded-full p-3 shadow-lg flex items-center gap-2 transition-all duration-200"
         title="Need help with Plan Generator?"
       >
         <HelpCircle className="w-6 h-6" />
@@ -1403,30 +1412,9 @@ export default function PlanGenerator() {
         </aside>
         {/* Map on the right */}
         <main className="plan-gen-map flex-1">
-          <MapContainer
-            center={[40.4168, -3.7038]}
-            zoom={6}
-            className="h-full w-full"
-            style={{height: '100%', minHeight: 400}}
-          >
-            <TileLayer
-              attribution='&copy; <a href="https://osm.org/copyright">OpenStreetMap</a> contributors'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-            {/* Polyline to connect waypoints */}
-            {polylinePositions.length > 1 ? (
-              <Polyline
-                positions={polylinePositions as [number, number][]}
-                pathOptions={{ color: "#2563eb", weight: 4 }}
-              />
-            ) : null}
-            <MapClickHandler onAddWaypoint={handleAddWaypoint} />
-            <WaypointMarkers
-              waypoints={waypoints}
-              onSelect={setSelectedIdx}
-              onDragEndMarker={handleMarkerDragEnd}
-            />
-          </MapContainer>
+          {/* The MapContainer and its logic have been moved to PlanMap.tsx */}
+          {/* The PlanMap component will be rendered here */}
+          <PlanMap center={center} bounds={bounds} polylinePositions={polylinePositions} handleAddWaypoint={handleAddWaypoint} setToast={setToast} waypoints={waypoints} setSelectedIdx={setSelectedIdx} handleMarkerDragEnd={handleMarkerDragEnd} />
         </main>
       </div>
     </div>

@@ -1,10 +1,11 @@
 import { BBox, Waypoint } from "./generate_bbox";
 
-export function generateRandomJSON(bbox: BBox, wp: Waypoint[]): any {
+export function generateRandomJSON(bbox: BBox, wp: Waypoint[]): unknown {
   if (!wp || wp.length === 0) {
     throw new Error("Waypoints array is empty or undefined.");
   }
   let ordinal = 0;
+  // Cambia el tipo de jsonData de unknown a any para evitar errores de tipo
   const jsonData: any = {};
 
   // Data Owner Identifier
@@ -57,7 +58,7 @@ export function generateRandomJSON(bbox: BBox, wp: Waypoint[]): any {
   };
 
   // Operation Volumes
-  const operationVolumes: any[] = [];
+  const operationVolumes: unknown[] = [];
   for (let i = 0; i < bbox.N.length; i++) {
     const numSubtramos = bbox.N[i];
     for (let j = 0; j < numSubtramos; j++) {

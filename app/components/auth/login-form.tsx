@@ -12,11 +12,9 @@ interface LoginFormProps {
 export function LoginForm({ onLoginSuccess }: LoginFormProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
 
     try {
       const response = await fetch('/api/auth/login', {
@@ -31,16 +29,16 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
         onLoginSuccess()
       } else {
         const data = await response.json()
-        setError(data.error || 'An error occurred during login')
+        // setError(data.error || 'An error occurred during login') // This line was removed
       }
     } catch (error) {
-      setError('An error occurred during login')
+      // setError('An error occurred during login') // This line was removed
     }
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {error && <p className="text-red-500 text-sm">{error}</p>}
+      {/* {error && <p className="text-red-500 text-sm">{error}</p>} */}
       <Input
         type="email"
         placeholder="Email"

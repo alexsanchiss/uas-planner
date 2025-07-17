@@ -18,7 +18,7 @@ export function PasswordReset() {
       // For now, we'll just show a message
       setMessage('If an account exists for this email, a password reset link has been sent.')
       setIsResetting(false)
-    } catch (error) {
+    } catch {
       setMessage('An error occurred while requesting a password reset.')
     }
   }

@@ -1,11 +1,9 @@
 "use client";
 
-import PlanGenerator from "../components/PlanGenerator";
+import dynamic from 'next/dynamic';
 
-export default function TrajectoryGenerator() {
-  return (
-    <div>
-      <PlanGenerator />
-    </div>
-  );
+const PlanGeneratorPage = dynamic(() => import('./PlanGeneratorPage'), { ssr: false });
+
+export default function Page() {
+  return <PlanGeneratorPage />;
 }

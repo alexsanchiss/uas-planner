@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import axios from "axios";
 import { useAuth } from "../hooks/useAuth";
 import JSZip from "jszip";
@@ -9,8 +9,11 @@ import Papa from 'papaparse';
 import { MapContainer, TileLayer, Polyline, Marker, Tooltip, CircleMarker, useMap, Polygon } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import dynamic from 'next/dynamic';
+const MapModal = dynamic(() => import('./MapModal'), { ssr: false });
+const UplanViewModal = dynamic(() => import('./UplanViewModal'), { ssr: false });
+const BulkUplanViewModal = dynamic(() => import('./BulkUplanViewModal'), { ssr: false });
 
-import { Card, CardContent } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Checkbox } from "./ui/checkbox";
@@ -102,133 +105,6 @@ function FitBoundsHandler({ bounds, names }: { bounds: [[number, number], [numbe
   return null;
 }
 
-// TrajectoryViewerModal component
-function TrajectoryViewerModal({ open, onClose, title, trajectories, currentIdxs, setCurrentIdxs, names }:{
-  open: boolean;
-  onClose: () => void;
-  title: string;
-  trajectories: TrajectoryRow[][];
-  currentIdxs: number[];
-  setCurrentIdxs: (idxs: number[] | ((prev: number[]) => number[])) => void;
-  names: string[];
-}) {
-  if (!open || !trajectories || trajectories.length === 0 || trajectories[0].length === 0) return null;
-  const colors = ["#3b82f6", "#22d3ee", "#f59e42", "#ef4444", "#a78bfa", "#10b981", "#f472b6", "#facc15"];
-  const polylines = trajectories.map(traj => traj.map(row => [row.Lat, row.Lon] as [number, number]));
-  const currentMarkers = trajectories.map((traj, i) => traj[currentIdxs[i]] || traj[0]);
-  const center = polylines[0][0];
-  const [playing, setPlaying] = useState(false);
-  const [showLabels, setShowLabels] = useState(true);
-  // ESC key closes modal
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [open, onClose]);
-  // Play/pause effect
-  useEffect(() => {
-    if (!playing) return;
-    const interval = setInterval(() => {
-      setCurrentIdxs((prev: number[]) => {
-        const max = Math.max(...trajectories.map(t => t.length - 1));
-        return prev.map(idx => (idx < max ? idx + 1 : 0));
-      });
-    }, 60);
-    return () => clearInterval(interval);
-  }, [playing, trajectories, setCurrentIdxs]);
-  // Only one slider: use the min length of all trajectories
-  const minLen = Math.min(...trajectories.map(t => t.length));
-  const globalIdx = currentIdxs[0] || 0;
-  // When slider moves, update all indices to the same value
-  const handleSlider = (val: number) => setCurrentIdxs(currentIdxs.map(() => val));
-  // Compute minSimTime as the minimum SimTime across all points in all trajectories
-  const minSimTime = Math.min(
-    ...trajectories
-      .map(traj => Math.min(...traj.map(row => parseFloat((row.SimTime || '').trim())).filter(t => !isNaN(t))))
-      .filter(t => !isNaN(t))
-  );
-  // Compute baseSimTime as the SimTime at the first index of the first trajectory
-  const baseSimTime = parseFloat(trajectories[0][0]?.SimTime) || 0;
-  const currentSimTime = parseFloat(trajectories[0][globalIdx]?.SimTime) || 0;
-  const relTime = Math.round(currentSimTime - baseSimTime);
-
-  // Compute bounds for all first points only
-  const lats = trajectories.map(traj => traj[0]?.Lat).filter(v => typeof v === 'number' && !isNaN(v));
-  const lons = trajectories.map(traj => traj[0]?.Lon).filter(v => typeof v === 'number' && !isNaN(v));
-  const hasPoints = lats.length > 0 && lons.length > 0;
-  const minLat = hasPoints ? Math.min(...lats) : 0;
-  const maxLat = hasPoints ? Math.max(...lats) : 0;
-  const minLon = hasPoints ? Math.min(...lons) : 0;
-  const maxLon = hasPoints ? Math.max(...lons) : 0;
-  const bounds: [[number, number], [number, number]] = [[minLat, minLon], [maxLat, maxLon]];
-
-  return (
-    <Modal open={open} onClose={onClose} title={title}>
-      <div className="w-[400px] h-[400px] mb-4 relative">
-        <MapContainer
-          center={center}
-          zoom={16}
-          scrollWheelZoom={true}
-          style={{ width: '100%', height: '100%' }}
-        >
-          <FitBoundsHandler bounds={bounds} names={names} />
-          <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution="&copy; OpenStreetMap contributors"
-          />
-          {polylines.map((polyline, i) => (
-            <Polyline key={i} positions={polyline} color={colors[i % colors.length]} />
-          ))}
-          {currentMarkers.map((current, i) => (
-            <CircleMarker
-              key={i}
-              center={[current.Lat, current.Lon]}
-              radius={10}
-              pathOptions={{ color: colors[i % colors.length], fillColor: colors[i % colors.length], fillOpacity: 0.6 }}
-            >
-              {showLabels && (
-                <Tooltip permanent direction="top" className="text-center">
-                  {names[i]}<br />Alt: {typeof current.Alt === 'number' ? current.Alt.toFixed(2) : current.Alt} m
-                </Tooltip>
-              )}
-            </CircleMarker>
-          ))}
-        </MapContainer>
-      </div>
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-center gap-4 mb-1">
-          <div className="text-base text-center text-blue-200 font-semibold">
-            Time: {relTime} s
-          </div>
-          <button
-            className={`px-3 py-1 rounded text-xs font-semibold border ${showLabels ? 'bg-blue-600 text-white border-blue-700' : 'bg-gray-700 text-gray-200 border-gray-500'} transition-all`}
-            onClick={() => setShowLabels(l => !l)}
-          >
-            {showLabels ? 'Hide Labels' : 'Show Labels'}
-          </button>
-        </div>
-        <input
-          type="range"
-          min={0}
-          max={minLen - 1}
-          value={globalIdx}
-          onChange={e => handleSlider(Number(e.target.value))}
-          className="w-full"
-        />
-        <button
-          className="mt-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          onClick={() => setPlaying(p => !p)}
-        >
-          {playing ? 'Pause' : 'Play'}
-        </button>
-      </div>
-    </Modal>
-  );
-}
-
 // Uplan Error Modal
 function UplanErrorModal({ open, onClose, message }: { open: boolean, onClose: () => void, message: any }) {
   if (!open) return null;
@@ -249,319 +125,6 @@ function UplanErrorModal({ open, onClose, message }: { open: boolean, onClose: (
       }>
         {displayMsg}
       </pre>
-    </Modal>
-  );
-}
-// Uplan Visualization Modal
-function UplanViewModal({ open, onClose, uplan, name }: { open: boolean, onClose: () => void, uplan: any, name: string }) {
-  const [currentTime, setCurrentTime] = useState(0);
-  const [playing, setPlaying] = useState(false);
-  const [showLabels, setShowLabels] = useState(true);
-  // Parse operationVolumes (must be before useEffect)
-  const vols = uplan && uplan.operationVolumes ? uplan.operationVolumes.map((vol: any, idx: number) => {
-    const coords = vol.geometry.coordinates[0].map(([lon, lat]: [number, number]) => [lat, lon]);
-    const t0 = new Date(vol.timeBegin).getTime() / 1000;
-    const t1 = new Date(vol.timeEnd).getTime() / 1000;
-    return { coords, t0, t1, idx, label: vol.name || `Volume ${idx + 1}` };
-  }) : [];
-  const minT = vols.length > 0 ? Math.min(...vols.map((v: any) => v.t0)) : 0;
-  const maxT = vols.length > 0 ? Math.max(...vols.map((v: any) => v.t1)) : 0;
-  // Play/pause effect
-  useEffect(() => {
-    if (!playing) return;
-    const interval = setInterval(() => {
-      setCurrentTime((prev) => {
-        if (prev < Math.round(maxT - minT)) return prev + 1;
-        return 0;
-      });
-    }, 60);
-    return () => clearInterval(interval);
-  }, [playing, maxT, minT]);
-  // ESC key closes modal
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [open, onClose]);
-  // All hooks above, now check for early return
-  if (!open || !uplan || !uplan.operationVolumes) return null;
-  // Show only active polygons
-  const activeVols = vols.filter((v: any) => currentTime + minT >= v.t0 && currentTime + minT <= v.t1);
-  // Find the first active volume for the label
-  const activeLabelVol = activeVols.length > 0 ? activeVols[0] : null;
-  let labelLatLon: [number, number] | null = null;
-  let minHeight = null, maxHeight = null;
-  if (activeLabelVol && activeLabelVol.coords.length > 0) {
-    labelLatLon = activeLabelVol.coords[0];
-    // Try to get min/max height from the original uplan.operationVolumes
-    const volIdx = activeLabelVol.idx;
-    const origVol = uplan.operationVolumes[volIdx];
-    // Use top-level extractAlt function
-    if (origVol && origVol.minAltitude && origVol.maxAltitude) {
-      minHeight = extractAlt(origVol.minAltitude);
-      maxHeight = extractAlt(origVol.maxAltitude);
-    } else if (origVol && origVol.elevation) {
-      minHeight = extractAlt(origVol.elevation.min);
-      maxHeight = extractAlt(origVol.elevation.max);
-    }
-    // Remove Math.round, keep as number
-  }
-  // Compute bounds from all coords
-  const allCoords = vols.flatMap((v: any) => v.coords);
-  const lats = allCoords.map((c: any) => c[0]);
-  const lons = allCoords.map((c: any) => c[1]);
-  const hasPoints = lats.length > 0 && lons.length > 0;
-  const minLat = hasPoints ? Math.min(...lats) : 0;
-  const maxLat = hasPoints ? Math.max(...lats) : 0;
-  const minLon = hasPoints ? Math.min(...lons) : 0;
-  const maxLon = hasPoints ? Math.max(...lons) : 0;
-  const bounds: [[number, number], [number, number]] = [[minLat, minLon], [maxLat, maxLon]];
-  // Center for map
-  const center: [number, number] = hasPoints ? [(minLat + maxLat) / 2, (minLon + maxLon) / 2] : [0, 0];
-  // Compute the current POSIX time
-  const posixTime = Math.round(minT + currentTime);
-  // Format as UTC: DAY, HOUR, MINUTE, SECOND
-  function formatUtcTime(posix: number) {
-    const date = new Date(posix * 1000);
-    const day = date.toISOString().slice(0, 10); // YYYY-MM-DD
-    const hour = date.getUTCHours().toString().padStart(2, '0');
-    const min = date.getUTCMinutes().toString().padStart(2, '0');
-    const sec = date.getUTCSeconds().toString().padStart(2, '0');
-    return `${day}, ${hour}:${min}:${sec} UTC`;
-  }
-  const utcTime = formatUtcTime(posixTime);
-  return (
-    <Modal open={open} onClose={onClose} title={`U-plan: ${name}`}>
-      <div className="w-[400px] h-[400px] mb-4 relative">
-        <MapContainer
-          center={center}
-          zoom={16}
-          scrollWheelZoom={true}
-          style={{ width: '100%', height: '100%' }}
-        >
-          <FitBoundsHandler bounds={bounds} names={[name]} />
-          <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution="&copy; OpenStreetMap contributors"
-          />
-          {activeVols.map((v: any, i: number) => (
-            <Polygon
-              key={i}
-              positions={v.coords}
-              pathOptions={{ color: '#2563eb', fillColor: '#60a5fa', fillOpacity: 0.4 }}
-            />
-          ))}
-          {showLabels && labelLatLon && (
-            <Marker
-              key={`label-uplan`}
-              position={labelLatLon}
-              icon={L.divIcon({ className: 'uplan-label', html: '<div></div>' })} // invisible icon
-              interactive={false}
-            >
-              <Tooltip permanent direction="top" className="text-center">
-                {name}<br />
-                {minHeight !== null && maxHeight !== null ? `Alt: ${typeof minHeight === 'number' ? minHeight.toFixed(2) : minHeight} - ${typeof maxHeight === 'number' ? maxHeight.toFixed(2) : maxHeight} m` : ''}
-              </Tooltip>
-            </Marker>
-          )}
-        </MapContainer>
-      </div>
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-center gap-4 mb-1">
-          <div className="text-base text-center text-blue-200 font-semibold">
-            {utcTime}
-          </div>
-          <button
-            className={`px-3 py-1 rounded text-xs font-semibold border ${showLabels ? 'bg-blue-600 text-white border-blue-700' : 'bg-gray-700 text-gray-200 border-gray-500'} transition-all`}
-            onClick={() => setShowLabels(l => !l)}
-          >
-            {showLabels ? 'Hide Labels' : 'Show Labels'}
-          </button>
-        </div>
-        <input
-          type="range"
-          min={0}
-          max={Math.round(maxT - minT)}
-          value={currentTime}
-          onChange={e => setCurrentTime(Number(e.target.value))}
-          className="w-full"
-        />
-        <button
-          className="mt-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 w-full"
-          onClick={() => setPlaying(p => !p)}
-        >
-          {playing ? 'Pause' : 'Play'}
-        </button>
-      </div>
-    </Modal>
-  );
-}
-
-// Move these to the top level, outside FlightPlansUploader
-function extractAlt(val: any): number | string | null {
-  if (val == null) return null;
-  let num: number | null = null;
-  if (typeof val === 'number') num = val;
-  else if (typeof val === 'string' && !isNaN(Number(val))) num = Number(val);
-  else if (typeof val === 'object') {
-    if ('value' in val && typeof val.value === 'number') num = val.value;
-    else if ('meters' in val && typeof val.meters === 'number') num = val.meters;
-    else if ('feet' in val && typeof val.feet === 'number') num = val.feet;
-    else {
-      const found = Object.values(val).find(v => typeof v === 'number');
-      if (typeof found === 'number') num = found;
-    }
-  }
-  if (num !== null) return Number(num.toFixed(2));
-  return val;
-}
-
-function BulkUplanViewModal({ open, onClose, uplans, names }: { open: boolean, onClose: () => void, uplans: any[], names: string[] }) {
-  const [currentTime, setCurrentTime] = useState(0);
-  const [playing, setPlaying] = useState(false);
-  const [showLabels, setShowLabels] = useState(true);
-  // Parse all operationVolumes
-  const allVols = uplans.flatMap((uplan, planIdx) =>
-    (uplan.operationVolumes || []).map((vol: any, idx: number) => {
-      const coords = vol.geometry.coordinates[0].map(([lon, lat]: [number, number]) => [lat, lon]);
-      const t0 = new Date(vol.timeBegin).getTime() / 1000;
-      const t1 = new Date(vol.timeEnd).getTime() / 1000;
-      return {
-        coords,
-        t0,
-        t1,
-        planIdx,
-        planName: names[planIdx],
-        idx,
-        origVol: vol
-      };
-    })
-  );
-  const minT = allVols.length > 0 ? Math.min(...allVols.map((v: any) => v.t0)) : 0;
-  const maxT = allVols.length > 0 ? Math.max(...allVols.map((v: any) => v.t1)) : 0;
-  // Play/pause effect
-  useEffect(() => {
-    if (!playing) return;
-    const interval = setInterval(() => {
-      setCurrentTime((prev) => {
-        if (prev < Math.round(maxT - minT)) return prev + 1;
-        return 0;
-      });
-    }, 60);
-    return () => clearInterval(interval);
-  }, [playing, maxT, minT]);
-  // ESC key closes modal
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [open, onClose]);
-  if (!open || !uplans || uplans.length === 0) return null;
-  // Show only active polygons at current time
-  const activeVols = allVols.filter((v: any) => currentTime + minT >= v.t0 && currentTime + minT <= v.t1);
-  // Compute bounds from all coords
-  const allCoords = allVols.flatMap((v: any) => v.coords);
-  const lats = allCoords.map((c: any) => c[0]);
-  const lons = allCoords.map((c: any) => c[1]);
-  const hasPoints = lats.length > 0 && lons.length > 0;
-  const minLat = hasPoints ? Math.min(...lats) : 0;
-  const maxLat = hasPoints ? Math.max(...lats) : 0;
-  const minLon = hasPoints ? Math.min(...lons) : 0;
-  const maxLon = hasPoints ? Math.max(...lons) : 0;
-  const bounds: [[number, number], [number, number]] = [[minLat, minLon], [maxLat, maxLon]];
-  const center: [number, number] = hasPoints ? [(minLat + maxLat) / 2, (minLon + maxLon) / 2] : [0, 0];
-  // Compute the current POSIX time
-  const posixTime = Math.round(minT + currentTime);
-  function formatUtcTime(posix: number) {
-    const date = new Date(posix * 1000);
-    const day = date.toISOString().slice(0, 10);
-    const hour = date.getUTCHours().toString().padStart(2, '0');
-    const min = date.getUTCMinutes().toString().padStart(2, '0');
-    const sec = date.getUTCSeconds().toString().padStart(2, '0');
-    return `${day}, ${hour}:${min}:${sec} UTC`;
-  }
-  const utcTime = formatUtcTime(posixTime);
-  return (
-    <Modal open={open} onClose={onClose} title={`Bulk U-plan Viewer`}>
-      <div className="w-[400px] h-[400px] mb-4 relative">
-        <MapContainer
-          center={center}
-          zoom={16}
-          scrollWheelZoom={true}
-          style={{ width: '100%', height: '100%' }}
-        >
-          <FitBoundsHandler bounds={bounds} names={names} />
-          <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution="&copy; OpenStreetMap contributors"
-          />
-          {activeVols.map((v: any, i: number) => (
-            <Polygon
-              key={i}
-              positions={v.coords}
-              pathOptions={{ color: '#2563eb', fillColor: '#60a5fa', fillOpacity: 0.4 }}
-            />
-          ))}
-          {showLabels && activeVols.map((v: any, i: number) => {
-            const labelLatLon = v.coords[0];
-            let minHeight = null, maxHeight = null;
-            if (v.origVol && v.origVol.minAltitude && v.origVol.maxAltitude) {
-              minHeight = extractAlt(v.origVol.minAltitude);
-              maxHeight = extractAlt(v.origVol.maxAltitude);
-            } else if (v.origVol && v.origVol.elevation) {
-              minHeight = extractAlt(v.origVol.elevation.min);
-              maxHeight = extractAlt(v.origVol.elevation.max);
-            }
-            // Remove Math.round, keep as number
-            return (
-              <Marker
-                key={`label-uplan-${i}`}
-                position={labelLatLon}
-                icon={L.divIcon({ className: 'uplan-label', html: '<div></div>' })}
-                interactive={false}
-              >
-                <Tooltip permanent direction="top" className="text-center">
-                  {v.planName}<br />
-                  {minHeight !== null && maxHeight !== null ? `Alt: ${typeof minHeight === 'number' ? minHeight.toFixed(2) : minHeight} - ${typeof maxHeight === 'number' ? maxHeight.toFixed(2) : maxHeight} m` : ''}
-                </Tooltip>
-              </Marker>
-            );
-          })}
-        </MapContainer>
-      </div>
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-center gap-4 mb-1">
-          <div className="text-base text-center text-blue-200 font-semibold">
-            {utcTime}
-          </div>
-          <button
-            className={`px-3 py-1 rounded text-xs font-semibold border ${showLabels ? 'bg-blue-600 text-white border-blue-700' : 'bg-gray-700 text-gray-200 border-gray-500'} transition-all`}
-            onClick={() => setShowLabels(l => !l)}
-          >
-            {showLabels ? 'Hide Labels' : 'Show Labels'}
-          </button>
-        </div>
-        <input
-          type="range"
-          min={0}
-          max={Math.round(maxT - minT)}
-          value={currentTime}
-          onChange={e => setCurrentTime(Number(e.target.value))}
-          className="w-full"
-        />
-        <button
-          className="mt-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 w-full"
-          onClick={() => setPlaying(p => !p)}
-        >
-          {playing ? 'Pause' : 'Play'}
-        </button>
-      </div>
     </Modal>
   );
 }
@@ -608,6 +171,477 @@ function BulkErrorViewModal({ open, onClose, errors, idx, setIdx }: { open: bool
   );
 }
 
+// Uplan Edit Modal (reusable for both PlanGenerator and FlightPlansUploader)
+function UplanEditModal({ open, onClose, uplan, onSave, readOnly = false }: {
+  open: boolean;
+  onClose: () => void;
+  uplan: any;
+  onSave: (newUplan: any) => void;
+  readOnly?: boolean;
+}) {
+  // Default structure as in PlanGenerator
+  const defaultUplan = {
+    datetime: "",
+    dataOwnerIdentifier: { sac: "", sic: "" },
+    dataSourceIdentifier: { sac: "", sic: "" },
+    contactDetails: { firstName: "", lastName: "", phones: [""], emails: [""] },
+    flightDetails: {
+      mode: "",
+      category: "",
+      specialOperation: "",
+      privateFlight: false,
+    },
+    uas: {
+      registrationNumber: "",
+      serialNumber: "",
+      flightCharacteristics: {
+        uasMTOM: "",
+        uasMaxSpeed: "",
+        connectivity: "",
+        idTechnology: "",
+        maxFlightTime: "",
+      },
+      generalCharacteristics: {
+        brand: "",
+        model: "",
+        typeCertificate: "",
+        uasType: "",
+        uasClass: "",
+        uasDimension: "",
+      },
+    },
+    operatorId: "",
+  };
+
+  // Deep merge function
+  function deepMerge(target: any, source: any) {
+    if (typeof target !== "object" || typeof source !== "object" || !target || !source) return source;
+    const result = { ...target };
+    for (const key in source) {
+      if (source[key] && typeof source[key] === "object" && !Array.isArray(source[key])) {
+        result[key] = deepMerge(target[key] || {}, source[key]);
+      } else {
+        result[key] = source[key];
+      }
+    }
+    return result;
+  }
+
+  // Defensive: parse uplan if it's a string (shouldn't be needed, but extra safe)
+  let safeUplan = uplan;
+  for (let i = 0; i < 2; i++) {
+    if (typeof safeUplan === "string") {
+      try {
+        safeUplan = JSON.parse(safeUplan);
+      } catch {
+        break;
+      }
+    }
+  }
+
+  const [editUplan, setEditUplan] = useState<any>(deepMerge(defaultUplan, safeUplan || {}));
+  useEffect(() => {
+    setEditUplan(deepMerge(defaultUplan, safeUplan || {}));
+    // eslint-disable-next-line
+  }, [uplan, open]);
+
+  if (!open) return null;
+
+  // Option lists (copy from PlanGenerator)
+  const FLIGHT_MODES = ["VLOS", "BVLOS"];
+  const FLIGHT_CATEGORIES = [
+    "OPENA1",
+    "OPENA2",
+    "OPENA3",
+    "LUC",
+    "LIMITEDOPEN",
+    "CERTIFIED",
+    "SPECIFIC",
+    "STS",
+  ];
+  const SPECIAL_OPERATIONS = [
+    "POLICE_AND_CUSTOMS",
+    "TRAFFIC_SURVEILLANCE_AND_PURSUIT",
+    "ENVIRONMENTAL_CONTROL",
+    "SEARCH_AND_RESCUE",
+    "MEDICAL",
+    "EVACUATIONS",
+    "FIREFIGHTING",
+    "STATE_OFFICIALS",
+  ];
+  const CONNECTIVITY = ["RF", "LTE", "SAT", "5G"];
+  const ID_TECHNOLOGY = ["NRID", "ADSB", "OTHER"];
+  const UAS_TYPE = ["NONE_NOT_DECLARED", "MULTIROTOR", "FIXED_WING"];
+  const UAS_CLASS = ["NONE", "C0", "C1", "C2", "C3", "C4", "C5", "C6"];
+  const UAS_DIMENSION = ["LT_1", "LT_3", "LT_8", "GTE_8"];
+
+  // Helper for updating nested fields
+  function updateNested(path: string[], value: any) {
+    setEditUplan((prev: any) => {
+      let obj = { ...prev };
+      let cur = obj;
+      for (let i = 0; i < path.length - 1; i++) {
+        if (!cur[path[i]]) cur[path[i]] = {};
+        cur[path[i]] = { ...cur[path[i]] };
+        cur = cur[path[i]];
+      }
+      cur[path[path.length - 1]] = value;
+      return obj;
+    });
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title={readOnly ? "View U-plan Info" : "Edit U-plan Info"}>
+      <div className="flex flex-col gap-4 max-h-[70vh] overflow-y-auto">
+        {/* Data Owner Identifier */}
+        <div>
+          <div className="font-semibold text-zinc-300 mb-1">Data Owner Identifier</div>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              maxLength={3}
+              placeholder="SAC"
+              value={editUplan.dataOwnerIdentifier?.sac || ""}
+              onChange={e => updateNested(["dataOwnerIdentifier", "sac"], e.target.value.toUpperCase())}
+              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-20 text-xs focus:outline-none"
+              disabled={readOnly}
+            />
+            <input
+              type="text"
+              maxLength={3}
+              placeholder="SIC"
+              value={editUplan.dataSourceIdentifier?.sic || ""}
+              onChange={e => updateNested(["dataSourceIdentifier", "sic"], e.target.value.toUpperCase())}
+              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-20 text-xs focus:outline-none"
+              disabled={readOnly}
+            />
+          </div>
+        </div>
+        {/* Data Source Identifier */}
+        <div>
+          <div className="font-semibold text-zinc-300 mb-1">Data Source Identifier</div>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              maxLength={3}
+              placeholder="SAC"
+              value={editUplan.dataSourceIdentifier?.sac || ""}
+              onChange={e => updateNested(["dataSourceIdentifier", "sac"], e.target.value.toUpperCase())}
+              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-20 text-xs focus:outline-none"
+              disabled={readOnly}
+            />
+            <input
+              type="text"
+              maxLength={3}
+              placeholder="SIC"
+              value={editUplan.dataSourceIdentifier?.sic || ""}
+              onChange={e => updateNested(["dataSourceIdentifier", "sic"], e.target.value.toUpperCase())}
+              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-20 text-xs focus:outline-none"
+              disabled={readOnly}
+            />
+          </div>
+        </div>
+        {/* Contact Details */}
+        <div>
+          <div className="font-semibold text-zinc-300 mb-1">Contact Details</div>
+          <div className="flex gap-2 mb-2">
+            <input
+              type="text"
+              placeholder="First Name"
+              value={editUplan.contactDetails?.firstName || ""}
+              onChange={e => updateNested(["contactDetails", "firstName"], e.target.value)}
+              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-32 text-xs focus:outline-none"
+              disabled={readOnly}
+            />
+            <input
+              type="text"
+              placeholder="Last Name"
+              value={editUplan.contactDetails?.lastName || ""}
+              onChange={e => updateNested(["contactDetails", "lastName"], e.target.value)}
+              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-32 text-xs focus:outline-none"
+              disabled={readOnly}
+            />
+          </div>
+          <div className="mb-2">
+            <div className="text-xs text-zinc-400 mb-1">Phones</div>
+            {(editUplan.contactDetails?.phones || [""]).map((phone: string, i: number) => (
+              <div key={i} className="flex gap-2 mb-1">
+                <input
+                  type="text"
+                  placeholder="Phone"
+                  value={phone}
+                  onChange={e => {
+                    const phones = [...(editUplan.contactDetails?.phones || [""])]
+                    phones[i] = e.target.value;
+                    updateNested(["contactDetails", "phones"], phones);
+                  }}
+                  className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-40 text-xs focus:outline-none"
+                  disabled={readOnly}
+                />
+                {!readOnly && (
+                  <button
+                    type="button"
+                    className="text-red-400 hover:text-red-600 text-xs font-bold"
+                    onClick={() => {
+                      const phones = (editUplan.contactDetails?.phones || [""]).filter((_: any, idx: number) => idx !== i);
+                      updateNested(["contactDetails", "phones"], phones.length ? phones : [""]);
+                    }}
+                  >×</button>
+                )}
+              </div>
+            ))}
+            {!readOnly && (
+              <button
+                type="button"
+                className="text-blue-400 hover:underline text-xs"
+                onClick={() => {
+                  const phones = [...(editUplan.contactDetails?.phones || [""]), ""];
+                  updateNested(["contactDetails", "phones"], phones);
+                }}
+              >Add phone</button>
+            )}
+          </div>
+          <div>
+            <div className="text-xs text-zinc-400 mb-1">Emails</div>
+            {(editUplan.contactDetails?.emails || [""]).map((email: string, i: number) => (
+              <div key={i} className="flex gap-2 mb-1">
+                <input
+                  type="email"
+                  placeholder="Email"
+                  value={email}
+                  onChange={e => {
+                    const emails = [...(editUplan.contactDetails?.emails || [""])]
+                    emails[i] = e.target.value;
+                    updateNested(["contactDetails", "emails"], emails);
+                  }}
+                  className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-40 text-xs focus:outline-none"
+                  disabled={readOnly}
+                />
+                {!readOnly && (
+                  <button
+                    type="button"
+                    className="text-red-400 hover:text-red-600 text-xs font-bold"
+                    onClick={() => {
+                      const emails = (editUplan.contactDetails?.emails || [""]).filter((_: any, idx: number) => idx !== i);
+                      updateNested(["contactDetails", "emails"], emails.length ? emails : [""]);
+                    }}
+                  >×</button>
+                )}
+              </div>
+            ))}
+            {!readOnly && (
+              <button
+                type="button"
+                className="text-blue-400 hover:underline text-xs"
+                onClick={() => {
+                  const emails = [...(editUplan.contactDetails?.emails || [""]), ""];
+                  updateNested(["contactDetails", "emails"], emails);
+                }}
+              >Add email</button>
+            )}
+          </div>
+        </div>
+        {/* Flight Details */}
+        <div>
+          <div className="font-semibold text-zinc-300 mb-1">Flight Details</div>
+          <div className="flex gap-2 mb-2 flex-wrap">
+            <select
+              value={editUplan.flightDetails?.mode || ""}
+              onChange={e => updateNested(["flightDetails", "mode"], e.target.value)}
+              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 text-xs focus:outline-none"
+              disabled={readOnly}
+            >
+              <option value="">Select mode</option>
+              {FLIGHT_MODES.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+            </select>
+            <select
+              value={editUplan.flightDetails?.category || ""}
+              onChange={e => updateNested(["flightDetails", "category"], e.target.value)}
+              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 text-xs focus:outline-none"
+              disabled={readOnly}
+            >
+              <option value="">Select category</option>
+              {FLIGHT_CATEGORIES.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+            </select>
+            <label className="flex items-center gap-1 text-xs text-zinc-400">
+              <input
+                type="checkbox"
+                checked={!!editUplan.flightDetails?.privateFlight}
+                onChange={e => updateNested(["flightDetails", "privateFlight"], e.target.checked)}
+                disabled={readOnly}
+              />
+              Private flight
+            </label>
+          </div>
+          <div className="mb-2">
+            <select
+              value={editUplan.flightDetails?.specialOperation || ""}
+              onChange={e => updateNested(["flightDetails", "specialOperation"], e.target.value)}
+              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 text-xs focus:outline-none w-full"
+              disabled={readOnly}
+            >
+              <option value="">Special operation?</option>
+              {SPECIAL_OPERATIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+            </select>
+          </div>
+        </div>
+        {/* UAS */}
+        <div>
+          <div className="font-semibold text-zinc-300 mb-1">UAS</div>
+          <div className="flex gap-2 mb-2">
+            <input
+              type="text"
+              placeholder="Registration number"
+              value={editUplan.uas?.registrationNumber || ""}
+              onChange={e => updateNested(["uas", "registrationNumber"], e.target.value)}
+              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-32 text-xs focus:outline-none"
+              disabled={readOnly}
+            />
+            <input
+              type="text"
+              maxLength={20}
+              placeholder="Serial number"
+              value={editUplan.uas?.serialNumber || ""}
+              onChange={e => updateNested(["uas", "serialNumber"], e.target.value)}
+              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-32 text-xs focus:outline-none"
+              disabled={readOnly}
+            />
+          </div>
+          <div className="font-semibold text-zinc-400 mb-1 mt-2">Flight Characteristics</div>
+          <div className="flex gap-2 mb-2 flex-wrap">
+            <input
+              type="number"
+              placeholder="MTOM (kg)"
+              value={editUplan.uas?.flightCharacteristics?.uasMTOM || ""}
+              onChange={e => updateNested(["uas", "flightCharacteristics", "uasMTOM"], e.target.value)}
+              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-24 text-xs focus:outline-none"
+              disabled={readOnly}
+            />
+            <input
+              type="number"
+              placeholder="Max speed (m/s)"
+              value={editUplan.uas?.flightCharacteristics?.uasMaxSpeed || ""}
+              onChange={e => updateNested(["uas", "flightCharacteristics", "uasMaxSpeed"], e.target.value)}
+              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-28 text-xs focus:outline-none"
+              disabled={readOnly}
+            />
+            <select
+              value={editUplan.uas?.flightCharacteristics?.connectivity || ""}
+              onChange={e => updateNested(["uas", "flightCharacteristics", "connectivity"], e.target.value)}
+              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 text-xs focus:outline-none"
+              disabled={readOnly}
+            >
+              <option value="">Connectivity</option>
+              {CONNECTIVITY.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+            </select>
+            <select
+              value={editUplan.uas?.flightCharacteristics?.idTechnology || ""}
+              onChange={e => updateNested(["uas", "flightCharacteristics", "idTechnology"], e.target.value)}
+              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 text-xs focus:outline-none"
+              disabled={readOnly}
+            >
+              <option value="">ID Technology</option>
+              {ID_TECHNOLOGY.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+            </select>
+            <input
+              type="number"
+              placeholder="Max flight time (min)"
+              value={editUplan.uas?.flightCharacteristics?.maxFlightTime || ""}
+              onChange={e => updateNested(["uas", "flightCharacteristics", "maxFlightTime"], e.target.value)}
+              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-40 text-xs focus:outline-none"
+              disabled={readOnly}
+            />
+          </div>
+          <div className="font-semibold text-zinc-400 mb-1 mt-2">General Characteristics</div>
+          <div className="flex gap-2 flex-wrap">
+            <input
+              type="text"
+              placeholder="Brand"
+              value={editUplan.uas?.generalCharacteristics?.brand || ""}
+              onChange={e => updateNested(["uas", "generalCharacteristics", "brand"], e.target.value)}
+              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-24 text-xs focus:outline-none"
+              disabled={readOnly}
+            />
+            <input
+              type="text"
+              placeholder="Model"
+              value={editUplan.uas?.generalCharacteristics?.model || ""}
+              onChange={e => updateNested(["uas", "generalCharacteristics", "model"], e.target.value)}
+              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-24 text-xs focus:outline-none"
+              disabled={readOnly}
+            />
+            <input
+              type="text"
+              placeholder="Type certificate"
+              value={editUplan.uas?.generalCharacteristics?.typeCertificate || ""}
+              onChange={e => updateNested(["uas", "generalCharacteristics", "typeCertificate"], e.target.value)}
+              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-28 text-xs focus:outline-none"
+              disabled={readOnly}
+            />
+            <select
+              value={editUplan.uas?.generalCharacteristics?.uasType || ""}
+              onChange={e => updateNested(["uas", "generalCharacteristics", "uasType"], e.target.value)}
+              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 text-xs focus:outline-none"
+              disabled={readOnly}
+            >
+              <option value="">UAS Type</option>
+              {UAS_TYPE.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+            </select>
+            <select
+              value={editUplan.uas?.generalCharacteristics?.uasClass || ""}
+              onChange={e => updateNested(["uas", "generalCharacteristics", "uasClass"], e.target.value)}
+              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 text-xs focus:outline-none"
+              disabled={readOnly}
+            >
+              <option value="">UAS Class</option>
+              {UAS_CLASS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+            </select>
+            <select
+              value={editUplan.uas?.generalCharacteristics?.uasDimension || ""}
+              onChange={e => updateNested(["uas", "generalCharacteristics", "uasDimension"], e.target.value)}
+              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 text-xs focus:outline-none"
+              disabled={readOnly}
+            >
+              <option value="">UAS Dimension</option>
+              {UAS_DIMENSION.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+            </select>
+          </div>
+        </div>
+        {/* Operator ID */}
+        <div>
+          <label className="block mb-1 font-medium text-zinc-200">Operator ID</label>
+          <input
+            type="text"
+            value={editUplan.operatorId || ""}
+            onChange={e => updateNested(["operatorId"], e.target.value)}
+            className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+            disabled={readOnly}
+            placeholder="Operator registration number"
+          />
+        </div>
+        <div className="flex gap-2 justify-end mt-4">
+          <button
+            className="px-4 py-2 rounded bg-gray-700 text-white hover:bg-gray-600"
+            onClick={onClose}
+            type="button"
+          >
+            Cancel
+          </button>
+          {!readOnly && (
+            <button
+              className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
+              onClick={() => onSave(editUplan)}
+              type="button"
+            >
+              Save
+            </button>
+          )}
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 export function FlightPlansUploader() {
   const [flightPlans, setFlightPlans] = useState<FlightPlan[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
@@ -644,6 +678,8 @@ export function FlightPlansUploader() {
   const [bulkUplanViewModal, setBulkUplanViewModal] = useState<{ open: boolean, uplans: any[], names: string[] }>({ open: false, uplans: [], names: [] });
   const [bulkErrorViewModal, setBulkErrorViewModal] = useState<{ open: boolean, errors: {name: string, message: any}[], idx: number }>({ open: false, errors: [], idx: 0 });
   const [bulkErrorIdx, setBulkErrorIdx] = useState(0);
+  // Uplan edit modal state
+  const [uplanEditModal, setUplanEditModal] = useState<{ open: boolean, uplan: any, planId: number | null }>({ open: false, uplan: null, planId: null });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -809,7 +845,7 @@ export function FlightPlansUploader() {
 
   const handleDeleteFolder = async (folderId: number) => {
     if (
-      window.confirm(
+      typeof window !== 'undefined' && window.confirm(
         "Are you sure you want to delete this folder and all its plans?"
       )
     ) {
@@ -1024,7 +1060,7 @@ export function FlightPlansUploader() {
   };
 
   const handleDeleteSelectedPlans = async () => {
-    if (window.confirm("Are you sure you want to delete the selected plans?")) {
+    if (typeof window !== 'undefined' && window.confirm("Are you sure you want to delete the selected plans?")) {
       try {
         setFlightPlans(
           flightPlans.filter((p) => !selectedPlans.includes(p.id))
@@ -1048,14 +1084,16 @@ export function FlightPlansUploader() {
       if (response.status === 200) {
         const csvData = response.data.csvResult;
         const blob = new Blob([csvData], { type: "text/csv" });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.setAttribute("hidden", "");
-        a.setAttribute("href", url);
-        a.setAttribute("download", fileName);
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        if (typeof window !== 'undefined') {
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.setAttribute("hidden", "");
+          a.setAttribute("href", url);
+          a.setAttribute("download", fileName);
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        }
       }
     } catch (error) {
       console.error("Error in CSV download:", error);
@@ -1079,23 +1117,6 @@ export function FlightPlansUploader() {
         .length,
       error: folderPlans.filter((plan) => plan.status === "error").length,
     };
-  };
-
-  const statusColor = (status: string) => {
-    switch (status) {
-      case "sin procesar":
-        return "bg-gray-500";
-      case "en cola":
-        return "bg-yellow-500";
-      case "procesando":
-        return "bg-blue-500";
-      case "procesado":
-        return "bg-green-500";
-      case "error":
-        return "bg-red-500";
-      default:
-        return "bg-gray-500";
-    }
   };
 
   const handleFolderFilterChange = (folderId: number, value: string) => {
@@ -1164,39 +1185,6 @@ export function FlightPlansUploader() {
     } finally {
       setAuthorizationLoading((prev) => ({ ...prev, [planId]: false }));
     }
-  };
-
-  const downloadUplan = (plan: FlightPlan) => {
-    if (!plan.uplan) return;
-    const blob = new Blob([JSON.stringify(plan.uplan, null, 2)], {
-      type: "application/json",
-    });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${plan.customName}_uplan.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  };
-
-  const downloadAuthorizationMessage = (plan: FlightPlan) => {
-    if (!plan.authorizationMessage) return;
-    const blob = new Blob(
-      [
-        typeof plan.authorizationMessage === "string"
-          ? plan.authorizationMessage
-          : JSON.stringify(plan.authorizationMessage, null, 2),
-      ],
-      { type: "application/json" }
-    );
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${plan.customName}_authorization_error.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
   };
 
   const handleFolderScheduledAtChange = async (
@@ -1454,21 +1442,6 @@ export function FlightPlansUploader() {
     setTrajectoryModalOpen(true);
   };
 
-  const handleViewBulkUplansFolder = (folderId: number) => {
-    const plans = flightPlans.filter(
-      (p) => p.folderId === folderId && p.authorizationStatus === "aprobado" && p.uplan
-    );
-    if (plans.length === 0) {
-      alert("No authorized U-Plans in this folder.");
-      return;
-    }
-    setBulkUplanViewModal({
-      open: true,
-      uplans: plans.map(p => p.uplan),
-      names: plans.map(p => p.customName)
-    });
-  };
-
   const handleViewSelectedErrors = () => {
     const errors = selectedPlans
       .map(id => {
@@ -1502,13 +1475,43 @@ export function FlightPlansUploader() {
     });
   };
 
+  // Handler to open uplan edit modal
+  const handleOpenUplanEdit = useCallback((plan: FlightPlan) => {
+    let uplanObj = plan.uplan;
+    // Defensive: parse up to two times if needed (for double-encoded JSON)
+    for (let i = 0; i < 2; i++) {
+      if (typeof uplanObj === "string") {
+        try {
+          uplanObj = JSON.parse(uplanObj);
+        } catch {
+          break;
+        }
+      }
+    }
+    setUplanEditModal({ open: true, uplan: uplanObj || {}, planId: plan.id });
+  }, []);
+
+  // Handler to save uplan changes
+  const handleSaveUplanEdit = async (newUplan: any) => {
+    if (!uplanEditModal.planId) return;
+    try {
+      await axios.put(`/api/flightPlans/${uplanEditModal.planId}`, { uplan: JSON.stringify(newUplan) });
+      setFlightPlans(flightPlans.map(plan =>
+        plan.id === uplanEditModal.planId ? { ...plan, uplan: newUplan } : plan
+      ));
+      setUplanEditModal({ open: false, uplan: null, planId: null });
+    } catch (error) {
+      alert("Error saving U-plan info");
+    }
+  };
+
   return (
     <div className="bg-gray-900 p-6 pt-8 pb-2">
       {/* Help Button */}
       <a
         href="/how-it-works#trajectory-generator-help"
         target="_self"
-        className="fixed top-24 right-8 z-50 bg-blue-700 hover:bg-blue-800 text-white rounded-full p-3 shadow-lg flex items-center gap-2 transition-all duration-200"
+        className="fixed top-24 right-8 z-[2000] bg-blue-700 hover:bg-blue-800 text-white rounded-full p-3 shadow-lg flex items-center gap-2 transition-all duration-200"
         title="Need help with Trajectory Generator?"
       >
         <HelpCircle className="w-6 h-6" />
@@ -1917,7 +1920,7 @@ export function FlightPlansUploader() {
                                   onCheckedChange={(checked) =>
                                     handleSelectPlan(plan.id)
                                   }
-                                  className="border-gray-600 data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500 shrink-0 hover:border-blue-400 transition-colors h-5 w-5 min-w-[8px] min-h-[8px]"
+                                  className="border-gray-600 data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500 shrink-0 hover:border-gray-400 transition-colors h-5 w-5 min-w-[8px] min-h-[8px]"
                                 />
                                 <input
                                   type="text"
@@ -1938,6 +1941,42 @@ export function FlightPlansUploader() {
                                   className="ml-2 bg-gray-700/50 border border-gray-600 rounded-md px-2 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-gray-400 hover:border-gray-500 w-[210px] h-12 min-h-[48px]"
                                   placeholder="Flight date and time"
                                 />
+                                {/* Uplan edit button */}
+                                <Button
+                                  variant="outline"
+                                  onClick={() => {
+                                    if (
+                                      plan.authorizationStatus === undefined ||
+                                      plan.authorizationStatus === null ||
+                                      plan.authorizationStatus === "sin autorización"
+                                    ) {
+                                      handleOpenUplanEdit(plan);
+                                    }
+                                  }}
+                                  disabled={
+                                    !(
+                                      plan.authorizationStatus === undefined ||
+                                      plan.authorizationStatus === null ||
+                                      plan.authorizationStatus === "sin autorización"
+                                    )
+                                  }
+                                  className={`text-yellow-400 hover:bg-yellow-500/90 hover:text-white border-yellow-400/50 hover:border-yellow-500 ml-2 min-w-[120px] h-12 min-h-[48px] flex items-center justify-center ${
+                                    plan.authorizationStatus !== undefined &&
+                                    plan.authorizationStatus !== null &&
+                                    plan.authorizationStatus !== "sin autorización"
+                                      ? "opacity-60 cursor-not-allowed"
+                                      : ""
+                                  }`}
+                                  title={
+                                    plan.authorizationStatus !== undefined &&
+                                    plan.authorizationStatus !== null &&
+                                    plan.authorizationStatus !== "sin autorización"
+                                      ? "U-plan can only be edited before authorization."
+                                      : undefined
+                                  }
+                                >
+                                  Edit U-plan
+                                </Button>
                                 <Button
                                   variant="outline"
                                   onClick={() =>
@@ -2016,12 +2055,18 @@ export function FlightPlansUploader() {
                                     <Button
                                       variant="outline"
                                       onClick={() => handleRequestAuthorization(plan.id)}
-                                      disabled={authorizationLoading[plan.id] || plan.status !== "procesado"}
-                                      className={
-                                        `text-blue-400 hover:bg-blue-500/90 hover:text-white border-blue-400/50 hover:border-blue-500 min-w-[153px] ml-2 flex items-center justify-center h-12 min-h-[48px]` +
-                                        (authorizationLoading[plan.id] || plan.status !== "procesado"
-                                          ? " opacity-50 cursor-not-allowed"
-                                          : "")
+                                      disabled={authorizationLoading[plan.id] || plan.status !== "procesado" || !plan.scheduledAt}
+                                      className={`text-blue-400 hover:bg-blue-500/90 hover:text-white border-blue-400/50 hover:border-blue-500 min-w-[153px] ml-2 flex items-center justify-center h-12 min-h-[48px]${
+                                        (authorizationLoading[plan.id] || plan.status !== "procesado" || !plan.scheduledAt)
+                                          ? " opacity-60 cursor-not-allowed"
+                                          : ""
+                                      }`}
+                                      title={
+                                        !plan.scheduledAt
+                                          ? "You must select a date and hour to send it to the FAS."
+                                          : (authorizationLoading[plan.id] || plan.status !== "procesado")
+                                          ? undefined
+                                          : undefined
                                       }
                                     >
                                       <div className="flex items-center justify-center">
@@ -2148,7 +2193,7 @@ export function FlightPlansUploader() {
       <Modal open={viewModalOpen} onClose={() => setViewModalOpen(false)} title={viewModalTitle}>
         <pre className="whitespace-pre-wrap text-xs max-h-[60vh] overflow-auto bg-gray-800 p-4 rounded-lg border border-gray-700 text-gray-100">{viewModalContent}</pre>
       </Modal>
-      <TrajectoryViewerModal
+      <MapModal
         open={trajectoryModalOpen}
         onClose={() => setTrajectoryModalOpen(false)}
         title={trajectoryModalTitle}
@@ -2190,6 +2235,13 @@ export function FlightPlansUploader() {
         errors={bulkErrorViewModal.errors}
         idx={bulkErrorIdx}
         setIdx={setBulkErrorIdx}
+      />
+      {/* Uplan Edit Modal */}
+      <UplanEditModal
+        open={uplanEditModal.open}
+        onClose={() => setUplanEditModal({ open: false, uplan: null, planId: null })}
+        uplan={uplanEditModal.uplan}
+        onSave={handleSaveUplanEdit}
       />
     </div>
   );

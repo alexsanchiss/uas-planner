@@ -38,8 +38,8 @@ export default async function handler(
     const scheduledAtPosix = Math.floor(
       new Date(flightPlan.scheduledAt).getTime() / 1000
     );
-    let uplanDetails: any = undefined;
-    if (flightPlan.uplan) {
+    let uplanDetails: unknown;
+    if (typeof flightPlan.uplan === 'string') {
       try {
         uplanDetails = JSON.parse(flightPlan.uplan);
       } catch (e) {

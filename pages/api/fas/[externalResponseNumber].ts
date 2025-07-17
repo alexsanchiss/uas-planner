@@ -6,6 +6,8 @@ export default async function handler(
   res: NextApiResponse
 ) {
   const { externalResponseNumber } = req.query;
+  // Asegura que sea string
+  const extRespNum = Array.isArray(externalResponseNumber) ? externalResponseNumber[0] : externalResponseNumber;
 
   if (req.method !== "PUT") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -19,7 +21,7 @@ export default async function handler(
 
     // Buscar el flightplan por externalResponseNumber
     const flightPlan = await prisma.flightPlan.findFirst({
-      where: { externalResponseNumber: externalResponseNumber },
+      where: { externalResponseNumber: extRespNum },
     });
 
     if (!flightPlan) {

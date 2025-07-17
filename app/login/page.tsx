@@ -6,20 +6,18 @@ import { useAuth } from "../hooks/useAuth";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
 import axios from "axios";
-import Link from "next/link";
 
 export default function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const [isSignup, setIsSignup] = useState(false);
   const [acceptPolicy, setAcceptPolicy] = useState(false);
+  const [error, setError] = useState("");
   const router = useRouter();
   const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
 
     if (isSignup) {
       // Sign Up
