@@ -38,9 +38,18 @@ export default async function handler(
     const scheduledAtPosix = Math.floor(
       new Date(flightPlan.scheduledAt).getTime() / 1000
     );
+    let uplanDetails: any = undefined;
+    if (flightPlan.uplan) {
+      try {
+        uplanDetails = JSON.parse(flightPlan.uplan);
+      } catch (e) {
+        uplanDetails = undefined;
+      }
+    }
     const uplan = trayToUplan({
       scheduledAt: scheduledAtPosix,
       csv: csvResult.csvResult,
+      ...(uplanDetails ? { uplan: uplanDetails } : {}),
     });
     console.log("Plan procesado");
     // 4. Enviar el U-Plan a la API externa
