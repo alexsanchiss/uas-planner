@@ -7,20 +7,32 @@ export function Footer() {
       <div className="container mx-auto px-4 py-6 grid grid-cols-1 md:grid-cols-4 gap-8 items-center text-center">
         {/* Logos stacked vertically and centered */}
         <div className="flex flex-col items-center justify-center space-y-4">
-          <Image
-            src="/images/SNA_WHITE.png"
-            alt="SNA Logo"
-            width={120}
-            height={100}
-            className="p-[2px]"
-          />
-          <Image
-            src="/images/marca_UPV_principal_blanco150.png"
-            alt="UPV Logo"
-            width={160}
-            height={90}
-            className="p-[2px] mt-0 !mt-0"
-          />
+          <a
+            href="https://sna-upv.com"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Image
+              src="/images/SNA_WHITE.png"
+              alt="SNA Logo"
+              width={120}
+              height={100}
+              className="p-[2px]"
+            />
+          </a>
+          <a
+            href="https://www.upv.es"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Image
+              src="/images/marca_UPV_principal_blanco150.png"
+              alt="UPV Logo"
+              width={160}
+              height={90}
+              className="p-[2px] mt-0 !mt-0"
+            />
+          </a>
         </div>
         {/* Social media icons stacked vertically and centered */}
         <div className="flex flex-col items-center justify-center space-y-6">
@@ -96,7 +108,7 @@ export function Footer() {
           >
             Trajectory Generator
           </Link>
-                    <Link
+          <Link
             href="/plan-activation"
             className="hover:text-blue-400 transition"
           >
@@ -122,8 +134,16 @@ export function Footer() {
       </div>
       {/* Copyright row */}
       <div className="w-full bg-gray-800 text-gray-400 text-xs text-center py-4 border-t border-gray-700">
-        &copy; {new Date().getFullYear()} U-PLAN PREPARATION SERVICE (UPPS) -
-        SNA Lab, UPV. All rights reserved.
+        &copy; {new Date().getFullYear()} U-PLAN PREPARATION SERVICE (UPPS) -{" "}
+        <a
+          href="https://www.sna-upv.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline hover:text-blue-400 transition"
+        >
+          SNA Lab, UPV
+        </a>
+        . All rights reserved.
       </div>
     </footer>
   );
