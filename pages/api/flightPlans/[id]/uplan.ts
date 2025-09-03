@@ -1,3 +1,59 @@
+// pages/api/flightPlans/[id]/uplan.ts
+//
+// U-PLAN GENERATION ENDPOINT - Specialized Business Logic
+// =======================================================
+//
+// This endpoint is kept separate from the unified API because it handles
+// specific business logic that doesn't fit the standard CRUD pattern.
+//
+// PURPOSE:
+// - Generates U-Plan format from CSV trajectory data
+// - Sends U-Plan to external authorization API
+// - Updates flight plan with authorization status
+// - Handles complex external API communication
+//
+// WHY NOT IN UNIFIED API:
+// - Complex business logic beyond simple CRUD
+// - External API integration with specific error handling
+// - State machine for authorization workflow
+// - Doesn't fit bulk operation patterns
+//
+// USAGE:
+// POST /api/flightPlans/{id}/uplan
+// 
+// PREREQUISITES:
+// - Flight plan must exist and have scheduledAt
+// - CSV result must exist for the plan
+// - Plan must not already have authorization status
+//
+// WORKFLOW:
+// 1. Validate flight plan and CSV existence
+// 2. Generate U-Plan from CSV trajectory
+// 3. Send to external authorization API
+// 4. Update local status based on response
+// 5. Return authorization result
+//
+// RESPONSE FORMATS:
+// Success: { message: "U-Plan generated and sent" }
+// Denied: { error: "denegado", message: "reason" }
+// Error: { error: "error_message" }
+//
+// EXTERNAL API:
+// - Endpoint: http://158.42.167.56:8000/uplan
+// - Method: POST
+// - Content-Type: application/json
+// - Payload: Generated U-Plan object
+//
+// AUTHORIZATION STATES:
+// - "FAS procesando..." - Initial processing
+// - "denegado" - Authorization denied
+// - "aprobado" - Authorization approved (default on success)
+//
+// ERROR HANDLING:
+// - Network errors are logged and stored
+// - External API errors update authorization status
+// - Invalid data returns appropriate HTTP status codes
+
 import { NextApiRequest, NextApiResponse } from "next";
 import prisma from "../../../../lib/prisma";
 import { trayToUplan } from "../../../../lib/uplan/tray_to_uplan";

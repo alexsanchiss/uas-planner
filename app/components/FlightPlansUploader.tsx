@@ -1,3 +1,61 @@
+// app/components/FlightPlansUploader.tsx
+//
+// FLIGHT PLANS UPLOADER COMPONENT - Unified API Integration
+// =========================================================
+//
+// This component demonstrates comprehensive usage of the unified APIs:
+// - /api/flightPlans: For all flight plan CRUD operations
+// - /api/csvResult: For all CSV result operations
+//
+// UNIFIED FLIGHT PLANS API USAGE:
+// ===============================
+//
+// 1. BULK UPLOAD (POST):
+//    POST /api/flightPlans
+//    Body: { items: [{ customName, status, fileContent, userId, folderId? }] }
+//
+// 2. BULK STATUS UPDATE (PUT):
+//    PUT /api/flightPlans
+//    Body: { ids: [123, 456, 789], data: { status: "en cola" } }
+//
+// 3. BULK SCHEDULED TIME UPDATE (PUT):
+//    PUT /api/flightPlans
+//    Body: { items: [{ id: 123, data: { scheduledAt: "2024-01-01T10:00:00Z" } }] }
+//
+// 4. BULK DELETE (DELETE):
+//    DELETE /api/flightPlans
+//    Body: { ids: [123, 456, 789] }
+//
+// UNIFIED CSV API USAGE:
+// =====================
+//
+// 1. BULK CSV FETCH (POST):
+//    POST /api/csvResult
+//    Body: { ids: [123, 456, 789] }
+//    Response: { items: [{ id, customName, csvResult }] }
+//
+// 2. INDIVIDUAL CSV FETCH (GET):
+//    GET /api/csvResult?id=123
+//    Response: { csvResult: "csv_content" }
+//
+// PERFORMANCE OPTIMIZATIONS:
+// - Batch processing: Large operations split into chunks (500 IDs per API call)
+// - Concurrency control: Limited to 5 simultaneous uploads
+// - Memory management: Large downloads split into multiple zip files (1000 files per zip)
+// - Parallel processing: CSV content and plan metadata fetched simultaneously
+//
+// USER EXPERIENCE FEATURES:
+// - Progress indicators for bulk operations
+// - Automatic file naming with conflict resolution
+// - Batch size optimization for different operation types
+// - Graceful error handling with user feedback
+//
+// COMPATIBILITY:
+// - Works seamlessly with both individual and bulk operations
+// - Maintains backward compatibility
+// - Unified error handling across all operations
+// - Consistent transaction safety
+
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -893,7 +951,8 @@ export function FlightPlansUploader() {
     for (let i = 0; i < ids.length; i += BATCH) {
       const batchIds = ids.slice(i, i + BATCH);
       try {
-        const res = await axios.post(`/api/csvResult/bulk`, { ids: batchIds });
+        // Use the unified CSV API
+        const res = await axios.post(`/api/csvResult`, { ids: batchIds });
         const items: { id: number, customName: string, csvResult: string }[] = res.data.items || [];
         // Partition into zips of at most ZIP_MAX_FILES
         for (let j = 0; j < items.length; j += ZIP_MAX_FILES) {
@@ -1094,7 +1153,8 @@ export function FlightPlansUploader() {
     for (let i = 0; i < processedIds.length; i += BATCH) {
       const batchIds = processedIds.slice(i, i + BATCH);
       try {
-        const res = await axios.post(`/api/csvResult/bulk`, { ids: batchIds });
+        // Use the unified CSV API
+        const res = await axios.post(`/api/csvResult`, { ids: batchIds });
         const items: { id: number, customName: string, csvResult: string }[] = res.data.items || [];
         for (let j = 0; j < items.length; j += ZIP_MAX_FILES) {
           const chunk = items.slice(j, j + ZIP_MAX_FILES);
@@ -1139,7 +1199,8 @@ export function FlightPlansUploader() {
 
   const downloadCsv = async (planId: number, fileName: string) => {
     try {
-      const response = await axios.get(`/api/csvResult/${planId}`);
+      // Use the unified CSV API for individual downloads
+      const response = await axios.get(`/api/csvResult?id=${planId}`);
       if (response.status === 200) {
         const csvData = response.data.csvResult;
         const blob = new Blob([csvData], { type: "text/csv" });
@@ -1421,7 +1482,8 @@ export function FlightPlansUploader() {
   // Function to fetch and show CSV content in modal
   const handleViewCsv = async (planId: number, customName: string) => {
     try {
-      const response = await axios.get(`/api/csvResult/${planId}`);
+      // Use the unified CSV API for individual view
+      const response = await axios.get(`/api/csvResult?id=${planId}`);
       if (response.status === 200) {
         const traj = parseTrajectoryCsv(response.data.csvResult);
         setTrajectoryData([traj]);
@@ -1451,7 +1513,8 @@ export function FlightPlansUploader() {
       const plan = flightPlans.find((p) => p.id === id);
       if (plan && plan.status === "procesado" && plan.csvResult) {
         try {
-          const response = await axios.get(`/api/csvResult/${id}`);
+          // Use the unified CSV API for individual view
+          const response = await axios.get(`/api/csvResult?id=${id}`);
           if (response.status === 200) {
             const traj = parseTrajectoryCsv(response.data.csvResult);
             trajs.push(traj);
@@ -1490,7 +1553,8 @@ export function FlightPlansUploader() {
     const names: string[] = [];
     for (const plan of folderPlans) {
       try {
-        const response = await axios.get(`/api/csvResult/${plan.id}`);
+        // Use the unified CSV API for individual view
+        const response = await axios.get(`/api/csvResult?id=${plan.id}`);
         if (response.status === 200) {
           const traj = parseTrajectoryCsv(response.data.csvResult);
           trajs.push(traj);
