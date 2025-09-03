@@ -155,15 +155,15 @@ POST /api/flightPlans/{id}/uplan
 ## 🗄️ Database Relationships
 
 ### **Flight Plan ↔ CSV Result**
-- **flightPlan.csvResult**: Integer field pointing to csvResult.id
-- **csvResult.id**: Primary key of CSV result table
-- **Relationship**: One-to-one (flight plan can have one CSV result)
-- **Deletion**: When flight plan is deleted, associated CSV result is automatically removed
+- **flightPlan.id**: Primary key of flight plan table
+- **csvResult.id**: Primary key of CSV result table  
+- **Relationship**: One-to-one with shared IDs (csvResult.id = flightPlan.id)
+- **Deletion**: When flight plan is deleted, CSV result with same ID is automatically removed
 
 ### **Data Integrity**
 - **Transaction Safety**: CSV deletion and flight plan deletion happen atomically
 - **Orphan Prevention**: No CSV results left without corresponding flight plans
-- **Bulk Operations**: Handles cases where some plans may not have CSV results
+- **Bulk Operations**: Handles all IDs consistently since they share the same values
 
 ## 📊 Migration Guide
 
