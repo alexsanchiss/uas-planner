@@ -444,6 +444,7 @@ export default function PlanGenerator() {
         const d = new Date(flightPlanDetails.datetime);
         if (!isNaN(d.getTime())) scheduledAt = d.toISOString();
       }
+      // Use the new unified API
       const createRes = await axios.post("/api/flightPlans", {
         customName: planName,
         status: "sin procesar",
