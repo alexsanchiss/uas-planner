@@ -65,8 +65,8 @@
 // 
 // CSV DELETION LOGIC:
 // - When deleting flight plans, associated CSV results are automatically removed
+// - csvResult.id and flightPlan.id share the same values in the database
 // - Uses transaction to ensure both operations succeed or fail together
-// - Handles cases where some plans may not have CSV results
 // - Returns detailed counts of deleted plans and CSV results
 
 import { NextApiRequest, NextApiResponse } from "next";
@@ -241,33 +241,20 @@ export default async function handler(
     }
 
           try {
-        // CORRECTED: Find flight plans and their associated CSV result IDs
-        // flightPlan.csvResult field points to csvResult.id
-        const plansWithCsv = await prisma.flightPlan.findMany({
-          where: { id: { in: targetIds } },
-          select: { id: true, csvResult: true },
-        });
-        
-        // Extract CSV result IDs that actually exist
-        const csvIds = plansWithCsv
-          .map((p) => p.csvResult)
-          .filter((csvId): csvId is number => csvId !== null && Number.isFinite(csvId));
+        // CORRECTED: csvResult.id and flightPlan.id share the same values
+        // So we can directly use the flight plan IDs to delete from csvResult table
+        const csvIds = targetIds; // Same IDs for both tables
 
-        const txOps = [];
-        
-        // Only add CSV deletion if there are CSV results to delete
-        if (csvIds.length > 0) {
-          txOps.push(prisma.csvResult.deleteMany({ where: { id: { in: csvIds } } }));
-        }
-        
-        // Always delete flight plans
-        txOps.push(prisma.flightPlan.deleteMany({ where: { id: { in: targetIds } } }));
+        const txOps = [
+          // Delete csvResult records first (using the same IDs)
+          prisma.csvResult.deleteMany({ where: { id: { in: csvIds } } }),
+          // Then delete flight plans
+          prisma.flightPlan.deleteMany({ where: { id: { in: targetIds } } }),
+        ];
 
         const result = await prisma.$transaction(txOps);
-        
-        // Calculate results based on operation count
-        const deletedCsvs = csvIds.length > 0 ? (result[0]?.count || 0) : 0;
-        const deletedPlans = csvIds.length > 0 ? (result[1]?.count || 0) : (result[0]?.count || 0);
+        const deletedCsvs = result[0]?.count || 0;
+        const deletedPlans = result[1]?.count || 0;
         
         return res.status(200).json({ 
           deletedPlans, 
