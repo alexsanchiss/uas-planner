@@ -46,26 +46,13 @@ Body: {
 ```typescript
 // Individual update
 PUT /api/flightPlans
-Body: {
-  id: 123,
-  data: { status: "en cola" }
-}
+Body: { id: 123, data: { status: "en cola" } }
 
-// Bulk uniform update (same data for all)
-PUT /api/flightPlans
-Body: {
-  ids: [123, 456, 789],
-  data: { status: "en cola" }
-}
+// Bulk (same data): PUT /api/flightPlans
+Body: { ids: [123, 456, 789], data: { status: "en cola" } }
 
-// Bulk per-item update (different data for each)
-PUT /api/flightPlans
-Body: {
-  items: [
-    { id: 123, data: { scheduledAt: "2024-01-01T10:00:00Z" } },
-    { id: 456, data: { scheduledAt: "2024-01-02T10:00:00Z" } }
-  ]
-}
+// Bulk (different data): PUT /api/flightPlans
+Body: { items: [{ id: 123, data: { scheduledAt: "2024-01-01T10:00:00Z" } }] }
 ```
 
 #### **DELETE** - Delete Flight Plans
