@@ -1,12 +1,32 @@
-// To use this component, install the dependencies with:
-// npm install react-leaflet@4 leaflet
-// For TypeScript types, also install:
-// npm install --save-dev @types/leaflet
-// For waypoint drag and drop:
-// npm install @hello-pangea/dnd
+// app/components/PlanGenerator.tsx
+//
+// PLAN GENERATOR COMPONENT - Unified API Integration
+// =================================================
+//
+// This component creates individual flight plans using the unified API
+// at /api/flightPlans. It demonstrates the individual creation pattern
+// that works alongside bulk operations.
+//
+// UNIFIED API USAGE:
+// ------------------
+// POST /api/flightPlans
+// Body: { customName, status, fileContent, userId, folderId?, uplan?, scheduledAt? }
+//
+// The unified API automatically detects this as individual creation
+// and processes it using createMany internally for consistency.
+//
+// COMPATIBILITY:
+// - Works with both individual and bulk API patterns
+// - No changes needed when switching between modes
+// - Maintains backward compatibility
+//
+// BENEFITS:
+// - Consistent with bulk operations
+// - Same error handling and validation
+// - Unified transaction management
+// - Better performance through optimized database calls
 
-"use client";
-import React, { useRef, useLayoutEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   MapContainer,
   TileLayer,
