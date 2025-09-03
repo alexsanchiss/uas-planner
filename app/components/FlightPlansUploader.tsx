@@ -686,8 +686,10 @@ export function FlightPlansUploader() {
   useEffect(() => {
     if (user) {
       fetchData();
-      const interval = setInterval(fetchData, 5000);
-      return () => clearInterval(interval);
+      // const interval = setInterval(fetchData, 5000);
+      // return () => clearInterval(interval);
+      // Removed periodic refresh to avoid re-render every 5 seconds
+      return;
     }
   }, [user]);
 
@@ -704,25 +706,101 @@ export function FlightPlansUploader() {
     }
   };
 
+  // Limit concurrency to avoid request floods
+  async function withConcurrency<T>(items: T[], limit: number, worker: (item: T, idx: number) => Promise<void>) {
+    let i = 0;
+    const running: Promise<void>[] = [];
+    const launch = () => {
+      if (i >= items.length) return;
+      const idx = i++;
+      const p = worker(items[idx], idx).finally(() => {
+        const pos = running.indexOf(p);
+        if (pos >= 0) running.splice(pos, 1);
+      });
+      running.push(p);
+      if (running.length < limit) launch();
+    };
+    const parallel = Math.min(limit, items.length);
+    for (let k = 0; k < parallel; k++) launch();
+    await Promise.all(running);
+  }
+
+  // Expand input FileList into a list of virtual files (supporting .zip)
+  type VirtualFile = { name: string; getText: () => Promise<string> };
+  const expandInputFiles = async (files: FileList | File[]): Promise<VirtualFile[]> => {
+    const list: File[] = Array.from(files as unknown as File[]);
+    const out: VirtualFile[] = [];
+    for (const f of list) {
+      const isZip = f.name.toLowerCase().endsWith('.zip') || f.type === 'application/zip';
+      if (!isZip) {
+        out.push({ name: f.name, getText: () => f.text() });
+        continue;
+      }
+      try {
+        const zip = await JSZip.loadAsync(await f.arrayBuffer());
+        const entries = Object.values(zip.files).filter((e: any) => !e.dir) as unknown as JSZip.JSZipObject[];
+        for (const entry of entries) {
+          // Read as text; skip binary
+          out.push({
+            name: entry.name.split('/').pop() || entry.name,
+            getText: () => entry.async('text'),
+          });
+        }
+      } catch (e) {
+        // If zip parsing fails, skip this file
+        // eslint-disable-next-line no-console
+        console.error('Failed to parse zip:', f.name, e);
+      }
+    }
+    return out;
+  };
+
   const handleFileUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
     folderId: number
   ) => {
     const files = e.target.files;
     if (files) {
-      const newPlans = await Promise.all(
-        Array.from(files).map(async (file) => {
+      const virtualFiles = await expandInputFiles(files);
+      // If extremely large selection, prefer bulk endpoint in chunks
+      const BULK_THRESHOLD = 100; // switch to bulk after this many files
+      const BULK_BATCH = 500; // client-side chunk size to keep payloads manageable
+      if (virtualFiles.length >= BULK_THRESHOLD) {
+        const chunks: VirtualFile[][] = [];
+        for (let i = 0; i < virtualFiles.length; i += BULK_BATCH) {
+          chunks.push(virtualFiles.slice(i, i + BULK_BATCH));
+        }
+        const createdItems: any[] = [];
+        for (const chunk of chunks) {
+          const plansPayload = await Promise.all(
+            chunk.map(async (vf) => ({
+              customName: vf.name.replace(/\.[^/.]+$/, ""),
+              status: "sin procesar",
+              fileContent: await vf.getText(),
+              userId: user?.id,
+              folderId: folderId,
+            }))
+          );
+          // Use the new unified API with items array
+          const res = await axios.post("/api/flightPlans", { items: plansPayload });
+          if (res?.data?.items) createdItems.push(...res.data.items);
+        }
+        setFlightPlans([...flightPlans, ...createdItems]);
+      } else {
+        // Fallback to per-file uploads with limited concurrency
+        const created: any[] = [];
+        await withConcurrency(virtualFiles, 5, async (vf) => {
           const response = await axios.post("/api/flightPlans", {
-            customName: file.name.replace(/\.[^/.]+$/, ""),
+            customName: vf.name.replace(/\.[^/.]+$/, ""),
             status: "sin procesar",
-            fileContent: await file.text(),
+            fileContent: await vf.getText(),
             userId: user?.id,
             folderId: folderId,
           });
-          return { ...response.data, file };
-        })
-      );
-      setFlightPlans([...flightPlans, ...newPlans]);
+          created.push({ ...response.data });
+        });
+        setFlightPlans([...flightPlans, ...created]);
+      }
     }
   };
 
@@ -774,33 +852,24 @@ export function FlightPlansUploader() {
     const folderPlans = flightPlans.filter(
       (plan) => plan.folderId === folderId
     );
+    const ids = folderPlans.map(p => p.id);
     // Actualizar estado local inmediatamente para todos los planes de la carpeta
     setFlightPlans(
       flightPlans.map((plan) =>
         plan.folderId === folderId ? { ...plan, status: "en cola" } : plan
       )
     );
-    // Procesar cada plan
-    for (const plan of folderPlans) {
-      try {
-        const response = await axios.put(`/api/flightPlans/${plan.id}`, {
-          status: "en cola",
-        });
-        // Actualizar el estado con la respuesta del servidor
-        setFlightPlans(
-          flightPlans.map((p) =>
-            p.id === plan.id ? { ...p, ...response.data } : p
-          )
-        );
-      } catch (error) {
-        console.error(`Error processing plan ${plan.id}:`, error);
-        // Actualizar el estado del plan específico a error
-        setFlightPlans(
-          flightPlans.map((p) =>
-            p.id === plan.id ? { ...p, status: "error" } : p
-          )
-        );
-      }
+    // Procesar todos en una sola llamada usando la API unificada
+    try {
+      await axios.put(`/api/flightPlans`, { ids, data: { status: "en cola" } });
+      fetchData();
+    } catch (error) {
+      console.error("Error bulk processing folder:", error);
+      setFlightPlans(
+        flightPlans.map((p) =>
+          ids.includes(p.id) ? { ...p, status: "error" } : p
+        )
+      );
     }
   };
 
@@ -815,14 +884,23 @@ export function FlightPlansUploader() {
       return;
     }
 
-    const zip = new JSZip();
-    const usedNames = new Map();
-    await Promise.all(
-      folderPlans.map(async (plan) => {
-        try {
-          const response = await axios.get(`/api/csvResult/${plan.id}`);
-          if (response.status === 200) {
-            let baseName = `${plan.customName}`;
+    // Use bulk API and split into multiple zips if large
+    const ids = folderPlans.map(p => p.id);
+    const BATCH = 500; // API batch size
+    const ZIP_MAX_FILES = 1000; // files per zip for memory limits
+    const usedNames = new Map<string, boolean>();
+
+    for (let i = 0; i < ids.length; i += BATCH) {
+      const batchIds = ids.slice(i, i + BATCH);
+      try {
+        const res = await axios.post(`/api/csvResult/bulk`, { ids: batchIds });
+        const items: { id: number, customName: string, csvResult: string }[] = res.data.items || [];
+        // Partition into zips of at most ZIP_MAX_FILES
+        for (let j = 0; j < items.length; j += ZIP_MAX_FILES) {
+          const chunk = items.slice(j, j + ZIP_MAX_FILES);
+          const zip = new JSZip();
+          chunk.forEach((it) => {
+            let baseName = `${it.customName}`;
             let fileName = `${baseName}.csv`;
             let count = 1;
             while (usedNames.has(fileName)) {
@@ -830,17 +908,16 @@ export function FlightPlansUploader() {
               count++;
             }
             usedNames.set(fileName, true);
-            zip.file(fileName, response.data.csvResult);
-          }
-        } catch (error) {
-          console.error(`Error downloading CSV for plan ${plan.id}:`, error);
+            zip.file(fileName, it.csvResult);
+          });
+          const content = await zip.generateAsync({ type: "blob" });
+          const zipName = `${folder?.name || "folder"}${ids.length > ZIP_MAX_FILES ? `_${i + j + 1}-${i + j + chunk.length}` : ""}.zip`;
+          saveAs(content, zipName);
         }
-      })
-    );
-
-    zip.generateAsync({ type: "blob" }).then((content) => {
-      saveAs(content, `${folder?.name || "folder"}.zip`);
-    });
+      } catch (error) {
+        console.error("Error bulk downloading CSVs:", error);
+      }
+    }
   };
 
   const handleDeleteFolder = async (folderId: number) => {
@@ -852,15 +929,13 @@ export function FlightPlansUploader() {
       try {
         // Obtener todos los planes de la carpeta
         const folderPlans = flightPlans.filter((p) => p.folderId === folderId);
-
-        // Eliminar primero todos los planes de la carpeta
-        await Promise.all(
-          folderPlans.map((plan) => axios.delete(`/api/flightPlans/${plan.id}`))
-        );
-
-        // Eliminar la carpeta
+        const ids = folderPlans.map(p => p.id);
+        if (ids.length > 0) {
+          // Use the unified index route for bulk deletion
+          await axios.delete(`/api/flightPlans`, { data: { ids } });
+        }
+        // Eliminar la carpeta usando la API optimizada
         await axios.delete(`/api/folders/${folderId}`);
-
         // Actualizar estado local después de que todo se haya eliminado correctamente
         setFolders((prevFolders) =>
           prevFolders.filter((f) => f.id !== folderId)
@@ -916,9 +991,7 @@ export function FlightPlansUploader() {
           plan.id === planId ? { ...plan, customName: newName } : plan
         )
       );
-      await axios.put(`/api/flightPlans/${planId}`, {
-        customName: newName,
-      });
+      await axios.put(`/api/flightPlans`, { id: planId, data: { customName: newName } });
     } catch (error) {
       console.error("Error updating plan name:", error);
       fetchData();
@@ -940,9 +1013,7 @@ export function FlightPlansUploader() {
             : plan
         )
       );
-      await axios.put(`/api/flightPlans/${planId}`, {
-        scheduledAt: value ? new Date(value).toISOString() : null,
-      });
+      await axios.put(`/api/flightPlans`, { id: planId, data: { scheduledAt: value ? new Date(value).toISOString() : null } });
     } catch (error) {
       console.error("Error updating scheduledAt:", error);
       fetchData();
@@ -951,19 +1022,12 @@ export function FlightPlansUploader() {
 
   const handleProcessTrajectory = async (planId: number) => {
     try {
-      // Actualizar estado local inmediatamente
       setFlightPlans(
         flightPlans.map((plan) =>
           plan.id === planId ? { ...plan, status: "en cola" } : plan
         )
       );
-
-      // Realizar la petición al servidor
-      const response = await axios.put(`/api/flightPlans/${planId}`, {
-        status: "en cola",
-      });
-
-      // Actualizar el estado con la respuesta del servidor
+      const response = await axios.put(`/api/flightPlans`, { id: planId, data: { status: "en cola" } });
       setFlightPlans(
         flightPlans.map((plan) =>
           plan.id === planId ? { ...plan, ...response.data } : plan
@@ -971,7 +1035,6 @@ export function FlightPlansUploader() {
       );
     } catch (error) {
       console.error("Error processing plan:", error);
-      // Revertir el estado en caso de error
       setFlightPlans(
         flightPlans.map((plan) =>
           plan.id === planId ? { ...plan, status: "error" } : plan
@@ -984,7 +1047,7 @@ export function FlightPlansUploader() {
     try {
       setFlightPlans(flightPlans.filter((p) => p.id !== planId));
       setSelectedPlans(selectedPlans.filter((id) => id !== planId));
-      await axios.delete(`/api/flightPlans/${planId}`);
+      await axios.delete(`/api/flightPlans`, { data: { id: planId } });
     } catch (error) {
       console.error("Error deleting plan:", error);
       fetchData();
@@ -998,27 +1061,16 @@ export function FlightPlansUploader() {
         selectedPlans.includes(plan.id) ? { ...plan, status: "en cola" } : plan
       )
     );
-    // Procesar cada plan seleccionado
-    for (const planId of selectedPlans) {
-      try {
-        const response = await axios.put(`/api/flightPlans/${planId}`, {
-          status: "en cola",
-        });
-        // Actualizar el estado con la respuesta del servidor
-        setFlightPlans(
-          flightPlans.map((p) =>
-            p.id === planId ? { ...p, ...response.data } : p
-          )
-        );
-      } catch (error) {
-        console.error(`Error processing plan ${planId}:`, error);
-        // Actualizar el estado del plan específico a error
-        setFlightPlans(
-          flightPlans.map((p) =>
-            p.id === planId ? { ...p, status: "error" } : p
-          )
-        );
-      }
+    try {
+      await axios.put(`/api/flightPlans`, { ids: selectedPlans, data: { status: "en cola" } });
+      fetchData();
+    } catch (error) {
+      console.error("Error bulk processing selected plans:", error);
+      setFlightPlans(
+        flightPlans.map((p) =>
+          selectedPlans.includes(p.id) ? { ...p, status: "error" } : p
+        )
+      );
     }
   };
 
@@ -1028,49 +1080,56 @@ export function FlightPlansUploader() {
       return;
     }
 
-    const zip = new JSZip();
-    const usedNames = new Map();
-    await Promise.all(
-      selectedPlans.map(async (id) => {
-        const plan = flightPlans.find((p) => p.id === id);
-        if (plan?.status === "procesado" && plan.csvResult) {
-          try {
-            const response = await axios.get(`/api/csvResult/${id}`);
-            if (response.status === 200) {
-              let baseName = `${plan.customName}`;
-              let fileName = `${baseName}.csv`;
-              let count = 1;
-              while (usedNames.has(fileName)) {
-                fileName = `${baseName} (${count}).csv`;
-                count++;
-              }
-              usedNames.set(fileName, true);
-              zip.file(fileName, response.data.csvResult);
-            }
-          } catch (error) {
-            console.error(`Error downloading CSV for plan ${id}:`, error);
-          }
-        }
-      })
-    );
-
-    zip.generateAsync({ type: "blob" }).then((content) => {
-      saveAs(content, "selected_plans.zip");
+    const processedIds = selectedPlans.filter((id) => {
+      const p = flightPlans.find(fp => fp.id === id);
+      return p?.status === "procesado" && p.csvResult;
     });
+    if (processedIds.length === 0) {
+      alert("No processed plans selected to download.");
+      return;
+    }
+    const BATCH = 500;
+    const ZIP_MAX_FILES = 1000;
+    const usedNames = new Map<string, boolean>();
+    for (let i = 0; i < processedIds.length; i += BATCH) {
+      const batchIds = processedIds.slice(i, i + BATCH);
+      try {
+        const res = await axios.post(`/api/csvResult/bulk`, { ids: batchIds });
+        const items: { id: number, customName: string, csvResult: string }[] = res.data.items || [];
+        for (let j = 0; j < items.length; j += ZIP_MAX_FILES) {
+          const chunk = items.slice(j, j + ZIP_MAX_FILES);
+          const zip = new JSZip();
+          chunk.forEach((it) => {
+            let baseName = `${it.customName}`;
+            let fileName = `${baseName}.csv`;
+            let count = 1;
+            while (usedNames.has(fileName)) {
+              fileName = `${baseName} (${count}).csv`;
+              count++;
+            }
+            usedNames.set(fileName, true);
+            zip.file(fileName, it.csvResult);
+          });
+          const content = await zip.generateAsync({ type: "blob" });
+          const zipName = processedIds.length > ZIP_MAX_FILES ? `selected_${i + j + 1}-${i + j + chunk.length}.zip` : `selected_plans.zip`;
+          saveAs(content, zipName);
+        }
+      } catch (error) {
+        console.error("Error bulk downloading selected CSVs:", error);
+      }
+    }
   };
 
   const handleDeleteSelectedPlans = async () => {
     if (typeof window !== 'undefined' && window.confirm("Are you sure you want to delete the selected plans?")) {
       try {
-        setFlightPlans(
-          flightPlans.filter((p) => !selectedPlans.includes(p.id))
-        );
+        const ids = [...selectedPlans];
+        if (ids.length > 0) {
+          // Use the unified index route for bulk deletion
+          await axios.delete(`/api/flightPlans`, { data: { ids } });
+        }
+        setFlightPlans(flightPlans.filter((p) => !ids.includes(p.id)));
         setSelectedPlans([]);
-        await Promise.all(
-          selectedPlans.map((planId) =>
-            axios.delete(`/api/flightPlans/${planId}`)
-          )
-        );
       } catch (error) {
         console.error("Error deleting selected plans:", error);
         fetchData();
@@ -1142,25 +1201,50 @@ export function FlightPlansUploader() {
 
     const files = e.dataTransfer.files;
     if (files) {
-      const newPlans = await Promise.all(
-        Array.from(files).map(async (file) => {
+      const virtualFiles = await expandInputFiles(files);
+      const BULK_THRESHOLD = 100;
+      const BULK_BATCH = 500;
+      if (virtualFiles.length >= BULK_THRESHOLD) {
+        const chunks: VirtualFile[][] = [];
+        for (let i = 0; i < virtualFiles.length; i += BULK_BATCH) {
+          chunks.push(virtualFiles.slice(i, i + BULK_BATCH));
+        }
+        const createdItems: any[] = [];
+        for (const chunk of chunks) {
+          const plansPayload = await Promise.all(
+            chunk.map(async (vf) => ({
+              customName: vf.name.replace(/\.[^/.]+$/, ""),
+              status: "sin procesar",
+              fileContent: await vf.getText(),
+              userId: user?.id,
+              folderId: folderId,
+            }))
+          );
+          // Use the new unified API with items array
+          const res = await axios.post("/api/flightPlans", { items: plansPayload });
+          if (res?.data?.items) createdItems.push(...res.data.items);
+        }
+        setFlightPlans([...flightPlans, ...createdItems]);
+      } else {
+        // Fallback to per-file uploads with limited concurrency
+        const created: any[] = [];
+        await withConcurrency(virtualFiles, 5, async (vf) => {
           const response = await axios.post("/api/flightPlans", {
-            customName: file.name.replace(/\.[^/.]+$/, ""),
+            customName: vf.name.replace(/\.[^/.]+$/, ""),
             status: "sin procesar",
-            fileContent: await file.text(),
+            fileContent: await vf.getText(),
             userId: user?.id,
-            folderId: folderId || null,
+            folderId: folderId,
           });
-          return { ...response.data, file };
-        })
-      );
-      setFlightPlans([...flightPlans, ...newPlans]);
+          created.push({ ...response.data });
+        });
+        setFlightPlans([...flightPlans, ...created]);
+      }
     }
   };
 
   const handleRequestAuthorization = async (planId: number) => {
     setAuthorizationLoading((prev) => ({ ...prev, [planId]: true }));
-    // Cambiar estado localmente a "procesando autorización"
     setFlightPlans((prev) =>
       prev.map((plan) =>
         plan.id === planId
@@ -1169,18 +1253,11 @@ export function FlightPlansUploader() {
       )
     );
     try {
-      // Actualizar el estado en la base de datos
-      await axios.put(`/api/flightPlans/${planId}`, {
-        authorizationStatus: "procesando autorización",
-      });
-      // Llamar al endpoint de generación de U-Plan
+      await axios.put(`/api/flightPlans`, { id: planId, data: { authorizationStatus: "procesando autorización" } });
       await axios.post(`/api/flightPlans/${planId}/uplan`);
-      // No actualizamos el estado local a aprobado o denegado aquí, dejamos que fetchData lo haga
     } catch (error: any) {
-      // Error de red o del backend
       const errorMsg =
         error?.response?.data?.error || error?.message || "Unknown error";
-      // Opcional: podrías mostrar un toast o alerta, pero no cambies el estado local a denegado
       console.error("Error requesting authorization:", errorMsg);
     } finally {
       setAuthorizationLoading((prev) => ({ ...prev, [planId]: false }));
@@ -1222,20 +1299,16 @@ export function FlightPlansUploader() {
       (plan) => plan.folderId === folderId
     );
     try {
-      // Generar y enviar todas las actualizaciones en paralelo
-      const updates = await Promise.all(
-        folderPlans.map(async (plan) => {
-          const randomTime = new Date(min + Math.random() * (max - min));
-          const iso = randomTime.toISOString();
-          await axios.put(`/api/flightPlans/${plan.id}`, { scheduledAt: iso });
-          return { ...plan, scheduledAt: iso };
-        })
-      );
-      // Actualizar el estado local solo después de que todas las peticiones hayan sido exitosas
+      const items = folderPlans.map((plan) => {
+        const randomTime = new Date(min + Math.random() * (max - min));
+        const iso = randomTime.toISOString();
+        return { id: plan.id, data: { scheduledAt: iso } };
+      });
+      await axios.put(`/api/flightPlans`, { items });
       setFlightPlans((prevPlans) =>
         prevPlans.map((plan) => {
-          const updated = updates.find((u) => u.id === plan.id);
-          return updated ? updated : plan;
+          const it = items.find((i) => i.id === plan.id);
+          return it ? { ...plan, scheduledAt: (it.data as any).scheduledAt } : plan;
         })
       );
     } catch (error) {
@@ -1495,7 +1568,7 @@ export function FlightPlansUploader() {
   const handleSaveUplanEdit = async (newUplan: any) => {
     if (!uplanEditModal.planId) return;
     try {
-      await axios.put(`/api/flightPlans/${uplanEditModal.planId}`, { uplan: JSON.stringify(newUplan) });
+      await axios.put(`/api/flightPlans`, { id: uplanEditModal.planId, data: { uplan: JSON.stringify(newUplan) } });
       setFlightPlans(flightPlans.map(plan =>
         plan.id === uplanEditModal.planId ? { ...plan, uplan: newUplan } : plan
       ));
