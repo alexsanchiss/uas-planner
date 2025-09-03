@@ -192,11 +192,32 @@ export default async function handler(
         return res.status(200).json({ count: total });
       }
 
-      if (!Array.isArray(ids) || ids.length === 0 || typeof data !== 'object' || data == null) {
-        return res.status(400).json({ error: "Provide either { ids, data } or { items }" });
+      // INDIVIDUAL UPDATE: Single plan update with { id, data }
+      if (id && Number.isFinite(Number(id)) && typeof data === 'object' && data !== null) {
+        const updateData = sanitizeData(data);
+        if (Object.keys(updateData).length === 0) {
+          return res.status(400).json({ error: "No supported fields in data" });
+        }
+
+        const result = await prisma.flightPlan.updateMany({
+          where: { id: Number(id) },
+          data: updateData,
+        });
+
+        if (result.count === 0) {
+          return res.status(404).json({ error: "Flight plan not found" });
+        }
+
+        // Return the updated flight plan
+        const updated = await prisma.flightPlan.findUnique({ where: { id: Number(id) } });
+        return res.status(200).json(updated);
       }
 
       // BULK UNIFORM UPDATE: Same data for multiple plans (e.g., status change)
+      if (!Array.isArray(ids) || ids.length === 0 || typeof data !== 'object' || data == null) {
+        return res.status(400).json({ error: "Provide either { id, data }, { ids, data }, or { items }" });
+      }
+
       const MAX_IDS = 5000;
       const targetIds = ids.slice(0, MAX_IDS).map((x: any) => Number(x)).filter((x: any) => Number.isFinite(x));
       if (targetIds.length === 0) {
