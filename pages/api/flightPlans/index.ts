@@ -218,7 +218,7 @@ export default async function handler(
         return res.status(400).json({ error: "Provide either { id, data }, { ids, data }, or { items }" });
       }
 
-      const MAX_IDS = 5000;
+      const MAX_IDS = 100000;
       const targetIds = ids.slice(0, MAX_IDS).map((x: any) => Number(x)).filter((x: any) => Number.isFinite(x));
       if (targetIds.length === 0) {
         return res.status(400).json({ error: "No valid ids provided" });
@@ -252,7 +252,7 @@ export default async function handler(
     if (!Array.isArray(rawIds) || rawIds.length === 0) {
       return res.status(400).json({ error: "ids[] or id is required" });
     }
-    const MAX_IDS = 5000;
+    const MAX_IDS = 100000;
     const targetIds = rawIds
       .slice(0, MAX_IDS)
       .map((x: any) => Number(x))
