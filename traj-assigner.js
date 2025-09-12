@@ -10,6 +10,32 @@ if (!fs.existsSync(logFile)) {
   fs.writeFileSync(logFile, 'id,CustomName,Inicio\n');
 }
 
+// ---- FUNCIÓN DE LIMPIEZA SOLO DE PROCESADOS CON csvResult < 2KB ----
+const cleanSmallCsvResults = async () => {
+  try {
+    // Buscar todos los registros en csvResult
+    const smallCsvPlans = await prisma.csvResult.findMany();
+
+    // Filtrar los que ocupan menos de 2 KB
+    const smallIds = smallCsvPlans
+      .filter(p => p.csvResult && Buffer.byteLength(p.csvResult, "utf8") < 2048)
+      .map(p => p.id);
+
+    if (smallIds.length > 0) {
+      const resetSmall = await prisma.flightPlan.updateMany({
+        where: { id: { in: smallIds }, status: "procesado" },
+        data: { status: "en cola", machineAssignedId: null, csvResult: "" },
+      });
+      console.log(`📉 Se han reestablecido ${resetSmall.count} planes "procesado" con csvResult < 2KB a "en cola".`);
+    } else {
+      console.log("📁 No hay planes procesados con csvResult menor de 2KB.");
+    }
+  } catch (error) {
+    console.error("❌ Error en cleanSmallCsvResults:", error);
+  }
+};
+
+// ---- FUNCIÓN DE ASIGNACIÓN ----
 const assignNextPlan = async () => {
   if (isProcessing) return;
   isProcessing = true;
@@ -62,8 +88,13 @@ const assignNextPlan = async () => {
   }
 };
 
+// ---- MAIN ----
 const main = async () => {
-  setInterval(assignNextPlan, 10); // Revisión cada 10ms para evitar sobrecarga
+  // Ejecutar asignación cada 10ms
+  setInterval(assignNextPlan, 10);
+
+  // Ejecutar limpieza de planes procesados con csvResult < 2KB cada 1 minuto
+  setInterval(cleanSmallCsvResults, 60 * 1000);
 };
 
 main().catch((e) => {
