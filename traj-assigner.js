@@ -27,7 +27,7 @@ const cleanSmallCsvResults = async () => {
     // 2. Resetear flightPlan asociado
     const resetSmall = await prisma.flightPlan.updateMany({
       where: { id: { in: smallIds } },
-      data: { status: 'en cola', machineAssignedId: null, csvResult: '' },
+      data: { status: 'en cola', machineAssignedId: null, csvResult: null },
     });
 
     // 3. Eliminar filas de csvResult
