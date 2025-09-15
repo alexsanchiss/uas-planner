@@ -13,26 +13,29 @@ if (!fs.existsSync(logFile)) {
 // ---- FUNCIÓN DE LIMPIEZA SOLO DE PROCESADOS CON csvResult < 2KB ----
 const cleanSmallCsvResults = async () => {
   try {
-    // Seleccionar únicamente IDs de planes "procesado" con csvResult < 2048 bytes, sin traer el texto
+    // 1. Seleccionar solo IDs de csvResult con menos de 2KB
     const rows = await prisma.$queryRawUnsafe(
-      'SELECT fp.id \
-       FROM `flightPlan` AS fp \
-       JOIN `csvResult` AS cr ON cr.id = fp.id \
-       WHERE fp.status = "procesado" AND OCTET_LENGTH(cr.csvResult) < 2048'
+      'SELECT id FROM `csvResult` WHERE OCTET_LENGTH(csvResult) < 2048'
     );
 
     const smallIds = rows.map(r => r.id);
     if (smallIds.length === 0) {
-      console.log('📁 No hay planes procesados con csvResult < 2KB.');
+      console.log('📁 No hay planes con csvResult < 2KB.');
       return;
     }
 
+    // 2. Resetear flightPlan asociado
     const resetSmall = await prisma.flightPlan.updateMany({
-      where: { id: { in: smallIds }, status: 'procesado' },
+      where: { id: { in: smallIds } },
       data: { status: 'en cola', machineAssignedId: null, csvResult: '' },
     });
 
-    console.log(`📉 Reestablecidos ${resetSmall.count} planes "procesado" con csvResult < 2KB a "en cola".`);
+    // 3. Eliminar filas de csvResult
+    const deleted = await prisma.csvResult.deleteMany({
+      where: { id: { in: smallIds } },
+    });
+
+    console.log(`📉 Reestablecidos ${resetSmall.count} planes y eliminados ${deleted.count} registros de csvResult (< 2KB).`);
   } catch (error) {
     console.error('❌ Error en cleanSmallCsvResults:', error);
   }
