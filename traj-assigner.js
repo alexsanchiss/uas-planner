@@ -13,25 +13,28 @@ if (!fs.existsSync(logFile)) {
 // ---- FUNCIÓN DE LIMPIEZA SOLO DE PROCESADOS CON csvResult < 2KB ----
 const cleanSmallCsvResults = async () => {
   try {
-    // Buscar todos los registros en csvResult
-    const smallCsvPlans = await prisma.csvResult.findMany();
+    // Seleccionar únicamente IDs de planes "procesado" con csvResult < 2048 bytes, sin traer el texto
+    const rows = await prisma.$queryRawUnsafe(
+      'SELECT fp.id \
+       FROM `flightPlan` AS fp \
+       JOIN `csvResult` AS cr ON cr.id = fp.id \
+       WHERE fp.status = "procesado" AND OCTET_LENGTH(cr.csvResult) < 2048'
+    );
 
-    // Filtrar los que ocupan menos de 2 KB
-    const smallIds = smallCsvPlans
-      .filter(p => p.csvResult && Buffer.byteLength(p.csvResult, "utf8") < 2048)
-      .map(p => p.id);
-
-    if (smallIds.length > 0) {
-      const resetSmall = await prisma.flightPlan.updateMany({
-        where: { id: { in: smallIds }, status: "procesado" },
-        data: { status: "en cola", machineAssignedId: null, csvResult: "" },
-      });
-      console.log(`📉 Se han reestablecido ${resetSmall.count} planes "procesado" con csvResult < 2KB a "en cola".`);
-    } else {
-      console.log("📁 No hay planes procesados con csvResult menor de 2KB.");
+    const smallIds = rows.map(r => r.id);
+    if (smallIds.length === 0) {
+      console.log('📁 No hay planes procesados con csvResult < 2KB.');
+      return;
     }
+
+    const resetSmall = await prisma.flightPlan.updateMany({
+      where: { id: { in: smallIds }, status: 'procesado' },
+      data: { status: 'en cola', machineAssignedId: null, csvResult: '' },
+    });
+
+    console.log(`📉 Reestablecidos ${resetSmall.count} planes "procesado" con csvResult < 2KB a "en cola".`);
   } catch (error) {
-    console.error("❌ Error en cleanSmallCsvResults:", error);
+    console.error('❌ Error en cleanSmallCsvResults:', error);
   }
 };
 
