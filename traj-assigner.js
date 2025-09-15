@@ -96,8 +96,8 @@ const main = async () => {
   // Ejecutar asignación cada 10ms
   setInterval(assignNextPlan, 10);
 
-  // Ejecutar limpieza de planes procesados con csvResult < 2KB cada 1 minuto
-  setInterval(cleanSmallCsvResults, 60 * 1000);
+  // Ejecutar limpieza de planes procesados con csvResult < 2KB cada 5 minutos
+  setInterval(cleanSmallCsvResults, 60 * 5000);
 };
 
 main().catch((e) => {
