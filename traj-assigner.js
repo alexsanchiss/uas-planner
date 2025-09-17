@@ -14,9 +14,14 @@ if (!fs.existsSync(logFile)) {
 const cleanSmallCsvResults = async () => {
   try {
     // 1. Seleccionar solo IDs de csvResult con menos de 2KB
-    const rows = await prisma.$queryRawUnsafe(
-      'SELECT id FROM `csvResult` WHERE OCTET_LENGTH(csvResult) < 2048'
-    );
+    const rows = await prisma.$queryRawUnsafe(`
+      SELECT fp.id
+      FROM flightPlan fp
+      JOIN csvResult cr ON cr.id = fp.id
+      WHERE fp.status = "procesado"
+        AND fp.csvResult = 1
+        AND OCTET_LENGTH(cr.csvResult) < 2048
+    `);
 
     const smallIds = rows.map(r => r.id);
     if (smallIds.length === 0) {
