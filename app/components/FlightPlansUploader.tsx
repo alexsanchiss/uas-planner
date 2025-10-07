@@ -709,6 +709,7 @@ export function FlightPlansUploader() {
   const [newFolderName, setNewFolderName] = useState("");
   const [expandedFolders, setExpandedFolders] = useState<number[]>([]);
   const { user } = useAuth();
+  const [isInitialLoading, setIsInitialLoading] = useState<boolean>(false);
   const [folderFilters, setFolderFilters] = useState<{ [key: number]: string }>(
     {}
   );
@@ -742,13 +743,19 @@ export function FlightPlansUploader() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (user) {
-      fetchData();
-      // const interval = setInterval(fetchData, 5000);
-      // return () => clearInterval(interval);
-      // Removed periodic refresh to avoid re-render every 5 seconds
-      return;
-    }
+    if (!user) return;
+    let isMounted = true;
+    (async () => {
+      try {
+        if (isMounted) setIsInitialLoading(true);
+        await fetchData();
+      } finally {
+        if (isMounted) setIsInitialLoading(false);
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
   }, [user]);
 
   const fetchData = async () => {
@@ -1694,6 +1701,14 @@ export function FlightPlansUploader() {
         </div>
 
         {user ? (
+          isInitialLoading ? (
+            <div className="flex items-center justify-center py-24">
+              <div className="flex items-center gap-3 text-gray-300">
+                <Loader2Icon className="h-6 w-6 animate-spin" />
+                <span className="text-lg">Loading flight plans…</span>
+              </div>
+            </div>
+          ) : (
           <>
             <div className="mb-6 flex gap-4">
               <Input
@@ -2323,6 +2338,7 @@ export function FlightPlansUploader() {
               </Button>
             </div>
           </>
+          )
         ) : (
           <p className="text-center text-red-500">You must be logged in</p>
         )}
