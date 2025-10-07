@@ -26,6 +26,10 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
       if (response.ok) {
         const { token } = await response.json()
         localStorage.setItem('authToken', token)
+        // Notify the app so hooks can refresh the current user immediately
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('auth:changed'))
+        }
         onLoginSuccess()
       } else {
         const data = await response.json()
