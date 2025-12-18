@@ -117,6 +117,7 @@ interface FlightPlan {
   uplan?: any;
   authorizationMessage?: any;
   scheduledAt?: string | null;
+  geoawarenessData?: any;
 }
 
 const PLANS_PER_FOLDER_PAGE = 25;
@@ -735,7 +736,7 @@ export function FlightPlansUploader() {
   const [trajectoryNames, setTrajectoryNames] = useState<string[]>([]);
   // Add state for U-plan modals
   const [uplanErrorModal, setUplanErrorModal] = useState<{ open: boolean, message: string }>({ open: false, message: '' });
-  const [uplanViewModal, setUplanViewModal] = useState<{ open: boolean, uplan: any, name: string }>({ open: false, uplan: null, name: '' });
+  const [uplanViewModal, setUplanViewModal] = useState<{ open: boolean, uplan: any, name: string, geoawarenessData: any }>({ open: false, uplan: null, name: '', geoawarenessData: null });
   const [bulkUplanViewModal, setBulkUplanViewModal] = useState<{ open: boolean, uplans: any[], names: string[] }>({ open: false, uplans: [], names: [] });
   const [bulkErrorViewModal, setBulkErrorViewModal] = useState<{ open: boolean, errors: {name: string, message: any}[], idx: number }>({ open: false, errors: [], idx: 0 });
   const [bulkErrorIdx, setBulkErrorIdx] = useState(0);
@@ -1342,6 +1343,22 @@ export function FlightPlansUploader() {
       // First, call geoawareness check endpoint
       const geoResponse = await axios.post(`/api/flightPlans/${planId}/geoawareness`);
       const { geozones, trajectory, hasConflicts, planName } = geoResponse.data;
+      
+      // Save geoawareness data to database
+      const geoawarenessData = { geozones, trajectory, hasConflicts, checkedAt: new Date().toISOString() };
+      await axios.put(`/api/flightPlans`, { 
+        id: planId, 
+        data: { geoawarenessData: JSON.stringify(geoawarenessData) } 
+      });
+      
+      // Update local state with geoawareness data
+      setFlightPlans((prev) =>
+        prev.map((p) =>
+          p.id === planId
+            ? { ...p, geoawarenessData }
+            : p
+        )
+      );
       
       // Show geoawareness modal with results
       setGeoawarenessModal({
@@ -2328,7 +2345,7 @@ export function FlightPlansUploader() {
                                   ) : plan.authorizationStatus === "aprobado" ? (
                                     <Button
                                       variant="outline"
-                                      onClick={() => setUplanViewModal({ open: true, uplan: plan.uplan, name: plan.customName })}
+                                      onClick={() => setUplanViewModal({ open: true, uplan: plan.uplan, name: plan.customName, geoawarenessData: plan.geoawarenessData })}
                                       className="text-green-400 hover:bg-green-500/90 hover:text-white border-green-400/50 hover:border-green-500 min-w-[153px] ml-2 flex items-center justify-center h-12 min-h-[48px]"
                                     >
                                       <div className="flex items-center justify-center">
@@ -2470,9 +2487,10 @@ export function FlightPlansUploader() {
       />
       <UplanViewModal
         open={uplanViewModal.open}
-        onClose={() => setUplanViewModal({ open: false, uplan: null, name: '' })}
+        onClose={() => setUplanViewModal({ open: false, uplan: null, name: '', geoawarenessData: null })}
         uplan={uplanViewModal.uplan}
         name={uplanViewModal.name}
+        geoawarenessData={uplanViewModal.geoawarenessData}
       />
       {/* Bulk Uplan Modal placeholder */}
       <Modal open={bulkUplanViewModal.open} onClose={() => setBulkUplanViewModal({ open: false, uplans: [], names: [] })} title="Bulk U-Plan Viewer">

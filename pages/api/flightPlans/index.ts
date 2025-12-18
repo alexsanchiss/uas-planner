@@ -162,6 +162,16 @@ export default async function handler(
       if (typeof d.csvResult === 'number' || d.csvResult === null) out.csvResult = d.csvResult;
       if (typeof d.machineAssignedId === 'number' || d.machineAssignedId === null) out.machineAssignedId = d.machineAssignedId;
       if (typeof d.folderId === 'number' || d.folderId === null) out.folderId = d.folderId;
+      // Support geoawarenessData as JSON - can be string (to parse) or object or null
+      if (typeof d.geoawarenessData === 'string') {
+        try {
+          out.geoawarenessData = JSON.parse(d.geoawarenessData);
+        } catch {
+          out.geoawarenessData = d.geoawarenessData;
+        }
+      } else if (typeof d.geoawarenessData === 'object' || d.geoawarenessData === null) {
+        out.geoawarenessData = d.geoawarenessData;
+      }
       return out;
     };
 
