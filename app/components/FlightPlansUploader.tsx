@@ -71,6 +71,7 @@ import dynamic from 'next/dynamic';
 const MapModal = dynamic(() => import('./MapModal'), { ssr: false });
 const UplanViewModal = dynamic(() => import('./UplanViewModal'), { ssr: false });
 const BulkUplanViewModal = dynamic(() => import('./BulkUplanViewModal'), { ssr: false });
+const GeoawarenessModal = dynamic(() => import('./GeoawarenessModal'), { ssr: false });
 
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -723,6 +724,7 @@ export function FlightPlansUploader() {
   const [folderPages, setFolderPages] = useState<{
     [folderId: number]: number;
   }>({});
+  const [folderPageInputs, setFolderPageInputs] = useState<{ [folderId: number]: string }>({});
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [viewModalContent, setViewModalContent] = useState<string>("");
   const [viewModalTitle, setViewModalTitle] = useState<string>("");
@@ -739,6 +741,26 @@ export function FlightPlansUploader() {
   const [bulkErrorIdx, setBulkErrorIdx] = useState(0);
   // Uplan edit modal state
   const [uplanEditModal, setUplanEditModal] = useState<{ open: boolean, uplan: any, planId: number | null }>({ open: false, uplan: null, planId: null });
+  
+  // Geoawareness modal state
+  const [geoawarenessModal, setGeoawarenessModal] = useState<{
+    open: boolean;
+    planId: number | null;
+    geozones: any;
+    trajectory: [number, number][];
+    planName: string;
+    hasConflicts: boolean;
+    loading: boolean;
+  }>({
+    open: false,
+    planId: null,
+    geozones: { features: [] },
+    trajectory: [],
+    planName: '',
+    hasConflicts: false,
+    loading: false
+  });
+  const [geoawarenessLoading, setGeoawarenessLoading] = useState<{ [planId: number]: boolean }>({});
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -1311,7 +1333,42 @@ export function FlightPlansUploader() {
     }
   };
 
+  // Step 1: Check geoawareness before authorization
   const handleRequestAuthorization = async (planId: number) => {
+    const plan = flightPlans.find(p => p.id === planId);
+    setGeoawarenessLoading((prev) => ({ ...prev, [planId]: true }));
+    
+    try {
+      // First, call geoawareness check endpoint
+      const geoResponse = await axios.post(`/api/flightPlans/${planId}/geoawareness`);
+      const { geozones, trajectory, hasConflicts, planName } = geoResponse.data;
+      
+      // Show geoawareness modal with results
+      setGeoawarenessModal({
+        open: true,
+        planId,
+        geozones,
+        trajectory,
+        planName: planName || plan?.customName || `Plan ${planId}`,
+        hasConflicts,
+        loading: false
+      });
+    } catch (error: any) {
+      const errorMsg = error?.response?.data?.error || error?.message || "Unknown error";
+      console.error("Error checking geoawareness:", errorMsg);
+      // If geoawareness check fails, show error but allow to proceed
+      setUplanErrorModal({ open: true, message: `Error al verificar geozonas: ${errorMsg}. Puede intentar solicitar autorización de todas formas.` });
+    } finally {
+      setGeoawarenessLoading((prev) => ({ ...prev, [planId]: false }));
+    }
+  };
+
+  // Step 2: Actually send the authorization request to FAS
+  const handleProceedWithAuthorization = async () => {
+    const planId = geoawarenessModal.planId;
+    if (!planId) return;
+
+    setGeoawarenessModal(prev => ({ ...prev, loading: true }));
     setAuthorizationLoading((prev) => ({ ...prev, [planId]: true }));
     setFlightPlans((prev) =>
       prev.map((plan) =>
@@ -1320,16 +1377,30 @@ export function FlightPlansUploader() {
           : plan
       )
     );
+
     try {
       await axios.put(`/api/flightPlans`, { id: planId, data: { authorizationStatus: "procesando autorización" } });
       await axios.post(`/api/flightPlans/${planId}/uplan`);
+      // Close modal and refresh data
+      setGeoawarenessModal(prev => ({ ...prev, open: false, loading: false }));
+      fetchData();
     } catch (error: any) {
-      const errorMsg =
-        error?.response?.data?.error || error?.message || "Unknown error";
+      const errorMsg = error?.response?.data?.error || error?.message || "Unknown error";
       console.error("Error requesting authorization:", errorMsg);
+      setGeoawarenessModal(prev => ({ ...prev, loading: false }));
     } finally {
       setAuthorizationLoading((prev) => ({ ...prev, [planId]: false }));
     }
+  };
+
+  // Close geoawareness modal
+  const handleCloseGeoawarenessModal = () => {
+    setGeoawarenessModal(prev => ({ 
+      ...prev, 
+      open: false, 
+      planId: null,
+      loading: false 
+    }));
   };
 
   const handleFolderScheduledAtChange = async (
@@ -2207,27 +2278,29 @@ export function FlightPlansUploader() {
                                     <Button
                                       variant="outline"
                                       onClick={() => handleRequestAuthorization(plan.id)}
-                                      disabled={authorizationLoading[plan.id] || plan.status !== "procesado" || !plan.scheduledAt}
+                                      disabled={authorizationLoading[plan.id] || geoawarenessLoading[plan.id] || plan.status !== "procesado" || !plan.scheduledAt}
                                       className={`text-blue-400 hover:bg-blue-500/90 hover:text-white border-blue-400/50 hover:border-blue-500 min-w-[153px] ml-2 flex items-center justify-center h-12 min-h-[48px]${
-                                        (authorizationLoading[plan.id] || plan.status !== "procesado" || !plan.scheduledAt)
+                                        (authorizationLoading[plan.id] || geoawarenessLoading[plan.id] || plan.status !== "procesado" || !plan.scheduledAt)
                                           ? " opacity-60 cursor-not-allowed"
                                           : ""
                                       }`}
                                       title={
                                         !plan.scheduledAt
-                                          ? "You must select a date and hour to send it to the FAS."
+                                          ? "You must select a date and hour to send your U-Plan to the Authorization Services."
+                                          : geoawarenessLoading[plan.id]
+                                          ? "Checking geoawareness..."
                                           : (authorizationLoading[plan.id] || plan.status !== "procesado")
                                           ? undefined
                                           : undefined
                                       }
                                     >
                                       <div className="flex items-center justify-center">
-                                        {authorizationLoading[plan.id] ? (
+                                        {(authorizationLoading[plan.id] || geoawarenessLoading[plan.id]) ? (
                                           <Loader2Icon className="h-4 w-4 mr-2 animate-spin" />
                                         ) : (
                                           <PlayIcon className="h-4 w-4 mr-2" />
                                         )}
-                                        Request Auth
+                                        {geoawarenessLoading[plan.id] ? 'Checking...' : 'Request Auth'}
                                       </div>
                                     </Button>
                                   ) : plan.authorizationStatus === "procesando autorización" ? (
@@ -2276,7 +2349,7 @@ export function FlightPlansUploader() {
                             </div>
                           ))}
                           {totalFolderPages > 1 && (
-                            <div className="flex justify-between items-center mt-2">
+                            <div className="flex justify-center items-center mt-4 gap-4">
                               <Button
                                 onClick={() =>
                                   handleFolderPageChange(
@@ -2290,9 +2363,44 @@ export function FlightPlansUploader() {
                               >
                                 Anterior
                               </Button>
-                              <span className="text-white">
-                                Page {page} of {totalFolderPages}
-                              </span>
+                              <div className="flex items-center gap-2 text-white text-sm">
+                                <span>Página</span>
+                                <Input
+                                  type="number"
+                                  value={folderPageInputs[folder.id] ?? page}
+                                  onChange={(e) => {
+                                    setFolderPageInputs(prev => ({
+                                      ...prev,
+                                      [folder.id]: e.target.value,
+                                    }));
+                                  }}
+                                  onBlur={() => {
+                                    const inputValue = folderPageInputs[folder.id];
+                                    if (inputValue !== undefined) {
+                                      const parsed = parseInt(inputValue, 10);
+                                      handleFolderPageChange(
+                                        folder.id,
+                                        isNaN(parsed) ? 1 : parsed,
+                                        totalFolderPages
+                                      );
+                                      setFolderPageInputs(prev => {
+                                        const newState = { ...prev };
+                                        delete newState[folder.id];
+                                        return newState;
+                                      });
+                                    }
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      (e.target as HTMLInputElement).blur();
+                                    }
+                                  }}
+                                  className="w-20 h-9 text-center bg-gray-700 border-gray-600"
+                                  min="1"
+                                  max={totalFolderPages}
+                                />
+                                <span>de {totalFolderPages}</span>
+                              </div>
                               <Button
                                 onClick={() =>
                                   handleFolderPageChange(
@@ -2395,6 +2503,17 @@ export function FlightPlansUploader() {
         onClose={() => setUplanEditModal({ open: false, uplan: null, planId: null })}
         uplan={uplanEditModal.uplan}
         onSave={handleSaveUplanEdit}
+      />
+      {/* Geoawareness Modal */}
+      <GeoawarenessModal
+        open={geoawarenessModal.open}
+        onClose={handleCloseGeoawarenessModal}
+        onProceed={handleProceedWithAuthorization}
+        geozones={geoawarenessModal.geozones}
+        trajectory={geoawarenessModal.trajectory}
+        planName={geoawarenessModal.planName}
+        hasConflicts={geoawarenessModal.hasConflicts}
+        loading={geoawarenessModal.loading}
       />
     </div>
   );
