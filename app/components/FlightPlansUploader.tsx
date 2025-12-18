@@ -787,6 +787,7 @@ export function FlightPlansUploader() {
         axios.get(`/api/flightPlans?userId=${user?.id}`),
         axios.get(`/api/folders?userId=${user?.id}`),
       ]);
+      // geoawarenessData is a JSON field in Prisma, so it should be an object already
       setFlightPlans(plansResponse.data);
       setFolders(foldersResponse.data);
     } catch (error) {
@@ -1346,16 +1347,20 @@ export function FlightPlansUploader() {
       
       // Save geoawareness data to database
       const geoawarenessData = { geozones, trajectory, hasConflicts, checkedAt: new Date().toISOString() };
-      await axios.put(`/api/flightPlans`, { 
-        id: planId, 
-        data: { geoawarenessData: JSON.stringify(geoawarenessData) } 
-      });
+      console.log('Saving geoawarenessData:', geoawarenessData);
       
-      // Update local state with geoawareness data
+      const updateResponse = await axios.put(`/api/flightPlans`, { 
+        id: planId, 
+        data: { geoawarenessData } // Send as object, not stringified
+      });
+      console.log('Update response:', updateResponse.data);
+      
+      // Update local state with geoawareness data from the response
+      const savedData = updateResponse.data.geoawarenessData || geoawarenessData;
       setFlightPlans((prev) =>
         prev.map((p) =>
           p.id === planId
-            ? { ...p, geoawarenessData }
+            ? { ...p, geoawarenessData: savedData }
             : p
         )
       );
@@ -2345,7 +2350,15 @@ export function FlightPlansUploader() {
                                   ) : plan.authorizationStatus === "aprobado" ? (
                                     <Button
                                       variant="outline"
-                                      onClick={() => setUplanViewModal({ open: true, uplan: plan.uplan, name: plan.customName, geoawarenessData: plan.geoawarenessData })}
+                                      onClick={() => {
+                                        // Pass geoawarenessData directly - Prisma JSON field returns object
+                                        setUplanViewModal({ 
+                                          open: true, 
+                                          uplan: plan.uplan, 
+                                          name: plan.customName, 
+                                          geoawarenessData: plan.geoawarenessData 
+                                        });
+                                      }}
                                       className="text-green-400 hover:bg-green-500/90 hover:text-white border-green-400/50 hover:border-green-500 min-w-[153px] ml-2 flex items-center justify-center h-12 min-h-[48px]"
                                     >
                                       <div className="flex items-center justify-center">
