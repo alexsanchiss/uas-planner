@@ -1,0 +1,73 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+\usepackage{hyperref}
+\usepackage{longtable}
+
+\title{ SPIRIT \\ \small{ICD - V\_{0.0.1}}}
+\author{U-Plan Preparation Service (UPPS) \\ Álex Sanchis}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section*{Resumen}
+Breve descripción del propósito del documento: qué sistemas o aplicaciones conecta esta interfaz y por qué es necesaria.
+
+\section{Alcance de la Interfaz}
+\begin{itemize}
+    \item Definir los sistemas/módulos involucrados.
+    \item Describir el objetivo de la comunicación (ej. telemetría, control, posicionamiento).
+\end{itemize}
+
+\section{Entradas y Salidas}
+\subsection*{Entradas}
+Lista de datos que recibe el sistema: nombre, tipo, formato, unidad.  
+\subsection*{Salidas}
+Lista de datos que envía el sistema: nombre, tipo, formato, unidad.  
+
+\begin{longtable}{|p{4cm}|p{3cm}|p{3cm}|p{3cm}|}
+\hline
+\textbf{Campo} & \textbf{Tipo de dato} & \textbf{Unidad/Formato} & \textbf{Descripción} \\
+\hline
+Ejemplo: PRS Timestamp & Integer & ms & Marca temporal de referencia \\
+\hline
+Ejemplo: UAV Position & Float[3] & metros & Coordenadas XYZ del UAV \\
+\hline
+\end{longtable}
+
+\section{Protocolos y Transporte}
+\begin{itemize}
+    \item Especificar el protocolo de comunicación (TCP/UDP, HTTP/REST, MQTT, etc.).
+    \item Puertos, direcciones, capas de seguridad.
+\end{itemize}
+
+\section{Identificadores y Convenciones}
+\begin{itemize}
+    \item IDs de mensajes o recursos (ej. UUID, OCID, etc.).
+    \item Convenciones de nombres, unidades de medida.
+\end{itemize}
+
+\section{Sincronización y Temporización}
+\begin{itemize}
+    \item Latencias máximas permitidas.
+    \item Frecuencia de muestreo o actualización.
+\end{itemize}
+\section{Gestión de Errores}
+\begin{itemize}
+    \item Códigos de error y su significado.
+    \item Estrategias de recuperación (reintentos, fallback).
+\end{itemize}
+
+\section{Versionado y Control de Cambios}
+\begin{itemize}
+    \item Número de versión del ICD.
+    \item Procedimiento para actualizar sin romper la compatibilidad.
+\end{itemize}
+
+\section*{Anexos}
+Ejemplos de mensajes, diagramas de flujo, tablas de referencia.
+
+\end{document}
+

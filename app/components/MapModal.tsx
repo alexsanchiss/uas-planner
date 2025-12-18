@@ -32,11 +32,9 @@ interface MapModalProps {
 const colors = ["#3b82f6", "#22d3ee", "#f59e42", "#ef4444", "#a78bfa", "#10b981", "#f472b6", "#facc15"];
 
 const MapModal: React.FC<MapModalProps> = ({ open, onClose, title, trajectories, currentIdxs, setCurrentIdxs, names }) => {
-  if (!open || !trajectories || trajectories.length === 0 || trajectories[0].length === 0) return null;
-  const polylines = trajectories.map(traj => traj.map(row => [row.Lat, row.Lon] as [number, number]));
-  const currentMarkers = trajectories.map((traj, i) => traj[currentIdxs[i]] || traj[0]);
-  const center = polylines[0][0];
   const [playing, setPlaying] = useState(false);
+  
+  // ESC key closes modal
   useEffect(() => {
     if (!open) return;
     if (typeof window === "undefined") return;
@@ -46,8 +44,10 @@ const MapModal: React.FC<MapModalProps> = ({ open, onClose, title, trajectories,
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [open, onClose]);
+  
+  // Play animation effect
   useEffect(() => {
-    if (!playing) return;
+    if (!playing || !trajectories || trajectories.length === 0) return;
     const interval = setInterval(() => {
       setCurrentIdxs((prev: number[]) => {
         const max = Math.max(...trajectories.map(t => t.length - 1));
@@ -56,6 +56,13 @@ const MapModal: React.FC<MapModalProps> = ({ open, onClose, title, trajectories,
     }, 60);
     return () => clearInterval(interval);
   }, [playing, trajectories, setCurrentIdxs]);
+  
+  // Early return after all hooks
+  if (!open || !trajectories || trajectories.length === 0 || trajectories[0].length === 0) return null;
+  
+  const polylines = trajectories.map(traj => traj.map(row => [row.Lat, row.Lon] as [number, number]));
+  const currentMarkers = trajectories.map((traj, i) => traj[currentIdxs[i]] || traj[0]);
+  const center = polylines[0][0];
   const minLen = Math.min(...trajectories.map(t => t.length));
   const globalIdx = currentIdxs[0] || 0;
   const handleSlider = (val: number) => setCurrentIdxs(currentIdxs.map(() => val));
@@ -65,7 +72,7 @@ const MapModal: React.FC<MapModalProps> = ({ open, onClose, title, trajectories,
         <MapContainer
           center={center}
           zoom={16}
-          scrollWheelZoom={false}
+          scrollWheelZoom={true}
           style={{ width: '100%', height: '100%' }}
         >
           <TileLayer

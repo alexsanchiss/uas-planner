@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Modal } from "./ui/modal";
 import { MapContainer, TileLayer, Polygon, Marker, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -23,10 +23,18 @@ function extractAlt(val: any): number | string | null {
   return null;
 }
 
-const UplanViewModal = ({ open, onClose, uplan, name }: { open: boolean, onClose: () => void, uplan: any, name: string }) => {
+interface UplanViewModalProps {
+  open: boolean;
+  onClose: () => void;
+  uplan: any;
+  name: string;
+}
+
+const UplanViewModal = ({ open, onClose, uplan, name }: UplanViewModalProps) => {
   const [currentTime, setCurrentTime] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [showLabels, setShowLabels] = useState(true);
+  
   // Parse operationVolumes (must be before useEffect)
   const vols = uplan && uplan.operationVolumes ? uplan.operationVolumes.map((vol: any, idx: number) => {
     const coords = vol.geometry.coordinates[0].map(([lon, lat]: [number, number]) => [lat, lon]);
@@ -113,6 +121,7 @@ const UplanViewModal = ({ open, onClose, uplan, name }: { open: boolean, onClose
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution="&copy; OpenStreetMap contributors"
           />
+          
           {activeVols.map((v: any, i: number) => (
             <Polygon
               key={i}
@@ -135,8 +144,9 @@ const UplanViewModal = ({ open, onClose, uplan, name }: { open: boolean, onClose
           )}
         </MapContainer>
       </div>
+      
       <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-center gap-4 mb-1">
+        <div className="flex items-center justify-center gap-3 mb-1 flex-wrap">
           <div className="text-base text-center text-blue-200 font-semibold">
             {utcTime}
           </div>

@@ -39,7 +39,7 @@
 // Error: { error: "error_message" }
 //
 // EXTERNAL API:
-// - Endpoint: http://158.42.167.56:8000/uplan
+// - Endpoint: http://${FAS_IP}/uplan (configured via environment variable)
 // - Method: POST
 // - Content-Type: application/json
 // - Payload: Generated U-Plan object
@@ -108,11 +108,13 @@ export default async function handler(
       ...(uplanDetails ? { uplan: uplanDetails } : {}),
     });
     console.log("Plan procesado");
-    // 4. Enviar el U-Plan a la API externa
+    // 4. Enviar el U-Plan a la API externa (FAS)
+    const fasIp = process.env.FAS_IP;
+    const fasEndpoint = process.env.FAS_ENDPOINT || "uplan";
     let externalResponseNumber = String(null);
     try {
       const response = await axios.post(
-        "http://158.42.167.56:8000/uplan",
+        `http://${fasIp}/${fasEndpoint}`,
         uplan,
         { headers: { "Content-Type": "application/json" } }
       );

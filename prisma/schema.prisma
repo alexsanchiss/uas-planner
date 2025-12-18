@@ -1,61 +1,71 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+generator client {
+  provider = "prisma-client-js"
+}
 
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
-generator client {
-  provider = "prisma-client-js"
-}
-
 model machine {
-  id       Int      @id @default(autoincrement())
-  name     String   @unique
-  status   String   @default("Disponible")
+  id         Int          @id @default(autoincrement())
+  name       String       @db.Text
+  status     String       @db.Text
+  flightPlans flightPlan[]
 }
 
 model folder {
-  id          Int         @id @default(autoincrement())
-  name        String
-  userId      Int
-  createdAt   DateTime    @default(now())
-  flightPlans flightPlan[]
+  id             Int          @id @default(autoincrement())
+  name           String       @db.VarChar(255)
+  userId         Int
+  createdAt      DateTime?    @default(now()) @db.DateTime(0)
   minScheduledAt DateTime?
   maxScheduledAt DateTime?
-}
+  flightPlans    flightPlan[]
+  user           user         @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "folder_ibfk_1")
 
-model flightPlan {
-  id                  Int      @id @default(autoincrement())
-  customName          String
-  status              String
-  fileContent         String
-  csvResult           Int?
-  createdAt           DateTime @default(now())
-  machineAssignedId   Int?
-  userId              Int
-  folderId            Int?
-  folder              folder?  @relation(fields: [folderId], references: [id])
-  uplan                 Json?    // JSON calculado
-  authorizationStatus   String   @default("sin autorización") // Estado de autorización
-  authorizationMessage  Json?    // Mensaje de autorización (JSON, puede ser largo)
-  scheduledAt           DateTime? // <-- Nueva línea: fecha y hora de vuelo (opcional)
-  externalResponseNumber String?
-}
-
-model csvResult {
-  id        Int    @id @default(autoincrement())
-  csvResult String
-  createdAt DateTime @default(now())
+  @@index([userId], map: "userId")
 }
 
 model user {
-  id        Int     @id @default(autoincrement())
-  email     String  @unique
-  password  String
-  createdAt DateTime @default(now())
+  id         Int          @id @default(autoincrement())
+  email      String       @unique @db.VarChar(255)
+  password   String       @db.Text
+  createdAt  DateTime?    @default(now()) @db.Timestamp(0)
+  flightPlans flightPlan[]
+  folders     folder[]
+}
+
+model csvResult {
+  id        Int       @id @default(autoincrement())
+  csvResult String?   @db.LongText
+  createdAt DateTime? @default(now()) @db.DateTime(0)
+
+  @@map("csvresult")
+}
+
+model flightPlan {
+  id                     Int       @id @default(autoincrement())
+  customName             String    @db.Text
+  status                 String    @db.Text
+  fileContent            String?   @db.MediumText
+  csvResult              Int?      @db.SmallInt
+  createdAt              DateTime? @default(now()) @db.Timestamp(0)
+  userId                 Int?
+  machineAssignedId      Int?
+  folderId               Int?
+  uplan                  String?   @db.LongText
+  authorizationStatus    String    @default("sin autorización") @db.VarChar(32)
+  authorizationMessage   String?   @db.LongText
+  scheduledAt            DateTime?
+  externalResponseNumber String?   @db.VarChar(255)
+  geoawarenessData       Json?
+  user                   user?     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "flightplan_ibfk_1")
+  machine                machine?  @relation(fields: [machineAssignedId], references: [id], onUpdate: NoAction, map: "flightplan_ibfk_2")
+  folder                 folder?   @relation(fields: [folderId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "flightplan_ibfk_3")
+
+  @@index([folderId], map: "folderId")
+  @@index([machineAssignedId], map: "machineAssignedId")
+  @@index([userId], map: "userId")
+  @@map("flightplan")
 }
