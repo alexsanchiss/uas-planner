@@ -74,6 +74,7 @@ interface Waypoint {
   altitude: number;
   speed: number;
   pauseDuration: number; // TASK-121: Hold time in seconds (0-3600)
+  flyOverMode: boolean; // TASK-126: true = fly-over (pass directly over), false = fly-by (smooth curve)
 }
 
 interface PlanInfo {
@@ -189,8 +190,13 @@ function generateQGCPlan(waypoints: Waypoint[]): any {
 
   // Cruise (16) for intermediate waypoints (excluding first and last)
   // TASK-123: params[0] is hold time in seconds
+  // TASK-128: params[1] is acceptance radius - set to 0.1m for fly-over mode, 0 for fly-by (smooth curve)
   for (let i = 1; i < waypoints.length - 1; i++) {
     const wp = waypoints[i];
+    // For NAV_WAYPOINT (cmd 16): params = [Hold, Accept_Radius, Pass_Radius, Yaw, Lat, Lon, Alt]
+    // Accept_Radius = 0.1m forces drone to pass directly over (fly-over)
+    // Accept_Radius = 0 allows smooth curving (fly-by, default)
+    const acceptRadius = wp.flyOverMode ? 0.1 : 0;
     items.push({
       AMSLAltAboveTerrain: null,
       Altitude: wp.altitude,
@@ -199,7 +205,7 @@ function generateQGCPlan(waypoints: Waypoint[]): any {
       command: 16,
       doJumpId: doJumpId++,
       frame: 3,
-      params: [wp.pauseDuration || 0, 0, 0, null, wp.lat, wp.lng, wp.altitude],
+      params: [wp.pauseDuration || 0, acceptRadius, 0, null, wp.lat, wp.lng, wp.altitude],
       type: "SimpleItem",
     });
   }
@@ -270,8 +276,8 @@ export default function PlanGenerator() {
       setToast("Waypoints must be within the FAS service area.");
       return;
     }
-    // Ensure pauseDuration is initialized
-    const newWp = { ...wp, pauseDuration: wp.pauseDuration ?? 0 };
+    // Ensure pauseDuration and flyOverMode are initialized
+    const newWp = { ...wp, pauseDuration: wp.pauseDuration ?? 0, flyOverMode: wp.flyOverMode ?? false };
     setWaypoints((prev) => {
       let newWps = [...prev, newWp];
       // First waypoint is always takeoff
@@ -1401,6 +1407,32 @@ export default function PlanGenerator() {
                                       s ⏱️
                                     </span>
                                   </div>
+                                  {/* TASK-127 & TASK-130: Fly-by/Fly-over toggle with tooltip */}
+                                  {wp.type === "cruise" && (
+                                    <div className="flex items-center gap-1 ml-2" title="Fly-by: drone smoothly curves past the waypoint. Fly-over: drone must pass directly over the waypoint (more precise but slower).">
+                                      <label className="relative inline-flex items-center cursor-pointer">
+                                        <input
+                                          type="checkbox"
+                                          checked={wp.flyOverMode || false}
+                                          onChange={(e) =>
+                                            handleWaypointChange(
+                                              idx,
+                                              "flyOverMode",
+                                              e.target.checked
+                                            )
+                                          }
+                                          className="sr-only peer"
+                                        />
+                                        <div className="w-8 h-4 bg-zinc-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-purple-600"></div>
+                                      </label>
+                                      <span className={`text-xs font-medium ${wp.flyOverMode ? 'text-purple-400' : 'text-zinc-400'}`}>
+                                        {wp.flyOverMode ? '⎯○⎯' : '⌒'}
+                                      </span>
+                                      <span className="text-[10px] text-zinc-500 hidden sm:inline" title="Fly-by: smooth curve past waypoint. Fly-over: pass directly over waypoint.">
+                                        {wp.flyOverMode ? 'Over' : 'By'}
+                                      </span>
+                                    </div>
+                                  )}
                                 </div>
                                 <div className="flex items-center gap-2 flex-wrap mt-1">
                                   <label className="text-xs text-zinc-400">

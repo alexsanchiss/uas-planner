@@ -14,37 +14,58 @@ function formatPauseDuration(seconds: number): string {
   return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
 }
 
-// TASK-125: Create custom icon with pause indicator
+// TASK-125 & TASK-129: Create custom icon with pause and fly-over indicators
 function createWaypointIcon(wp: any, idx: number): L.DivIcon {
   const hasPause = wp.pauseDuration && wp.pauseDuration > 0;
   const pauseText = hasPause ? formatPauseDuration(wp.pauseDuration) : "";
+  const isFlyOver = wp.flyOverMode && wp.type === "cruise"; // TASK-129: Only cruise waypoints can be fly-over
   
   // Color based on waypoint type
+  // TASK-129: Fly-over waypoints get purple color to distinguish from regular cruise
   const typeColors: Record<string, string> = {
     takeoff: "#22c55e", // green
     cruise: "#3b82f6",  // blue
     landing: "#ef4444", // red
   };
-  const color = typeColors[wp.type] || "#3b82f6";
+  const color = isFlyOver ? "#a855f7" : (typeColors[wp.type] || "#3b82f6"); // purple for fly-over
+  
+  // TASK-129: Fly-over waypoints get a diamond shape indicator, fly-by get a circle
+  const markerShape = isFlyOver
+    ? `
+      <div style="
+        width: 28px;
+        height: 28px;
+        background: ${color};
+        border: 3px solid white;
+        transform: rotate(45deg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+      ">
+        <span style="transform: rotate(-45deg); color: white; font-weight: bold; font-size: 12px;">${idx + 1}</span>
+      </div>`
+    : `
+      <div style="
+        width: 28px;
+        height: 28px;
+        background: ${color};
+        border: 3px solid white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        font-size: 12px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+      ">${idx + 1}</div>`;
   
   return L.divIcon({
     className: "custom-waypoint-marker",
     html: `
       <div style="position: relative; display: flex; flex-direction: column; align-items: center;">
-        <div style="
-          width: 28px;
-          height: 28px;
-          background: ${color};
-          border: 3px solid white;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-          font-weight: bold;
-          font-size: 12px;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-        ">${idx + 1}</div>
+        ${markerShape}
         ${hasPause ? `
           <div style="
             position: absolute;
@@ -59,6 +80,20 @@ function createWaypointIcon(wp: any, idx: number): L.DivIcon {
             white-space: nowrap;
             box-shadow: 0 1px 3px rgba(0,0,0,0.3);
           ">⏱ ${pauseText}</div>
+        ` : ""}
+        ${isFlyOver ? `
+          <div style="
+            position: absolute;
+            bottom: -12px;
+            background: #a855f7;
+            color: white;
+            font-size: 8px;
+            font-weight: bold;
+            padding: 1px 4px;
+            border-radius: 4px;
+            white-space: nowrap;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+          ">⊙ OVER</div>
         ` : ""}
       </div>
     `,
@@ -100,6 +135,22 @@ function WaypointMarkers({ waypoints, onSelect, onDragEndMarker }: { waypoints: 
               <b>Pause:</b> {formatPauseDuration(wp.pauseDuration)}
             </div>
           )}
+          {/* TASK-129 & TASK-130: Display fly-over mode with explanation */}
+          {wp.type === "cruise" && (
+            <div>
+              <b>Mode:</b>{" "}
+              <span
+                style={{ color: wp.flyOverMode ? "#a855f7" : "#3b82f6" }}
+                title={
+                  wp.flyOverMode
+                    ? "Drone must pass directly over this waypoint (more precise)"
+                    : "Drone smoothly curves past this waypoint (faster)"
+                }
+              >
+                {wp.flyOverMode ? "⊙ Fly-Over" : "∽ Fly-By"}
+              </span>
+            </div>
+          )}
         </div>
       </Popup>
     </Marker>
@@ -123,6 +174,7 @@ function MapClickHandler({ onAddWaypoint, onToast, bounds }: { onAddWaypoint: (w
           altitude: 100,
           speed: 5,
           pauseDuration: 0, // TASK-121: Default pause duration
+          flyOverMode: false, // TASK-126: Default fly-by mode
         });
       } else {
         onToast("Waypoints must be within the FAS service area.");
