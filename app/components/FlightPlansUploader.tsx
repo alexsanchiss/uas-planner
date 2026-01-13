@@ -36,6 +36,7 @@ import {
 import { ConfirmDialog } from './ui/confirm-dialog'
 import { FlightPlansListSkeleton } from './ui/loading-skeleton'
 import { LoadingSpinner } from './ui/loading-spinner'
+import { useToast } from '../hooks/useToast'
 
 /**
  * Transform API flight plan data to component flight plan format
@@ -102,6 +103,7 @@ function getCompletedSteps(plan: FlightPlan | null): WorkflowStep[] {
 
 export function FlightPlansUploader() {
   const { user } = useAuth()
+  const toast = useToast()
   const {
     flightPlans,
     loading: plansLoading,
@@ -260,7 +262,7 @@ export function FlightPlansUploader() {
   const handleProcessPlan = useCallback((planId: string) => {
     const plan = flightPlans.find(p => String(p.id) === planId)
     if (!plan || !plan.scheduledAt) {
-      alert('Por favor, seleccione una fecha y hora antes de procesar.')
+      toast.warning('Por favor, seleccione una fecha y hora antes de procesar.')
       return
     }
 
@@ -270,7 +272,7 @@ export function FlightPlansUploader() {
       planId,
       planName: plan.customName,
     })
-  }, [flightPlans])
+  }, [flightPlans, toast])
 
   // Actual processing after confirmation
   const confirmProcessPlan = useCallback(async () => {
@@ -290,7 +292,7 @@ export function FlightPlansUploader() {
   const handleDownloadPlan = useCallback(async (planId: string) => {
     const plan = flightPlans.find(p => String(p.id) === planId)
     if (!plan?.csvResult) {
-      alert('No hay CSV disponible para descargar.')
+      toast.warning('No hay CSV disponible para descargar.')
       return
     }
 
@@ -319,18 +321,22 @@ export function FlightPlansUploader() {
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
+      
+      toast.success('CSV descargado correctamente.')
     } catch (error) {
       console.error('Download error:', error)
-      alert('Error al descargar el CSV.')
+      toast.error('Error al descargar el CSV.', {
+        onRetry: () => handleDownloadPlan(planId),
+      })
     } finally {
       removeLoadingPlan('downloading', planId)
     }
-  }, [flightPlans, addLoadingPlan, removeLoadingPlan])
+  }, [flightPlans, addLoadingPlan, removeLoadingPlan, toast])
 
   const handleAuthorizePlan = useCallback(async (planId: string) => {
     const plan = flightPlans.find(p => String(p.id) === planId)
     if (!plan || plan.status !== 'procesado') {
-      alert('El plan debe estar procesado antes de solicitar autorización.')
+      toast.warning('El plan debe estar procesado antes de solicitar autorización.')
       return
     }
 
@@ -351,13 +357,16 @@ export function FlightPlansUploader() {
       }
 
       await refreshPlans()
+      toast.success('Solicitud de autorización enviada correctamente.')
     } catch (error) {
       console.error('Authorization error:', error)
-      alert('Error al solicitar autorización.')
+      toast.error('Error al solicitar autorización.', {
+        onRetry: () => handleAuthorizePlan(planId),
+      })
     } finally {
       removeLoadingPlan('authorizing', planId)
     }
-  }, [flightPlans, refreshPlans, addLoadingPlan, removeLoadingPlan])
+  }, [flightPlans, refreshPlans, addLoadingPlan, removeLoadingPlan, toast])
 
   // TASK-109: Show reset confirmation dialog
   const handleResetPlan = useCallback((planId: string) => {
@@ -393,13 +402,16 @@ export function FlightPlansUploader() {
       }
 
       await refreshPlans()
+      toast.success('Plan reiniciado correctamente.')
     } catch (error) {
       console.error('Reset error:', error)
-      alert('Error al reiniciar el plan.')
+      toast.error('Error al reiniciar el plan.', {
+        onRetry: confirmResetPlan,
+      })
     } finally {
       removeLoadingPlan('resetting', planId)
     }
-  }, [resetConfirmDialog.planId, refreshPlans, addLoadingPlan, removeLoadingPlan])
+  }, [resetConfirmDialog.planId, refreshPlans, addLoadingPlan, removeLoadingPlan, toast])
 
   const handleDeletePlan = useCallback(async (planId: string) => {
     if (!confirm('¿Está seguro de eliminar este plan de vuelo?')) {
@@ -426,11 +438,14 @@ export function FlightPlansUploader() {
       await updateFlightPlan(Number(selectedPlanId), {
         scheduledAt: utcIsoString || null,
       })
+      toast.success('Fecha y hora actualizada.')
     } catch (error) {
       console.error('DateTime update error:', error)
-      alert('Error al actualizar la fecha.')
+      toast.error('Error al actualizar la fecha.', {
+        onRetry: () => handleDateTimeChange(utcIsoString),
+      })
     }
-  }, [selectedPlanId, updateFlightPlan])
+  }, [selectedPlanId, updateFlightPlan, toast])
 
   // Handle plan click/selection
   const handlePlanClick = useCallback((planId: string) => {

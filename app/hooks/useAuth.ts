@@ -51,19 +51,16 @@ function clearSensitiveData(): void {
 
 /**
  * Show session expired notification to user
+ * Uses custom event for toast system integration (TASK-198)
  */
 function notifySessionExpired(): void {
-  // Use a non-blocking notification
-  // In production, replace with a toast notification system
+  // Use a non-blocking notification via custom event
+  // The toast system listens to this event
   if (typeof window !== 'undefined') {
     // Dispatch a custom event that UI components can listen to
     window.dispatchEvent(new CustomEvent('auth:session-expired', {
       detail: { message: 'Your session has expired. Please log in again.' }
     }))
-    // Fallback alert for immediate feedback
-    setTimeout(() => {
-      alert('Your session has expired. Please log in again.')
-    }, 0)
   }
 }
 

@@ -62,6 +62,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import axios from "axios";
 import { useAuth } from "../hooks/useAuth";
+import { useToast } from "../hooks/useToast";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
 import Papa from 'papaparse';
@@ -710,6 +711,7 @@ export function FlightPlansUploaderDev() {
   const [newFolderName, setNewFolderName] = useState("");
   const [expandedFolders, setExpandedFolders] = useState<number[]>([]);
   const { user } = useAuth();
+  const toast = useToast();
   const [isInitialLoading, setIsInitialLoading] = useState<boolean>(false);
   const [folderFilters, setFolderFilters] = useState<{ [key: number]: string }>(
     {}
@@ -946,7 +948,7 @@ export function FlightPlansUploaderDev() {
     );
 
     if (folderPlans.length === 0) {
-      alert("No plans processed in this folder to download.");
+      toast.warning("No plans processed in this folder to download.");
       return;
     }
 
@@ -1143,7 +1145,7 @@ export function FlightPlansUploaderDev() {
 
   const handleDownloadSelectedPlans = async () => {
     if (selectedPlans.length === 0) {
-      alert("No plans selected to download.");
+      toast.warning("No plans selected to download.");
       return;
     }
 
@@ -1152,7 +1154,7 @@ export function FlightPlansUploaderDev() {
       return p?.status === "procesado" && p.csvResult;
     });
     if (processedIds.length === 0) {
-      alert("No processed plans selected to download.");
+      toast.warning("No processed plans selected to download.");
       return;
     }
     const BATCH = 500;
@@ -1450,7 +1452,7 @@ export function FlightPlansUploaderDev() {
         p.uplan
     );
     if (plans.length === 0) {
-      alert("No authorized U-Plans in this folder.");
+      toast.warning("No authorized U-Plans in this folder.");
       return;
     }
     const zip = new JSZip();
@@ -1471,7 +1473,7 @@ export function FlightPlansUploaderDev() {
         p.authorizationMessage
     );
     if (plans.length === 0) {
-      alert("No denial messages in this folder.");
+      toast.warning("No denial messages in this folder.");
       return;
     }
     const zip = new JSZip();
@@ -1512,7 +1514,7 @@ export function FlightPlansUploaderDev() {
   // Function to view all selected plans as CSV (concatenated)
   const handleViewSelectedPlans = async () => {
     if (selectedPlans.length === 0) {
-      alert("No plans selected to view.");
+      toast.warning("No plans selected to view.");
       return;
     }
     const trajs: TrajectoryRow[][] = [];
@@ -1554,7 +1556,7 @@ export function FlightPlansUploaderDev() {
       (p) => p.folderId === folderId && p.status === "procesado"
     );
     if (folderPlans.length === 0) {
-      alert("No processed plans in this folder to view.");
+      toast.warning("No processed plans in this folder to view.");
       return;
     }
     const trajs: TrajectoryRow[][] = [];
@@ -1598,7 +1600,7 @@ export function FlightPlansUploaderDev() {
       })
       .filter(Boolean) as { name: string, message: any }[];
     if (errors.length === 0) {
-      alert('No selected errors to view.');
+      toast.warning('No selected errors to view.');
       return;
     }
     setBulkErrorViewModal({ open: true, errors, idx: 0 });
@@ -1610,7 +1612,7 @@ export function FlightPlansUploaderDev() {
       .map(id => flightPlans.find(p => p.id === id))
       .filter(p => p && p.authorizationStatus === "aprobado" && p.uplan);
     if (plans.length === 0) {
-      alert("No selected authorized U-Plans to view.");
+      toast.warning("No selected authorized U-Plans to view.");
       return;
     }
     setBulkUplanViewModal({
@@ -1646,7 +1648,7 @@ export function FlightPlansUploaderDev() {
       ));
       setUplanEditModal({ open: false, uplan: null, planId: null });
     } catch (error) {
-      alert("Error saving U-plan info");
+      toast.error("Error saving U-plan info");
     }
   };
 
