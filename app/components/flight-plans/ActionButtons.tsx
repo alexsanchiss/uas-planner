@@ -21,7 +21,7 @@ function TooltipWrapper({ tooltip, disabled, children }: TooltipWrapperProps) {
     >
       {children}
       {showTooltip && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-xs font-medium text-white bg-gray-900 rounded shadow-lg whitespace-nowrap z-50">
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-xs font-medium text-white bg-gray-900 rounded shadow-lg whitespace-nowrap z-50 fade-in">
           {tooltip}
           <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
         </div>
@@ -39,7 +39,8 @@ interface ActionButtonProps {
   children: React.ReactNode
 }
 
-const baseButtonStyles = 'inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed'
+// TASK-175: Added btn-interactive for micro-interactions (hover scale, active press)
+const baseButtonStyles = 'inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed btn-interactive disabled-transition'
 
 // Process Button - Blue theme
 export function ProcessButton({ 
@@ -206,7 +207,8 @@ interface IconButtonProps {
   'aria-label': string
 }
 
-const iconButtonStyles = 'inline-flex items-center justify-center p-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed'
+// TASK-175: Added btn-icon-interactive for icon button micro-interactions
+const iconButtonStyles = 'inline-flex items-center justify-center p-2 rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed btn-icon-interactive disabled-transition'
 
 export function ProcessIconButton({ onClick, disabled, disabledTooltip, loading, className = '', 'aria-label': ariaLabel }: IconButtonProps) {
   return (
@@ -215,7 +217,7 @@ export function ProcessIconButton({ onClick, disabled, disabledTooltip, loading,
         onClick={onClick}
         disabled={disabled || loading}
         aria-label={ariaLabel}
-        className={`${iconButtonStyles} text-blue-600 hover:bg-blue-50 focus:ring-blue-500 disabled:text-blue-400 disabled:opacity-50 ${className}`}
+        className={`${iconButtonStyles} text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 focus:ring-blue-500 disabled:text-blue-400 disabled:opacity-50 ${className}`}
       >
         {loading ? <LoadingSpinner /> : <ProcessIcon />}
       </button>
@@ -230,7 +232,7 @@ export function DownloadIconButton({ onClick, disabled, disabledTooltip, loading
         onClick={onClick}
         disabled={disabled || loading}
         aria-label={ariaLabel}
-        className={`${iconButtonStyles} text-green-600 hover:bg-green-50 focus:ring-green-500 disabled:text-green-400 disabled:opacity-50 ${className}`}
+        className={`${iconButtonStyles} text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 focus:ring-green-500 disabled:text-green-400 disabled:opacity-50 ${className}`}
       >
         {loading ? <LoadingSpinner /> : <DownloadIcon />}
       </button>
@@ -245,7 +247,7 @@ export function AuthorizeIconButton({ onClick, disabled, disabledTooltip, loadin
         onClick={onClick}
         disabled={disabled || loading}
         aria-label={ariaLabel}
-        className={`${iconButtonStyles} text-amber-600 hover:bg-amber-50 focus:ring-amber-500 disabled:text-amber-400 disabled:opacity-50 ${className}`}
+        className={`${iconButtonStyles} text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30 focus:ring-amber-500 disabled:text-amber-400 disabled:opacity-50 ${className}`}
       >
         {loading ? <LoadingSpinner /> : <AuthorizeIcon />}
       </button>
@@ -260,7 +262,7 @@ export function ResetIconButton({ onClick, disabled, disabledTooltip, loading, c
         onClick={onClick}
         disabled={disabled || loading}
         aria-label={ariaLabel}
-        className={`${iconButtonStyles} text-gray-600 hover:bg-gray-50 focus:ring-gray-500 disabled:text-gray-400 disabled:opacity-50 ${className}`}
+        className={`${iconButtonStyles} text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-gray-500 disabled:text-gray-400 disabled:opacity-50 ${className}`}
       >
         {loading ? <LoadingSpinner /> : <ResetIcon />}
       </button>
@@ -275,7 +277,7 @@ export function DeleteIconButton({ onClick, disabled, disabledTooltip, loading, 
         onClick={onClick}
         disabled={disabled || loading}
         aria-label={ariaLabel}
-        className={`${iconButtonStyles} text-red-600 hover:bg-red-50 focus:ring-red-500 disabled:text-red-400 disabled:opacity-50 ${className}`}
+        className={`${iconButtonStyles} text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 focus:ring-red-500 disabled:text-red-400 disabled:opacity-50 ${className}`}
       >
         {loading ? <LoadingSpinner /> : <DeleteIcon />}
       </button>
