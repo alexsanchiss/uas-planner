@@ -182,19 +182,40 @@ export function useAuth() {
       setUser(response.data)
     } catch (error) {
       console.error('Error fetching user:', error)
-      // If unauthorized, try to refresh token
-      if (axios.isAxiosError(error) && error.response?.status === 401) {
-        const newToken = await refreshAccessToken()
-        if (newToken) {
-          try {
-            const retryResponse = await axios.get('/api/user', {
-              headers: { Authorization: `Bearer ${newToken}` }
-            })
-            setUser(retryResponse.data)
-            scheduleTokenRefresh(newToken)
-            return
-          } catch {
-            // Retry also failed
+      // Handle edge case: token valid but user deleted (404) or unauthorized (401)
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status
+        
+        // User was deleted from database - clear auth and logout
+        if (status === 404) {
+          console.warn('User not found - account may have been deleted')
+          clearSensitiveData()
+          setUser(null)
+          setLoading(false)
+          return
+        }
+        
+        // If unauthorized, try to refresh token
+        if (status === 401) {
+          const newToken = await refreshAccessToken()
+          if (newToken) {
+            try {
+              const retryResponse = await axios.get('/api/user', {
+                headers: { Authorization: `Bearer ${newToken}` }
+              })
+              setUser(retryResponse.data)
+              scheduleTokenRefresh(newToken)
+              return
+            } catch (retryError) {
+              // Handle edge case in retry: user deleted after token refresh
+              if (axios.isAxiosError(retryError) && retryError.response?.status === 404) {
+                console.warn('User not found after token refresh - account may have been deleted')
+                clearSensitiveData()
+                setUser(null)
+                setLoading(false)
+                return
+              }
+            }
           }
         }
       }

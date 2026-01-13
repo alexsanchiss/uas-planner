@@ -3,6 +3,7 @@
 import "./globals.css";
 import { Footer } from "./components/footer";
 import { Header } from "./components/header";
+import { AuthProvider } from "./components/auth/auth-provider";
 import React, { useEffect, useState } from "react";
 import { Modal } from "./components/ui/modal";
 
@@ -33,6 +34,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="min-h-screen flex flex-col">
+        <AuthProvider>
         <Header />
         <Modal
           open={showDemoPopup}
@@ -72,6 +74,7 @@ export default function RootLayout({
         </Modal>
         <main className="flex-1 flex flex-col">{children}</main>
         <Footer />
+        </AuthProvider>
       </body>
     </html>
   );
