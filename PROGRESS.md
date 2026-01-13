@@ -42,10 +42,10 @@
 ### 1.4 Configuration Externalization
 | Task | Description | Status |
 |------|-------------|--------|
-| TASK-018 | Create FAS_API_URL env variable | ⬜ |
-| TASK-019 | Update uplan endpoint to use env var | ⬜ |
-| TASK-020 | Update .env.example | ⬜ |
-| TASK-021 | Add startup env validation | ⬜ |
+| TASK-018 | Create FAS_API_URL env variable | ✅ |
+| TASK-019 | Update uplan endpoint to use env var | ✅ |
+| TASK-020 | Update .env.example | ✅ |
+| TASK-021 | Add startup env validation | ✅ |
 
 ### 1.5 Error Handling
 | Task | Description | Status |
@@ -394,19 +394,20 @@
 
 | Phase | Total | Completed | In Progress | Blocked |
 |-------|-------|-----------|-------------|---------|
-| Phase 1: Backend | 27 | 17 | 0 | 0 |
+| Phase 1: Backend | 27 | 21 | 0 | 0 |
 | Phase 2: Auth | 25 | 0 | 0 | 0 |
 | Phase 3: Refactor | 27 | 0 | 0 | 0 |
 | Phase 4: Production UI | 41 | 0 | 0 | 0 |
 | Phase 5: PlanGenerator | 34 | 0 | 0 | 0 |
 | Phase 6: UI/UX | 50 | 0 | 0 | 0 |
 | Phase 7: Testing | 10 | 0 | 0 | 0 |
-| **TOTAL** | **214** | **17** | **0** | **0** |
+| **TOTAL** | **214** | **21** | **0** | **0** |
 
 ---
 
 ## Recent Updates
 
+- **2026-01-13**: TASK-018 ✅, TASK-019 ✅, TASK-020 ✅, TASK-021 ✅ - Configuration externalization complete. FAS_API_URL env var already used in uplan endpoint. Updated .env.example with comprehensive documentation for DATABASE_URL, JWT_SECRET, and FAS_API_URL. Added startup validation in next.config.mjs for required env vars (DATABASE_URL, JWT_SECRET) with helpful error messages.
 - **2026-01-13**: TASK-014 ✅, TASK-015 ✅, TASK-016 ✅, TASK-017 ✅ - PrismaClient standardization complete. Updated auth/login, auth/signup, and user routes to use singleton from `lib/prisma.ts`. Removed `$disconnect()` calls (not needed with singleton). Audited all 11 App Router API routes - all now use the singleton pattern correctly.
 - **2026-01-13**: TASK-012 ✅ & TASK-013 ✅ - Verified all App Router API routes use `withAuth` middleware and check userId ownership. Routes: flightPlans, flightPlans/[id], flightPlans/[id]/uplan, flightPlans/[id]/reset, folders, folders/[id], csvResult. FAS callback endpoint correctly exempt (external service).
 - **2026-01-13**: TASK-011 ✅ - Created App Router `app/api/fas/[externalResponseNumber]/route.ts` with PUT handler. FAS callback endpoint that updates flight plan authorization status. Does NOT require JWT auth (called by external FAS service). Finds plan by externalResponseNumber and updates authorizationStatus and authorizationMessage.
