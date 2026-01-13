@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { Button } from "./ui/button";
+import { ThemeToggle } from "./ui/theme-toggle";
 import { useAuthContext } from "./auth/auth-provider";
 
 /**
@@ -205,6 +206,7 @@ export function Header() {
         </div>
         {/* Botones de usuario a la derecha */}
         <div className="flex justify-end items-center space-x-4">
+          <ThemeToggle />
           {loading ? (
             <UserSkeleton />
           ) : user ? (

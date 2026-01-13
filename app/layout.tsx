@@ -7,6 +7,26 @@ import { AuthProvider } from "./components/auth/auth-provider";
 import React, { useEffect, useState } from "react";
 import { Modal } from "./components/ui/modal";
 
+/**
+ * Initialize theme before React hydration to prevent flash
+ */
+function initializeTheme() {
+  if (typeof window === "undefined") return;
+  
+  const stored = localStorage.getItem("uas-planner-theme");
+  if (stored === "light") {
+    document.documentElement.setAttribute("data-theme", "light");
+  } else if (stored === "dark") {
+    document.documentElement.removeAttribute("data-theme");
+  } else {
+    // Check system preference
+    const preferLight = window.matchMedia("(prefers-color-scheme: light)").matches;
+    if (preferLight) {
+      document.documentElement.setAttribute("data-theme", "light");
+    }
+  }
+}
+
 export default function RootLayout({
   children,
 }: {
@@ -15,6 +35,9 @@ export default function RootLayout({
   const [showDemoPopup, setShowDemoPopup] = useState(false);
 
   useEffect(() => {
+    // Initialize theme on mount
+    initializeTheme();
+    
     if (typeof window === "undefined") return;
     // Show if just logged in/signed up (sessionStorage flag)
     if (sessionStorage.getItem("showDemoPopupAfterAuth")) {
@@ -32,8 +55,8 @@ export default function RootLayout({
   }, []);
 
   return (
-    <html lang="en">
-      <body className="min-h-screen flex flex-col">
+    <html lang="en" suppressHydrationWarning>
+      <body className="min-h-screen flex flex-col bg-[var(--bg-primary)] text-[var(--text-primary)]">
         <AuthProvider>
         <Header />
         <Modal
