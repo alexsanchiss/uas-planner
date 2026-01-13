@@ -24,7 +24,7 @@
 | TASK-005 | Migrate flightPlans/[id] route.ts | ✅ |
 | TASK-006 | Migrate flightPlans/[id]/uplan route.ts | ✅ |
 | TASK-007 | Create flightPlans/[id]/reset route.ts | ✅ |
-| TASK-008 | Migrate folders route.ts | ⬜ |
+| TASK-008 | Migrate folders route.ts | ✅ |
 | TASK-009 | Migrate folders/[id] route.ts with rename | ⬜ |
 | TASK-010 | Migrate csvResult route.ts | ⬜ |
 | TASK-011 | Migrate fas/[externalResponseNumber] route.ts | ⬜ |
@@ -394,19 +394,20 @@
 
 | Phase | Total | Completed | In Progress | Blocked |
 |-------|-------|-----------|-------------|---------|
-| Phase 1: Backend | 27 | 7 | 0 | 0 |
+| Phase 1: Backend | 27 | 8 | 0 | 0 |
 | Phase 2: Auth | 25 | 0 | 0 | 0 |
 | Phase 3: Refactor | 27 | 0 | 0 | 0 |
 | Phase 4: Production UI | 41 | 0 | 0 | 0 |
 | Phase 5: PlanGenerator | 34 | 0 | 0 | 0 |
 | Phase 6: UI/UX | 50 | 0 | 0 | 0 |
 | Phase 7: Testing | 10 | 0 | 0 | 0 |
-| **TOTAL** | **214** | **7** | **0** | **0** |
+| **TOTAL** | **214** | **8** | **0** | **0** |
 
 ---
 
 ## Recent Updates
 
+- **2026-01-13**: TASK-008 ✅ - Created App Router `app/api/folders/route.ts` with GET and POST handlers. GET lists all folders for authenticated user with flight plans included. POST creates a new folder. Uses JWT auth (userId from token), Zod validation, and PrismaClient singleton.
 - **2026-01-13**: TASK-007 ✅ - Created App Router `app/api/flightPlans/[id]/reset/route.ts` with POST handler. Resets flight plan to initial state: deletes associated csvResult, clears authorization status/message, sets status to "sin procesar", clears uplan and externalResponseNumber. Includes JWT auth and ownership validation.
 - **2026-01-13**: TASK-006 ✅ - Created App Router `app/api/flightPlans/[id]/uplan/route.ts` with POST handler. Generates U-Plan from CSV trajectory and submits to external FAS API. Includes JWT auth, ownership validation, FAS API URL from env config, and proper error handling for external API failures.
 - **2026-01-13**: TASK-005 ✅ - Created App Router `app/api/flightPlans/[id]/route.ts` with GET, PUT, DELETE handlers. RESTful endpoint for individual flight plan operations. Includes JWT auth, authorization checks (user can only access own plans), Zod validation, and cascading CSV result deletion.
