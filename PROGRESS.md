@@ -172,11 +172,11 @@
 ### 4.2 Workflow Implementation
 | Task | Description | Status |
 |------|-------------|--------|
-| TASK-084 | Define workflow state machine | ⬜ |
-| TASK-085 | Create workflow progress indicator | ⬜ |
-| TASK-086 | Implement step highlighting | ⬜ |
-| TASK-087 | Lock scheduledAt after processing | ⬜ |
-| TASK-088 | Add processing confirmation dialog | ⬜ |
+| TASK-084 | Define workflow state machine | ✅ |
+| TASK-085 | Create workflow progress indicator | ✅ |
+| TASK-086 | Implement step highlighting | ✅ |
+| TASK-087 | Lock scheduledAt after processing | ✅ |
+| TASK-088 | Add processing confirmation dialog | ✅ |
 
 ### 4.3 Button State Management
 | Task | Description | Status |
@@ -397,16 +397,17 @@
 | Phase 1: Backend | 27 | 27 | 0 | 0 |
 | Phase 2: Auth | 25 | 25 | 0 | 0 |
 | Phase 3: Refactor | 27 | 27 | 0 | 0 |
-| Phase 4: Production UI | 41 | 4 | 0 | 0 |
+| Phase 4: Production UI | 41 | 9 | 0 | 0 |
 | Phase 5: PlanGenerator | 34 | 0 | 0 | 0 |
 | Phase 6: UI/UX | 50 | 0 | 0 | 0 |
 | Phase 7: Testing | 10 | 0 | 0 | 0 |
-| **TOTAL** | **214** | **83** | **0** | **0** |
+| **TOTAL** | **214** | **88** | **0** | **0** |
 
 ---
 
 ## Recent Updates
 
+- **2026-01-13**: TASK-084 ✅, TASK-085 ✅, TASK-086 ✅, TASK-087 ✅, TASK-088 ✅ - Workflow implementation complete. Defined workflow state machine in `ProcessingWorkflow.tsx` with states: unprocessed → processing → processed → authorizing → authorized/denied/error. Added `getWorkflowState()` and `hasProcessingStarted()` utility functions. Extended workflow to 5 steps: Seleccionar → Fecha/Hora → Procesar → Geoawareness → Autorizar. Added `WorkflowStateIndicator` component showing current state with colored badges and icons. Implemented step highlighting with processing/error states (animated spinner for processing, X icon for error). DateTimePicker now disabled after processing starts with lock icon and explanatory message. Added processing confirmation dialog using `ConfirmDialog` component (warning variant) before starting plan processing.
 - **2026-01-13**: TASK-080 ✅, TASK-081 ✅, TASK-082 ✅, TASK-083 ✅ - Folder improvements complete. Enhanced `FolderCard.tsx` with improved inline editing (auto-focus, select text on edit, Escape to cancel). Added rename validation: non-empty name check and uniqueness validation against existing folder names (case-insensitive). Created `ConfirmDialog` component (`app/components/ui/confirm-dialog.tsx`) with danger/warning/info variants, loading state, keyboard support (Escape to close), and backdrop click handling. Integrated delete confirmation dialog showing folder name and affected flight plan count. Updated `FolderList.tsx` to pass existing folder names for uniqueness validation.
 - **2026-01-13**: TASK-075 ✅, TASK-076 ✅, TASK-077 ✅, TASK-078 ✅, TASK-079 ✅ - Production FlightPlansUploader complete. Created new `app/components/FlightPlansUploader.tsx` (production version) using modular components: `FolderList`, `FlightPlanCard`, `ProcessingWorkflow`, `DateTimePicker`. Implements individual plan operations only (no bulk actions), removes folder status counters, removes global status summary box. Clean, guided workflow UI with plan selection and step-by-step processing. Uses hooks: `useFlightPlans` (with 5s polling), `useFolders`, `useAuth`. **Phase 3 FlightPlansUploader Refactor is now 100% complete!**
 - **2026-01-13**: TASK-070 ✅, TASK-071 ✅, TASK-072 ✅, TASK-073 ✅, TASK-074 ✅ - Data management hooks complete. Created `usePolling.ts` (generic polling hook with configurable interval, enable/disable control, cleanup on unmount, and error handling). Created `useFlightPlans.ts` (fetches /api/flightPlans, uses 5-second polling for processing status updates, provides optimistic update functions for immediate UI feedback, CRUD operations with type-safe interfaces). Created `useFolders.ts` (fetches /api/folders, provides CRUD operations with optimistic updates, uses auth token from localStorage).

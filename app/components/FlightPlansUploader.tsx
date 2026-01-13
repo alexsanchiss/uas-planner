@@ -8,6 +8,11 @@
  * TASK-077: Remove folder status counters display
  * TASK-078: Remove global status summary box
  * TASK-079: Integrate all modular components into cohesive UI
+ * TASK-084: Define workflow state machine (unprocessed → processing → processed → authorizing → authorized/denied)
+ * TASK-085: Create workflow progress indicator
+ * TASK-086: Implement step highlighting: Process → Geoawareness → Authorize
+ * TASK-087: Lock scheduledAt editing after processing starts
+ * TASK-088: Add processing confirmation dialog
  * 
  * A clean, guided workflow UI for managing flight plans.
  * Uses modular components from flight-plans/ directory.
@@ -22,10 +27,13 @@ import {
   FlightPlanCard,
   ProcessingWorkflow,
   DateTimePicker,
+  getWorkflowState,
+  hasProcessingStarted,
   type Folder,
   type FlightPlan,
   type WorkflowStep,
 } from './flight-plans'
+import { ConfirmDialog } from './ui/confirm-dialog'
 
 /**
  * Transform API flight plan data to component flight plan format
@@ -49,17 +57,21 @@ function transformFlightPlan(plan: FlightPlanData): FlightPlan {
 
 /**
  * Determine current workflow step based on selected plan state
+ * Updated for 5-step workflow: Select → DateTime → Process → Geoawareness → Authorize
  */
 function getCurrentStep(plan: FlightPlan | null): WorkflowStep {
   if (!plan) return 'select'
   if (!plan.scheduledAt) return 'datetime'
   if (plan.status === 'sin procesar') return 'process'
-  if (plan.status === 'procesado' && plan.authorizationStatus === 'sin autorización') return 'authorize'
-  return 'select'
+  if (plan.status === 'en proceso') return 'process' // Still in process step while processing
+  if (plan.status === 'procesado' && plan.authorizationStatus === 'sin autorización') return 'geoawareness'
+  if (plan.authorizationStatus === 'pendiente') return 'authorize'
+  return 'select' // Workflow complete (authorized/denied)
 }
 
 /**
  * Get completed workflow steps based on plan state
+ * Updated for 5-step workflow
  */
 function getCompletedSteps(plan: FlightPlan | null): WorkflowStep[] {
   if (!plan) return []
@@ -74,7 +86,12 @@ function getCompletedSteps(plan: FlightPlan | null): WorkflowStep[] {
     completed.push('process')
   }
   
-  if (plan.authorizationStatus !== 'sin autorización') {
+  // Geoawareness is considered complete when we've moved to authorization
+  if (plan.status === 'procesado' && plan.authorizationStatus !== 'sin autorización') {
+    completed.push('geoawareness')
+  }
+  
+  if (plan.authorizationStatus === 'aprobado' || plan.authorizationStatus === 'denegado') {
     completed.push('authorize')
   }
   
@@ -105,6 +122,12 @@ export function FlightPlansUploader() {
   // UI State
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null)
   const [isCreatingFolder, setIsCreatingFolder] = useState(false)
+  // TASK-088: Processing confirmation dialog state
+  const [processingConfirmDialog, setProcessingConfirmDialog] = useState<{
+    open: boolean
+    planId: string | null
+    planName: string
+  }>({ open: false, planId: null, planName: '' })
   const [loadingPlanIds, setLoadingPlanIds] = useState<{
     processing: Set<string>
     downloading: Set<string>
@@ -146,6 +169,14 @@ export function FlightPlansUploader() {
     const plan = flightPlans.find(p => String(p.id) === selectedPlanId)
     return plan ? transformFlightPlan(plan) : null
   }, [selectedPlanId, flightPlans])
+
+  // TASK-087: Check if scheduledAt editing should be locked
+  const isScheduledAtLocked = useMemo(() => {
+    if (!selectedPlan) return false
+    return hasProcessingStarted(
+      getWorkflowState(selectedPlan.status, selectedPlan.authorizationStatus)
+    )
+  }, [selectedPlan])
 
   // Workflow state
   const currentStep = getCurrentStep(selectedPlan)
@@ -214,20 +245,36 @@ export function FlightPlansUploader() {
   }, [deleteFolder, addLoadingFolder, removeLoadingFolder])
 
   // Plan operations (individual only - no bulk)
-  const handleProcessPlan = useCallback(async (planId: string) => {
+  // TASK-088: Show confirmation dialog before processing
+  const handleProcessPlan = useCallback((planId: string) => {
     const plan = flightPlans.find(p => String(p.id) === planId)
     if (!plan || !plan.scheduledAt) {
       alert('Por favor, seleccione una fecha y hora antes de procesar.')
       return
     }
 
+    // Show confirmation dialog
+    setProcessingConfirmDialog({
+      open: true,
+      planId,
+      planName: plan.customName,
+    })
+  }, [flightPlans])
+
+  // Actual processing after confirmation
+  const confirmProcessPlan = useCallback(async () => {
+    const planId = processingConfirmDialog.planId
+    if (!planId) return
+
+    setProcessingConfirmDialog(prev => ({ ...prev, open: false }))
+    
     addLoadingPlan('processing', planId)
     try {
       await updateFlightPlan(Number(planId), { status: 'en cola' })
     } finally {
       removeLoadingPlan('processing', planId)
     }
-  }, [flightPlans, updateFlightPlan, addLoadingPlan, removeLoadingPlan])
+  }, [processingConfirmDialog.planId, updateFlightPlan, addLoadingPlan, removeLoadingPlan])
 
   const handleDownloadPlan = useCallback(async (planId: string) => {
     const plan = flightPlans.find(p => String(p.id) === planId)
@@ -419,6 +466,8 @@ export function FlightPlansUploader() {
         <ProcessingWorkflow
           currentStep={currentStep}
           completedSteps={completedSteps}
+          planStatus={selectedPlan?.status}
+          authorizationStatus={selectedPlan?.authorizationStatus}
         />
         {!selectedPlan && (
           <p className="mt-4 text-sm text-gray-500 text-center">
@@ -460,8 +509,8 @@ export function FlightPlansUploader() {
             className="mb-4"
           />
 
-          {/* DateTime picker for selected plan - shown when at datetime step */}
-          {currentStep === 'datetime' && (
+          {/* DateTime picker for selected plan - shown when at datetime step or to show current value */}
+          {(currentStep === 'datetime' || selectedPlan.scheduledAt) && (
             <div className="mt-4 p-4 bg-white rounded-lg border border-blue-100">
               <DateTimePicker
                 value={selectedPlan.scheduledAt 
@@ -470,11 +519,21 @@ export function FlightPlansUploader() {
                 }
                 onChange={handleDateTimeChange}
                 label="Fecha y hora programada"
+                disabled={isScheduledAtLocked}
                 className="max-w-xs"
               />
-              <p className="mt-2 text-sm text-gray-500">
-                Seleccione la fecha y hora para procesar el plan.
-              </p>
+              {isScheduledAtLocked ? (
+                <p className="mt-2 text-sm text-amber-600 flex items-center gap-1">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  La fecha no puede modificarse después de iniciar el procesamiento.
+                </p>
+              ) : (
+                <p className="mt-2 text-sm text-gray-500">
+                  Seleccione la fecha y hora para procesar el plan.
+                </p>
+              )}
             </div>
           )}
 
@@ -494,19 +553,38 @@ export function FlightPlansUploader() {
             </div>
           )}
 
-          {/* Authorize action prompt */}
-          {currentStep === 'authorize' && selectedPlan.status === 'procesado' && (
-            <div className="mt-4 p-4 bg-white rounded-lg border border-green-100">
+          {/* Geoawareness step prompt */}
+          {currentStep === 'geoawareness' && selectedPlan.status === 'procesado' && (
+            <div className="mt-4 p-4 bg-white rounded-lg border border-purple-100">
               <p className="text-sm text-gray-600 mb-3">
-                El plan ha sido procesado. Puede solicitar autorización al FAS.
+                El plan ha sido procesado. Revise la información de geoawareness antes de solicitar autorización.
+              </p>
+              <p className="text-xs text-gray-500 mb-3">
+                El visor de geoawareness mostrará las zonas geográficas que afectan al vuelo.
               </p>
               <button
                 onClick={() => handleAuthorizePlan(selectedPlan.id)}
                 disabled={loadingPlanIds.authorizing.has(selectedPlan.id)}
-                className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:bg-green-400 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 disabled:bg-purple-400 transition-colors"
               >
-                {loadingPlanIds.authorizing.has(selectedPlan.id) ? 'Solicitando...' : 'Solicitar autorización'}
+                {loadingPlanIds.authorizing.has(selectedPlan.id) ? 'Solicitando...' : 'Continuar a autorización'}
               </button>
+            </div>
+          )}
+
+          {/* Authorize action prompt - when authorization is pending */}
+          {currentStep === 'authorize' && selectedPlan.authorizationStatus === 'pendiente' && (
+            <div className="mt-4 p-4 bg-white rounded-lg border border-amber-100">
+              <div className="flex items-center gap-2 text-amber-700 mb-2">
+                <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                <span className="font-medium">Esperando respuesta del FAS...</span>
+              </div>
+              <p className="text-sm text-gray-600">
+                La solicitud de autorización ha sido enviada. Recibirá una notificación cuando se procese.
+              </p>
             </div>
           )}
         </div>
@@ -575,6 +653,18 @@ export function FlightPlansUploader() {
           </div>
         )
       })()}
+
+      {/* TASK-088: Processing confirmation dialog */}
+      <ConfirmDialog
+        open={processingConfirmDialog.open}
+        onClose={() => setProcessingConfirmDialog(prev => ({ ...prev, open: false }))}
+        onConfirm={confirmProcessPlan}
+        title="Confirmar procesamiento"
+        message={`¿Está seguro de que desea procesar el plan "${processingConfirmDialog.planName}"? Una vez iniciado el procesamiento, no podrá modificar la fecha y hora programada.`}
+        confirmLabel="Procesar"
+        cancelLabel="Cancelar"
+        variant="warning"
+      />
     </div>
   )
 }
