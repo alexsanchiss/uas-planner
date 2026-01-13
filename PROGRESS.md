@@ -14,7 +14,7 @@
 | Task | Description | Status |
 |------|-------------|--------|
 | TASK-001 | Remove hardcoded JWT secret fallback | ✅ |
-| TASK-002 | Create API auth middleware for App Router | ⬜ |
+| TASK-002 | Create API auth middleware for App Router | ✅ |
 | TASK-003 | Create Zod validation schemas | ⬜ |
 
 ### 1.2 API Migration to App Router
@@ -394,17 +394,18 @@
 
 | Phase | Total | Completed | In Progress | Blocked |
 |-------|-------|-----------|-------------|---------|
-| Phase 1: Backend | 27 | 1 | 0 | 0 |
+| Phase 1: Backend | 27 | 2 | 0 | 0 |
 | Phase 2: Auth | 25 | 0 | 0 | 0 |
 | Phase 3: Refactor | 27 | 0 | 0 | 0 |
 | Phase 4: Production UI | 41 | 0 | 0 | 0 |
 | Phase 5: PlanGenerator | 34 | 0 | 0 | 0 |
 | Phase 6: UI/UX | 50 | 0 | 0 | 0 |
 | Phase 7: Testing | 10 | 0 | 0 | 0 |
-| **TOTAL** | **214** | **1** | **0** | **0** |
+| **TOTAL** | **214** | **2** | **0** | **0** |
 
 ---
 
 ## Recent Updates
 
+- **2026-01-13**: TASK-002 ✅ - Created API auth middleware (`lib/auth-middleware.ts`) with `withAuth` function for App Router routes. Includes type-safe auth result handling with `isAuthError` helper.
 - **2026-01-13**: TASK-001 ✅ - Removed hardcoded JWT secret fallback. Now requires `JWT_SECRET` env var with startup validation. Updated `.env.example` with documentation.
