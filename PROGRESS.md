@@ -128,10 +128,10 @@
 | TASK-057 | Create flight-plans directory | ✅ |
 | TASK-058 | Create StatusBadge.tsx | ✅ |
 | TASK-059 | Create ActionButtons.tsx | ✅ |
-| TASK-060 | Create FlightPlanCard.tsx | ⬜ |
-| TASK-061 | Create FlightPlanList.tsx | ⬜ |
-| TASK-062 | Create FolderCard.tsx | ⬜ |
-| TASK-063 | Create FolderList.tsx | ⬜ |
+| TASK-060 | Create FlightPlanCard.tsx | ✅ |
+| TASK-061 | Create FlightPlanList.tsx | ✅ |
+| TASK-062 | Create FolderCard.tsx | ✅ |
+| TASK-063 | Create FolderList.tsx | ✅ |
 | TASK-064 | Create ProcessingWorkflow.tsx | ⬜ |
 | TASK-065 | Create AuthorizationPanel.tsx | ⬜ |
 | TASK-066 | Create GeoawarenessViewer.tsx | ⬜ |
@@ -396,17 +396,18 @@
 |-------|-------|-----------|-------------|---------|
 | Phase 1: Backend | 27 | 27 | 0 | 0 |
 | Phase 2: Auth | 25 | 25 | 0 | 0 |
-| Phase 3: Refactor | 27 | 7 | 0 | 0 |
+| Phase 3: Refactor | 27 | 11 | 0 | 0 |
 | Phase 4: Production UI | 41 | 0 | 0 | 0 |
 | Phase 5: PlanGenerator | 34 | 0 | 0 | 0 |
 | Phase 6: UI/UX | 50 | 0 | 0 | 0 |
 | Phase 7: Testing | 10 | 0 | 0 | 0 |
-| **TOTAL** | **214** | **59** | **0** | **0** |
+| **TOTAL** | **214** | **63** | **0** | **0** |
 
 ---
 
 ## Recent Updates
 
+- **2026-01-13**: TASK-060 ✅, TASK-061 ✅, TASK-062 ✅, TASK-063 ✅ - Flight plan and folder components complete. Created `FlightPlanCard.tsx` (displays plan name, status badges, scheduled date, action buttons with loading states), `FlightPlanList.tsx` (maps array of plans to cards with per-plan loading tracking), `FolderCard.tsx` (expandable folder with inline rename, delete, contains flight plan list), and `FolderList.tsx` (folder management with create button and form). All components use TypeScript interfaces and Tailwind CSS. Updated barrel export.
 - **2026-01-13**: TASK-057 ✅, TASK-058 ✅, TASK-059 ✅ - Component architecture started. Created `app/components/flight-plans/` directory with reusable components: `StatusBadge.tsx` (shows plan status with colored badges - sin procesar/gray, en proceso/blue, procesado/green, error/red; and authorization status - sin autorización/gray, pendiente/yellow, aprobado/green, denegado/red), `ActionButtons.tsx` (Process, Download, Authorize, Reset, Delete buttons with loading states and disabled tooltips), and `index.ts` barrel export. All components use TypeScript and Tailwind CSS.
 - **2026-01-13**: TASK-053 ✅, TASK-054 ✅, TASK-055 ✅, TASK-056 ✅ - Preserve Current Implementation complete. Copied `FlightPlansUploader.tsx` to `FlightPlansUploaderDev.tsx` and renamed the component to `FlightPlansUploaderDev`. Added `NEXT_PUBLIC_PRODUCTION_MODE` environment variable to `.env.example` with documentation. Updated `trajectory-generator/page.tsx` to conditionally load either the production or development component based on the env flag. Defaults to Dev mode since Production component isn't fully built yet.
 - **2026-01-13**: TASK-049 ✅, TASK-050 ✅, TASK-051 ✅, TASK-052 ✅ - Protected routes complete. Created `ProtectedRoute` wrapper component (`app/components/auth/protected-route.tsx`) that checks authentication state, shows loading spinner while verifying, and redirects unauthenticated users to `/login?redirect=<current-path>`. Applied protection to `/trajectory-generator` and `/plan-generator` pages. Updated login page to read `redirect` query param and navigate to original destination after successful login. **Phase 2 Auth System Overhaul is now 100% complete!**
