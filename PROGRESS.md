@@ -192,11 +192,11 @@
 ### 4.4 Real-time Updates
 | Task | Description | Status |
 |------|-------------|--------|
-| TASK-096 | Implement 5s polling in useFlightPlans | ⬜ |
-| TASK-097 | Add refresh visual indicator | ⬜ |
-| TASK-098 | Implement optimistic updates | ⬜ |
-| TASK-099 | Add smooth status transitions | ⬜ |
-| TASK-100 | Handle polling errors gracefully | ⬜ |
+| TASK-096 | Implement 5s polling in useFlightPlans | ✅ |
+| TASK-097 | Add refresh visual indicator | ✅ |
+| TASK-098 | Implement optimistic updates | ✅ |
+| TASK-099 | Add smooth status transitions | ✅ |
+| TASK-100 | Handle polling errors gracefully | ✅ |
 
 ### 4.5 DateTime Picker Fix
 | Task | Description | Status |
@@ -397,16 +397,17 @@
 | Phase 1: Backend | 27 | 27 | 0 | 0 |
 | Phase 2: Auth | 25 | 25 | 0 | 0 |
 | Phase 3: Refactor | 27 | 27 | 0 | 0 |
-| Phase 4: Production UI | 41 | 16 | 0 | 0 |
+| Phase 4: Production UI | 41 | 21 | 0 | 0 |
 | Phase 5: PlanGenerator | 34 | 0 | 0 | 0 |
 | Phase 6: UI/UX | 50 | 0 | 0 | 0 |
 | Phase 7: Testing | 10 | 0 | 0 | 0 |
-| **TOTAL** | **214** | **95** | **0** | **0** |
+| **TOTAL** | **214** | **100** | **0** | **0** |
 
 ---
 
 ## Recent Updates
 
+- **2026-01-13**: TASK-096 ✅, TASK-097 ✅, TASK-098 ✅, TASK-099 ✅, TASK-100 ✅ - Real-time Updates complete. TASK-096 & TASK-098 were already implemented in `useFlightPlans.ts` (5-second polling via `usePolling` hook, optimistic updates with `optimisticUpdate`/`optimisticRemove` functions). TASK-097: Added subtle refresh indicator ("Sincronizando..." with spinner) in `FlightPlansUploader.tsx` workflow header, shows during background refreshes. TASK-099: Added CSS `transition-all duration-300 ease-in-out` to `StatusBadge.tsx` for smooth color/style changes when status updates. TASK-100: Enhanced `usePolling.ts` with retry logic - tracks consecutive errors (`errorCount`), stops polling after 3 failures (`maxRetries`), uses exponential backoff (delays increase on errors, max 30s), added `resetErrors()` to resume polling. Added polling error banner in `FlightPlansUploader.tsx` with retry button.
 - **2026-01-13**: TASK-089 ✅, TASK-090 ✅, TASK-091 ✅, TASK-092 ✅, TASK-093 ✅, TASK-094 ✅, TASK-095 ✅ - Button State Management complete. Enhanced `FlightPlanCard.tsx` with helper functions for determining disabled tooltip messages: `getProcessDisabledTooltip()` (TASK-090: "Select date/time first", TASK-091: "Processing in progress"), `getAuthorizeDisabledTooltip()` (TASK-092: "Process trajectory first", TASK-093: "Already authorized"), `getDownloadDisabledTooltip()` (TASK-094: "No trajectory available"), `getResetDisabledTooltip()` (TASK-095: "Nothing to reset"). Updated `ActionButtons.tsx` default tooltips to match. Tooltip system (TASK-089) already existed in `TooltipWrapper` component - shows tooltip on hover when button is disabled.
 - **2026-01-13**: TASK-084 ✅, TASK-085 ✅, TASK-086 ✅, TASK-087 ✅, TASK-088 ✅ - Workflow implementation complete. Defined workflow state machine in `ProcessingWorkflow.tsx` with states: unprocessed → processing → processed → authorizing → authorized/denied/error. Added `getWorkflowState()` and `hasProcessingStarted()` utility functions. Extended workflow to 5 steps: Seleccionar → Fecha/Hora → Procesar → Geoawareness → Autorizar. Added `WorkflowStateIndicator` component showing current state with colored badges and icons. Implemented step highlighting with processing/error states (animated spinner for processing, X icon for error). DateTimePicker now disabled after processing starts with lock icon and explanatory message. Added processing confirmation dialog using `ConfirmDialog` component (warning variant) before starting plan processing.
 - **2026-01-13**: TASK-080 ✅, TASK-081 ✅, TASK-082 ✅, TASK-083 ✅ - Folder improvements complete. Enhanced `FolderCard.tsx` with improved inline editing (auto-focus, select text on edit, Escape to cancel). Added rename validation: non-empty name check and uniqueness validation against existing folder names (case-insensitive). Created `ConfirmDialog` component (`app/components/ui/confirm-dialog.tsx`) with danger/warning/info variants, loading state, keyboard support (Escape to close), and backdrop click handling. Integrated delete confirmation dialog showing folder name and affected flight plan count. Updated `FolderList.tsx` to pass existing folder names for uniqueness validation.

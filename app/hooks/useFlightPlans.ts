@@ -107,10 +107,16 @@ interface UseFlightPlansReturn {
   refresh: () => Promise<void>
   /** Whether polling is currently active */
   isPolling: boolean
+  /** Whether a background refresh is in progress */
+  isRefreshing: boolean
+  /** Number of consecutive polling errors */
+  errorCount: number
   /** Start polling */
   startPolling: () => void
   /** Stop polling */
   stopPolling: () => void
+  /** Reset errors and resume polling */
+  resetErrors: () => void
   /** Create a new flight plan */
   createFlightPlan: (data: FlightPlanCreateData) => Promise<FlightPlan | null>
   /** Create multiple flight plans */
@@ -196,8 +202,11 @@ export function useFlightPlans(options: UseFlightPlansOptions = {}): UseFlightPl
     error,
     refresh,
     isPolling,
+    isRefreshing,
+    errorCount,
     startPolling,
     stopPolling,
+    resetErrors,
   } = usePolling<FlightPlan[]>(fetchFlightPlans, {
     interval: pollingInterval,
     enabled: pollingEnabled,
@@ -444,8 +453,11 @@ export function useFlightPlans(options: UseFlightPlansOptions = {}): UseFlightPl
     error,
     refresh,
     isPolling,
+    isRefreshing,
+    errorCount,
     startPolling,
     stopPolling,
+    resetErrors,
     createFlightPlan,
     createFlightPlans,
     updateFlightPlan,

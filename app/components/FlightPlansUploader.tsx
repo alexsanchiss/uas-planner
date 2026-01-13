@@ -107,6 +107,9 @@ export function FlightPlansUploader() {
     updateFlightPlan,
     deleteFlightPlan,
     refresh: refreshPlans,
+    isRefreshing,
+    errorCount: pollingErrorCount,
+    resetErrors: resetPollingErrors,
   } = useFlightPlans({ pollingEnabled: true, pollingInterval: 5000 })
   
   const {
@@ -460,9 +463,41 @@ export function FlightPlansUploader() {
 
   return (
     <div className="flex flex-col gap-6 p-6">
+      {/* Polling error banner - TASK-100 */}
+      {pollingErrorCount >= 3 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <svg className="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <p className="text-sm text-amber-800">
+              La sincronización automática se ha pausado debido a errores de conexión.
+            </p>
+          </div>
+          <button
+            onClick={resetPollingErrors}
+            className="px-3 py-1.5 text-sm font-medium text-amber-700 bg-amber-100 rounded-md hover:bg-amber-200 transition-colors"
+          >
+            Reintentar
+          </button>
+        </div>
+      )}
+
       {/* Workflow guide - shows current step in the flight plan lifecycle */}
       <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Flujo de trabajo</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-900">Flujo de trabajo</h2>
+          {/* TASK-097: Refresh indicator */}
+          {isRefreshing && (
+            <div className="flex items-center gap-2 text-gray-500 text-sm">
+              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              <span>Sincronizando...</span>
+            </div>
+          )}
+        </div>
         <ProcessingWorkflow
           currentStep={currentStep}
           completedSteps={completedSteps}
