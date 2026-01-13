@@ -101,12 +101,12 @@ export function FlightPlanCard({
 
   return (
     <div
-      className={`flex items-center justify-between gap-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md ${className}`}
+      className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3 sm:p-4 shadow-sm transition-shadow hover:shadow-md ${className}`}
     >
       {/* Plan info */}
       <div className="flex flex-1 flex-col gap-2 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <h3 className="text-sm font-semibold text-gray-900 truncate" title={plan.name}>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate" title={plan.name}>
             {plan.name}
           </h3>
         </div>
@@ -117,14 +117,14 @@ export function FlightPlanCard({
         </div>
 
         {plan.scheduledAt && (
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-500 dark:text-gray-400">
             <span className="font-medium">Programado:</span> {formatDate(plan.scheduledAt)}
           </p>
         )}
       </div>
 
-      {/* Actions */}
-      <div className="flex items-center gap-1 flex-shrink-0">
+      {/* Actions - full width on mobile, auto on larger screens */}
+      <div className="flex items-center justify-end sm:justify-start gap-1 flex-shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100 dark:border-gray-700">
         <ProcessIconButton
           onClick={() => onProcess?.(plan.id)}
           disabled={!canProcess || loadingStates.processing}

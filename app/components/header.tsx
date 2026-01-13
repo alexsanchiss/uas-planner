@@ -142,81 +142,169 @@ function UserDropdown({
   );
 }
 
+/**
+ * Hamburger menu icon for mobile navigation
+ */
+function HamburgerIcon({ open }: { open: boolean }) {
+  return (
+    <div className="w-6 h-6 flex flex-col justify-center items-center">
+      <span
+        className={`block h-0.5 w-6 bg-gray-300 transition-all duration-300 ${
+          open ? 'rotate-45 translate-y-1.5' : ''
+        }`}
+      />
+      <span
+        className={`block h-0.5 w-6 bg-gray-300 transition-all duration-300 my-1 ${
+          open ? 'opacity-0' : ''
+        }`}
+      />
+      <span
+        className={`block h-0.5 w-6 bg-gray-300 transition-all duration-300 ${
+          open ? '-rotate-45 -translate-y-1.5' : ''
+        }`}
+      />
+    </div>
+  );
+}
+
 export function Header() {
   const { user, loading, logout } = useAuthContext();
   const pathname = usePathname();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isActive = (path: string) => pathname === path;
 
+  // Close mobile menu when route changes
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
+
+  // Close mobile menu on escape key
+  useEffect(() => {
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setMobileMenuOpen(false);
+      }
+    }
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, []);
+
+  const navLinks = [
+    { href: "/plan-generator", label: "Plan Generator" },
+    { href: "/trajectory-generator", label: "Trajectory Generator" },
+    { href: "/plan-activation", label: "Plan Activation" },
+  ];
+
   return (
-    <header className="bg-gray-800 shadow-md">
-      <div className="container mx-auto px-4 py-3 grid grid-cols-3 items-center">
-        {/* Navegación a la izquierda */}
-        <div className="flex items-center space-x-4">
-          <Link href="/plan-generator" className="group">
-            <div
-              className={`px-3 py-2 rounded-lg border transition-all duration-200 cursor-pointer shadow-sm
-                ${
-                  isActive("/plan-generator")
-                    ? "bg-blue-700 border-blue-800 text-white shadow-lg"
-                    : "bg-gray-700/60 border-gray-600 text-gray-200 group-hover:bg-blue-800 group-hover:text-white group-hover:shadow-lg"
-                }
-                hover:scale-105 hover:shadow-xl`}
-            >
-              Plan Generator
-            </div>
-          </Link>
-          <Link href="/trajectory-generator" className="group">
-            <div
-              className={`px-3 py-2 rounded-lg border transition-all duration-200 cursor-pointer shadow-sm
-                ${
-                  isActive("/trajectory-generator")
-                    ? "bg-blue-700 border-blue-800 text-white shadow-lg"
-                    : "bg-gray-700/60 border-gray-600 text-gray-200 group-hover:bg-blue-800 group-hover:text-white group-hover:shadow-lg"
-                }
-                hover:scale-105 hover:shadow-xl`}
-            >
-              Trajectory Generator
-            </div>
-          </Link>
-                    <Link href="/plan-activation" className="group">
-            <div
-              className={`px-3 py-2 rounded-lg border transition-all duration-200 cursor-pointer shadow-sm
-                ${
-                  isActive("/plan-activation")
-                    ? "bg-blue-700 border-blue-800 text-white shadow-lg"
-                    : "bg-gray-700/60 border-gray-600 text-gray-200 group-hover:bg-blue-800 group-hover:text-white group-hover:shadow-lg"
-                }
-                hover:scale-105 hover:shadow-xl`}
-            >
-              Plan Activation
-            </div>
+    <header className="bg-gray-800 shadow-md relative z-50">
+      <div className="container mx-auto px-4 py-3">
+        {/* Desktop layout */}
+        <div className="hidden lg:grid lg:grid-cols-3 items-center">
+          {/* Navegación a la izquierda */}
+          <div className="flex items-center space-x-4">
+            {navLinks.map((link) => (
+              <Link key={link.href} href={link.href} className="group">
+                <div
+                  className={`px-3 py-2 rounded-lg border transition-all duration-200 cursor-pointer shadow-sm
+                    ${
+                      isActive(link.href)
+                        ? "bg-blue-700 border-blue-800 text-white shadow-lg"
+                        : "bg-gray-700/60 border-gray-600 text-gray-200 group-hover:bg-blue-800 group-hover:text-white group-hover:shadow-lg"
+                    }
+                    hover:scale-105 hover:shadow-xl`}
+                >
+                  {link.label}
+                </div>
+              </Link>
+            ))}
+          </div>
+          {/* Logo centrado */}
+          <div className="flex justify-center">
+            <Link href="/">
+              <Image
+                src="/images/logo.jpg"
+                alt="UAS PLANNER Logo"
+                width={150}
+                height={50}
+              />
             </Link>
+          </div>
+          {/* Botones de usuario a la derecha */}
+          <div className="flex justify-end items-center space-x-4">
+            <ThemeToggle />
+            {loading ? (
+              <UserSkeleton />
+            ) : user ? (
+              <UserDropdown username={user.username} onLogout={logout} />
+            ) : (
+              <Link href="/login">
+                <Button variant="outline">Log in</Button>
+              </Link>
+            )}
+          </div>
         </div>
-        {/* Logo centrado */}
-        <div className="flex justify-center">
-          <Link href="/">
+
+        {/* Mobile/Tablet layout */}
+        <div className="lg:hidden flex items-center justify-between">
+          {/* Hamburger button */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="p-2 rounded-lg hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+            aria-label="Toggle menu"
+            aria-expanded={mobileMenuOpen}
+          >
+            <HamburgerIcon open={mobileMenuOpen} />
+          </button>
+
+          {/* Logo centered */}
+          <Link href="/" className="flex-shrink-0">
             <Image
               src="/images/logo.jpg"
               alt="UAS PLANNER Logo"
-              width={150}
-              height={50}
+              width={120}
+              height={40}
+              className="sm:w-[150px] sm:h-[50px]"
             />
           </Link>
+
+          {/* User controls */}
+          <div className="flex items-center space-x-2 sm:space-x-4">
+            <ThemeToggle />
+            {loading ? (
+              <div className="w-8 h-8 rounded-full bg-gray-600 animate-pulse" />
+            ) : user ? (
+              <UserDropdown username={user.username} onLogout={logout} />
+            ) : (
+              <Link href="/login">
+                <Button variant="outline" className="text-sm px-2 py-1 sm:px-4 sm:py-2">Log in</Button>
+              </Link>
+            )}
+          </div>
         </div>
-        {/* Botones de usuario a la derecha */}
-        <div className="flex justify-end items-center space-x-4">
-          <ThemeToggle />
-          {loading ? (
-            <UserSkeleton />
-          ) : user ? (
-            <UserDropdown username={user.username} onLogout={logout} />
-          ) : (
-            <Link href="/login">
-              <Button variant="outline">Log in</Button>
-            </Link>
-          )}
-        </div>
+
+        {/* Mobile menu dropdown */}
+        {mobileMenuOpen && (
+          <div className="lg:hidden mt-3 pb-3 border-t border-gray-700 pt-3 animate-fadeIn">
+            <nav className="flex flex-col space-y-2">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`px-4 py-3 rounded-lg border transition-all duration-200 text-center
+                    ${
+                      isActive(link.href)
+                        ? "bg-blue-700 border-blue-800 text-white"
+                        : "bg-gray-700/60 border-gray-600 text-gray-200 hover:bg-blue-800 hover:text-white"
+                    }`}
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </nav>
+          </div>
+        )}
       </div>
     </header>
   );

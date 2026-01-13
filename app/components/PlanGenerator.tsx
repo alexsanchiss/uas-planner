@@ -296,6 +296,8 @@ export default function PlanGenerator() {
     initialFlightPlanDetails
   );
   const [detailsOpen, setDetailsOpen] = useState(false);
+  // TASK-181: Collapsible sidebar for tablet/mobile
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Map bounds and center
   const bounds = [
@@ -568,7 +570,7 @@ export default function PlanGenerator() {
       {/* Toast notification */}
       {toast && (
         <div
-          className={`fixed top-6 left-1/2 transform -translate-x-1/2 z-[2000] px-6 py-3 rounded shadow-lg text-base font-semibold animate-fade-in ${
+          className={`fixed top-6 left-1/2 transform -translate-x-1/2 z-[2000] px-4 sm:px-6 py-3 rounded shadow-lg text-sm sm:text-base font-semibold animate-fade-in max-w-[90vw] text-center ${
             toast.includes('has been saved in the Plan Generator folder in Trajectory Generator.')
               ? 'bg-green-600 text-white'
               : 'bg-red-600 text-white'
@@ -581,11 +583,29 @@ export default function PlanGenerator() {
       <a
         href="/how-it-works#plan-generator-help"
         target="_self"
-        className="fixed top-24 right-8 z-[2000] bg-blue-700 hover:bg-blue-800 text-white rounded-full p-3 shadow-lg flex items-center gap-2 transition-all duration-200"
+        className="fixed top-24 right-4 sm:right-8 z-[2000] bg-blue-700 hover:bg-blue-800 text-white rounded-full p-2 sm:p-3 shadow-lg flex items-center gap-2 transition-all duration-200"
         title="Need help with Plan Generator?"
       >
-        <HelpCircle className="w-6 h-6" />
+        <HelpCircle className="w-5 h-5 sm:w-6 sm:h-6" />
       </a>
+      
+      {/* TASK-181: Mobile sidebar toggle button */}
+      <button
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        className="lg:hidden fixed bottom-4 left-4 z-[2000] bg-blue-700 hover:bg-blue-800 text-white rounded-full p-3 shadow-lg flex items-center justify-center transition-all duration-200"
+        aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
+      >
+        {sidebarOpen ? (
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        ) : (
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        )}
+      </button>
+      
       <style>{`
         :root {
           --header-height: ${HEADER_HEIGHT}px;
@@ -610,10 +630,44 @@ export default function PlanGenerator() {
           height: 100% !important;
           min-height: 400px;
         }
+        /* TASK-181: Mobile sidebar styles */
+        @media (max-width: 1023px) {
+          .plan-gen-sidebar {
+            position: fixed;
+            top: var(--header-height);
+            left: 0;
+            width: 100%;
+            max-width: 420px;
+            height: calc(100vh - var(--header-height));
+            z-index: 1500;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease-in-out;
+          }
+          .plan-gen-sidebar.sidebar-open {
+            transform: translateX(0);
+          }
+          .plan-gen-map {
+            width: 100%;
+          }
+        }
+        @media (min-width: 640px) and (max-width: 1023px) {
+          .plan-gen-sidebar {
+            max-width: 380px;
+          }
+        }
       `}</style>
       <div className="plan-gen-main">
+        {/* TASK-181: Mobile sidebar overlay */}
+        {sidebarOpen && (
+          <div 
+            className="lg:hidden fixed inset-0 bg-black/50 z-[1400]" 
+            onClick={() => setSidebarOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+        
         {/* Sidebar */}
-        <aside className="plan-gen-sidebar relative z-10 flex flex-col w-[420px] min-w-[320px] max-w-[520px] bg-app-sidebar border-r border-zinc-800 shadow-lg">
+        <aside className={`plan-gen-sidebar relative z-10 flex flex-col w-full lg:w-[420px] lg:min-w-[320px] lg:max-w-[520px] bg-app-sidebar border-r border-zinc-800 shadow-lg ${sidebarOpen ? 'sidebar-open' : ''}`}>
           <div className="flex flex-col h-full w-full">
             {/* Scrollable content: header, plan details, waypoint list, and bottom buttons */}
             <div>

@@ -185,10 +185,10 @@ export function FolderCard({
   const planCount = folder.flightPlans.length
 
   return (
-    <div className={`rounded-lg border border-gray-200 bg-white shadow-sm ${className}`}>
+    <div className={`rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm ${className}`}>
       {/* Folder header */}
       <div
-        className="flex items-center gap-3 p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+        className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
         onClick={handleToggle}
         role="button"
         aria-expanded={expanded}
@@ -205,13 +205,13 @@ export function FolderCard({
 
         {isEditing ? (
           <form onSubmit={handleRenameSubmit} className="flex-1 flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
               <input
                 ref={inputRef}
                 type="text"
                 value={editName}
                 onChange={handleNameChange}
-                className={`flex-1 px-2 py-1 text-sm border rounded focus:outline-none focus:ring-2 focus:border-blue-500 ${
+                className={`flex-1 px-2 py-1.5 sm:py-1 text-sm border rounded focus:outline-none focus:ring-2 focus:border-blue-500 dark:bg-gray-700 dark:text-white dark:border-gray-600 ${
                   validationError
                     ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
                     : 'border-gray-300 focus:ring-blue-500'
@@ -224,20 +224,22 @@ export function FolderCard({
                 aria-invalid={!!validationError}
                 aria-describedby={validationError ? 'folder-name-error' : undefined}
               />
-              <button
-                type="submit"
-                className="px-2 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={loadingStates.renaming || !editName.trim()}
-              >
-                {loadingStates.renaming ? '...' : 'Guardar'}
-              </button>
-              <button
-                type="button"
-                onClick={handleRenameCancel}
-                className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200"
-              >
-                Cancelar
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  className="flex-1 sm:flex-none px-3 py-1.5 sm:py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={loadingStates.renaming || !editName.trim()}
+                >
+                  {loadingStates.renaming ? '...' : 'Guardar'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRenameCancel}
+                  className="flex-1 sm:flex-none px-3 py-1.5 sm:py-1 text-xs font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-600 rounded hover:bg-gray-200 dark:hover:bg-gray-500"
+                >
+                  Cancelar
+                </button>
+              </div>
             </div>
             {validationError && (
               <p id="folder-name-error" className="text-xs text-red-600 ml-1">
@@ -249,13 +251,13 @@ export function FolderCard({
           <>
             <div className="flex-1 min-w-0">
               <h3
-                className="text-sm font-semibold text-gray-900 truncate cursor-pointer hover:text-blue-600"
+                className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate cursor-pointer hover:text-blue-600 dark:hover:text-blue-400"
                 title={folder.name}
                 onClick={handleEditClick}
               >
                 {folder.name}
               </h3>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
                 {planCount} {planCount === 1 ? 'plan de vuelo' : 'planes de vuelo'}
               </p>
             </div>
@@ -263,7 +265,7 @@ export function FolderCard({
             <button
               onClick={handleDeleteClick}
               disabled={loadingStates.deleting}
-              className="p-2 text-red-600 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-1.5 sm:p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Eliminar carpeta"
             >
               {loadingStates.deleting ? (
@@ -281,7 +283,7 @@ export function FolderCard({
 
       {/* Expanded content - flight plans list */}
       {expanded && (
-        <div className="border-t border-gray-200 p-4 bg-gray-50">
+        <div className="border-t border-gray-200 dark:border-gray-700 p-3 sm:p-4 bg-gray-50 dark:bg-gray-900/50">
           <FlightPlanList
             plans={folder.flightPlans}
             onProcess={onProcessPlan}
