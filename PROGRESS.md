@@ -181,13 +181,13 @@
 ### 4.3 Button State Management
 | Task | Description | Status |
 |------|-------------|--------|
-| TASK-089 | Create disabled button tooltip system | ⬜ |
-| TASK-090 | Process button - no scheduledAt | ⬜ |
-| TASK-091 | Process button - already processing | ⬜ |
-| TASK-092 | Authorize button - not processed | ⬜ |
-| TASK-093 | Authorize button - already authorized | ⬜ |
-| TASK-094 | Download button - no CSV | ⬜ |
-| TASK-095 | Reset button - unprocessed | ⬜ |
+| TASK-089 | Create disabled button tooltip system | ✅ |
+| TASK-090 | Process button - no scheduledAt | ✅ |
+| TASK-091 | Process button - already processing | ✅ |
+| TASK-092 | Authorize button - not processed | ✅ |
+| TASK-093 | Authorize button - already authorized | ✅ |
+| TASK-094 | Download button - no CSV | ✅ |
+| TASK-095 | Reset button - unprocessed | ✅ |
 
 ### 4.4 Real-time Updates
 | Task | Description | Status |
@@ -397,16 +397,17 @@
 | Phase 1: Backend | 27 | 27 | 0 | 0 |
 | Phase 2: Auth | 25 | 25 | 0 | 0 |
 | Phase 3: Refactor | 27 | 27 | 0 | 0 |
-| Phase 4: Production UI | 41 | 9 | 0 | 0 |
+| Phase 4: Production UI | 41 | 16 | 0 | 0 |
 | Phase 5: PlanGenerator | 34 | 0 | 0 | 0 |
 | Phase 6: UI/UX | 50 | 0 | 0 | 0 |
 | Phase 7: Testing | 10 | 0 | 0 | 0 |
-| **TOTAL** | **214** | **88** | **0** | **0** |
+| **TOTAL** | **214** | **95** | **0** | **0** |
 
 ---
 
 ## Recent Updates
 
+- **2026-01-13**: TASK-089 ✅, TASK-090 ✅, TASK-091 ✅, TASK-092 ✅, TASK-093 ✅, TASK-094 ✅, TASK-095 ✅ - Button State Management complete. Enhanced `FlightPlanCard.tsx` with helper functions for determining disabled tooltip messages: `getProcessDisabledTooltip()` (TASK-090: "Select date/time first", TASK-091: "Processing in progress"), `getAuthorizeDisabledTooltip()` (TASK-092: "Process trajectory first", TASK-093: "Already authorized"), `getDownloadDisabledTooltip()` (TASK-094: "No trajectory available"), `getResetDisabledTooltip()` (TASK-095: "Nothing to reset"). Updated `ActionButtons.tsx` default tooltips to match. Tooltip system (TASK-089) already existed in `TooltipWrapper` component - shows tooltip on hover when button is disabled.
 - **2026-01-13**: TASK-084 ✅, TASK-085 ✅, TASK-086 ✅, TASK-087 ✅, TASK-088 ✅ - Workflow implementation complete. Defined workflow state machine in `ProcessingWorkflow.tsx` with states: unprocessed → processing → processed → authorizing → authorized/denied/error. Added `getWorkflowState()` and `hasProcessingStarted()` utility functions. Extended workflow to 5 steps: Seleccionar → Fecha/Hora → Procesar → Geoawareness → Autorizar. Added `WorkflowStateIndicator` component showing current state with colored badges and icons. Implemented step highlighting with processing/error states (animated spinner for processing, X icon for error). DateTimePicker now disabled after processing starts with lock icon and explanatory message. Added processing confirmation dialog using `ConfirmDialog` component (warning variant) before starting plan processing.
 - **2026-01-13**: TASK-080 ✅, TASK-081 ✅, TASK-082 ✅, TASK-083 ✅ - Folder improvements complete. Enhanced `FolderCard.tsx` with improved inline editing (auto-focus, select text on edit, Escape to cancel). Added rename validation: non-empty name check and uniqueness validation against existing folder names (case-insensitive). Created `ConfirmDialog` component (`app/components/ui/confirm-dialog.tsx`) with danger/warning/info variants, loading state, keyboard support (Escape to close), and backdrop click handling. Integrated delete confirmation dialog showing folder name and affected flight plan count. Updated `FolderList.tsx` to pass existing folder names for uniqueness validation.
 - **2026-01-13**: TASK-075 ✅, TASK-076 ✅, TASK-077 ✅, TASK-078 ✅, TASK-079 ✅ - Production FlightPlansUploader complete. Created new `app/components/FlightPlansUploader.tsx` (production version) using modular components: `FolderList`, `FlightPlanCard`, `ProcessingWorkflow`, `DateTimePicker`. Implements individual plan operations only (no bulk actions), removes folder status counters, removes global status summary box. Clean, guided workflow UI with plan selection and step-by-step processing. Uses hooks: `useFlightPlans` (with 5s polling), `useFolders`, `useAuth`. **Phase 3 FlightPlansUploader Refactor is now 100% complete!**

@@ -48,6 +48,41 @@ function formatDate(date: string | Date | null | undefined): string {
   })
 }
 
+// Helper to get the appropriate disabled tooltip for each button
+function getProcessDisabledTooltip(plan: FlightPlan): string | undefined {
+  // TASK-090: No scheduledAt
+  if (!plan.scheduledAt) return 'Select date/time first'
+  // TASK-091: Already processing (en proceso means in progress)
+  if (plan.status === 'en proceso') return 'Processing in progress'
+  // Already processed
+  if (plan.status !== 'sin procesar') return 'Already processed'
+  return undefined
+}
+
+function getAuthorizeDisabledTooltip(plan: FlightPlan): string | undefined {
+  // TASK-092: Not processed yet
+  if (plan.status !== 'procesado') return 'Process trajectory first'
+  // TASK-093: Already authorized
+  if (plan.authorizationStatus === 'aprobado' || plan.authorizationStatus === 'denegado') {
+    return 'Already authorized'
+  }
+  // Authorization pending
+  if (plan.authorizationStatus === 'pendiente') return 'Authorization pending'
+  return undefined
+}
+
+function getDownloadDisabledTooltip(plan: FlightPlan): string | undefined {
+  // TASK-094: No CSV result
+  if (!plan.csvResult) return 'No trajectory available'
+  return undefined
+}
+
+function getResetDisabledTooltip(plan: FlightPlan): string | undefined {
+  // TASK-095: Unprocessed (nothing to reset)
+  if (plan.status === 'sin procesar') return 'Nothing to reset'
+  return undefined
+}
+
 export function FlightPlanCard({
   plan,
   onProcess,
@@ -58,6 +93,7 @@ export function FlightPlanCard({
   loadingStates = {},
   className = '',
 }: FlightPlanCardProps) {
+  // TASK-089-095: Button state management with tooltips
   const canProcess = !!plan.scheduledAt && plan.status === 'sin procesar'
   const canDownload = !!plan.csvResult
   const canAuthorize = plan.status === 'procesado' && plan.authorizationStatus === 'sin autorización'
@@ -91,33 +127,29 @@ export function FlightPlanCard({
       <div className="flex items-center gap-1 flex-shrink-0">
         <ProcessIconButton
           onClick={() => onProcess?.(plan.id)}
-          disabled={!canProcess}
-          disabledTooltip={!plan.scheduledAt ? 'Seleccione fecha primero' : 'Ya procesado'}
+          disabled={!canProcess || loadingStates.processing}
+          disabledTooltip={loadingStates.processing ? 'Processing in progress' : getProcessDisabledTooltip(plan)}
           loading={loadingStates.processing}
           aria-label="Procesar plan"
         />
         <DownloadIconButton
           onClick={() => onDownload?.(plan.id)}
           disabled={!canDownload}
-          disabledTooltip="No hay CSV disponible"
+          disabledTooltip={getDownloadDisabledTooltip(plan)}
           loading={loadingStates.downloading}
           aria-label="Descargar CSV"
         />
         <AuthorizeIconButton
           onClick={() => onAuthorize?.(plan.id)}
           disabled={!canAuthorize}
-          disabledTooltip={
-            plan.status !== 'procesado'
-              ? 'Procese el plan primero'
-              : 'Ya tiene autorización'
-          }
+          disabledTooltip={getAuthorizeDisabledTooltip(plan)}
           loading={loadingStates.authorizing}
           aria-label="Solicitar autorización"
         />
         <ResetIconButton
           onClick={() => onReset?.(plan.id)}
           disabled={!canReset}
-          disabledTooltip="El plan no ha sido procesado"
+          disabledTooltip={getResetDisabledTooltip(plan)}
           loading={loadingStates.resetting}
           aria-label="Reiniciar plan"
         />
