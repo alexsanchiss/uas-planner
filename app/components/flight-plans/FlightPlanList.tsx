@@ -50,14 +50,14 @@ export function FlightPlanList({
 
   if (plans.length === 0) {
     return (
-      <div className={`flex items-center justify-center rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 p-8 fade-in ${className}`}>
-        <p className="text-sm text-gray-500 dark:text-gray-400">{emptyMessage}</p>
+      <div className={`flex items-center justify-center rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 p-4 sm:p-8 fade-in ${className}`}>
+        <p className="text-sm text-gray-500 dark:text-gray-400 text-center">{emptyMessage}</p>
       </div>
     )
   }
 
   return (
-    <div className={`flex flex-col gap-3 stagger-children ${className}`}>
+    <div className={`grid grid-cols-1 gap-3 stagger-children ${className}`}>
       {plans.map((plan) => {
         const loadingStates: FlightPlanCardProps['loadingStates'] = {
           processing: loadingPlanIds.processing?.has(plan.id),

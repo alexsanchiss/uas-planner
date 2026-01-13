@@ -61,7 +61,7 @@ const MapModal: React.FC<MapModalProps> = ({ open, onClose, title, trajectories,
   const handleSlider = (val: number) => setCurrentIdxs(currentIdxs.map(() => val));
   return (
     <Modal open={open} onClose={onClose} title={title}>
-      <div className="w-[400px] h-[400px] mb-4 relative">
+      <div className="w-full sm:w-[400px] md:w-[500px] lg:w-[600px] h-[300px] sm:h-[400px] mb-4 relative">
         <MapContainer
           center={center}
           zoom={16}
@@ -92,17 +92,18 @@ const MapModal: React.FC<MapModalProps> = ({ open, onClose, title, trajectories,
             </CircleMarker>
           ))}
         </MapContainer>
-        <div className="absolute top-2 right-2 bg-gray-900/80 rounded p-2 max-h-[90%] overflow-y-auto flex flex-col gap-2 min-w-[120px]">
+        {/* Legend - responsive positioning */}
+        <div className="absolute top-2 right-2 bg-gray-900/80 rounded p-1.5 sm:p-2 max-h-[40%] sm:max-h-[90%] overflow-y-auto flex flex-col gap-1 sm:gap-2 min-w-[80px] sm:min-w-[120px]">
           {names.map((name, i) => (
-            <div key={i} className="flex items-center gap-2 text-xs whitespace-nowrap">
-              <span style={{ background: colors[i % colors.length], width: 12, height: 12, display: 'inline-block', borderRadius: 6 }}></span>
-              <span className="font-semibold">{name}</span>
+            <div key={i} className="flex items-center gap-1 sm:gap-2 text-[10px] sm:text-xs whitespace-nowrap">
+              <span style={{ background: colors[i % colors.length], width: 10, height: 10, display: 'inline-block', borderRadius: 5 }} className="sm:w-3 sm:h-3 sm:rounded-md"></span>
+              <span className="font-semibold truncate max-w-[60px] sm:max-w-none">{name}</span>
             </div>
           ))}
         </div>
       </div>
       <div className="flex flex-col gap-2">
-        <div className="text-base text-center text-blue-200 font-semibold mb-1">
+        <div className="text-sm sm:text-base text-center text-blue-200 font-semibold mb-1">
           Time: {trajectories[0][globalIdx]?.SimTime}
         </div>
         <input
@@ -111,10 +112,10 @@ const MapModal: React.FC<MapModalProps> = ({ open, onClose, title, trajectories,
           max={minLen - 1}
           value={globalIdx}
           onChange={e => handleSlider(Number(e.target.value))}
-          className="w-full"
+          className="w-full h-2 sm:h-auto"
         />
         <button
-          className="mt-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          className="mt-2 px-4 py-2.5 sm:py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm sm:text-base font-medium"
           onClick={() => setPlaying(p => !p)}
         >
           {playing ? 'Pause' : 'Play'}

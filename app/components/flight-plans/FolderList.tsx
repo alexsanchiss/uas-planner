@@ -72,14 +72,14 @@ export function FolderList({
   }
 
   return (
-    <div className={`flex flex-col gap-4 ${className}`}>
+    <div className={`flex flex-col gap-3 sm:gap-4 ${className}`}>
       {/* Header with create button */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900">Carpetas</h2>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">Carpetas</h2>
         {onCreateFolder && !showCreateForm && (
           <button
             onClick={() => setShowCreateForm(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors w-full sm:w-auto"
           >
             <PlusIcon />
             Nueva carpeta
@@ -91,48 +91,52 @@ export function FolderList({
       {showCreateForm && (
         <form
           onSubmit={handleCreateSubmit}
-          className="flex items-center gap-2 p-3 rounded-lg border border-blue-200 bg-blue-50"
+          className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/30"
         >
-          <FolderPlusIcon />
-          <input
-            type="text"
-            value={newFolderName}
-            onChange={(e) => setNewFolderName(e.target.value)}
-            placeholder="Nombre de la carpeta"
-            className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            autoFocus
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') {
-                handleCreateCancel()
-              }
-            }}
-          />
-          <button
-            type="submit"
-            disabled={!newFolderName.trim() || isCreating}
-            className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors"
-          >
-            {isCreating ? 'Creando...' : 'Crear'}
-          </button>
-          <button
-            type="button"
-            onClick={handleCreateCancel}
-            className="px-3 py-1.5 text-sm font-medium text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
-          >
-            Cancelar
-          </button>
+          <div className="flex items-center gap-2 flex-1">
+            <FolderPlusIcon />
+            <input
+              type="text"
+              value={newFolderName}
+              onChange={(e) => setNewFolderName(e.target.value)}
+              placeholder="Nombre de la carpeta"
+              className="flex-1 px-3 py-2 sm:py-1.5 text-sm border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  handleCreateCancel()
+                }
+              }}
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              disabled={!newFolderName.trim() || isCreating}
+              className="flex-1 sm:flex-none px-3 py-2 sm:py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors"
+            >
+              {isCreating ? 'Creando...' : 'Crear'}
+            </button>
+            <button
+              type="button"
+              onClick={handleCreateCancel}
+              className="flex-1 sm:flex-none px-3 py-2 sm:py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-600 rounded-md hover:bg-gray-200 dark:hover:bg-gray-500 transition-colors"
+            >
+              Cancelar
+            </button>
+          </div>
         </form>
       )}
 
       {/* Empty state */}
       {folders.length === 0 && !showCreateForm && (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-gray-300 p-8">
+        <div className="flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 p-6 sm:p-8">
           <FolderPlusIcon />
-          <p className="text-sm text-gray-500 text-center">{emptyMessage}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 text-center px-4">{emptyMessage}</p>
           {onCreateFolder && (
             <button
               onClick={() => setShowCreateForm(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
             >
               <PlusIcon />
               Crear carpeta
