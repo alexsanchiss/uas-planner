@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server'
 import { verifyToken } from '../../../lib/auth'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import prisma from '@/lib/prisma'
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization')
@@ -34,8 +32,6 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error('Error fetching user data:', error)
     return NextResponse.json({ error: 'An error occurred while fetching user data' }, { status: 500 })
-  } finally {
-    await prisma.$disconnect()
   }
 }
 
