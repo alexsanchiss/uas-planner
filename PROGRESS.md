@@ -219,12 +219,12 @@
 ### 4.7 Geoawareness Integration
 | Task | Description | Status |
 |------|-------------|--------|
-| TASK-111 | Remove placeholder fallback | ⬜ |
-| TASK-112 | Display proper error messages | ⬜ |
-| TASK-113 | Add retry button | ⬜ |
-| TASK-114 | Display response with trajectory | ⬜ |
-| TASK-115 | Highlight violated geozones | ⬜ |
-| TASK-116 | Add geozone legend | ⬜ |
+| TASK-111 | Remove placeholder fallback | ✅ |
+| TASK-112 | Display proper error messages | ✅ |
+| TASK-113 | Add retry button | ✅ |
+| TASK-114 | Display response with trajectory | ✅ |
+| TASK-115 | Highlight violated geozones | ✅ |
+| TASK-116 | Add geozone legend | ✅ |
 
 ### 4.8 Visualization Improvements
 | Task | Description | Status |
@@ -397,16 +397,17 @@
 | Phase 1: Backend | 27 | 27 | 0 | 0 |
 | Phase 2: Auth | 25 | 25 | 0 | 0 |
 | Phase 3: Refactor | 27 | 27 | 0 | 0 |
-| Phase 4: Production UI | 41 | 31 | 0 | 0 |
+| Phase 4: Production UI | 41 | 37 | 0 | 0 |
 | Phase 5: PlanGenerator | 34 | 0 | 0 | 0 |
 | Phase 6: UI/UX | 50 | 0 | 0 | 0 |
 | Phase 7: Testing | 10 | 0 | 0 | 0 |
-| **TOTAL** | **214** | **110** | **0** | **0** |
+| **TOTAL** | **214** | **116** | **0** | **0** |
 
 ---
 
 ## Recent Updates
 
+- **2026-01-13**: TASK-111 ✅, TASK-112 ✅, TASK-113 ✅, TASK-114 ✅, TASK-115 ✅, TASK-116 ✅ - Geoawareness Integration complete. Enhanced `GeoawarenessViewer.tsx` with: (TASK-111) Removed generic placeholder fallback, replaced with proper error state handling. (TASK-112) Added comprehensive error display with error icon, descriptive message, plan name context, and styled error details in red box. (TASK-113) Added retry button with refresh icon that calls `onRetry` callback when clicked. (TASK-114) Created visual trajectory overlay placeholder with SVG path showing trajectory line, waypoint markers (green start, blue waypoints, red end), and arrow markers. Added simulated map with grid pattern background. (TASK-115) Implemented violated geozone highlighting with pulsing red overlay for violations, plus sample geozone shapes (restricted/orange, advisory/blue, controlled/yellow). Added violations list panel showing severity-coded violation messages. (TASK-116) Added comprehensive collapsible legend with all geozone types (Prohibited, Restricted, Controlled, Advisory, Warning, Temporary), trajectory markers (start/waypoint/end points), and violation indicator. Defined `GeozoneType` and `Violation` TypeScript interfaces for type safety.
 - **2026-01-13**: TASK-106 ✅, TASK-107 ✅, TASK-108 ✅, TASK-109 ✅, TASK-110 ✅ - Plan Reset Functionality complete. TASK-106/107: Reset API endpoint already existed at `app/api/flightPlans/[id]/reset/route.ts` with full implementation: deletes associated csvResult, sets status to "sin procesar", clears authorizationStatus to "sin autorización", clears authorizationMessage, externalResponseNumber, uplan, and machineAssignedId. Includes JWT auth and ownership validation. TASK-108: ResetIconButton already present in FlightPlanCard.tsx with proper click handler. TASK-109: Replaced native `confirm()` with styled `ConfirmDialog` component (warning variant) showing plan name and clear warning message about data loss. TASK-110: Reset button disabled state already implemented with `canReset = plan.status !== 'sin procesar'` - button only clickable when plan has been processed. Added `resetConfirmDialog` state and `confirmResetPlan` callback for proper dialog flow.
 - **2026-01-13**: TASK-101 ✅, TASK-102 ✅, TASK-103 ✅, TASK-104 ✅, TASK-105 ✅ - DateTime Picker Fix complete. TASK-101: Identified bug where `toISOString().slice(0,16)` was converting to UTC string, but datetime-local input expects local time format. TASK-102: API already stores scheduledAt as UTC ISO strings (Prisma DateTime). TASK-103: Added `utcToLocalDatetimeString()` function in DateTimePicker.tsx to convert UTC from API to local datetime-local format using `Date.getFullYear/Month/Date/Hours/Minutes()`. TASK-104: Enhanced timezone indicator with styled UTC offset badge (e.g., "UTC+01:00") and timezone name label. TASK-105: Code handles all date formats (string, Date, null) and uses browser's local timezone APIs for correct conversion. Updated FlightPlansUploader to pass raw scheduledAt value to DateTimePicker which now handles all conversion internally.
 - **2026-01-13**: TASK-096 ✅, TASK-097 ✅, TASK-098 ✅, TASK-099 ✅, TASK-100 ✅ - Real-time Updates complete. TASK-096 & TASK-098 were already implemented in `useFlightPlans.ts` (5-second polling via `usePolling` hook, optimistic updates with `optimisticUpdate`/`optimisticRemove` functions). TASK-097: Added subtle refresh indicator ("Sincronizando..." with spinner) in `FlightPlansUploader.tsx` workflow header, shows during background refreshes. TASK-099: Added CSS `transition-all duration-300 ease-in-out` to `StatusBadge.tsx` for smooth color/style changes when status updates. TASK-100: Enhanced `usePolling.ts` with retry logic - tracks consecutive errors (`errorCount`), stops polling after 3 failures (`maxRetries`), uses exponential backoff (delays increase on errors, max 30s), added `resetErrors()` to resume polling. Added polling error banner in `FlightPlansUploader.tsx` with retry button.
