@@ -9,18 +9,22 @@ interface StatusBadgeProps {
   className?: string
 }
 
+/**
+ * TASK-190: Status badges using CSS custom properties from themes.css
+ * These classes use the unified color scheme for consistent theming
+ */
 const planStatusStyles: Record<PlanStatus, string> = {
-  'sin procesar': 'bg-gray-100 text-gray-700 border-gray-300',
-  'en proceso': 'bg-blue-100 text-blue-700 border-blue-300',
-  'procesado': 'bg-green-100 text-green-700 border-green-300',
-  'error': 'bg-red-100 text-red-700 border-red-300',
+  'sin procesar': 'badge-idle',      // Gray - unprocessed/idle state
+  'en proceso': 'badge-processing',   // Blue - currently processing
+  'procesado': 'badge-completed',     // Green - successfully completed
+  'error': 'badge-error',             // Red - error state
 }
 
 const authorizationStatusStyles: Record<AuthorizationStatus, string> = {
-  'sin autorización': 'bg-gray-100 text-gray-700 border-gray-300',
-  'pendiente': 'bg-yellow-100 text-yellow-700 border-yellow-300',
-  'aprobado': 'bg-green-100 text-green-700 border-green-300',
-  'denegado': 'bg-red-100 text-red-700 border-red-300',
+  'sin autorización': 'badge-auth-none',     // Gray - no authorization requested
+  'pendiente': 'badge-auth-pending',         // Amber/Yellow - awaiting authorization
+  'aprobado': 'badge-auth-approved',         // Green - authorization approved
+  'denegado': 'badge-auth-denied',           // Red - authorization denied
 }
 
 const planStatusLabels: Record<PlanStatus, string> = {
@@ -38,7 +42,7 @@ const authorizationStatusLabels: Record<AuthorizationStatus, string> = {
 }
 
 export function StatusBadge({ type, status, className = '' }: StatusBadgeProps) {
-  const styles = type === 'plan' 
+  const badgeClass = type === 'plan' 
     ? planStatusStyles[status as PlanStatus] 
     : authorizationStatusStyles[status as AuthorizationStatus]
   
@@ -48,7 +52,7 @@ export function StatusBadge({ type, status, className = '' }: StatusBadgeProps) 
 
   return (
     <span
-      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-all duration-300 ease-in-out ${styles} ${className}`}
+      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-all duration-300 ease-in-out ${badgeClass} ${className}`}
     >
       {label}
     </span>

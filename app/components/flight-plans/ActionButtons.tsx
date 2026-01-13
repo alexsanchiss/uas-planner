@@ -39,10 +39,13 @@ interface ActionButtonProps {
   children: React.ReactNode
 }
 
-// TASK-175: Added btn-interactive for micro-interactions (hover scale, active press)
+/**
+ * TASK-191: Button styles using CSS custom properties from themes.css
+ * All buttons now use the unified color scheme for consistent theming
+ */
 const baseButtonStyles = 'inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed btn-interactive disabled-transition'
 
-// Process Button - Blue theme
+// Process Button - Primary/Blue theme (uses --btn-primary-*)
 export function ProcessButton({ 
   onClick, 
   disabled, 
@@ -55,7 +58,7 @@ export function ProcessButton({
       <button
         onClick={onClick}
         disabled={disabled || loading}
-        className={`${baseButtonStyles} bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500 disabled:bg-blue-400 disabled:opacity-50 ${className}`}
+        className={`${baseButtonStyles} btn-primary ${className}`}
       >
         {loading ? (
           <>
@@ -73,7 +76,7 @@ export function ProcessButton({
   )
 }
 
-// Download Button - Green theme
+// Download Button - Success/Green theme (uses --btn-success-*)
 export function DownloadButton({ 
   onClick, 
   disabled, 
@@ -86,7 +89,7 @@ export function DownloadButton({
       <button
         onClick={onClick}
         disabled={disabled || loading}
-        className={`${baseButtonStyles} bg-green-600 text-white hover:bg-green-700 focus:ring-green-500 disabled:bg-green-400 disabled:opacity-50 ${className}`}
+        className={`${baseButtonStyles} btn-success ${className}`}
       >
         {loading ? (
           <>
@@ -104,7 +107,7 @@ export function DownloadButton({
   )
 }
 
-// Authorize Button - Yellow/Orange theme
+// Authorize Button - Warning/Amber theme (uses --btn-warning-*)
 export function AuthorizeButton({ 
   onClick, 
   disabled, 
@@ -117,7 +120,7 @@ export function AuthorizeButton({
       <button
         onClick={onClick}
         disabled={disabled || loading}
-        className={`${baseButtonStyles} bg-amber-500 text-white hover:bg-amber-600 focus:ring-amber-500 disabled:bg-amber-400 disabled:opacity-50 ${className}`}
+        className={`${baseButtonStyles} btn-warning ${className}`}
       >
         {loading ? (
           <>
@@ -135,7 +138,7 @@ export function AuthorizeButton({
   )
 }
 
-// Reset Button - Gray theme
+// Reset Button - Secondary/Gray theme (uses --btn-secondary-*)
 export function ResetButton({ 
   onClick, 
   disabled, 
@@ -148,7 +151,7 @@ export function ResetButton({
       <button
         onClick={onClick}
         disabled={disabled || loading}
-        className={`${baseButtonStyles} bg-gray-600 text-white hover:bg-gray-700 focus:ring-gray-500 disabled:bg-gray-400 disabled:opacity-50 ${className}`}
+        className={`${baseButtonStyles} btn-secondary ${className}`}
       >
         {loading ? (
           <>
@@ -166,7 +169,7 @@ export function ResetButton({
   )
 }
 
-// Delete Button - Red theme
+// Delete Button - Danger/Red theme (uses --btn-danger-*)
 export function DeleteButton({ 
   onClick, 
   disabled, 
@@ -179,7 +182,7 @@ export function DeleteButton({
       <button
         onClick={onClick}
         disabled={disabled || loading}
-        className={`${baseButtonStyles} bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 disabled:bg-red-400 disabled:opacity-50 ${className}`}
+        className={`${baseButtonStyles} btn-danger ${className}`}
       >
         {loading ? (
           <>
@@ -207,7 +210,10 @@ interface IconButtonProps {
   'aria-label': string
 }
 
-// TASK-175: Added btn-icon-interactive for icon button micro-interactions
+/**
+ * TASK-191: Icon button styles using theme CSS variables
+ * Uses semantic color tokens for consistent theming
+ */
 const iconButtonStyles = 'inline-flex items-center justify-center p-2 rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed btn-icon-interactive disabled-transition'
 
 export function ProcessIconButton({ onClick, disabled, disabledTooltip, loading, className = '', 'aria-label': ariaLabel }: IconButtonProps) {
@@ -217,7 +223,8 @@ export function ProcessIconButton({ onClick, disabled, disabledTooltip, loading,
         onClick={onClick}
         disabled={disabled || loading}
         aria-label={ariaLabel}
-        className={`${iconButtonStyles} text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 focus:ring-blue-500 disabled:text-blue-400 disabled:opacity-50 ${className}`}
+        style={{ color: 'var(--color-primary)' }}
+        className={`${iconButtonStyles} hover:bg-[var(--color-primary-light)] focus:ring-[var(--color-primary)] disabled:opacity-50 ${className}`}
       >
         {loading ? <LoadingSpinner /> : <ProcessIcon />}
       </button>
@@ -232,7 +239,8 @@ export function DownloadIconButton({ onClick, disabled, disabledTooltip, loading
         onClick={onClick}
         disabled={disabled || loading}
         aria-label={ariaLabel}
-        className={`${iconButtonStyles} text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 focus:ring-green-500 disabled:text-green-400 disabled:opacity-50 ${className}`}
+        style={{ color: 'var(--status-success)' }}
+        className={`${iconButtonStyles} hover:bg-[var(--status-success-bg)] focus:ring-[var(--status-success)] disabled:opacity-50 ${className}`}
       >
         {loading ? <LoadingSpinner /> : <DownloadIcon />}
       </button>
@@ -247,7 +255,8 @@ export function AuthorizeIconButton({ onClick, disabled, disabledTooltip, loadin
         onClick={onClick}
         disabled={disabled || loading}
         aria-label={ariaLabel}
-        className={`${iconButtonStyles} text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30 focus:ring-amber-500 disabled:text-amber-400 disabled:opacity-50 ${className}`}
+        style={{ color: 'var(--status-warning)' }}
+        className={`${iconButtonStyles} hover:bg-[var(--status-warning-bg)] focus:ring-[var(--status-warning)] disabled:opacity-50 ${className}`}
       >
         {loading ? <LoadingSpinner /> : <AuthorizeIcon />}
       </button>
@@ -262,7 +271,8 @@ export function ResetIconButton({ onClick, disabled, disabledTooltip, loading, c
         onClick={onClick}
         disabled={disabled || loading}
         aria-label={ariaLabel}
-        className={`${iconButtonStyles} text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-gray-500 disabled:text-gray-400 disabled:opacity-50 ${className}`}
+        style={{ color: 'var(--color-secondary)' }}
+        className={`${iconButtonStyles} hover:bg-[var(--color-secondary-light)] focus:ring-[var(--color-secondary)] disabled:opacity-50 ${className}`}
       >
         {loading ? <LoadingSpinner /> : <ResetIcon />}
       </button>
@@ -277,7 +287,8 @@ export function DeleteIconButton({ onClick, disabled, disabledTooltip, loading, 
         onClick={onClick}
         disabled={disabled || loading}
         aria-label={ariaLabel}
-        className={`${iconButtonStyles} text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 focus:ring-red-500 disabled:text-red-400 disabled:opacity-50 ${className}`}
+        style={{ color: 'var(--status-error)' }}
+        className={`${iconButtonStyles} hover:bg-[var(--status-error-bg)] focus:ring-[var(--status-error)] disabled:opacity-50 ${className}`}
       >
         {loading ? <LoadingSpinner /> : <DeleteIcon />}
       </button>
