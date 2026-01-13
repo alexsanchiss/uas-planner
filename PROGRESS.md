@@ -77,13 +77,13 @@
 ### 2.2 Login/Signup Improvements
 | Task | Description | Status |
 |------|-------------|--------|
-| TASK-033 | Fix error state in login-form.tsx | ⬜ |
-| TASK-034 | Display specific error messages | ⬜ |
-| TASK-035 | Add loading spinner to login | ⬜ |
-| TASK-036 | Add loading spinner to signup | ⬜ |
-| TASK-037 | Implement form validation feedback | ⬜ |
-| TASK-038 | Add password confirmation to signup | ⬜ |
-| TASK-039 | Style error messages consistently | ⬜ |
+| TASK-033 | Fix error state in login-form.tsx | ✅ |
+| TASK-034 | Display specific error messages | ✅ |
+| TASK-035 | Add loading spinner to login | ✅ |
+| TASK-036 | Add loading spinner to signup | ✅ |
+| TASK-037 | Implement form validation feedback | ✅ |
+| TASK-038 | Add password confirmation to signup | ✅ |
+| TASK-039 | Style error messages consistently | ✅ |
 
 ### 2.3 Session Management
 | Task | Description | Status |
@@ -395,18 +395,19 @@
 | Phase | Total | Completed | In Progress | Blocked |
 |-------|-------|-----------|-------------|---------|
 | Phase 1: Backend | 27 | 27 | 0 | 0 |
-| Phase 2: Auth | 25 | 5 | 0 | 0 |
+| Phase 2: Auth | 25 | 12 | 0 | 0 |
 | Phase 3: Refactor | 27 | 0 | 0 | 0 |
 | Phase 4: Production UI | 41 | 0 | 0 | 0 |
 | Phase 5: PlanGenerator | 34 | 0 | 0 | 0 |
 | Phase 6: UI/UX | 50 | 0 | 0 | 0 |
 | Phase 7: Testing | 10 | 0 | 0 | 0 |
-| **TOTAL** | **214** | **32** | **0** | **0** |
+| **TOTAL** | **214** | **39** | **0** | **0** |
 
 ---
 
 ## Recent Updates
 
+- **2026-01-13**: TASK-033 ✅, TASK-034 ✅, TASK-035 ✅, TASK-036 ✅, TASK-037 ✅, TASK-038 ✅, TASK-039 ✅ - Login/Signup improvements complete. Created `LoadingSpinner` component (`app/components/ui/loading-spinner.tsx`). Updated `login-form.tsx` with proper error state handling, specific error messages (invalid credentials, network errors, rate limiting), loading spinner during submission, and email/password validation with inline feedback. Updated `signup-form.tsx` with error handling, loading spinner, password strength indicator (weak/fair/good/strong), password confirmation validation, and consistent red-themed error styling (red borders, red text, red background alerts).
 - **2026-01-13**: TASK-028 ✅, TASK-029 ✅, TASK-030 ✅, TASK-031 ✅, TASK-032 ✅ - Token management complete. Implemented refresh token system with separate expiration (access: 15min, refresh: 7 days). Created `app/api/auth/refresh/route.ts` and `app/api/auth/logout/route.ts` endpoints. Updated login to generate both tokens and set refresh token as httpOnly cookie. Enhanced `useAuth` hook with automatic token refresh before expiration, scheduled refresh timer, and retry logic on 401 errors.
 - **2026-01-13**: TASK-025 ✅, TASK-026 ✅, TASK-027 ✅ - API cleanup complete. Added deprecation comments to all Pages Router APIs (pages/api/flightPlans/, pages/api/folders/, pages/api/csvResult/, pages/api/fas/, pages/api/machines/). Frontend API calls verified - already using correct endpoints (App Router and Pages Router share same URL paths). Old APIs marked for removal after thorough testing. **Phase 1 Backend Standardization is now 100% complete!**
 - **2026-01-13**: TASK-022 ✅, TASK-023 ✅, TASK-024 ✅ - Error handling utilities complete. Created `lib/api-errors.ts` with standardized error responses (badRequest, unauthorized, forbidden, notFound, conflict, validationError, internalError, serviceUnavailable) and Prisma error type guards. Created `lib/logger.ts` with structured logging (debug, info, warn, error levels) and request/response helpers. Existing endpoints have adequate error handling; utilities available for future use.
