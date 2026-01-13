@@ -1,0 +1,335 @@
+import React, { useState } from 'react'
+
+interface TooltipWrapperProps {
+  tooltip?: string
+  disabled?: boolean
+  children: React.ReactNode
+}
+
+function TooltipWrapper({ tooltip, disabled, children }: TooltipWrapperProps) {
+  const [showTooltip, setShowTooltip] = useState(false)
+
+  if (!tooltip || !disabled) {
+    return <>{children}</>
+  }
+
+  return (
+    <div 
+      className="relative inline-flex"
+      onMouseEnter={() => setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
+    >
+      {children}
+      {showTooltip && (
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-xs font-medium text-white bg-gray-900 rounded shadow-lg whitespace-nowrap z-50">
+          {tooltip}
+          <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
+        </div>
+      )}
+    </div>
+  )
+}
+
+interface ActionButtonProps {
+  onClick?: () => void
+  disabled?: boolean
+  disabledTooltip?: string
+  loading?: boolean
+  className?: string
+  children: React.ReactNode
+}
+
+const baseButtonStyles = 'inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed'
+
+// Process Button - Blue theme
+export function ProcessButton({ 
+  onClick, 
+  disabled, 
+  disabledTooltip = 'Seleccione fecha y hora primero',
+  loading,
+  className = '' 
+}: Omit<ActionButtonProps, 'children'>) {
+  return (
+    <TooltipWrapper tooltip={disabledTooltip} disabled={disabled}>
+      <button
+        onClick={onClick}
+        disabled={disabled || loading}
+        className={`${baseButtonStyles} bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500 disabled:bg-blue-400 disabled:opacity-50 ${className}`}
+      >
+        {loading ? (
+          <>
+            <LoadingSpinner />
+            Procesando...
+          </>
+        ) : (
+          <>
+            <ProcessIcon />
+            Procesar
+          </>
+        )}
+      </button>
+    </TooltipWrapper>
+  )
+}
+
+// Download Button - Green theme
+export function DownloadButton({ 
+  onClick, 
+  disabled, 
+  disabledTooltip = 'No hay CSV disponible',
+  loading,
+  className = '' 
+}: Omit<ActionButtonProps, 'children'>) {
+  return (
+    <TooltipWrapper tooltip={disabledTooltip} disabled={disabled}>
+      <button
+        onClick={onClick}
+        disabled={disabled || loading}
+        className={`${baseButtonStyles} bg-green-600 text-white hover:bg-green-700 focus:ring-green-500 disabled:bg-green-400 disabled:opacity-50 ${className}`}
+      >
+        {loading ? (
+          <>
+            <LoadingSpinner />
+            Descargando...
+          </>
+        ) : (
+          <>
+            <DownloadIcon />
+            Descargar
+          </>
+        )}
+      </button>
+    </TooltipWrapper>
+  )
+}
+
+// Authorize Button - Yellow/Orange theme
+export function AuthorizeButton({ 
+  onClick, 
+  disabled, 
+  disabledTooltip = 'Procese el plan primero',
+  loading,
+  className = '' 
+}: Omit<ActionButtonProps, 'children'>) {
+  return (
+    <TooltipWrapper tooltip={disabledTooltip} disabled={disabled}>
+      <button
+        onClick={onClick}
+        disabled={disabled || loading}
+        className={`${baseButtonStyles} bg-amber-500 text-white hover:bg-amber-600 focus:ring-amber-500 disabled:bg-amber-400 disabled:opacity-50 ${className}`}
+      >
+        {loading ? (
+          <>
+            <LoadingSpinner />
+            Autorizando...
+          </>
+        ) : (
+          <>
+            <AuthorizeIcon />
+            Autorizar
+          </>
+        )}
+      </button>
+    </TooltipWrapper>
+  )
+}
+
+// Reset Button - Gray theme
+export function ResetButton({ 
+  onClick, 
+  disabled, 
+  disabledTooltip = 'El plan no ha sido procesado',
+  loading,
+  className = '' 
+}: Omit<ActionButtonProps, 'children'>) {
+  return (
+    <TooltipWrapper tooltip={disabledTooltip} disabled={disabled}>
+      <button
+        onClick={onClick}
+        disabled={disabled || loading}
+        className={`${baseButtonStyles} bg-gray-600 text-white hover:bg-gray-700 focus:ring-gray-500 disabled:bg-gray-400 disabled:opacity-50 ${className}`}
+      >
+        {loading ? (
+          <>
+            <LoadingSpinner />
+            Reiniciando...
+          </>
+        ) : (
+          <>
+            <ResetIcon />
+            Reiniciar
+          </>
+        )}
+      </button>
+    </TooltipWrapper>
+  )
+}
+
+// Delete Button - Red theme
+export function DeleteButton({ 
+  onClick, 
+  disabled, 
+  disabledTooltip,
+  loading,
+  className = '' 
+}: Omit<ActionButtonProps, 'children'>) {
+  return (
+    <TooltipWrapper tooltip={disabledTooltip} disabled={disabled}>
+      <button
+        onClick={onClick}
+        disabled={disabled || loading}
+        className={`${baseButtonStyles} bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 disabled:bg-red-400 disabled:opacity-50 ${className}`}
+      >
+        {loading ? (
+          <>
+            <LoadingSpinner />
+            Eliminando...
+          </>
+        ) : (
+          <>
+            <DeleteIcon />
+            Eliminar
+          </>
+        )}
+      </button>
+    </TooltipWrapper>
+  )
+}
+
+// Icon Button variants (smaller, icon-only)
+interface IconButtonProps {
+  onClick?: () => void
+  disabled?: boolean
+  disabledTooltip?: string
+  loading?: boolean
+  className?: string
+  'aria-label': string
+}
+
+const iconButtonStyles = 'inline-flex items-center justify-center p-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed'
+
+export function ProcessIconButton({ onClick, disabled, disabledTooltip, loading, className = '', 'aria-label': ariaLabel }: IconButtonProps) {
+  return (
+    <TooltipWrapper tooltip={disabledTooltip} disabled={disabled}>
+      <button
+        onClick={onClick}
+        disabled={disabled || loading}
+        aria-label={ariaLabel}
+        className={`${iconButtonStyles} text-blue-600 hover:bg-blue-50 focus:ring-blue-500 disabled:text-blue-400 disabled:opacity-50 ${className}`}
+      >
+        {loading ? <LoadingSpinner /> : <ProcessIcon />}
+      </button>
+    </TooltipWrapper>
+  )
+}
+
+export function DownloadIconButton({ onClick, disabled, disabledTooltip, loading, className = '', 'aria-label': ariaLabel }: IconButtonProps) {
+  return (
+    <TooltipWrapper tooltip={disabledTooltip} disabled={disabled}>
+      <button
+        onClick={onClick}
+        disabled={disabled || loading}
+        aria-label={ariaLabel}
+        className={`${iconButtonStyles} text-green-600 hover:bg-green-50 focus:ring-green-500 disabled:text-green-400 disabled:opacity-50 ${className}`}
+      >
+        {loading ? <LoadingSpinner /> : <DownloadIcon />}
+      </button>
+    </TooltipWrapper>
+  )
+}
+
+export function AuthorizeIconButton({ onClick, disabled, disabledTooltip, loading, className = '', 'aria-label': ariaLabel }: IconButtonProps) {
+  return (
+    <TooltipWrapper tooltip={disabledTooltip} disabled={disabled}>
+      <button
+        onClick={onClick}
+        disabled={disabled || loading}
+        aria-label={ariaLabel}
+        className={`${iconButtonStyles} text-amber-600 hover:bg-amber-50 focus:ring-amber-500 disabled:text-amber-400 disabled:opacity-50 ${className}`}
+      >
+        {loading ? <LoadingSpinner /> : <AuthorizeIcon />}
+      </button>
+    </TooltipWrapper>
+  )
+}
+
+export function ResetIconButton({ onClick, disabled, disabledTooltip, loading, className = '', 'aria-label': ariaLabel }: IconButtonProps) {
+  return (
+    <TooltipWrapper tooltip={disabledTooltip} disabled={disabled}>
+      <button
+        onClick={onClick}
+        disabled={disabled || loading}
+        aria-label={ariaLabel}
+        className={`${iconButtonStyles} text-gray-600 hover:bg-gray-50 focus:ring-gray-500 disabled:text-gray-400 disabled:opacity-50 ${className}`}
+      >
+        {loading ? <LoadingSpinner /> : <ResetIcon />}
+      </button>
+    </TooltipWrapper>
+  )
+}
+
+export function DeleteIconButton({ onClick, disabled, disabledTooltip, loading, className = '', 'aria-label': ariaLabel }: IconButtonProps) {
+  return (
+    <TooltipWrapper tooltip={disabledTooltip} disabled={disabled}>
+      <button
+        onClick={onClick}
+        disabled={disabled || loading}
+        aria-label={ariaLabel}
+        className={`${iconButtonStyles} text-red-600 hover:bg-red-50 focus:ring-red-500 disabled:text-red-400 disabled:opacity-50 ${className}`}
+      >
+        {loading ? <LoadingSpinner /> : <DeleteIcon />}
+      </button>
+    </TooltipWrapper>
+  )
+}
+
+// Icons
+function ProcessIcon() {
+  return (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  )
+}
+
+function DownloadIcon() {
+  return (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+    </svg>
+  )
+}
+
+function AuthorizeIcon() {
+  return (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+    </svg>
+  )
+}
+
+function ResetIcon() {
+  return (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+    </svg>
+  )
+}
+
+function DeleteIcon() {
+  return (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+    </svg>
+  )
+}
+
+function LoadingSpinner() {
+  return (
+    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+    </svg>
+  )
+}
