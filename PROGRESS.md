@@ -88,10 +88,10 @@
 ### 2.3 Session Management
 | Task | Description | Status |
 |------|-------------|--------|
-| TASK-040 | Handle token expiration gracefully | ⬜ |
-| TASK-041 | Add automatic logout on expiration | ⬜ |
-| TASK-042 | Improve cross-tab synchronization | ⬜ |
-| TASK-043 | Clear sensitive data on logout | ⬜ |
+| TASK-040 | Handle token expiration gracefully | ✅ |
+| TASK-041 | Add automatic logout on expiration | ✅ |
+| TASK-042 | Improve cross-tab synchronization | ✅ |
+| TASK-043 | Clear sensitive data on logout | ✅ |
 
 ### 2.4 Header User Handling
 | Task | Description | Status |
@@ -395,18 +395,19 @@
 | Phase | Total | Completed | In Progress | Blocked |
 |-------|-------|-----------|-------------|---------|
 | Phase 1: Backend | 27 | 27 | 0 | 0 |
-| Phase 2: Auth | 25 | 12 | 0 | 0 |
+| Phase 2: Auth | 25 | 16 | 0 | 0 |
 | Phase 3: Refactor | 27 | 0 | 0 | 0 |
 | Phase 4: Production UI | 41 | 0 | 0 | 0 |
 | Phase 5: PlanGenerator | 34 | 0 | 0 | 0 |
 | Phase 6: UI/UX | 50 | 0 | 0 | 0 |
 | Phase 7: Testing | 10 | 0 | 0 | 0 |
-| **TOTAL** | **214** | **39** | **0** | **0** |
+| **TOTAL** | **214** | **43** | **0** | **0** |
 
 ---
 
 ## Recent Updates
 
+- **2026-01-13**: TASK-040 ✅, TASK-041 ✅, TASK-042 ✅, TASK-043 ✅ - Session management complete. Improved `useAuth` hook: (1) Token expiration handling with graceful refresh attempts, (2) Automatic logout on token expiration with user notification via alert and `auth:session-expired` custom event, redirects to login page, (3) Cross-tab synchronization via `storage` event listener detects logout in other tabs and syncs state, (4) `clearSensitiveData()` utility clears all sensitive localStorage keys on logout. Added `sessionExpiredNotifiedRef` to prevent duplicate notifications.
 - **2026-01-13**: TASK-033 ✅, TASK-034 ✅, TASK-035 ✅, TASK-036 ✅, TASK-037 ✅, TASK-038 ✅, TASK-039 ✅ - Login/Signup improvements complete. Created `LoadingSpinner` component (`app/components/ui/loading-spinner.tsx`). Updated `login-form.tsx` with proper error state handling, specific error messages (invalid credentials, network errors, rate limiting), loading spinner during submission, and email/password validation with inline feedback. Updated `signup-form.tsx` with error handling, loading spinner, password strength indicator (weak/fair/good/strong), password confirmation validation, and consistent red-themed error styling (red borders, red text, red background alerts).
 - **2026-01-13**: TASK-028 ✅, TASK-029 ✅, TASK-030 ✅, TASK-031 ✅, TASK-032 ✅ - Token management complete. Implemented refresh token system with separate expiration (access: 15min, refresh: 7 days). Created `app/api/auth/refresh/route.ts` and `app/api/auth/logout/route.ts` endpoints. Updated login to generate both tokens and set refresh token as httpOnly cookie. Enhanced `useAuth` hook with automatic token refresh before expiration, scheduled refresh timer, and retry logic on 401 errors.
 - **2026-01-13**: TASK-025 ✅, TASK-026 ✅, TASK-027 ✅ - API cleanup complete. Added deprecation comments to all Pages Router APIs (pages/api/flightPlans/, pages/api/folders/, pages/api/csvResult/, pages/api/fas/, pages/api/machines/). Frontend API calls verified - already using correct endpoints (App Router and Pages Router share same URL paths). Old APIs marked for removal after thorough testing. **Phase 1 Backend Standardization is now 100% complete!**
