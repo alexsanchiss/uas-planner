@@ -1,4 +1,14 @@
 // pages/api/machines/[id].ts
+//
+// ⚠️  DEPRECATED - DO NOT USE FOR NEW DEVELOPMENT
+// ================================================
+// This Pages Router API is deprecated.
+// Machine management API - not yet migrated to App Router.
+// TODO: Migrate to App Router if machines feature is still needed.
+//
+// Migration date: 2026-01-13 (marked deprecated)
+// Removal planned: After thorough testing or feature removal
+//
 import { NextApiRequest, NextApiResponse } from 'next';
 import prisma from '../../../lib/prisma';
 
