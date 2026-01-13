@@ -1,56 +1,91 @@
 /**
- * Zod validation schemas for all API inputs
+ * Zod Validation Schemas for UAS Planner API
  * 
- * This module provides type-safe validation schemas for request bodies,
- * query parameters, and path parameters across all API endpoints.
+ * This module provides type-safe validation schemas for all API inputs
+ * including request bodies, query parameters, and path parameters.
  * 
- * Usage:
- *   import { loginSchema, LoginInput } from '@/lib/validators';
- *   const result = loginSchema.safeParse(body);
- *   if (!result.success) return { error: result.error.flatten() };
+ * Features:
+ * - Comprehensive schemas for auth, flight plans, folders, CSV results
+ * - Type inference with `z.infer<typeof schema>`
+ * - Helper functions for request body parsing
+ * - Custom ValidationError class for structured error responses
+ * 
+ * @module lib/validators
+ * 
+ * @example
+ * ```typescript
+ * import { loginSchema, LoginInput, parseBody } from '@/lib/validators'
+ * 
+ * // In API route:
+ * const body = await request.json()
+ * const data = parseBody(loginSchema, body) // Throws ValidationError if invalid
+ * ```
  */
 
-import { z } from 'zod';
+import { z } from 'zod'
 
 // ============================================================================
 // Common Schemas & Utilities
 // ============================================================================
 
-/** Positive integer ID (for path params and references) */
-export const idSchema = z.coerce.number().int().positive();
+/**
+ * Schema for positive integer IDs (path params and references).
+ * Coerces string input to number for query parameter handling.
+ */
+export const idSchema = z.coerce.number().int().positive()
 
-/** Array of IDs for bulk operations */
-export const idsArraySchema = z.array(idSchema).min(1).max(100000);
+/**
+ * Schema for arrays of IDs in bulk operations.
+ * Limits to 100,000 items to prevent abuse.
+ */
+export const idsArraySchema = z.array(idSchema).min(1).max(100000)
 
-/** Optional nullable ID */
-export const optionalIdSchema = z.coerce.number().int().positive().nullable().optional();
+/**
+ * Schema for optional nullable IDs (foreign key references).
+ */
+export const optionalIdSchema = z.coerce.number().int().positive().nullable().optional()
 
-/** ISO date string (parseable by Date constructor) */
+/**
+ * Schema for ISO 8601 date strings.
+ * Accepts both datetime format and any Date-parseable string.
+ */
 export const dateStringSchema = z.string().datetime().or(z.string().refine(
   (val) => !isNaN(Date.parse(val)),
   { message: 'Invalid date format' }
-));
+))
 
-/** Optional nullable date */
-export const optionalDateSchema = dateStringSchema.nullable().optional();
+/**
+ * Schema for optional nullable dates.
+ */
+export const optionalDateSchema = dateStringSchema.nullable().optional()
 
 // ============================================================================
 // Auth Schemas
 // ============================================================================
 
-/** Login request body */
+/**
+ * Schema for login request body.
+ * Validates email format and requires non-empty password.
+ */
 export const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(1, 'Password is required'),
-});
-export type LoginInput = z.infer<typeof loginSchema>;
+})
 
-/** Signup request body */
+/** Type for validated login input */
+export type LoginInput = z.infer<typeof loginSchema>
+
+/**
+ * Schema for signup request body.
+ * Enforces minimum 8 character password for security.
+ */
 export const signupSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
-});
-export type SignupInput = z.infer<typeof signupSchema>;
+})
+
+/** Type for validated signup input */
+export type SignupInput = z.infer<typeof signupSchema>
 
 // ============================================================================
 // Flight Plan Schemas
@@ -250,66 +285,131 @@ export type ExternalResponseNumberParam = z.infer<typeof externalResponseNumberP
 // API Response Helpers
 // ============================================================================
 
-/** Flattened error type from Zod */
+/**
+ * Flattened error structure from Zod validation.
+ * Contains both form-level errors and field-specific errors.
+ * 
+ * @template T - The type being validated
+ */
 export type FlattenedErrors<T = unknown> = {
-  formErrors: string[];
-  fieldErrors: { [K in keyof T]?: string[] };
-};
+  formErrors: string[]
+  fieldErrors: { [K in keyof T]?: string[] }
+}
 
 /**
- * Parse and validate request body with proper error response
- * Returns parsed data on success or throws a formatted error
+ * Parses and validates a request body using a Zod schema.
+ * Throws a ValidationError with structured error details on failure.
+ * 
+ * @param schema - The Zod schema to validate against
+ * @param body - The request body to validate
+ * @returns The validated and typed data
+ * @throws {ValidationError} When validation fails
+ * 
+ * @example
+ * ```typescript
+ * try {
+ *   const data = parseBody(loginSchema, await request.json())
+ *   // data is typed as LoginInput
+ * } catch (error) {
+ *   if (isValidationError(error)) {
+ *     return Response.json(error.toJSON(), { status: 400 })
+ *   }
+ * }
+ * ```
  */
 export function parseBody<T extends z.ZodType>(
   schema: T,
   body: unknown
 ): z.infer<T> {
-  const result = schema.safeParse(body);
+  const result = schema.safeParse(body)
   if (!result.success) {
-    const errors = result.error.flatten();
-    throw new ValidationError('Validation failed', errors);
+    const errors = result.error.flatten()
+    throw new ValidationError('Validation failed', errors)
   }
-  return result.data;
+  return result.data
 }
 
 /**
- * Safe parse that returns result object instead of throwing
+ * Safely parses a request body without throwing.
+ * Returns a discriminated union for explicit error handling.
+ * 
+ * @param schema - The Zod schema to validate against
+ * @param body - The request body to validate
+ * @returns Success with data, or failure with flattened errors
+ * 
+ * @example
+ * ```typescript
+ * const result = safeParseBody(loginSchema, body)
+ * if (!result.success) {
+ *   return Response.json({ errors: result.errors }, { status: 400 })
+ * }
+ * // result.data is typed as LoginInput
+ * ```
  */
 export function safeParseBody<T extends z.ZodType>(
   schema: T,
   body: unknown
 ): { success: true; data: z.infer<T> } | { success: false; errors: FlattenedErrors<z.infer<T>> } {
-  const result = schema.safeParse(body);
+  const result = schema.safeParse(body)
   if (!result.success) {
-    return { success: false, errors: result.error.flatten() as FlattenedErrors<z.infer<T>> };
+    return { success: false, errors: result.error.flatten() as FlattenedErrors<z.infer<T>> }
   }
-  return { success: true, data: result.data };
+  return { success: true, data: result.data }
 }
 
 /**
- * Custom validation error class for structured error responses
+ * Custom error class for validation failures.
+ * Provides structured error information for API responses.
+ * 
+ * @example
+ * ```typescript
+ * throw new ValidationError('Invalid input', {
+ *   formErrors: [],
+ *   fieldErrors: { email: ['Invalid email format'] }
+ * })
+ * ```
  */
 export class ValidationError extends Error {
-  public readonly errors: FlattenedErrors;
-  public readonly statusCode = 400;
+  /** Flattened validation errors */
+  public readonly errors: FlattenedErrors
+  /** HTTP status code (always 400 for validation) */
+  public readonly statusCode = 400
 
   constructor(message: string, errors: FlattenedErrors) {
-    super(message);
-    this.name = 'ValidationError';
-    this.errors = errors;
+    super(message)
+    this.name = 'ValidationError'
+    this.errors = errors
   }
 
+  /**
+   * Converts the error to a JSON-serializable format for API responses.
+   */
   toJSON() {
     return {
       error: this.message,
       details: this.errors,
-    };
+    }
   }
 }
 
 /**
- * Type guard to check if an error is a ValidationError
+ * Type guard to check if an error is a ValidationError.
+ * 
+ * @param error - The error to check
+ * @returns true if the error is a ValidationError instance
+ * 
+ * @example
+ * ```typescript
+ * try {
+ *   parseBody(schema, body)
+ * } catch (error) {
+ *   if (isValidationError(error)) {
+ *     return Response.json(error.toJSON(), { status: error.statusCode })
+ *   }
+ *   throw error
+ * }
+ * ```
  */
 export function isValidationError(error: unknown): error is ValidationError {
-  return error instanceof ValidationError;
+  return error instanceof ValidationError
 }
