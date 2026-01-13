@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "../hooks/useAuth";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
@@ -14,6 +14,7 @@ export default function AuthPage() {
   const [acceptPolicy, setAcceptPolicy] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -37,7 +38,14 @@ export default function AuthPage() {
       // Login
       const success = await login(email, password);
       if (success) {
-        router.push("/");
+        // Check for redirect query param, otherwise go to home
+        const redirectUrl = searchParams.get('redirect');
+        if (redirectUrl) {
+          // Decode and navigate to the original destination
+          router.push(decodeURIComponent(redirectUrl));
+        } else {
+          router.push("/");
+        }
       } else {
         setError("Invalid email or password");
       }
