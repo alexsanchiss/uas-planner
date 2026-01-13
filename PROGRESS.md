@@ -34,10 +34,10 @@
 ### 1.3 PrismaClient Standardization
 | Task | Description | Status |
 |------|-------------|--------|
-| TASK-014 | Update auth/login to use singleton | ⬜ |
-| TASK-015 | Update auth/signup to use singleton | ⬜ |
-| TASK-016 | Update user route to use singleton | ⬜ |
-| TASK-017 | Audit all routes for singleton usage | ⬜ |
+| TASK-014 | Update auth/login to use singleton | ✅ |
+| TASK-015 | Update auth/signup to use singleton | ✅ |
+| TASK-016 | Update user route to use singleton | ✅ |
+| TASK-017 | Audit all routes for singleton usage | ✅ |
 
 ### 1.4 Configuration Externalization
 | Task | Description | Status |
@@ -394,19 +394,20 @@
 
 | Phase | Total | Completed | In Progress | Blocked |
 |-------|-------|-----------|-------------|---------|
-| Phase 1: Backend | 27 | 13 | 0 | 0 |
+| Phase 1: Backend | 27 | 17 | 0 | 0 |
 | Phase 2: Auth | 25 | 0 | 0 | 0 |
 | Phase 3: Refactor | 27 | 0 | 0 | 0 |
 | Phase 4: Production UI | 41 | 0 | 0 | 0 |
 | Phase 5: PlanGenerator | 34 | 0 | 0 | 0 |
 | Phase 6: UI/UX | 50 | 0 | 0 | 0 |
 | Phase 7: Testing | 10 | 0 | 0 | 0 |
-| **TOTAL** | **214** | **13** | **0** | **0** |
+| **TOTAL** | **214** | **17** | **0** | **0** |
 
 ---
 
 ## Recent Updates
 
+- **2026-01-13**: TASK-014 ✅, TASK-015 ✅, TASK-016 ✅, TASK-017 ✅ - PrismaClient standardization complete. Updated auth/login, auth/signup, and user routes to use singleton from `lib/prisma.ts`. Removed `$disconnect()` calls (not needed with singleton). Audited all 11 App Router API routes - all now use the singleton pattern correctly.
 - **2026-01-13**: TASK-012 ✅ & TASK-013 ✅ - Verified all App Router API routes use `withAuth` middleware and check userId ownership. Routes: flightPlans, flightPlans/[id], flightPlans/[id]/uplan, flightPlans/[id]/reset, folders, folders/[id], csvResult. FAS callback endpoint correctly exempt (external service).
 - **2026-01-13**: TASK-011 ✅ - Created App Router `app/api/fas/[externalResponseNumber]/route.ts` with PUT handler. FAS callback endpoint that updates flight plan authorization status. Does NOT require JWT auth (called by external FAS service). Finds plan by externalResponseNumber and updates authorizationStatus and authorizationMessage.
 - **2026-01-13**: TASK-010 ✅ - Created App Router `app/api/csvResult/route.ts` with GET, POST, DELETE handlers. GET fetches single CSV by ID. POST bulk fetches with plan names (parallel query). DELETE supports individual and bulk deletion. Uses JWT auth, Zod validation, and PrismaClient singleton.
