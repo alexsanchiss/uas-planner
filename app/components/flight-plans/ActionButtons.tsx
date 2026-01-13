@@ -45,7 +45,7 @@ const baseButtonStyles = 'inline-flex items-center justify-center gap-1.5 px-3 p
 export function ProcessButton({ 
   onClick, 
   disabled, 
-  disabledTooltip = 'Seleccione fecha y hora primero',
+  disabledTooltip = 'Select date/time first',
   loading,
   className = '' 
 }: Omit<ActionButtonProps, 'children'>) {
@@ -76,7 +76,7 @@ export function ProcessButton({
 export function DownloadButton({ 
   onClick, 
   disabled, 
-  disabledTooltip = 'No hay CSV disponible',
+  disabledTooltip = 'No trajectory available',
   loading,
   className = '' 
 }: Omit<ActionButtonProps, 'children'>) {
@@ -107,7 +107,7 @@ export function DownloadButton({
 export function AuthorizeButton({ 
   onClick, 
   disabled, 
-  disabledTooltip = 'Procese el plan primero',
+  disabledTooltip = 'Process trajectory first',
   loading,
   className = '' 
 }: Omit<ActionButtonProps, 'children'>) {
@@ -138,7 +138,7 @@ export function AuthorizeButton({
 export function ResetButton({ 
   onClick, 
   disabled, 
-  disabledTooltip = 'El plan no ha sido procesado',
+  disabledTooltip = 'Nothing to reset',
   loading,
   className = '' 
 }: Omit<ActionButtonProps, 'children'>) {
