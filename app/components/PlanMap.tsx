@@ -1,9 +1,17 @@
 "use client";
 import React from "react";
-import { MapContainer, TileLayer, Polyline, Rectangle } from "react-leaflet";
+import { MapContainer, TileLayer, Polyline, Rectangle, Polygon } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { Marker, Popup, useMapEvents } from "react-leaflet";
 import L from "leaflet";
+
+// TASK-152: Large bounds for overlay outside service area (covers the world)
+const WORLD_BOUNDS: [number, number][] = [
+  [-90, -180],
+  [-90, 180],
+  [90, 180],
+  [90, -180],
+];
 
 // TASK-125: Helper to format pause duration for display
 function formatPauseDuration(seconds: number): string {
@@ -184,35 +192,76 @@ function MapClickHandler({ onAddWaypoint, onToast, bounds }: { onAddWaypoint: (w
   return null;
 }
 
-const PlanMap = (props: any) => (
-  <MapContainer
-    center={props.center as [number, number]}
-    zoom={13}
-    bounds={props.bounds as [[number, number], [number, number]]}
-    maxBounds={props.bounds as [[number, number], [number, number]]}
-    className="h-full w-full"
-    style={{ height: "100%", minHeight: 400 }}
-  >
-    <TileLayer
-      attribution='&copy; <a href="https://osm.org/copyright">OpenStreetMap</a> contributors'
-      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-    />
-    <Rectangle
-      bounds={props.bounds as [[number, number], [number, number]]}
-      pathOptions={{ color: "#f59e42", weight: 2, dashArray: "6 6" }}
-    />
-    {/* Polyline to connect waypoints */}
-    {props.polylinePositions.length > 1 ? (
-      <Polyline
-        positions={props.polylinePositions as [number, number][]}
-        pathOptions={{ color: "#2563eb", weight: 4 }}
+// TASK-152: Create overlay polygon that covers world except service area (creates mask effect)
+function createServiceAreaMask(bounds: [[number, number], [number, number]]): [number, number][][] {
+  // Outer ring: world bounds (clockwise)
+  const outer: [number, number][] = WORLD_BOUNDS;
+  
+  // Inner ring: service area bounds (counter-clockwise to create hole)
+  const [[minLat, minLng], [maxLat, maxLng]] = bounds;
+  const inner: [number, number][] = [
+    [minLat, minLng],
+    [maxLat, minLng],
+    [maxLat, maxLng],
+    [minLat, maxLng],
+  ];
+  
+  return [outer, inner];
+}
+
+const PlanMap = (props: any) => {
+  const bounds = props.bounds as [[number, number], [number, number]];
+  const maskPolygon = createServiceAreaMask(bounds);
+  
+  return (
+    <MapContainer
+      center={props.center as [number, number]}
+      zoom={13}
+      bounds={bounds}
+      maxBounds={bounds}
+      className="h-full w-full"
+      style={{ height: "100%", minHeight: 400 }}
+    >
+      <TileLayer
+        attribution='&copy; <a href="https://osm.org/copyright">OpenStreetMap</a> contributors'
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-    ) : null}
-    {/* Map click handler for adding waypoints */}
-    <MapClickHandler onAddWaypoint={props.handleAddWaypoint} onToast={props.setToast} bounds={props.bounds} />
-    {/* Waypoint markers with selection and drag */}
-    <WaypointMarkers waypoints={props.waypoints} onSelect={props.setSelectedIdx} onDragEndMarker={props.handleMarkerDragEnd} />
-  </MapContainer>
-);
+      
+      {/* TASK-152: Semi-transparent overlay outside service area */}
+      <Polygon
+        positions={maskPolygon}
+        pathOptions={{
+          fillColor: "#000000",
+          fillOpacity: 0.4,
+          stroke: false,
+        }}
+      />
+      
+      {/* TASK-151: Service area rectangle with dashed border and subtle fill */}
+      <Rectangle
+        bounds={bounds}
+        pathOptions={{
+          color: "#f59e42",
+          weight: 3,
+          dashArray: "8 6",
+          fillColor: "#f59e42",
+          fillOpacity: 0.08,
+        }}
+      />
+      
+      {/* Polyline to connect waypoints */}
+      {props.polylinePositions.length > 1 ? (
+        <Polyline
+          positions={props.polylinePositions as [number, number][]}
+          pathOptions={{ color: "#2563eb", weight: 4 }}
+        />
+      ) : null}
+      {/* Map click handler for adding waypoints */}
+      <MapClickHandler onAddWaypoint={props.handleAddWaypoint} onToast={props.setToast} bounds={bounds} />
+      {/* Waypoint markers with selection and drag */}
+      <WaypointMarkers waypoints={props.waypoints} onSelect={props.setSelectedIdx} onDragEndMarker={props.handleMarkerDragEnd} />
+    </MapContainer>
+  );
+};
 
 export default PlanMap; 
