@@ -310,17 +310,17 @@
 ### 6.2 Loading States and Animations
 | Task | Description | Status |
 |------|-------------|--------|
-| TASK-166 | Create LoadingSpinner | ⬜ |
-| TASK-167 | Create LoadingSkeleton | ⬜ |
-| TASK-168 | Add spinner to login | ⬜ |
-| TASK-169 | Add skeleton to plans list | ⬜ |
-| TASK-170 | Add processing indicator | ⬜ |
-| TASK-171 | Add authorization indicator | ⬜ |
-| TASK-172 | Add geoawareness indicator | ⬜ |
-| TASK-173 | Add fade transitions | ⬜ |
-| TASK-174 | Add page transitions | ⬜ |
-| TASK-175 | Add button micro-interactions | ⬜ |
-| TASK-176 | Add success animations | ⬜ |
+| TASK-166 | Create LoadingSpinner | ✅ |
+| TASK-167 | Create LoadingSkeleton | ✅ |
+| TASK-168 | Add spinner to login | ✅ |
+| TASK-169 | Add skeleton to plans list | ✅ |
+| TASK-170 | Add processing indicator | ✅ |
+| TASK-171 | Add authorization indicator | ✅ |
+| TASK-172 | Add geoawareness indicator | ✅ |
+| TASK-173 | Add fade transitions | ✅ |
+| TASK-174 | Add page transitions | ✅ |
+| TASK-175 | Add button micro-interactions | ✅ |
+| TASK-176 | Add success animations | ✅ |
 
 ### 6.3 Responsive Design
 | Task | Description | Status |
@@ -399,14 +399,15 @@
 | Phase 3: Refactor | 27 | 27 | 0 | 0 |
 | Phase 4: Production UI | 41 | 41 | 0 | 0 |
 | Phase 5: PlanGenerator | 34 | 34 | 0 | 0 |
-| Phase 6: UI/UX | 50 | 11 | 0 | 0 |
+| Phase 6: UI/UX | 50 | 22 | 0 | 0 |
 | Phase 7: Testing | 10 | 0 | 0 | 0 |
-| **TOTAL** | **214** | **165** | **0** | **0** |
+| **TOTAL** | **214** | **176** | **0** | **0** |
 
 ---
 
 ## Recent Updates
 
+- **2026-01-13**: TASK-166 ✅, TASK-167 ✅, TASK-168 ✅, TASK-169 ✅, TASK-170 ✅, TASK-171 ✅, TASK-172 ✅, TASK-173 ✅, TASK-174 ✅, TASK-175 ✅, TASK-176 ✅ - Loading States and Animations complete. (TASK-166) Enhanced `LoadingSpinner` in `app/components/ui/loading-spinner.tsx` with 5 sizes (xs, sm, md, lg, xl), 3 color variants (white, primary, gray), proper accessibility labels, and sr-only text. (TASK-167) Created `LoadingSkeleton` in `app/components/ui/loading-skeleton.tsx` with 4 variants (text, rectangular, circular, card), pulse/wave animations, `FlightPlanCardSkeleton`, `FolderCardSkeleton`, and `FlightPlansListSkeleton` for complete loading placeholder system. (TASK-168) Login form already had spinner from Phase 2 - verified working. (TASK-169) Added `isLoading` prop to `FlightPlanList` component that renders skeleton placeholders; integrated in `FlightPlansUploader` to show `FlightPlansListSkeleton` during initial load. (TASK-170/171/172) Added `ProcessingIndicator`, `AuthorizationIndicator`, and `GeoawarenessIndicator` helper components in loading-spinner.tsx with contextual icons and messages. (TASK-173) Added comprehensive fade transitions in `globals.css`: `fadeIn`, `fadeOut`, `fadeInUp`, `fadeInScale` keyframes with `.fade-in`, `.fade-out`, `.fade-in-up`, `.fade-in-scale` utility classes, plus `.content-transition` for opacity-based state changes. (TASK-174) Added page transition CSS: `pageEnter`, `pageExit`, `slideInRight`, `slideInLeft` keyframes with corresponding classes, plus `.stagger-children` for cascading child animations (10 levels with 50ms delays). (TASK-175) Added button micro-interactions: `.btn-interactive` (scale 1.02 on hover, 0.98 on active), `.btn-interactive-subtle` (scale 1.05/0.95), `.btn-icon-interactive` (scale 1.1/0.9), `.btn-lift` (translateY + shadow), `.card-interactive` (hover lift effect), `.focus-ring-animated` with pulse keyframe. Applied to ActionButtons components. (TASK-176) Created `SuccessAnimation`, `SuccessToast`, and `SuccessInline` components in `app/components/ui/success-animation.tsx`; added CSS keyframes for `successCheckmark` (stroke animation), `successCircle` (scale bounce), `successPulse`, `successBounce`, `successFlash`, and `errorShake` with corresponding utility classes. Also added `disabled-transition` for graceful disabled state styling.
 - **2026-01-13**: TASK-155 ✅, TASK-156 ✅, TASK-157 ✅, TASK-158 ✅, TASK-159 ✅, TASK-160 ✅, TASK-161 ✅, TASK-162 ✅, TASK-163 ✅, TASK-164 ✅, TASK-165 ✅ - Theme System complete. Created `app/styles/themes.css` with comprehensive CSS custom properties: (TASK-155) Dark theme as default (:root) with full color palette for backgrounds (bg-primary through bg-active), surfaces, text colors (primary through muted), borders, brand colors, status colors (success/warning/error/info), processing status colors, authorization status colors, input colors, shadows, overlay, scrollbar, and service area styling. (TASK-156) Light theme via [data-theme="light"] selector with adjusted color values for light backgrounds - white/gray-50 surfaces, dark text (gray-900/700/500), lighter borders, adjusted brand colors for better contrast on light bg. (TASK-157) Refined dark theme with complete semantic color system. (TASK-158) Created `app/hooks/useTheme.ts` hook with `getSystemPreference()` for detecting OS color scheme, `getStoredTheme()` for localStorage retrieval with system fallback, `applyTheme()` for DOM manipulation. Hook provides theme state, setTheme, toggleTheme, resetToSystem, isDark, isLight, and mounted flag for hydration safety. (TASK-159) localStorage persistence with key "uas-planner-theme", system preference detection via matchMedia, cross-tab sync via storage event listener. (TASK-160) Created `app/components/ui/theme-toggle.tsx` with animated sun/moon icons - SunIcon (visible in dark mode, yellow), MoonIcon (visible in light mode, blue), smooth rotate/scale transitions on toggle, proper ARIA labels. (TASK-161) Added ThemeToggle to header.tsx next to user controls. (TASK-162) Applied CSS variables throughout - globals.css uses var(--bg-primary) and var(--text-primary) for body, layout.tsx applies theme-aware classes. (TASK-163) Updated tailwind.config.ts with theme color namespace mapping all CSS variables (bg, surface, text, border, brand, status, input), plus backgroundColor, borderColor, and boxShadow utilities. (TASK-164) Theme consistency achieved through centralized CSS variables. (TASK-165) Added smooth 300ms transitions via .theme-transition class applied during theme switch, covers background-color, border-color, color, box-shadow, fill, stroke properties.
 - **2026-01-13**: TASK-151 ✅, TASK-152 ✅, TASK-153 ✅, TASK-154 ✅ - Service Area Visualization complete. Enhanced `PlanMap.tsx` with: (TASK-151) Improved service area rectangle styling - dashed border (8 6 pattern), orange color (#f59e42), 3px weight, subtle fill with 8% opacity. (TASK-152) Added semi-transparent overlay outside service area using Polygon with world bounds outer ring and service area as inner ring (hole), creating a mask effect with 40% black fill that dims areas outside the valid flight zone. Created `createServiceAreaMask()` helper function. Enhanced `PlanGenerator.tsx` with: (TASK-153) Service Area Bounds panel in sidebar showing min/max lat/lon coordinates with visual indicator icon matching the dashed border style, altitude limits display (0-200m AGL). (TASK-154) Boundary warning system - `distanceToBoundary()` calculates approximate distance from point to nearest edge using meters-per-degree approximation, `getWaypointsNearBoundary()` identifies waypoints within 100m of boundary, warning panel shows affected waypoint numbers with distances in yellow/amber styling. **Phase 5 PlanGenerator Enhancements is now 100% complete!**
 - **2026-01-13**: TASK-141 ✅, TASK-142 ✅, TASK-143 ✅, TASK-144 ✅, TASK-145 ✅, TASK-146 ✅, TASK-147 ✅, TASK-148 ✅, TASK-149 ✅, TASK-150 ✅ - SCAN Pattern Generator Part 2 complete. Implemented full SCAN algorithm in `lib/scan-generator.ts`: (TASK-141) `generateParallelLines()` generates parallel lines across the polygon at the specified angle and spacing, using local Cartesian coordinates centered on polygon centroid, handles any rotation angle. (TASK-142) `clipLinesToPolygon()` uses line-polygon intersection algorithm with `lineSegmentIntersection()` helper to clip lines to polygon boundary, uses ray casting `isPointInPolygon()` to verify segment midpoints are inside. (TASK-143) `createZigzagPath()` creates efficient snake pattern connecting scan lines by sorting lines and alternating direction to minimize travel distance between consecutive lines. (TASK-144/TASK-145) `generateScanWaypoints()` adds takeoff waypoint at user-specified start point (or first scan point), and landing waypoint at user-specified end point (or last scan point) with altitude=0 for ground level. (TASK-146) Real-time preview already implemented in `ScanPatternGenerator.tsx` - calls `generateScanWaypoints()` on parameter change and displays preview waypoints via `onPolygonChange` callback. (TASK-147/TASK-148) Apply and Cancel buttons already implemented in component UI - Apply calls `onApply(previewWaypoints)`, Cancel calls `onCancel()`. (TASK-149) Validation already implemented in `validateScanConfig()` - checks minimum polygon area (100m²), spacing range (1-1000m), vertex count limits. (TASK-150) Statistics display already implemented showing waypointCount, scanLineCount, totalDistance, estimatedFlightTime (distance/speed), and coverageArea. Added helper functions: `toLocalCoords()`, `fromLocalCoords()`, `localDistance()`, `isBetween()`.

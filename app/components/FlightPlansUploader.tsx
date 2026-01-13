@@ -34,6 +34,8 @@ import {
   type WorkflowStep,
 } from './flight-plans'
 import { ConfirmDialog } from './ui/confirm-dialog'
+import { FlightPlansListSkeleton } from './ui/loading-skeleton'
+import { LoadingSpinner } from './ui/loading-spinner'
 
 /**
  * Transform API flight plan data to component flight plan format
@@ -438,22 +440,17 @@ export function FlightPlansUploader() {
   // Loading state
   if (!user) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <p className="text-gray-500">Por favor, inicie sesión para ver sus planes de vuelo.</p>
+      <div className="flex items-center justify-center min-h-[400px] fade-in">
+        <p className="text-gray-500 dark:text-gray-400">Por favor, inicie sesión para ver sus planes de vuelo.</p>
       </div>
     )
   }
 
+  // TASK-169: Show loading skeleton while fetching
   if (plansLoading && foldersLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="flex flex-col items-center gap-3">
-          <svg className="w-8 h-8 animate-spin text-blue-600" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-          </svg>
-          <p className="text-gray-500">Cargando planes de vuelo...</p>
-        </div>
+      <div className="p-6 fade-in">
+        <FlightPlansListSkeleton folderCount={2} plansPerFolder={2} />
       </div>
     )
   }
@@ -461,18 +458,18 @@ export function FlightPlansUploader() {
   // Error state
   if (plansError || foldersError) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex items-center justify-center min-h-[400px] fade-in">
         <div className="flex flex-col items-center gap-3 text-center">
-          <svg className="w-12 h-12 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="w-12 h-12 text-red-500 error-shake" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
-          <p className="text-red-600">Error al cargar los datos</p>
+          <p className="text-red-600 dark:text-red-400">Error al cargar los datos</p>
           <button
             onClick={() => {
               refreshPlans()
               refreshFolders()
             }}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 btn-interactive"
           >
             Reintentar
           </button>
@@ -496,7 +493,7 @@ export function FlightPlansUploader() {
           </div>
           <button
             onClick={resetPollingErrors}
-            className="px-3 py-1.5 text-sm font-medium text-amber-700 bg-amber-100 rounded-md hover:bg-amber-200 transition-colors"
+            className="px-3 py-1.5 text-sm font-medium text-amber-700 bg-amber-100 rounded-md hover:bg-amber-200 transition-colors btn-interactive"
           >
             Reintentar
           </button>
@@ -504,16 +501,13 @@ export function FlightPlansUploader() {
       )}
 
       {/* Workflow guide - shows current step in the flight plan lifecycle */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 shadow-sm fade-in-up">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Flujo de trabajo</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Flujo de trabajo</h2>
           {/* TASK-097: Refresh indicator */}
           {isRefreshing && (
-            <div className="flex items-center gap-2 text-gray-500 text-sm">
-              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
+            <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 text-sm fade-in">
+              <LoadingSpinner size="xs" variant="gray" />
               <span>Sincronizando...</span>
             </div>
           )}
@@ -525,7 +519,7 @@ export function FlightPlansUploader() {
           authorizationStatus={selectedPlan?.authorizationStatus}
         />
         {!selectedPlan && (
-          <p className="mt-4 text-sm text-gray-500 text-center">
+          <p className="mt-4 text-sm text-gray-500 dark:text-gray-400 text-center">
             Seleccione un plan de vuelo de la lista para comenzar
           </p>
         )}
@@ -533,14 +527,14 @@ export function FlightPlansUploader() {
 
       {/* Selected plan panel - shows actions for the selected plan */}
       {selectedPlan && (
-        <div className="bg-blue-50 rounded-lg border border-blue-200 p-6">
+        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 p-6 fade-in-up">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-blue-900">
+            <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100">
               Plan seleccionado: {selectedPlan.name}
             </h3>
             <button
               onClick={() => setSelectedPlanId(null)}
-              className="text-sm text-blue-600 hover:text-blue-800"
+              className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 btn-interactive-subtle"
             >
               Deseleccionar
             </button>
@@ -566,7 +560,7 @@ export function FlightPlansUploader() {
 
           {/* DateTime picker for selected plan - shown when at datetime step or to show current value */}
           {(currentStep === 'datetime' || selectedPlan.scheduledAt) && (
-            <div className="mt-4 p-4 bg-white rounded-lg border border-blue-100">
+            <div className="mt-4 p-4 bg-white dark:bg-gray-800 rounded-lg border border-blue-100 dark:border-blue-900 fade-in">
               <DateTimePicker
                 value={selectedPlan.scheduledAt || ''}
                 onChange={handleDateTimeChange}
@@ -575,14 +569,14 @@ export function FlightPlansUploader() {
                 className="max-w-xs"
               />
               {isScheduledAtLocked ? (
-                <p className="mt-2 text-sm text-amber-600 flex items-center gap-1">
+                <p className="mt-2 text-sm text-amber-600 dark:text-amber-400 flex items-center gap-1">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                   </svg>
                   La fecha no puede modificarse después de iniciar el procesamiento.
                 </p>
               ) : (
-                <p className="mt-2 text-sm text-gray-500">
+                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
                   Seleccione la fecha y hora para procesar el plan.
                 </p>
               )}
@@ -591,14 +585,14 @@ export function FlightPlansUploader() {
 
           {/* Process action prompt */}
           {currentStep === 'process' && (
-            <div className="mt-4 p-4 bg-white rounded-lg border border-blue-100">
-              <p className="text-sm text-gray-600 mb-3">
+            <div className="mt-4 p-4 bg-white dark:bg-gray-800 rounded-lg border border-blue-100 dark:border-blue-900 fade-in">
+              <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
                 El plan está listo para ser procesado. Esto generará la trayectoria y el U-Plan.
               </p>
               <button
                 onClick={() => handleProcessPlan(selectedPlan.id)}
                 disabled={loadingPlanIds.processing.has(selectedPlan.id)}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-blue-400 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-blue-400 transition-colors btn-interactive disabled-transition"
               >
                 {loadingPlanIds.processing.has(selectedPlan.id) ? 'Procesando...' : 'Procesar plan'}
               </button>
@@ -607,17 +601,17 @@ export function FlightPlansUploader() {
 
           {/* Geoawareness step prompt */}
           {currentStep === 'geoawareness' && selectedPlan.status === 'procesado' && (
-            <div className="mt-4 p-4 bg-white rounded-lg border border-purple-100">
-              <p className="text-sm text-gray-600 mb-3">
+            <div className="mt-4 p-4 bg-white dark:bg-gray-800 rounded-lg border border-purple-100 dark:border-purple-900 fade-in">
+              <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
                 El plan ha sido procesado. Revise la información de geoawareness antes de solicitar autorización.
               </p>
-              <p className="text-xs text-gray-500 mb-3">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
                 El visor de geoawareness mostrará las zonas geográficas que afectan al vuelo.
               </p>
               <button
                 onClick={() => handleAuthorizePlan(selectedPlan.id)}
                 disabled={loadingPlanIds.authorizing.has(selectedPlan.id)}
-                className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 disabled:bg-purple-400 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 disabled:bg-purple-400 transition-colors btn-interactive disabled-transition"
               >
                 {loadingPlanIds.authorizing.has(selectedPlan.id) ? 'Solicitando...' : 'Continuar a autorización'}
               </button>
@@ -626,15 +620,12 @@ export function FlightPlansUploader() {
 
           {/* Authorize action prompt - when authorization is pending */}
           {currentStep === 'authorize' && selectedPlan.authorizationStatus === 'pendiente' && (
-            <div className="mt-4 p-4 bg-white rounded-lg border border-amber-100">
-              <div className="flex items-center gap-2 text-amber-700 mb-2">
-                <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
+            <div className="mt-4 p-4 bg-white dark:bg-gray-800 rounded-lg border border-amber-100 dark:border-amber-900 fade-in">
+              <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 mb-2">
+                <LoadingSpinner size="sm" variant="primary" />
                 <span className="font-medium">Esperando respuesta del FAS...</span>
               </div>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 dark:text-gray-300">
                 La solicitud de autorización ha sido enviada. Recibirá una notificación cuando se procese.
               </p>
             </div>
@@ -643,7 +634,7 @@ export function FlightPlansUploader() {
       )}
 
       {/* Main content: Folder list with flight plans */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 shadow-sm fade-in-up">
         <FolderList
           folders={transformedFolders}
           onCreateFolder={handleCreateFolder}
@@ -666,11 +657,11 @@ export function FlightPlansUploader() {
         if (orphanPlans.length === 0) return null
 
         return (
-          <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 shadow-sm fade-in-up">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
               Planes sin carpeta ({orphanPlans.length})
             </h2>
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3 stagger-children">
               {orphanPlans.map(plan => {
                 const transformed = transformFlightPlan(plan)
                 const isSelected = selectedPlanId === transformed.id
