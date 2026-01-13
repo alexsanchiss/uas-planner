@@ -150,10 +150,14 @@ export function FolderList({
               deleting: loadingFolderIds.deleting?.has(folder.id),
             }
 
+            // Get all folder names for uniqueness validation
+            const existingFolderNames = folders.map(f => f.name)
+
             return (
               <FolderCard
                 key={folder.id}
                 folder={folder}
+                existingFolderNames={existingFolderNames}
                 onRename={onRenameFolder}
                 onDelete={onDeleteFolder}
                 onProcessPlan={onProcessPlan}

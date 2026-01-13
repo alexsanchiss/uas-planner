@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "../hooks/useAuth";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
 import axios from "axios";
 
-export default function AuthPage() {
+function LoginContent() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSignup, setIsSignup] = useState(false);
@@ -39,7 +39,7 @@ export default function AuthPage() {
       const success = await login(email, password);
       if (success) {
         // Check for redirect query param, otherwise go to home
-        const redirectUrl = searchParams.get('redirect');
+        const redirectUrl = searchParams?.get('redirect');
         if (redirectUrl) {
           // Decode and navigate to the original destination
           router.push(decodeURIComponent(redirectUrl));
@@ -119,5 +119,30 @@ export default function AuthPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+function LoginLoading() {
+  return (
+    <div className="flex flex-col bg-gray-900 min-h-0">
+      <main className="flex items-center justify-center w-full py-20">
+        <div className="bg-gray-800 p-6 rounded-lg shadow-md w-full max-w-sm my-0 animate-pulse">
+          <div className="h-8 bg-gray-700 rounded w-24 mb-6"></div>
+          <div className="space-y-4">
+            <div className="h-10 bg-gray-700 rounded"></div>
+            <div className="h-10 bg-gray-700 rounded"></div>
+            <div className="h-10 bg-gray-700 rounded"></div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense fallback={<LoginLoading />}>
+      <LoginContent />
+    </Suspense>
   );
 }

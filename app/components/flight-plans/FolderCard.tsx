@@ -1,6 +1,7 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { FlightPlanList, type FlightPlanListProps } from './FlightPlanList'
 import { type FlightPlan } from './FlightPlanCard'
+import { ConfirmDialog } from '../ui/confirm-dialog'
 
 export interface Folder {
   id: string
@@ -13,6 +14,8 @@ export interface Folder {
 export interface FolderCardProps {
   folder: Folder
   defaultExpanded?: boolean
+  /** List of existing folder names (for uniqueness validation) */
+  existingFolderNames?: string[]
   onRename?: (folderId: string, newName: string) => void
   onDelete?: (folderId: string) => void
   onProcessPlan?: (planId: string) => void
@@ -61,6 +64,7 @@ function DeleteFolderIcon() {
 export function FolderCard({
   folder,
   defaultExpanded = false,
+  existingFolderNames = [],
   onRename,
   onDelete,
   onProcessPlan,
@@ -75,6 +79,24 @@ export function FolderCard({
   const [expanded, setExpanded] = useState(defaultExpanded)
   const [isEditing, setIsEditing] = useState(false)
   const [editName, setEditName] = useState(folder.name)
+  const [validationError, setValidationError] = useState<string | null>(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  // Focus input when entering edit mode
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus()
+      inputRef.current.select()
+    }
+  }, [isEditing])
+
+  // Reset edit name when folder name changes externally
+  useEffect(() => {
+    if (!isEditing) {
+      setEditName(folder.name)
+    }
+  }, [folder.name, isEditing])
 
   const handleToggle = () => {
     if (!isEditing) {
@@ -82,23 +104,77 @@ export function FolderCard({
     }
   }
 
+  /**
+   * Validate folder name
+   * - Must be non-empty
+   * - Must be unique within user's folders
+   */
+  const validateName = (name: string): string | null => {
+    const trimmedName = name.trim()
+    
+    if (!trimmedName) {
+      return 'El nombre de la carpeta no puede estar vacío'
+    }
+    
+    // Check uniqueness (exclude current folder's name)
+    const otherFolderNames = existingFolderNames.filter(
+      n => n.toLowerCase() !== folder.name.toLowerCase()
+    )
+    if (otherFolderNames.some(n => n.toLowerCase() === trimmedName.toLowerCase())) {
+      return 'Ya existe una carpeta con este nombre'
+    }
+    
+    return null
+  }
+
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value
+    setEditName(newValue)
+    // Clear validation error as user types
+    if (validationError) {
+      setValidationError(null)
+    }
+  }
+
   const handleRenameSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (editName.trim() && editName !== folder.name) {
-      onRename?.(folder.id, editName.trim())
+    
+    const trimmedName = editName.trim()
+    const error = validateName(trimmedName)
+    
+    if (error) {
+      setValidationError(error)
+      return
     }
+    
+    // Only call onRename if the name actually changed
+    if (trimmedName !== folder.name) {
+      onRename?.(folder.id, trimmedName)
+    }
+    
     setIsEditing(false)
+    setValidationError(null)
   }
 
   const handleRenameCancel = () => {
     setEditName(folder.name)
     setIsEditing(false)
+    setValidationError(null)
   }
 
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.stopPropagation()
+    setShowDeleteConfirm(true)
+  }
+
+  const handleDeleteConfirm = () => {
     onDelete?.(folder.id)
+    setShowDeleteConfirm(false)
+  }
+
+  const handleDeleteCancel = () => {
+    setShowDeleteConfirm(false)
   }
 
   const handleEditClick = (e: React.MouseEvent) => {
@@ -128,33 +204,46 @@ export function FolderCard({
         <FolderIcon />
 
         {isEditing ? (
-          <form onSubmit={handleRenameSubmit} className="flex-1 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-            <input
-              type="text"
-              value={editName}
-              onChange={(e) => setEditName(e.target.value)}
-              className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') {
-                  handleRenameCancel()
-                }
-              }}
-            />
-            <button
-              type="submit"
-              className="px-2 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700"
-              disabled={loadingStates.renaming}
-            >
-              {loadingStates.renaming ? '...' : 'Guardar'}
-            </button>
-            <button
-              type="button"
-              onClick={handleRenameCancel}
-              className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200"
-            >
-              Cancelar
-            </button>
+          <form onSubmit={handleRenameSubmit} className="flex-1 flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-2">
+              <input
+                ref={inputRef}
+                type="text"
+                value={editName}
+                onChange={handleNameChange}
+                className={`flex-1 px-2 py-1 text-sm border rounded focus:outline-none focus:ring-2 focus:border-blue-500 ${
+                  validationError
+                    ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+                    : 'border-gray-300 focus:ring-blue-500'
+                }`}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    handleRenameCancel()
+                  }
+                }}
+                aria-invalid={!!validationError}
+                aria-describedby={validationError ? 'folder-name-error' : undefined}
+              />
+              <button
+                type="submit"
+                className="px-2 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={loadingStates.renaming || !editName.trim()}
+              >
+                {loadingStates.renaming ? '...' : 'Guardar'}
+              </button>
+              <button
+                type="button"
+                onClick={handleRenameCancel}
+                className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200"
+              >
+                Cancelar
+              </button>
+            </div>
+            {validationError && (
+              <p id="folder-name-error" className="text-xs text-red-600 ml-1">
+                {validationError}
+              </p>
+            )}
           </form>
         ) : (
           <>
@@ -205,6 +294,23 @@ export function FolderCard({
           />
         </div>
       )}
+
+      {/* Delete confirmation dialog */}
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        title="Eliminar carpeta"
+        message={`¿Estás seguro de que quieres eliminar la carpeta "${folder.name}"? ${
+          planCount > 0
+            ? `Esta acción eliminará también ${planCount} ${planCount === 1 ? 'plan de vuelo' : 'planes de vuelo'}.`
+            : ''
+        } Esta acción no se puede deshacer.`}
+        confirmLabel="Eliminar"
+        cancelLabel="Cancelar"
+        variant="danger"
+        loading={loadingStates.deleting}
+      />
     </div>
   )
 }
