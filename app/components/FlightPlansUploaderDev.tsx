@@ -337,7 +337,7 @@ function UplanEditModal({ open, onClose, uplan, onSave, readOnly = false }: {
   // Helper for updating nested fields
   function updateNested(path: string[], value: any) {
     setEditUplan((prev: any) => {
-      let obj = { ...prev };
+      const obj = { ...prev };
       let cur = obj;
       for (let i = 0; i < path.length - 1; i++) {
         if (!cur[path[i]]) cur[path[i]] = {};
@@ -967,7 +967,7 @@ export function FlightPlansUploaderDev() {
           const chunk = items.slice(j, j + ZIP_MAX_FILES);
           const zip = new JSZip();
           chunk.forEach((it) => {
-            let baseName = `${it.customName}`;
+            const baseName = `${it.customName}`;
             let fileName = `${baseName}.csv`;
             let count = 1;
             while (usedNames.has(fileName)) {
@@ -1168,7 +1168,7 @@ export function FlightPlansUploaderDev() {
           const chunk = items.slice(j, j + ZIP_MAX_FILES);
           const zip = new JSZip();
           chunk.forEach((it) => {
-            let baseName = `${it.customName}`;
+            const baseName = `${it.customName}`;
             let fileName = `${baseName}.csv`;
             let count = 1;
             while (usedNames.has(fileName)) {

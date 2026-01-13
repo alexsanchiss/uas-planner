@@ -18,7 +18,7 @@
 
 "use client";
 
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useImperativeHandle, forwardRef } from "react";
 import {
   MapPin,
   Trash2,
@@ -37,7 +37,6 @@ import {
 import {
   ScanConfig,
   Point,
-  Polygon,
   ScanWaypoint,
   ScanStatistics,
   ScanValidation,
@@ -72,6 +71,18 @@ export interface ScanPatternGeneratorProps {
   mode: ScanMode;
   /** Service area bounds for validation [minLng, minLat, maxLng, maxLat] */
   serviceBounds?: [number, number, number, number];
+  /** Callback when preview waypoints change (for map display) */
+  onPreviewChange?: (waypoints: ScanWaypoint[]) => void;
+}
+
+/**
+ * Handler functions exposed for parent component map integration
+ */
+export interface ScanMapHandlers {
+  handleAddVertex: (point: Point) => boolean;
+  handleUpdateVertex: (index: number, point: Point) => boolean;
+  handleSetStartPoint: (point: Point) => boolean;
+  handleSetEndPoint: (point: Point) => boolean;
 }
 
 // ============================================================================
@@ -119,7 +130,7 @@ function formatArea(sqMeters: number): string {
 // COMPONENT
 // ============================================================================
 
-export default function ScanPatternGenerator({
+const ScanPatternGenerator = forwardRef<ScanMapHandlers, ScanPatternGeneratorProps>(function ScanPatternGenerator({
   onApply,
   onCancel,
   onPolygonChange,
@@ -129,7 +140,8 @@ export default function ScanPatternGenerator({
   onModeChange,
   mode,
   serviceBounds,
-}: ScanPatternGeneratorProps) {
+  onPreviewChange,
+}, ref) {
   // ---- State ----
   
   // Polygon vertices
@@ -289,6 +301,19 @@ export default function ScanPatternGenerator({
     onModeChange("idle");
     return true;
   }, [serviceBounds, onModeChange]);
+
+  // Expose handlers to parent component via ref
+  useImperativeHandle(ref, () => ({
+    handleAddVertex,
+    handleUpdateVertex,
+    handleSetStartPoint,
+    handleSetEndPoint,
+  }), [handleAddVertex, handleUpdateVertex, handleSetStartPoint, handleSetEndPoint]);
+
+  // Notify parent when preview changes (TASK-146: Real-time preview)
+  useEffect(() => {
+    onPreviewChange?.(previewWaypoints);
+  }, [previewWaypoints, onPreviewChange]);
 
   /**
    * Clear all data
@@ -743,7 +768,9 @@ export default function ScanPatternGenerator({
       </div>
     </div>
   );
-}
+});
+
+export default ScanPatternGenerator;
 
 // ============================================================================
 // EXPORTS FOR MAP INTEGRATION
