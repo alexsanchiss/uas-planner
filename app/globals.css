@@ -1,18 +1,18 @@
+@import "./styles/themes.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* You can add any global styles below this line */
 body {
-  @apply bg-gray-900 text-white;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
 }
 
 /* Add any other global styles your application needs */
 
 /* App sidebar background color (used for all left columns) */
-:root {
-  --app-sidebar-bg: #111827; /* Tailwind gray-900, matches FlightPlansUploader */
-}
 .bg-app-sidebar {
   background-color: var(--app-sidebar-bg) !important;
 }

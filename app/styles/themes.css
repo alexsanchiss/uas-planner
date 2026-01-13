@@ -1,0 +1,223 @@
+/**
+ * Theme System - CSS Custom Properties
+ * 
+ * Default: Dark theme (applied to :root)
+ * Light theme: Applied via [data-theme="light"]
+ * 
+ * TASK-155, TASK-156, TASK-157
+ */
+
+/* ============================================
+   DARK THEME (Default)
+   ============================================ */
+:root {
+  /* Background colors */
+  --bg-primary: #111827;      /* gray-900 */
+  --bg-secondary: #1f2937;    /* gray-800 */
+  --bg-tertiary: #374151;     /* gray-700 */
+  --bg-hover: #4b5563;        /* gray-600 */
+  --bg-active: #6b7280;       /* gray-500 */
+
+  /* Surface colors (cards, modals, panels) */
+  --surface-primary: #1f2937;   /* gray-800 */
+  --surface-secondary: #374151; /* gray-700 */
+  --surface-elevated: #1f2937;  /* gray-800 */
+
+  /* Text colors */
+  --text-primary: #f9fafb;    /* gray-50 */
+  --text-secondary: #e5e7eb;  /* gray-200 */
+  --text-tertiary: #9ca3af;   /* gray-400 */
+  --text-muted: #6b7280;      /* gray-500 */
+
+  /* Border colors */
+  --border-primary: #374151;  /* gray-700 */
+  --border-secondary: #4b5563; /* gray-600 */
+  --border-hover: #6b7280;    /* gray-500 */
+
+  /* Brand colors */
+  --brand-primary: #3b82f6;   /* blue-500 */
+  --brand-primary-hover: #2563eb; /* blue-600 */
+  --brand-primary-active: #1d4ed8; /* blue-700 */
+  --brand-secondary: #8b5cf6; /* violet-500 */
+
+  /* Status colors */
+  --status-success: #22c55e;  /* green-500 */
+  --status-success-bg: rgba(34, 197, 94, 0.1);
+  --status-warning: #f59e0b;  /* amber-500 */
+  --status-warning-bg: rgba(245, 158, 11, 0.1);
+  --status-error: #ef4444;    /* red-500 */
+  --status-error-bg: rgba(239, 68, 68, 0.1);
+  --status-info: #3b82f6;     /* blue-500 */
+  --status-info-bg: rgba(59, 130, 246, 0.1);
+
+  /* Processing status colors */
+  --status-unprocessed: #6b7280;  /* gray-500 */
+  --status-processing: #3b82f6;   /* blue-500 */
+  --status-processed: #22c55e;    /* green-500 */
+
+  /* Authorization status colors */
+  --auth-pending: #f59e0b;    /* amber-500 */
+  --auth-approved: #22c55e;   /* green-500 */
+  --auth-denied: #ef4444;     /* red-500 */
+
+  /* Input colors */
+  --input-bg: #374151;        /* gray-700 */
+  --input-border: #4b5563;    /* gray-600 */
+  --input-focus: #3b82f6;     /* blue-500 */
+  --input-placeholder: #9ca3af; /* gray-400 */
+
+  /* Shadow colors */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+
+  /* Overlay */
+  --overlay-bg: rgba(0, 0, 0, 0.5);
+
+  /* Scrollbar */
+  --scrollbar-track: #1f2937;
+  --scrollbar-thumb: #4b5563;
+  --scrollbar-thumb-hover: #6b7280;
+
+  /* Map/Service area */
+  --service-area-border: #f59e42;
+  --service-area-fill: rgba(245, 158, 66, 0.08);
+
+  /* Sidebar */
+  --app-sidebar-bg: #111827;
+}
+
+/* ============================================
+   LIGHT THEME
+   ============================================ */
+[data-theme="light"] {
+  /* Background colors */
+  --bg-primary: #f9fafb;      /* gray-50 */
+  --bg-secondary: #ffffff;    /* white */
+  --bg-tertiary: #f3f4f6;     /* gray-100 */
+  --bg-hover: #e5e7eb;        /* gray-200 */
+  --bg-active: #d1d5db;       /* gray-300 */
+
+  /* Surface colors (cards, modals, panels) */
+  --surface-primary: #ffffff;   /* white */
+  --surface-secondary: #f9fafb; /* gray-50 */
+  --surface-elevated: #ffffff;  /* white */
+
+  /* Text colors */
+  --text-primary: #111827;    /* gray-900 */
+  --text-secondary: #374151;  /* gray-700 */
+  --text-tertiary: #6b7280;   /* gray-500 */
+  --text-muted: #9ca3af;      /* gray-400 */
+
+  /* Border colors */
+  --border-primary: #e5e7eb;  /* gray-200 */
+  --border-secondary: #d1d5db; /* gray-300 */
+  --border-hover: #9ca3af;    /* gray-400 */
+
+  /* Brand colors (slightly adjusted for light bg) */
+  --brand-primary: #2563eb;   /* blue-600 */
+  --brand-primary-hover: #1d4ed8; /* blue-700 */
+  --brand-primary-active: #1e40af; /* blue-800 */
+  --brand-secondary: #7c3aed; /* violet-600 */
+
+  /* Status colors (same hues, adjusted for light bg) */
+  --status-success: #16a34a;  /* green-600 */
+  --status-success-bg: rgba(22, 163, 74, 0.1);
+  --status-warning: #d97706;  /* amber-600 */
+  --status-warning-bg: rgba(217, 119, 6, 0.1);
+  --status-error: #dc2626;    /* red-600 */
+  --status-error-bg: rgba(220, 38, 38, 0.1);
+  --status-info: #2563eb;     /* blue-600 */
+  --status-info-bg: rgba(37, 99, 235, 0.1);
+
+  /* Processing status colors */
+  --status-unprocessed: #6b7280;  /* gray-500 */
+  --status-processing: #2563eb;   /* blue-600 */
+  --status-processed: #16a34a;    /* green-600 */
+
+  /* Authorization status colors */
+  --auth-pending: #d97706;    /* amber-600 */
+  --auth-approved: #16a34a;   /* green-600 */
+  --auth-denied: #dc2626;     /* red-600 */
+
+  /* Input colors */
+  --input-bg: #ffffff;        /* white */
+  --input-border: #d1d5db;    /* gray-300 */
+  --input-focus: #2563eb;     /* blue-600 */
+  --input-placeholder: #9ca3af; /* gray-400 */
+
+  /* Shadow colors */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+
+  /* Overlay */
+  --overlay-bg: rgba(0, 0, 0, 0.3);
+
+  /* Scrollbar */
+  --scrollbar-track: #f3f4f6;
+  --scrollbar-thumb: #d1d5db;
+  --scrollbar-thumb-hover: #9ca3af;
+
+  /* Map/Service area */
+  --service-area-border: #ea580c;
+  --service-area-fill: rgba(234, 88, 12, 0.08);
+
+  /* Sidebar */
+  --app-sidebar-bg: #ffffff;
+}
+
+/* ============================================
+   THEME TRANSITION (TASK-165)
+   ============================================ */
+html.theme-transition,
+html.theme-transition *,
+html.theme-transition *::before,
+html.theme-transition *::after {
+  transition: background-color 0.3s ease,
+              border-color 0.3s ease,
+              color 0.3s ease,
+              box-shadow 0.3s ease,
+              fill 0.3s ease,
+              stroke 0.3s ease !important;
+  transition-delay: 0s !important;
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+
+/* Background utilities */
+.bg-theme-primary { background-color: var(--bg-primary); }
+.bg-theme-secondary { background-color: var(--bg-secondary); }
+.bg-theme-tertiary { background-color: var(--bg-tertiary); }
+.bg-theme-surface { background-color: var(--surface-primary); }
+
+/* Text utilities */
+.text-theme-primary { color: var(--text-primary); }
+.text-theme-secondary { color: var(--text-secondary); }
+.text-theme-tertiary { color: var(--text-tertiary); }
+.text-theme-muted { color: var(--text-muted); }
+
+/* Border utilities */
+.border-theme-primary { border-color: var(--border-primary); }
+.border-theme-secondary { border-color: var(--border-secondary); }
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
