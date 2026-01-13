@@ -27,7 +27,7 @@
 | TASK-008 | Migrate folders route.ts | ✅ |
 | TASK-009 | Migrate folders/[id] route.ts with rename | ✅ |
 | TASK-010 | Migrate csvResult route.ts | ✅ |
-| TASK-011 | Migrate fas/[externalResponseNumber] route.ts | ⬜ |
+| TASK-011 | Migrate fas/[externalResponseNumber] route.ts | ✅ |
 | TASK-012 | Apply auth middleware to all routes | ⬜ |
 | TASK-013 | Add authorization check for resources | ⬜ |
 
@@ -394,19 +394,20 @@
 
 | Phase | Total | Completed | In Progress | Blocked |
 |-------|-------|-----------|-------------|---------|
-| Phase 1: Backend | 27 | 10 | 0 | 0 |
+| Phase 1: Backend | 27 | 11 | 0 | 0 |
 | Phase 2: Auth | 25 | 0 | 0 | 0 |
 | Phase 3: Refactor | 27 | 0 | 0 | 0 |
 | Phase 4: Production UI | 41 | 0 | 0 | 0 |
 | Phase 5: PlanGenerator | 34 | 0 | 0 | 0 |
 | Phase 6: UI/UX | 50 | 0 | 0 | 0 |
 | Phase 7: Testing | 10 | 0 | 0 | 0 |
-| **TOTAL** | **214** | **10** | **0** | **0** |
+| **TOTAL** | **214** | **11** | **0** | **0** |
 
 ---
 
 ## Recent Updates
 
+- **2026-01-13**: TASK-011 ✅ - Created App Router `app/api/fas/[externalResponseNumber]/route.ts` with PUT handler. FAS callback endpoint that updates flight plan authorization status. Does NOT require JWT auth (called by external FAS service). Finds plan by externalResponseNumber and updates authorizationStatus and authorizationMessage.
 - **2026-01-13**: TASK-010 ✅ - Created App Router `app/api/csvResult/route.ts` with GET, POST, DELETE handlers. GET fetches single CSV by ID. POST bulk fetches with plan names (parallel query). DELETE supports individual and bulk deletion. Uses JWT auth, Zod validation, and PrismaClient singleton.
 - **2026-01-13**: TASK-009 ✅ - Created App Router `app/api/folders/[id]/route.ts` with GET, PUT, DELETE handlers. GET retrieves folder with flight plans. PUT supports rename and date updates. DELETE cascades to CSV results and flight plans. Includes JWT auth and ownership authorization.
 - **2026-01-13**: TASK-008 ✅ - Created App Router `app/api/folders/route.ts` with GET and POST handlers. GET lists all folders for authenticated user with flight plans included. POST creates a new folder. Uses JWT auth (userId from token), Zod validation, and PrismaClient singleton.
