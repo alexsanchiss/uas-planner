@@ -131,6 +131,12 @@ export function FlightPlansUploader() {
     planId: string | null
     planName: string
   }>({ open: false, planId: null, planName: '' })
+  // TASK-109: Reset confirmation dialog state
+  const [resetConfirmDialog, setResetConfirmDialog] = useState<{
+    open: boolean
+    planId: string | null
+    planName: string
+  }>({ open: false, planId: null, planName: '' })
   const [loadingPlanIds, setLoadingPlanIds] = useState<{
     processing: Set<string>
     downloading: Set<string>
@@ -351,10 +357,25 @@ export function FlightPlansUploader() {
     }
   }, [flightPlans, refreshPlans, addLoadingPlan, removeLoadingPlan])
 
-  const handleResetPlan = useCallback(async (planId: string) => {
-    if (!confirm('¿Está seguro de reiniciar este plan? Se perderán los datos procesados.')) {
-      return
-    }
+  // TASK-109: Show reset confirmation dialog
+  const handleResetPlan = useCallback((planId: string) => {
+    const plan = flightPlans.find(p => String(p.id) === planId)
+    if (!plan) return
+
+    // Show confirmation dialog with warning
+    setResetConfirmDialog({
+      open: true,
+      planId,
+      planName: plan.customName,
+    })
+  }, [flightPlans])
+
+  // Actual reset after confirmation
+  const confirmResetPlan = useCallback(async () => {
+    const planId = resetConfirmDialog.planId
+    if (!planId) return
+
+    setResetConfirmDialog(prev => ({ ...prev, open: false }))
 
     addLoadingPlan('resetting', planId)
     try {
@@ -376,7 +397,7 @@ export function FlightPlansUploader() {
     } finally {
       removeLoadingPlan('resetting', planId)
     }
-  }, [refreshPlans, addLoadingPlan, removeLoadingPlan])
+  }, [resetConfirmDialog.planId, refreshPlans, addLoadingPlan, removeLoadingPlan])
 
   const handleDeletePlan = useCallback(async (planId: string) => {
     if (!confirm('¿Está seguro de eliminar este plan de vuelo?')) {
@@ -693,6 +714,18 @@ export function FlightPlansUploader() {
         title="Confirmar procesamiento"
         message={`¿Está seguro de que desea procesar el plan "${processingConfirmDialog.planName}"? Una vez iniciado el procesamiento, no podrá modificar la fecha y hora programada.`}
         confirmLabel="Procesar"
+        cancelLabel="Cancelar"
+        variant="warning"
+      />
+
+      {/* TASK-109: Reset confirmation dialog */}
+      <ConfirmDialog
+        open={resetConfirmDialog.open}
+        onClose={() => setResetConfirmDialog(prev => ({ ...prev, open: false }))}
+        onConfirm={confirmResetPlan}
+        title="Reiniciar plan de vuelo"
+        message={`¿Está seguro de que desea reiniciar el plan "${resetConfirmDialog.planName}"? Esta acción eliminará la trayectoria procesada, el estado de autorización y todos los datos asociados. El plan volverá al estado "sin procesar".`}
+        confirmLabel="Reiniciar"
         cancelLabel="Cancelar"
         variant="warning"
       />
