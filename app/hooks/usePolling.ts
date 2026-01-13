@@ -23,6 +23,10 @@ interface UsePollingOptions {
   immediate?: boolean
   /** Called when fetch fails */
   onError?: (error: Error) => void
+  /** Maximum consecutive errors before stopping polling (default: 3) */
+  maxRetries?: number
+  /** Base delay for exponential backoff in ms (default: 1000) */
+  retryDelay?: number
 }
 
 interface UsePollingReturn<T> {
@@ -36,10 +40,16 @@ interface UsePollingReturn<T> {
   refresh: () => Promise<void>
   /** Whether polling is currently active */
   isPolling: boolean
+  /** Whether a background refresh is in progress */
+  isRefreshing: boolean
+  /** Number of consecutive errors */
+  errorCount: number
   /** Start polling */
   startPolling: () => void
   /** Stop polling */
   stopPolling: () => void
+  /** Reset error count and resume polling after errors */
+  resetErrors: () => void
 }
 
 /**
@@ -66,12 +76,16 @@ export function usePolling<T>(
     enabled = true,
     immediate = true,
     onError,
+    maxRetries = 3,
+    retryDelay = 1000,
   } = options
 
   const [data, setData] = useState<T | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
   const [isPolling, setIsPolling] = useState(enabled)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [errorCount, setErrorCount] = useState(0)
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const mountedRef = useRef(true)
@@ -85,13 +99,16 @@ export function usePolling<T>(
   onErrorRef.current = onError
 
   /**
-   * Execute the fetch function with error handling
+   * Execute the fetch function with error handling and retry logic
    */
-  const executeFetch = useCallback(async () => {
+  const executeFetch = useCallback(async (isBackgroundRefresh = false) => {
     // Prevent concurrent fetches
     if (fetchingRef.current) return
     
     fetchingRef.current = true
+    if (isBackgroundRefresh && mountedRef.current) {
+      setIsRefreshing(true)
+    }
     
     try {
       const result = await fetchFnRef.current()
@@ -100,20 +117,31 @@ export function usePolling<T>(
       if (mountedRef.current) {
         setData(result)
         setError(null)
+        setErrorCount(0) // Reset error count on success
       }
     } catch (err) {
       if (mountedRef.current) {
         const error = err instanceof Error ? err : new Error('Unknown error')
         setError(error)
+        setErrorCount(prev => {
+          const newCount = prev + 1
+          // Stop polling after max consecutive errors
+          if (newCount >= maxRetries) {
+            console.warn(`Polling stopped after ${maxRetries} consecutive errors`)
+            setIsPolling(false)
+          }
+          return newCount
+        })
         onErrorRef.current?.(error)
       }
     } finally {
       fetchingRef.current = false
       if (mountedRef.current) {
         setLoading(false)
+        setIsRefreshing(false)
       }
     }
-  }, [])
+  }, [maxRetries])
 
   /**
    * Manually trigger a data refresh
@@ -140,22 +168,36 @@ export function usePolling<T>(
     }
   }, [])
 
+  /**
+   * Reset error count and resume polling after errors
+   */
+  const resetErrors = useCallback(() => {
+    setErrorCount(0)
+    setError(null)
+    setIsPolling(true)
+  }, [])
+
   // Setup and cleanup polling interval
   useEffect(() => {
     mountedRef.current = true
 
     // Initial fetch if immediate is true
     if (immediate) {
-      executeFetch()
+      executeFetch(false) // Not a background refresh for initial fetch
     } else {
       setLoading(false)
     }
 
-    // Setup polling interval
+    // Setup polling interval with exponential backoff on errors
     if (isPolling && interval > 0) {
+      // Calculate interval with backoff based on error count
+      const effectiveInterval = errorCount > 0 
+        ? Math.min(interval * Math.pow(2, errorCount), 30000) // Max 30s
+        : interval
+      
       intervalRef.current = setInterval(() => {
-        executeFetch()
-      }, interval)
+        executeFetch(true) // Background refresh
+      }, effectiveInterval)
     }
 
     // Cleanup on unmount or when polling settings change
@@ -166,16 +208,16 @@ export function usePolling<T>(
         intervalRef.current = null
       }
     }
-  }, [isPolling, interval, immediate, executeFetch])
+  }, [isPolling, interval, immediate, executeFetch, errorCount])
 
   // Handle enabled option changes
   useEffect(() => {
-    if (enabled && !isPolling) {
+    if (enabled && !isPolling && errorCount < maxRetries) {
       startPolling()
     } else if (!enabled && isPolling) {
       stopPolling()
     }
-  }, [enabled, isPolling, startPolling, stopPolling])
+  }, [enabled, isPolling, startPolling, stopPolling, errorCount, maxRetries])
 
   return {
     data,
@@ -183,8 +225,11 @@ export function usePolling<T>(
     error,
     refresh,
     isPolling,
+    isRefreshing,
+    errorCount,
     startPolling,
     stopPolling,
+    resetErrors,
   }
 }
 

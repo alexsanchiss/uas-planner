@@ -48,7 +48,7 @@ export function StatusBadge({ type, status, className = '' }: StatusBadgeProps) 
 
   return (
     <span
-      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${styles} ${className}`}
+      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-all duration-300 ease-in-out ${styles} ${className}`}
     >
       {label}
     </span>
