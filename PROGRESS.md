@@ -151,11 +151,11 @@
 ### 3.4 Production FlightPlansUploader
 | Task | Description | Status |
 |------|-------------|--------|
-| TASK-075 | Create new FlightPlansUploader.tsx | ⬜ |
-| TASK-076 | Implement individual operations only | ⬜ |
-| TASK-077 | Remove folder status counters | ⬜ |
-| TASK-078 | Remove global status summary | ⬜ |
-| TASK-079 | Integrate modular components | ⬜ |
+| TASK-075 | Create new FlightPlansUploader.tsx | ✅ |
+| TASK-076 | Implement individual operations only | ✅ |
+| TASK-077 | Remove folder status counters | ✅ |
+| TASK-078 | Remove global status summary | ✅ |
+| TASK-079 | Integrate modular components | ✅ |
 
 ---
 
@@ -396,17 +396,18 @@
 |-------|-------|-----------|-------------|---------|
 | Phase 1: Backend | 27 | 27 | 0 | 0 |
 | Phase 2: Auth | 25 | 25 | 0 | 0 |
-| Phase 3: Refactor | 27 | 22 | 0 | 0 |
+| Phase 3: Refactor | 27 | 27 | 0 | 0 |
 | Phase 4: Production UI | 41 | 0 | 0 | 0 |
 | Phase 5: PlanGenerator | 34 | 0 | 0 | 0 |
 | Phase 6: UI/UX | 50 | 0 | 0 | 0 |
 | Phase 7: Testing | 10 | 0 | 0 | 0 |
-| **TOTAL** | **214** | **74** | **0** | **0** |
+| **TOTAL** | **214** | **79** | **0** | **0** |
 
 ---
 
 ## Recent Updates
 
+- **2026-01-13**: TASK-075 ✅, TASK-076 ✅, TASK-077 ✅, TASK-078 ✅, TASK-079 ✅ - Production FlightPlansUploader complete. Created new `app/components/FlightPlansUploader.tsx` (production version) using modular components: `FolderList`, `FlightPlanCard`, `ProcessingWorkflow`, `DateTimePicker`. Implements individual plan operations only (no bulk actions), removes folder status counters, removes global status summary box. Clean, guided workflow UI with plan selection and step-by-step processing. Uses hooks: `useFlightPlans` (with 5s polling), `useFolders`, `useAuth`. **Phase 3 FlightPlansUploader Refactor is now 100% complete!**
 - **2026-01-13**: TASK-070 ✅, TASK-071 ✅, TASK-072 ✅, TASK-073 ✅, TASK-074 ✅ - Data management hooks complete. Created `usePolling.ts` (generic polling hook with configurable interval, enable/disable control, cleanup on unmount, and error handling). Created `useFlightPlans.ts` (fetches /api/flightPlans, uses 5-second polling for processing status updates, provides optimistic update functions for immediate UI feedback, CRUD operations with type-safe interfaces). Created `useFolders.ts` (fetches /api/folders, provides CRUD operations with optimistic updates, uses auth token from localStorage).
 - **2026-01-13**: TASK-064 ✅, TASK-065 ✅, TASK-066 ✅, TASK-067 ✅, TASK-068 ✅, TASK-069 ✅ - Workflow and visualization components complete. Created `ProcessingWorkflow.tsx` (4-step workflow guide: Select Plan → Set DateTime → Process → Authorize, with visual step indicators and completion states), `AuthorizationPanel.tsx` (geoawareness check + FAS authorization workflow with status display and action buttons), `GeoawarenessViewer.tsx` (placeholder for geoawareness map with loading state and legend), `TrajectoryViewer.tsx` (placeholder for trajectory visualization with playback controls placeholder), `DateTimePicker.tsx` (timezone-aware datetime-local input with timezone indicator showing UTC offset and timezone name). Updated barrel export with all new components.
 - **2026-01-13**: TASK-060 ✅, TASK-061 ✅, TASK-062 ✅, TASK-063 ✅ - Flight plan and folder components complete. Created `FlightPlanCard.tsx` (displays plan name, status badges, scheduled date, action buttons with loading states), `FlightPlanList.tsx` (maps array of plans to cards with per-plan loading tracking), `FolderCard.tsx` (expandable folder with inline rename, delete, contains flight plan list), and `FolderList.tsx` (folder management with create button and form). All components use TypeScript interfaces and Tailwind CSS. Updated barrel export.
