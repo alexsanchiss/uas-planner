@@ -44,7 +44,10 @@ export {
 
 export {
   ProcessingWorkflow,
+  getWorkflowState,
+  hasProcessingStarted,
   type WorkflowStep,
+  type WorkflowState,
   type ProcessingWorkflowProps,
 } from './ProcessingWorkflow'
 

@@ -1,36 +1,114 @@
 'use client'
 
 import React from 'react'
+import { type PlanStatus, type AuthorizationStatus } from './StatusBadge'
 
-export type WorkflowStep = 'select' | 'datetime' | 'process' | 'authorize'
+/**
+ * TASK-084: Workflow State Machine
+ * 
+ * Flight Plan Workflow States:
+ * - unprocessed: Initial state, plan uploaded but not yet processed
+ * - processing: Plan is being processed (en cola or procesando)
+ * - processed: Trajectory and U-Plan generated successfully
+ * - authorizing: U-Plan submitted to FAS, waiting for response (pendiente)
+ * - authorized: FAS approved the flight plan (aprobado)
+ * - denied: FAS denied the flight plan (denegado)
+ * - error: Processing failed
+ */
+export type WorkflowState = 
+  | 'unprocessed'
+  | 'processing'
+  | 'processed'
+  | 'authorizing'
+  | 'authorized'
+  | 'denied'
+  | 'error'
+
+/**
+ * Map plan status and authorization status to workflow state
+ */
+export function getWorkflowState(
+  planStatus: PlanStatus,
+  authorizationStatus: AuthorizationStatus
+): WorkflowState {
+  // Error state takes precedence
+  if (planStatus === 'error') return 'error'
+  
+  // Check authorization states first for processed plans
+  if (planStatus === 'procesado') {
+    if (authorizationStatus === 'aprobado') return 'authorized'
+    if (authorizationStatus === 'denegado') return 'denied'
+    if (authorizationStatus === 'pendiente') return 'authorizing'
+    return 'processed'
+  }
+  
+  // Processing state
+  if (planStatus === 'en proceso') return 'processing'
+  
+  // Default: unprocessed
+  return 'unprocessed'
+}
+
+/**
+ * Check if processing has started (cannot edit scheduledAt)
+ */
+export function hasProcessingStarted(state: WorkflowState): boolean {
+  return state !== 'unprocessed'
+}
+
+export type WorkflowStep = 'select' | 'datetime' | 'process' | 'geoawareness' | 'authorize'
 
 export interface ProcessingWorkflowProps {
   currentStep: WorkflowStep
   onStepClick?: (step: WorkflowStep) => void
   completedSteps?: WorkflowStep[]
+  /** Flight plan status for state-based highlighting */
+  planStatus?: PlanStatus
+  /** Authorization status for state-based highlighting */
+  authorizationStatus?: AuthorizationStatus
   className?: string
 }
 
+/**
+ * TASK-085 & TASK-086: Workflow steps with Process → Geoawareness → Authorize highlighting
+ */
 const steps: { id: WorkflowStep; number: number; label: string; description: string }[] = [
-  { id: 'select', number: 1, label: 'Select Plan', description: 'Choose a flight plan to process' },
-  { id: 'datetime', number: 2, label: 'Set DateTime', description: 'Configure scheduled date and time' },
-  { id: 'process', number: 3, label: 'Process', description: 'Generate trajectory and U-Plan' },
-  { id: 'authorize', number: 4, label: 'Authorize', description: 'Submit for FAS authorization' },
+  { id: 'select', number: 1, label: 'Seleccionar', description: 'Elegir un plan de vuelo' },
+  { id: 'datetime', number: 2, label: 'Fecha/Hora', description: 'Configurar fecha y hora' },
+  { id: 'process', number: 3, label: 'Procesar', description: 'Generar trayectoria y U-Plan' },
+  { id: 'geoawareness', number: 4, label: 'Geoawareness', description: 'Verificar zonas geográficas' },
+  { id: 'authorize', number: 5, label: 'Autorizar', description: 'Solicitar autorización FAS' },
 ]
 
 export function ProcessingWorkflow({
   currentStep,
   onStepClick,
   completedSteps = [],
+  planStatus,
+  authorizationStatus,
   className = '',
 }: ProcessingWorkflowProps) {
-  const getStepStatus = (stepId: WorkflowStep): 'completed' | 'current' | 'upcoming' => {
+  // Calculate workflow state from plan/auth status
+  const workflowState = planStatus && authorizationStatus
+    ? getWorkflowState(planStatus, authorizationStatus)
+    : undefined
+
+  const getStepStatus = (stepId: WorkflowStep): 'completed' | 'current' | 'upcoming' | 'processing' | 'error' => {
+    // Handle error state
+    if (workflowState === 'error' && stepId === 'process') return 'error'
+    
+    // Handle processing state (shows spinner)
+    if (workflowState === 'processing' && stepId === 'process') return 'processing'
+    
+    // Handle authorizing state (shows spinner on authorize step)
+    if (workflowState === 'authorizing' && stepId === 'authorize') return 'processing'
+    
     if (completedSteps.includes(stepId)) return 'completed'
     if (stepId === currentStep) return 'current'
     return 'upcoming'
   }
 
-  const getStepStyles = (status: 'completed' | 'current' | 'upcoming') => {
+  const getStepStyles = (status: 'completed' | 'current' | 'upcoming' | 'processing' | 'error') => {
     switch (status) {
       case 'completed':
         return {
@@ -46,6 +124,20 @@ export function ProcessingWorkflow({
           description: 'text-blue-600 dark:text-blue-500',
           connector: 'bg-gray-300 dark:bg-gray-600',
         }
+      case 'processing':
+        return {
+          circle: 'bg-amber-500 text-white border-amber-500 ring-2 ring-amber-300 ring-offset-2 animate-pulse',
+          label: 'text-amber-700 dark:text-amber-400 font-semibold',
+          description: 'text-amber-600 dark:text-amber-500',
+          connector: 'bg-gray-300 dark:bg-gray-600',
+        }
+      case 'error':
+        return {
+          circle: 'bg-red-500 text-white border-red-500 ring-2 ring-red-300 ring-offset-2',
+          label: 'text-red-700 dark:text-red-400 font-semibold',
+          description: 'text-red-600 dark:text-red-500',
+          connector: 'bg-gray-300 dark:bg-gray-600',
+        }
       case 'upcoming':
         return {
           circle: 'bg-white dark:bg-gray-800 text-gray-400 border-gray-300 dark:border-gray-600',
@@ -56,8 +148,45 @@ export function ProcessingWorkflow({
     }
   }
 
+  // Render the appropriate icon based on status
+  const renderStepIcon = (status: 'completed' | 'current' | 'upcoming' | 'processing' | 'error', stepNumber: number) => {
+    if (status === 'completed') {
+      return (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+        </svg>
+      )
+    }
+    
+    if (status === 'processing') {
+      return (
+        <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+        </svg>
+      )
+    }
+    
+    if (status === 'error') {
+      return (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      )
+    }
+    
+    return <span className="text-sm font-medium">{stepNumber}</span>
+  }
+
   return (
     <div className={`w-full ${className}`}>
+      {/* Workflow state indicator */}
+      {workflowState && (
+        <div className="mb-4 flex items-center justify-center">
+          <WorkflowStateIndicator state={workflowState} />
+        </div>
+      )}
+      
       <div className="flex items-start justify-between">
         {steps.map((step, index) => {
           const status = getStepStatus(step.id)
@@ -79,27 +208,11 @@ export function ProcessingWorkflow({
                   }
                 }}
               >
-                {/* Circle with number or checkmark */}
+                {/* Circle with number, checkmark, spinner, or X */}
                 <div
                   className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${styles.circle}`}
                 >
-                  {status === 'completed' ? (
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                  ) : (
-                    <span className="text-sm font-medium">{step.number}</span>
-                  )}
+                  {renderStepIcon(status, step.number)}
                 </div>
 
                 {/* Label */}
@@ -123,6 +236,88 @@ export function ProcessingWorkflow({
           )
         })}
       </div>
+    </div>
+  )
+}
+
+/**
+ * TASK-085: Workflow State Indicator - shows current overall state
+ */
+function WorkflowStateIndicator({ state }: { state: WorkflowState }) {
+  const stateConfig: Record<WorkflowState, { label: string; color: string; icon: React.ReactNode }> = {
+    unprocessed: {
+      label: 'Sin procesar',
+      color: 'bg-gray-100 text-gray-700 border-gray-300',
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      ),
+    },
+    processing: {
+      label: 'Procesando...',
+      color: 'bg-amber-100 text-amber-700 border-amber-300',
+      icon: (
+        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+        </svg>
+      ),
+    },
+    processed: {
+      label: 'Procesado',
+      color: 'bg-blue-100 text-blue-700 border-blue-300',
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      ),
+    },
+    authorizing: {
+      label: 'Autorizando...',
+      color: 'bg-purple-100 text-purple-700 border-purple-300',
+      icon: (
+        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+        </svg>
+      ),
+    },
+    authorized: {
+      label: 'Autorizado',
+      color: 'bg-green-100 text-green-700 border-green-300',
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+        </svg>
+      ),
+    },
+    denied: {
+      label: 'Denegado',
+      color: 'bg-red-100 text-red-700 border-red-300',
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+        </svg>
+      ),
+    },
+    error: {
+      label: 'Error',
+      color: 'bg-red-100 text-red-700 border-red-300',
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+      ),
+    },
+  }
+
+  const config = stateConfig[state]
+
+  return (
+    <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-medium ${config.color}`}>
+      {config.icon}
+      <span>{config.label}</span>
     </div>
   )
 }
