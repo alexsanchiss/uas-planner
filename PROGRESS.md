@@ -21,7 +21,7 @@
 | Task | Description | Status |
 |------|-------------|--------|
 | TASK-004 | Migrate flightPlans route.ts | ✅ |
-| TASK-005 | Migrate flightPlans/[id] route.ts | ⬜ |
+| TASK-005 | Migrate flightPlans/[id] route.ts | ✅ |
 | TASK-006 | Migrate flightPlans/[id]/uplan route.ts | ⬜ |
 | TASK-007 | Create flightPlans/[id]/reset route.ts | ⬜ |
 | TASK-008 | Migrate folders route.ts | ⬜ |
@@ -394,19 +394,20 @@
 
 | Phase | Total | Completed | In Progress | Blocked |
 |-------|-------|-----------|-------------|---------|
-| Phase 1: Backend | 27 | 4 | 0 | 0 |
+| Phase 1: Backend | 27 | 5 | 0 | 0 |
 | Phase 2: Auth | 25 | 0 | 0 | 0 |
 | Phase 3: Refactor | 27 | 0 | 0 | 0 |
 | Phase 4: Production UI | 41 | 0 | 0 | 0 |
 | Phase 5: PlanGenerator | 34 | 0 | 0 | 0 |
 | Phase 6: UI/UX | 50 | 0 | 0 | 0 |
 | Phase 7: Testing | 10 | 0 | 0 | 0 |
-| **TOTAL** | **214** | **4** | **0** | **0** |
+| **TOTAL** | **214** | **5** | **0** | **0** |
 
 ---
 
 ## Recent Updates
 
+- **2026-01-13**: TASK-005 ✅ - Created App Router `app/api/flightPlans/[id]/route.ts` with GET, PUT, DELETE handlers. RESTful endpoint for individual flight plan operations. Includes JWT auth, authorization checks (user can only access own plans), Zod validation, and cascading CSV result deletion.
 - **2026-01-13**: TASK-004 ✅ - Created App Router `app/api/flightPlans/route.ts` with GET, POST, PUT, DELETE handlers. Uses JWT auth middleware (userId from token for security), Zod validation, PrismaClient singleton, and supports bulk operations with chunked transactions.
 - **2026-01-13**: TASK-003 ✅ - Created Zod validation schemas (`lib/validators.ts`) for all API inputs: auth (login/signup), flight plans (CRUD + bulk ops), folders (CRUD), CSV results, and machines. Includes type exports and helper utilities.
 - **2026-01-13**: TASK-002 ✅ - Created API auth middleware (`lib/auth-middleware.ts`) with `withAuth` function for App Router routes. Includes type-safe auth result handling with `isAuthError` helper.
