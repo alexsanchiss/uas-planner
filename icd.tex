@@ -1,0 +1,317 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+\usepackage{hyperref}
+\usepackage{longtable}
+\usepackage{array}
+
+% Prints paths/URLs in teletype and allows line breaks at separators.
+% Used inside tables to avoid overflow when showing endpoints.
+\newcommand{\icdendpoint}[1]{\begingroup\small\path{#1}\endgroup}
+
+\title{ SPIRIT \\ \small{ICD - V\_{0.0.1}}}
+\author{U-Plan Preparation Service (UPPS) \\ Álex Sanchis}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section*{Resumen}
+Este documento describe la(s) interfaz(es) del sistema \textbf{UAS Planner} (parte de \textbf{U-Plan Preparation Service, UPPS}) dentro del contexto del proyecto \textbf{SPIRIT}. En particular, especifica:
+\begin{itemize}
+    \item La interfaz entre el \textbf{cliente web} (operador UAS) y el \textbf{backend UPPS} (API HTTP de Next.js).
+    \item La integración del backend con servicios externos: \textbf{FAS} (\textit{Flight Authorization Service}) y \textbf{Geoawareness Service}.
+    \item La coordinación del procesamiento distribuido de trayectorias mediante un \textbf{daemon de asignación} (\texttt{traj-assigner.js}) y \textbf{máquinas de proceso} (workers) que ejecutan el proyecto externo \texttt{traj-runner}.
+\end{itemize}
+
+El objetivo de la interfaz es permitir que un usuario cargue planes de vuelo (típicamente exportados desde QGroundControl), que dichos planes se procesen para generar trayectorias (CSV) y, finalmente, que esas trayectorias puedan convertirse a \textbf{U-Plan} para su evaluación de geoawareness y envío al servicio de autorización.
+
+\section{Alcance de la Interfaz}
+\begin{itemize}
+    \item \textbf{Cliente web (navegador)}: interfaz React/Next.js utilizada por el operador para cargar planes, organizar carpetas, lanzar procesamiento, descargar CSV y gestionar el envío a autorización.
+    \item \textbf{Backend UPPS (Next.js API)}: endpoints HTTP bajo \icdendpoint{/api/*} que realizan operaciones CRUD sobre planes, carpetas y máquinas, y exponen endpoints especializados para \textbf{U-Plan} y \textbf{geoawareness}.
+    \item \textbf{Base de datos MySQL}: persistencia de usuarios, carpetas, planes, resultados CSV y estado de máquinas (gestionada con Prisma).
+    \item \textbf{Daemon de asignación de trabajos}: \texttt{traj-assigner.js} (Node.js) asigna planes en cola a máquinas disponibles mediante actualización de registros en BD.
+    \item \textbf{Workers de procesamiento}: máquinas/VMs externas (no incluidas en este repositorio) que ejecutan \texttt{traj-runner} y escriben resultados en BD (tabla \texttt{csvResult}) y estado del plan.
+    \item \textbf{Servicios externos}:
+    \begin{itemize}
+        \item \textbf{FAS} (Flight Authorization Service): recibe el U-Plan generado y posteriormente notifica el resultado al UPPS.
+        \item \textbf{Geoawareness Service}: recibe el U-Plan y devuelve geozonas (GeoJSON) que intersectan los volúmenes de operación.
+    \end{itemize}
+    \item (Opcional) \textbf{noVNC/QGroundControl}: el frontend incluye un componente que embebe un \texttt{iframe} apuntando a \texttt{http://localhost:6080/} para visualizar/controlar una instancia VNC de QGroundControl.
+\end{itemize}
+
+\noindent\textbf{Fuera de alcance:} telemetría en tiempo real, control de aeronaves, enlaces MAVLink, o envío formal a autoridades (objetivos futuros descritos en \texttt{README.md}, no implementados completamente en el estado actual del repositorio).
+
+\section{Entradas y Salidas}
+\subsection*{Entradas}
+Las entradas al sistema UPPS se reciben principalmente como solicitudes HTTP (JSON) al backend, así como respuestas/callbacks de servicios externos y actualizaciones en base de datos realizadas por procesos internos.
+
+\subsubsection*{Entradas desde sistemas externos (FAS y Geoawareness)}
+\begin{longtable}{|p{5cm}|p{2.5cm}|p{2cm}|p{6cm}|}
+\hline
+	\textbf{Campo} & \textbf{Tipo de dato} & \textbf{Formato} & \textbf{Descripción} \\
+\hline
+\endfirsthead
+\hline
+	\textbf{Campo} & \textbf{Tipo de dato} & \textbf{Formato} & \textbf{Descripción} \\
+\hline
+\endhead
+\hline
+\endfoot
+\hline
+\endlastfoot
+FAS callback: endpoint & String & Ruta HTTP & Callback de FAS hacia UPPS: \texttt{PUT }\icdendpoint{/api/fas/<externalResponseNumber>}. \\
+\hline
+FAS callback: state & String & Texto & Campo \texttt{state} recibido en el callback. Si \texttt{state=ACCEPTED} se marca \texttt{authorizationStatus="aprobado"}; en caso contrario \texttt{"denegado"}. \\
+\hline
+FAS callback: message & String/Null & Texto & Campo \texttt{message} recibido en el callback; se persiste como \texttt{authorizationMessage}. \\
+\hline
+Geoawareness response & Object & GeoJSON-like & Respuesta del servicio geoawareness a la petición \texttt{POST }\icdendpoint{/geozones_searcher_by_volumes}. Se espera un \texttt{FeatureCollection} con \texttt{features}. \\
+\hline
+\end{longtable}
+
+\subsubsection*{Entradas desde sistemas internos (cliente web, procesos internos y BD)}
+\begin{longtable}{|p{5cm}|p{2.5cm}|p{2cm}|p{6cm}|}
+\hline
+	\textbf{Campo} & \textbf{Tipo de dato} & \textbf{Formato} & \textbf{Descripción} \\
+\hline
+\endfirsthead
+\hline
+	\textbf{Campo} & \textbf{Tipo de dato} & \textbf{Formato} & \textbf{Descripción} \\
+\hline
+\endhead
+\hline
+\endfoot
+\hline
+\endlastfoot
+
+userId & Integer & id BD & Identificador del usuario (parámetros/relación). Por ejemplo: \texttt{GET }\icdendpoint{/api/flightPlans?userId=...} y \texttt{GET }\icdendpoint{/api/folders?userId=...}. \\
+\hline
+folderId & Integer/Null & id BD & Carpeta destino de un plan (opcional en creación/actualización). \\
+\hline
+customName & String & UTF-8 & Nombre del plan. En la UI suele derivar del nombre de fichero sin extensión. \\
+\hline
+fileContent & String & Texto & Contenido del plan cargado desde QGroundControl (enviado como texto). Se guarda en \texttt{flightPlan.fileContent}. \\
+\hline
+status & String & Enumerado & Estado de plan: \texttt{sin procesar}, \texttt{en cola}, \texttt{procesando}, \texttt{procesado}, \texttt{error}. \\
+\hline
+scheduledAt & String/Null & ISO-8601 & Fecha/hora programada del vuelo. Obligatoria para geoawareness y generación/envío de U-Plan. \\
+\hline
+uplan & Object/String & JSON & Detalles de U-Plan aportados por el usuario (opcional). Se utiliza para rellenar campos del U-Plan final. \\
+\hline
+authorizationStatus & String & Enumerado & Estado local de autorización (persistido en BD): \texttt{sin autorización} (por defecto), \texttt{aprobado}, \texttt{denegado}. \\
+\hline
+authorizationMessage & String/Object & Texto/JSON & Mensaje asociado a la autorización (errores, feedback, etc.). \\
+\hline
+externalResponseNumber & String/Null & Texto & Identificador devuelto por FAS tras envío del U-Plan; se usa para correlación del callback. \\
+\hline
+geoawarenessData & Object/Null & JSON & Campo JSON en BD para almacenar datos de geoawareness asociados al plan. \\
+\hline
+Auth: email/password & String & UTF-8 & Credenciales recibidas en \texttt{POST }\icdendpoint{/api/auth/signup} y \texttt{POST }\icdendpoint{/api/auth/login}. \\
+\hline
+Auth: Authorization header & String & Bearer JWT & Cabecera \texttt{Authorization: Bearer <token>} requerida en \texttt{GET }\icdendpoint{/api/user}. \\
+\hline
+\end{longtable}
+
+\subsection*{Salidas}
+Las salidas del sistema consisten en respuestas HTTP al cliente web y en peticiones HTTP a servicios externos (FAS y geoawareness).
+\subsubsection*{Salidas hacia sistemas externos (FAS y Geoawareness)}
+\begin{longtable}{|p{5cm}|p{2.5cm}|p{2cm}|p{6cm}|}
+\hline
+    \textbf{Campo} & \textbf{Tipo de dato} & \textbf{Formato} & \textbf{Descripción} \\
+\hline
+\endfirsthead
+\hline
+    \textbf{Campo} & \textbf{Tipo de dato} & \textbf{Formato} & \textbf{Descripción} \\
+\hline
+\endhead
+\hline
+\endfoot
+\hline
+\endlastfoot
+HTTP request a FAS & JSON & application/json & \texttt{POST }\icdendpoint{http://<FAS_IP>/<FAS_ENDPOINT>} (si no se define \texttt{FAS\_ENDPOINT}, se usa el path \icdendpoint{/uplan}). Cuerpo: U-Plan. Cabecera: \texttt{Content-Type: application/json}. \\
+\hline
+HTTP request a Geoawareness & JSON & application/json & \texttt{POST }\icdendpoint{http://<GEOAWARENESS_SERVICE_IP>/geozones_searcher_by_volumes} con cuerpo U-Plan. \\
+\hline
+\end{longtable}
+
+\subsubsection*{Salidas hacia sistemas internos (respuestas de la API al cliente web)}
+\begin{longtable}{|p{5cm}|p{2.5cm}|p{2cm}|p{6cm}|}
+\hline
+    \textbf{Campo} & \textbf{Tipo de dato} & \textbf{Formato} & \textbf{Descripción} \\
+\hline
+\endfirsthead
+\hline
+    \textbf{Campo} & \textbf{Tipo de dato} & \textbf{Formato} & \textbf{Descripción} \\
+\hline
+\endhead
+\hline
+\endfoot
+\hline
+\endlastfoot
+
+FlightPlan & JSON & -- & Objeto de plan devuelto por \icdendpoint{/api/flightPlans} (incluye campos de BD; en listados incluye \texttt{folder}). \\
+\hline
+Folder & JSON & -- & Objeto de carpeta devuelto por \icdendpoint{/api/folders}. \\
+\hline
+Machine & JSON & -- & Objeto de máquina devuelto por \icdendpoint{/api/machines}. \\
+\hline
+Bulk counters & Integer & -- & \texttt{createdCount} (creación bulk) y \texttt{count} (actualización bulk) en \icdendpoint{/api/flightPlans}. \\
+\hline
+CSV (individual) & String & CSV texto & \texttt{GET }\icdendpoint{/api/csvResult?id=...} devuelve \texttt{\{csvResult: "..."\}}. \\
+\hline
+CSV bulk items & Array & JSON & \texttt{POST }\icdendpoint{/api/csvResult} devuelve \texttt{\{items:[\{id,customName,csvResult\}]\}}. \\
+\hline
+Delete report & JSON & -- & \texttt{DELETE }\icdendpoint{/api/flightPlans} devuelve conteos: \texttt{deletedPlans}, \texttt{deletedCsvs}, \texttt{totalDeleted}. \\
+\hline
+U-Plan generado & JSON & application/json & \texttt{POST }\icdendpoint{/api/flightPlans/<id>/uplan} devuelve \texttt{\{uplan, authorizationMessage\}}. \\
+\hline
+Geoawareness result & JSON & -- & \texttt{POST }\icdendpoint{/api/flightPlans/<id>/geoawareness} devuelve \texttt{geozones}, \texttt{trajectory}, \texttt{uplan}, \texttt{hasConflicts}, \texttt{serviceAvailable}, \texttt{planName}. \\
+\hline
+Auth token & String & JWT & \texttt{POST }\icdendpoint{/api/auth/login} devuelve \texttt{\{token\}}. \\
+\hline
+\end{longtable}
+
+\subsection*{Formato CSV de trayectoria (mínimo requerido)}
+El conversor \texttt{trayToUplan} y el endpoint de geoawareness asumen un CSV con \textbf{encabezados} que incluya al menos las columnas: \texttt{SimTime}, \texttt{Lat}, \texttt{Lon}, \texttt{Alt}. Para geoawareness, la trayectoria para el mapa se extrae asumiendo que \texttt{Lat} y \texttt{Lon} están en las posiciones 2 y 3 (1-indexed) al separar por comas.
+
+\subsection*{Formato U-Plan (salida generada, alto nivel)}
+El U-Plan se genera a partir del CSV y \texttt{scheduledAt} y contiene una lista de \texttt{operationVolumes} (polígonos GeoJSON con ventana temporal y límites verticales). Los campos adicionales (operador, UAS, categorías, etc.) se rellenan desde \texttt{flightPlan.uplan} si se proporciona; en caso contrario, se generan valores por defecto/aleatorios.
+
+\section{Protocolos y Transporte}
+\begin{itemize}
+    \item \textbf{Cliente web $\leftrightarrow$ UPPS}: HTTP (Next.js). Puerto expuesto típicamente: \texttt{3000}.
+    \begin{itemize}
+        \item Rutas API (\texttt{pages/api/*}): REST-like sobre HTTP con payload JSON.
+        \item Límite de cuerpo (body parser): \texttt{50mb} en \icdendpoint{/api/flightPlans} y \texttt{10mb} en \icdendpoint{/api/csvResult}.
+    \end{itemize}
+    \item \textbf{UPPS $\leftrightarrow$ MySQL}: Prisma se conecta a MySQL mediante \texttt{DATABASE\_URL}. En el ejemplo de configuración, MySQL usa el puerto \texttt{3306}.
+    \item \textbf{UPPS $\rightarrow$ FAS}: HTTP \texttt{POST} sin TLS a \texttt{http://<FAS\_IP>/<FAS\_ENDPOINT>}. Si \texttt{FAS\_ENDPOINT} no existe, se usa el path \texttt{uplan}. Content-Type: \texttt{application/json}.
+    \item \textbf{FAS $\rightarrow$ UPPS}: HTTP \texttt{PUT} a \icdendpoint{/api/fas/<externalResponseNumber>} con JSON \texttt{\{state, message\}}.
+    \item \textbf{UPPS $\rightarrow$ Geoawareness}: HTTP \texttt{POST} sin TLS a \texttt{http://<GEOAWARENESS\_SERVICE\_IP>/geozones\_searcher\_by\_volumes}. Content-Type: \texttt{application/json}. Timeout de 10 s.
+    \item \textbf{(Opcional) noVNC/QGroundControl}: la UI incluye un \texttt{iframe} a \texttt{http://localhost:6080/}. Este transporte depende de que noVNC esté levantado localmente.
+    \item \textbf{Autenticación}:
+    \begin{itemize}
+        \item \texttt{POST }\icdendpoint{/api/auth/login} devuelve un JWT.
+        \item \texttt{GET }\icdendpoint{/api/user} requiere \texttt{Authorization: Bearer <token>}.
+        \item Los endpoints bajo \texttt{pages/api/*} no aplican verificación JWT en el estado actual del repositorio.
+    \end{itemize}
+\end{itemize}
+
+\section{Identificadores y Convenciones}
+\begin{itemize}
+    \item \textbf{IDs de recursos (BD)}: todos los identificadores principales son enteros autoincrementales (\texttt{user.id}, \texttt{folder.id}, \texttt{flightPlan.id}, \texttt{machine.id}, \texttt{csvResult.id}).
+    \item \textbf{Convención clave plan--CSV}: el borrado unificado asume \texttt{flightPlan.id == csvResult.id} (se eliminan CSVs con los mismos IDs que los planes borrados).
+    \item \textbf{Correlación FAS}: \texttt{externalResponseNumber} (string) identifica el plan en el callback \icdendpoint{/api/fas/<externalResponseNumber>}.
+    \item \textbf{Estados de procesamiento}:
+    \begin{itemize}
+        \item \texttt{flightPlan.status}: \texttt{sin procesar}, \texttt{en cola}, \texttt{procesando}, \texttt{procesado}, \texttt{error}.
+        \item \texttt{machine.status}: \texttt{Disponible}, \texttt{Ocupada}.
+        \item \texttt{flightPlan.authorizationStatus}: por defecto \texttt{sin autorización}; actualizaciones a \texttt{aprobado} o \texttt{denegado} tras callback FAS.
+    \end{itemize}
+    \item \textbf{Unidades/formatos}:
+    \begin{itemize}
+        \item \texttt{scheduledAt}: ISO-8601 (string) en API/BD.
+        \item CSV: lat/lon en grados decimales; altitud numérica.
+        \item U-Plan: geometrías GeoJSON con orden \texttt{[lon, lat]}.
+        \item Altitudes en U-Plan: \texttt{uom="M"} y \texttt{reference="AGL"}.
+    \end{itemize}
+\end{itemize}
+
+\section{Sincronización y Temporización}
+\begin{itemize}
+    \item \textbf{Asignación de planes a máquinas}: el proceso \texttt{traj-assigner.js} ejecuta asignación cada \textbf{10 ms} (\texttt{setInterval(assignNextPlan, 10)}).
+    \item \textbf{Limpieza automática de CSV pequeños}: el mismo proceso ejecuta limpieza periódica cada \textbf{5 minutos} (\texttt{setInterval(cleanSmallCsvResults, 60 * 5000)}).
+    \item \textbf{Geoawareness}: timeout configurado de \textbf{10 s} en la llamada al servicio geoawareness.
+    \item \textbf{JWT}: expiración del token de \textbf{1 día}.
+    \item \textbf{Límites operacionales de la API (bulk)}:
+    \begin{itemize}
+        \item \icdendpoint{/api/csvResult}: máximo \texttt{5000} IDs por request (POST/DELETE bulk).
+        \item \icdendpoint{/api/flightPlans}: el endpoint acepta hasta \texttt{100000} IDs en actualizaciones/borrados bulk; las actualizaciones por-item se trocean en chunks de 200 operaciones por transacción.
+    \end{itemize}
+\end{itemize}
+\section{Gestión de Errores}
+\begin{itemize}
+    \item \textbf{Códigos HTTP usados}:
+    \begin{itemize}
+        \item \texttt{200}: operación correcta.
+        \item \texttt{201}: recurso creado.
+        \item \texttt{204}: borrado correcto sin contenido.
+        \item \texttt{400}: parámetros inválidos o campos requeridos ausentes.
+        \item \texttt{401}: autenticación requerida o token inválido (\icdendpoint{/api/user}).
+        \item \texttt{404}: recurso no encontrado.
+        \item \texttt{405}: método no permitido.
+        \item \texttt{500}: error interno (BD/red/errores no controlados).
+    \end{itemize}
+    \item \textbf{Errores en integración FAS}:
+    \begin{itemize}
+        \item Si el \texttt{POST} a FAS falla con respuesta HTTP, el sistema marca \texttt{authorizationStatus="denegado"} y devuelve \texttt{400} con \texttt{\{error:"denegado", message: ...\}}.
+        \item Si falla sin respuesta (timeout/red), marca \texttt{denegado} y devuelve \texttt{500} con mensaje.
+    \end{itemize}
+    \item \textbf{Geoawareness fallback}:
+    \begin{itemize}
+        \item Si el servicio no está configurado o no responde, el endpoint devuelve una respuesta mock y marca \texttt{serviceAvailable=false}.
+    \end{itemize}
+    \item \textbf{Recuperación del pipeline de trayectorias}:
+    \begin{itemize}
+        \item Un plan puede re-ponerse en \texttt{en cola} desde la UI (\texttt{PUT }\icdendpoint{/api/flightPlans}).
+        \item \texttt{traj-assigner.js} reencola automáticamente planes procesados cuyo CSV asociado es menor a 2 KB (criterio implementado en BD).
+        \item \texttt{machine-cleaner.js} borra todas las máquinas y reencola planes en \texttt{procesando} a \texttt{en cola}.
+    \end{itemize}
+\end{itemize}
+
+\section{Versionado y Control de Cambios}
+\begin{itemize}
+    \item \textbf{Versión del ICD}: \texttt{V\_0.0.1}.
+    \item \textbf{Versión de la aplicación}: \texttt{v1.0.0} (primera versión de producción) y documentación de optimizaciones en \texttt{API\_DOCUMENTATION.md} (etiquetadas como v1.1.0 en el README).
+    \item \textbf{Control de cambios de interfaz}:
+    \begin{itemize}
+        \item El sistema introduce un patrón de \textit{API unificada} donde \icdendpoint{/api/flightPlans} y \icdendpoint{/api/csvResult} concentran operaciones individuales y bulk.
+        \item El endpoint \icdendpoint{/api/flightPlans/[id]} se declara \textit{deprecated} (placeholder) y no debe usarse para nuevas integraciones.
+        \item Para compatibilidad hacia atrás, se recomienda mantener campos opcionales (p.ej. \texttt{geoawarenessData}, \texttt{authorizationMessage}) sin romper respuestas existentes.
+    \end{itemize}
+\end{itemize}
+
+\section*{Anexos}
+\subsection*{A. Variables de entorno (según \texttt{.env.example} y código)}
+\begin{itemize}
+    \item \texttt{DATABASE\_URL}: conexión MySQL (ejemplo: \texttt{mysql://USER@HOST:3306/upps}).
+    \item \texttt{FAS\_IP}: host:puerto del servicio FAS.
+    \item \texttt{FAS\_ENDPOINT} (opcional): path del endpoint en FAS (por defecto \texttt{uplan}).
+    \item \texttt{GEOAWARENESS\_SERVICE\_IP}: host:puerto del servicio geoawareness.
+    \item \texttt{JWT\_SECRET} (opcional, recomendado): secreto para JWT (si no existe, el sistema usa un valor por defecto en código).
+\end{itemize}
+
+\subsection*{B. Endpoints HTTP implementados (resumen)}
+\begin{itemize}
+    \item \texttt{GET }\icdendpoint{/api/flightPlans?userId=<id>}
+    \item \texttt{POST }\icdendpoint{/api/flightPlans} (individual o bulk \texttt{items})
+    \item \texttt{PUT }\icdendpoint{/api/flightPlans} (\texttt{\{id,data\}} o bulk \texttt{\{ids,data\}} / \texttt{\{items\}})
+    \item \texttt{DELETE }\icdendpoint{/api/flightPlans} (\texttt{\{id\}} o bulk \texttt{\{ids\}}; elimina también CSV asociado)
+    \item \texttt{GET }\icdendpoint{/api/csvResult?id=<id>}
+    \item \texttt{POST }\icdendpoint{/api/csvResult} (bulk \texttt{\{ids\}})
+    \item \texttt{DELETE }\icdendpoint{/api/csvResult} (\texttt{\{id\}} o bulk \texttt{\{ids\}})
+    \item \texttt{POST }\icdendpoint{/api/flightPlans/<id>/geoawareness}
+    \item \texttt{POST }\icdendpoint{/api/flightPlans/<id>/uplan}
+    \item \texttt{PUT }\icdendpoint{/api/fas/<externalResponseNumber>}
+    \item \texttt{GET/POST }\icdendpoint{/api/folders?userId=<id>}
+    \item \texttt{GET/PUT/DELETE }\icdendpoint{/api/folders/<id>}
+    \item \texttt{POST }\icdendpoint{/api/machines} y \texttt{GET }\icdendpoint{/api/machines?name=<name>}
+    \item \texttt{PUT }\icdendpoint{/api/machines/<id>}
+    \item \texttt{POST }\icdendpoint{/api/auth/signup}, \texttt{POST }\icdendpoint{/api/auth/login}, \texttt{GET }\icdendpoint{/api/user}
+\end{itemize}
+
+\subsection*{C. Flujo de alto nivel (texto)}
+\begin{enumerate}
+    \item El usuario sube planes: \texttt{POST }\icdendpoint{/api/flightPlans} con \texttt{fileContent} y \texttt{status="sin procesar"}.
+    \item La UI marca planes a procesar como \texttt{"en cola"} mediante \texttt{PUT }\icdendpoint{/api/flightPlans}.
+    \item \texttt{traj-assigner.js} asigna planes \texttt{"en cola"} a máquinas \texttt{"Disponible"} y marca el plan \texttt{"procesando"}.
+    \item Los workers externos generan el CSV y actualizan BD (\texttt{csvResult} y estado del plan).
+    \item Geoawareness opcional: \texttt{POST }\icdendpoint{/api/flightPlans/<id>/geoawareness}.
+    \item Envío a autorización: \texttt{POST }\icdendpoint{/api/flightPlans/<id>/uplan} y callback FAS a \texttt{PUT }\icdendpoint{/api/fas/<externalResponseNumber>}.
+\end{enumerate}
+
+\end{document}
+
