@@ -1,5 +1,10 @@
 import React, { useState } from 'react'
+import { IconButtonTooltip } from '../ui/tooltip'
 
+/**
+ * TASK-089: TooltipWrapper for disabled button states
+ * Shows tooltip on hover when button is disabled
+ */
 interface TooltipWrapperProps {
   tooltip?: string
   disabled?: boolean
@@ -212,13 +217,17 @@ interface IconButtonProps {
 
 /**
  * TASK-191: Icon button styles using theme CSS variables
+ * TASK-202: Icon buttons now always show tooltips on hover
  * Uses semantic color tokens for consistent theming
  */
 const iconButtonStyles = 'inline-flex items-center justify-center p-2 rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed btn-icon-interactive disabled-transition'
 
 export function ProcessIconButton({ onClick, disabled, disabledTooltip, loading, className = '', 'aria-label': ariaLabel }: IconButtonProps) {
+  // TASK-202: Show appropriate tooltip based on state
+  const tooltipContent = disabled ? (disabledTooltip || 'Procesando no disponible') : 'Procesar trayectoria'
+  
   return (
-    <TooltipWrapper tooltip={disabledTooltip} disabled={disabled}>
+    <IconButtonTooltip content={tooltipContent} position="top">
       <button
         onClick={onClick}
         disabled={disabled || loading}
@@ -228,13 +237,16 @@ export function ProcessIconButton({ onClick, disabled, disabledTooltip, loading,
       >
         {loading ? <LoadingSpinner /> : <ProcessIcon />}
       </button>
-    </TooltipWrapper>
+    </IconButtonTooltip>
   )
 }
 
 export function DownloadIconButton({ onClick, disabled, disabledTooltip, loading, className = '', 'aria-label': ariaLabel }: IconButtonProps) {
+  // TASK-202: Show appropriate tooltip based on state
+  const tooltipContent = disabled ? (disabledTooltip || 'Descarga no disponible') : 'Descargar CSV'
+  
   return (
-    <TooltipWrapper tooltip={disabledTooltip} disabled={disabled}>
+    <IconButtonTooltip content={tooltipContent} position="top">
       <button
         onClick={onClick}
         disabled={disabled || loading}
@@ -244,13 +256,16 @@ export function DownloadIconButton({ onClick, disabled, disabledTooltip, loading
       >
         {loading ? <LoadingSpinner /> : <DownloadIcon />}
       </button>
-    </TooltipWrapper>
+    </IconButtonTooltip>
   )
 }
 
 export function AuthorizeIconButton({ onClick, disabled, disabledTooltip, loading, className = '', 'aria-label': ariaLabel }: IconButtonProps) {
+  // TASK-202: Show appropriate tooltip based on state
+  const tooltipContent = disabled ? (disabledTooltip || 'Autorización no disponible') : 'Solicitar autorización'
+  
   return (
-    <TooltipWrapper tooltip={disabledTooltip} disabled={disabled}>
+    <IconButtonTooltip content={tooltipContent} position="top">
       <button
         onClick={onClick}
         disabled={disabled || loading}
@@ -260,13 +275,16 @@ export function AuthorizeIconButton({ onClick, disabled, disabledTooltip, loadin
       >
         {loading ? <LoadingSpinner /> : <AuthorizeIcon />}
       </button>
-    </TooltipWrapper>
+    </IconButtonTooltip>
   )
 }
 
 export function ResetIconButton({ onClick, disabled, disabledTooltip, loading, className = '', 'aria-label': ariaLabel }: IconButtonProps) {
+  // TASK-202: Show appropriate tooltip based on state
+  const tooltipContent = disabled ? (disabledTooltip || 'Reinicio no disponible') : 'Reiniciar plan'
+  
   return (
-    <TooltipWrapper tooltip={disabledTooltip} disabled={disabled}>
+    <IconButtonTooltip content={tooltipContent} position="top">
       <button
         onClick={onClick}
         disabled={disabled || loading}
@@ -276,13 +294,16 @@ export function ResetIconButton({ onClick, disabled, disabledTooltip, loading, c
       >
         {loading ? <LoadingSpinner /> : <ResetIcon />}
       </button>
-    </TooltipWrapper>
+    </IconButtonTooltip>
   )
 }
 
 export function DeleteIconButton({ onClick, disabled, disabledTooltip, loading, className = '', 'aria-label': ariaLabel }: IconButtonProps) {
+  // TASK-202: Show appropriate tooltip based on state
+  const tooltipContent = disabled ? (disabledTooltip || 'Eliminación no disponible') : 'Eliminar plan'
+  
   return (
-    <TooltipWrapper tooltip={disabledTooltip} disabled={disabled}>
+    <IconButtonTooltip content={tooltipContent} position="top">
       <button
         onClick={onClick}
         disabled={disabled || loading}
@@ -292,7 +313,7 @@ export function DeleteIconButton({ onClick, disabled, disabledTooltip, loading, 
       >
         {loading ? <LoadingSpinner /> : <DeleteIcon />}
       </button>
-    </TooltipWrapper>
+    </IconButtonTooltip>
   )
 }
 

@@ -2,6 +2,7 @@
 
 import React from 'react'
 import { type PlanStatus, type AuthorizationStatus } from './StatusBadge'
+import { ContextualHelp } from '../ui/tooltip'
 
 /**
  * TASK-084: Workflow State Machine
@@ -71,13 +72,84 @@ export interface ProcessingWorkflowProps {
 
 /**
  * TASK-085 & TASK-086: Workflow steps with Process → Geoawareness → Authorize highlighting
+ * TASK-204: Added contextual help for each workflow step
  */
-const steps: { id: WorkflowStep; number: number; label: string; description: string }[] = [
-  { id: 'select', number: 1, label: 'Seleccionar', description: 'Elegir un plan de vuelo' },
-  { id: 'datetime', number: 2, label: 'Fecha/Hora', description: 'Configurar fecha y hora' },
-  { id: 'process', number: 3, label: 'Procesar', description: 'Generar trayectoria y U-Plan' },
-  { id: 'geoawareness', number: 4, label: 'Geoawareness', description: 'Verificar zonas geográficas' },
-  { id: 'authorize', number: 5, label: 'Autorizar', description: 'Solicitar autorización FAS' },
+interface StepDefinition {
+  id: WorkflowStep
+  number: number
+  label: string
+  description: string
+  helpTitle: string
+  helpDescription: string
+  helpTips?: string[]
+}
+
+const steps: StepDefinition[] = [
+  { 
+    id: 'select', 
+    number: 1, 
+    label: 'Seleccionar', 
+    description: 'Elegir un plan de vuelo',
+    helpTitle: 'Seleccionar Plan',
+    helpDescription: 'Elige el plan de vuelo que deseas procesar de la lista de planes disponibles.',
+    helpTips: [
+      'Los planes se organizan por carpetas',
+      'Puedes expandir una carpeta para ver sus planes',
+      'Haz clic en un plan para seleccionarlo',
+    ],
+  },
+  { 
+    id: 'datetime', 
+    number: 2, 
+    label: 'Fecha/Hora', 
+    description: 'Configurar fecha y hora',
+    helpTitle: 'Configurar Fecha y Hora',
+    helpDescription: 'Establece la fecha y hora programada para el vuelo. Esta información se usará para generar el U-Plan.',
+    helpTips: [
+      'Selecciona una fecha y hora futura',
+      'La zona horaria se detecta automáticamente',
+      'Una vez procesado, no podrás cambiar la fecha',
+    ],
+  },
+  { 
+    id: 'process', 
+    number: 3, 
+    label: 'Procesar', 
+    description: 'Generar trayectoria y U-Plan',
+    helpTitle: 'Procesar Plan',
+    helpDescription: 'Genera la trayectoria de vuelo y el documento U-Plan requerido para la autorización.',
+    helpTips: [
+      'Asegúrate de haber configurado la fecha/hora',
+      'El proceso puede tardar unos segundos',
+      'Recibirás un archivo CSV con la trayectoria',
+    ],
+  },
+  { 
+    id: 'geoawareness', 
+    number: 4, 
+    label: 'Geoawareness', 
+    description: 'Verificar zonas geográficas',
+    helpTitle: 'Verificación Geoawareness',
+    helpDescription: 'Verifica que la trayectoria no atraviese zonas restringidas o de espacio aéreo controlado.',
+    helpTips: [
+      'Las zonas prohibidas se muestran en rojo',
+      'Las zonas de advertencia en amarillo',
+      'Puedes ver el mapa con la trayectoria superpuesta',
+    ],
+  },
+  { 
+    id: 'authorize', 
+    number: 5, 
+    label: 'Autorizar', 
+    description: 'Solicitar autorización FAS',
+    helpTitle: 'Solicitar Autorización',
+    helpDescription: 'Envía el U-Plan al sistema FAS para obtener la autorización de vuelo.',
+    helpTips: [
+      'El FAS evaluará tu plan de vuelo',
+      'Recibirás una respuesta: aprobado o denegado',
+      'Si es denegado, revisa el mensaje de error',
+    ],
+  },
 ]
 
 export function ProcessingWorkflow({
@@ -215,10 +287,19 @@ export function ProcessingWorkflow({
                   {renderStepIcon(status, step.number)}
                 </div>
 
-                {/* Label */}
-                <span className={`mt-2 text-sm text-center ${styles.label}`}>
-                  {step.label}
-                </span>
+                {/* Label with help icon */}
+                <div className="flex items-center gap-1 mt-2">
+                  <span className={`text-sm text-center ${styles.label}`}>
+                    {step.label}
+                  </span>
+                  {/* TASK-204: Contextual help icon */}
+                  <ContextualHelp
+                    title={step.helpTitle}
+                    description={step.helpDescription}
+                    tips={step.helpTips}
+                    position="top"
+                  />
+                </div>
 
                 {/* Description - hidden on small screens */}
                 <span className={`mt-1 text-xs text-center hidden sm:block ${styles.description}`}>
