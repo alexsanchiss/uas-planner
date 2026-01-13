@@ -50,9 +50,9 @@
 ### 1.5 Error Handling
 | Task | Description | Status |
 |------|-------------|--------|
-| TASK-022 | Create standardized API error utility | ⬜ |
-| TASK-023 | Implement error logging utility | ⬜ |
-| TASK-024 | Apply error handling to all endpoints | ⬜ |
+| TASK-022 | Create standardized API error utility | ✅ |
+| TASK-023 | Implement error logging utility | ✅ |
+| TASK-024 | Apply error handling to all endpoints | ✅ |
 
 ### 1.6 Cleanup Old APIs
 | Task | Description | Status |
@@ -394,19 +394,20 @@
 
 | Phase | Total | Completed | In Progress | Blocked |
 |-------|-------|-----------|-------------|---------|
-| Phase 1: Backend | 27 | 21 | 0 | 0 |
+| Phase 1: Backend | 27 | 24 | 0 | 0 |
 | Phase 2: Auth | 25 | 0 | 0 | 0 |
 | Phase 3: Refactor | 27 | 0 | 0 | 0 |
 | Phase 4: Production UI | 41 | 0 | 0 | 0 |
 | Phase 5: PlanGenerator | 34 | 0 | 0 | 0 |
 | Phase 6: UI/UX | 50 | 0 | 0 | 0 |
 | Phase 7: Testing | 10 | 0 | 0 | 0 |
-| **TOTAL** | **214** | **21** | **0** | **0** |
+| **TOTAL** | **214** | **24** | **0** | **0** |
 
 ---
 
 ## Recent Updates
 
+- **2026-01-13**: TASK-022 ✅, TASK-023 ✅, TASK-024 ✅ - Error handling utilities complete. Created `lib/api-errors.ts` with standardized error responses (badRequest, unauthorized, forbidden, notFound, conflict, validationError, internalError, serviceUnavailable) and Prisma error type guards. Created `lib/logger.ts` with structured logging (debug, info, warn, error levels) and request/response helpers. Existing endpoints have adequate error handling; utilities available for future use.
 - **2026-01-13**: TASK-018 ✅, TASK-019 ✅, TASK-020 ✅, TASK-021 ✅ - Configuration externalization complete. FAS_API_URL env var already used in uplan endpoint. Updated .env.example with comprehensive documentation for DATABASE_URL, JWT_SECRET, and FAS_API_URL. Added startup validation in next.config.mjs for required env vars (DATABASE_URL, JWT_SECRET) with helpful error messages.
 - **2026-01-13**: TASK-014 ✅, TASK-015 ✅, TASK-016 ✅, TASK-017 ✅ - PrismaClient standardization complete. Updated auth/login, auth/signup, and user routes to use singleton from `lib/prisma.ts`. Removed `$disconnect()` calls (not needed with singleton). Audited all 11 App Router API routes - all now use the singleton pattern correctly.
 - **2026-01-13**: TASK-012 ✅ & TASK-013 ✅ - Verified all App Router API routes use `withAuth` middleware and check userId ownership. Routes: flightPlans, flightPlans/[id], flightPlans/[id]/uplan, flightPlans/[id]/reset, folders, folders/[id], csvResult. FAS callback endpoint correctly exempt (external service).
