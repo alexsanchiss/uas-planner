@@ -269,16 +269,16 @@
 | TASK-138 | Create angle input | ✅ |
 | TASK-139 | Create angle visual indicator | ✅ |
 | TASK-140 | Implement SCAN algorithm | ✅ |
-| TASK-141 | Generate parallel lines | ⬜ |
-| TASK-142 | Clip lines to polygon | ⬜ |
-| TASK-143 | Create zigzag path | ⬜ |
-| TASK-144 | Add takeoff waypoint | ⬜ |
-| TASK-145 | Add landing waypoint | ⬜ |
-| TASK-146 | Show real-time preview | ⬜ |
-| TASK-147 | Add Apply button | ⬜ |
-| TASK-148 | Add Cancel button | ⬜ |
-| TASK-149 | Validate SCAN parameters | ⬜ |
-| TASK-150 | Add SCAN statistics | ⬜ |
+| TASK-141 | Generate parallel lines | ✅ |
+| TASK-142 | Clip lines to polygon | ✅ |
+| TASK-143 | Create zigzag path | ✅ |
+| TASK-144 | Add takeoff waypoint | ✅ |
+| TASK-145 | Add landing waypoint | ✅ |
+| TASK-146 | Show real-time preview | ✅ |
+| TASK-147 | Add Apply button | ✅ |
+| TASK-148 | Add Cancel button | ✅ |
+| TASK-149 | Validate SCAN parameters | ✅ |
+| TASK-150 | Add SCAN statistics | ✅ |
 
 ### 5.4 Service Area Visualization
 | Task | Description | Status |
@@ -398,15 +398,16 @@
 | Phase 2: Auth | 25 | 25 | 0 | 0 |
 | Phase 3: Refactor | 27 | 27 | 0 | 0 |
 | Phase 4: Production UI | 41 | 41 | 0 | 0 |
-| Phase 5: PlanGenerator | 34 | 20 | 0 | 0 |
+| Phase 5: PlanGenerator | 34 | 30 | 0 | 0 |
 | Phase 6: UI/UX | 50 | 0 | 0 | 0 |
 | Phase 7: Testing | 10 | 0 | 0 | 0 |
-| **TOTAL** | **214** | **140** | **0** | **0** |
+| **TOTAL** | **214** | **150** | **0** | **0** |
 
 ---
 
 ## Recent Updates
 
+- **2026-01-13**: TASK-141 ✅, TASK-142 ✅, TASK-143 ✅, TASK-144 ✅, TASK-145 ✅, TASK-146 ✅, TASK-147 ✅, TASK-148 ✅, TASK-149 ✅, TASK-150 ✅ - SCAN Pattern Generator Part 2 complete. Implemented full SCAN algorithm in `lib/scan-generator.ts`: (TASK-141) `generateParallelLines()` generates parallel lines across the polygon at the specified angle and spacing, using local Cartesian coordinates centered on polygon centroid, handles any rotation angle. (TASK-142) `clipLinesToPolygon()` uses line-polygon intersection algorithm with `lineSegmentIntersection()` helper to clip lines to polygon boundary, uses ray casting `isPointInPolygon()` to verify segment midpoints are inside. (TASK-143) `createZigzagPath()` creates efficient snake pattern connecting scan lines by sorting lines and alternating direction to minimize travel distance between consecutive lines. (TASK-144/TASK-145) `generateScanWaypoints()` adds takeoff waypoint at user-specified start point (or first scan point), and landing waypoint at user-specified end point (or last scan point) with altitude=0 for ground level. (TASK-146) Real-time preview already implemented in `ScanPatternGenerator.tsx` - calls `generateScanWaypoints()` on parameter change and displays preview waypoints via `onPolygonChange` callback. (TASK-147/TASK-148) Apply and Cancel buttons already implemented in component UI - Apply calls `onApply(previewWaypoints)`, Cancel calls `onCancel()`. (TASK-149) Validation already implemented in `validateScanConfig()` - checks minimum polygon area (100m²), spacing range (1-1000m), vertex count limits. (TASK-150) Statistics display already implemented showing waypointCount, scanLineCount, totalDistance, estimatedFlightTime (distance/speed), and coverageArea. Added helper functions: `toLocalCoords()`, `fromLocalCoords()`, `localDistance()`, `isBetween()`.
 - **2026-01-13**: TASK-131 ✅, TASK-132 ✅, TASK-133 ✅, TASK-134 ✅, TASK-135 ✅, TASK-136 ✅, TASK-137 ✅, TASK-138 ✅, TASK-139 ✅, TASK-140 ✅ - SCAN Pattern Generator Part 1 complete. Created `lib/scan-generator.ts` with: (TASK-140) `ScanConfig`, `ScanWaypoint`, `ScanResult`, `ScanStatistics`, and `ScanValidation` interfaces; helper functions for geodesic calculations (`haversineDistance`, `destinationPoint`, `polygonCentroid`, `polygonArea`, `polygonBoundingBox`); `validateScanConfig()` for parameter validation; `generateScanWaypoints()` foundation with placeholder algorithm (full implementation in TASK-141-145). Created `app/components/plan-generator/ScanPatternGenerator.tsx` with: (TASK-131) Complete component structure with state management for polygon, start/end points, and scan parameters. (TASK-132) Polygon drawing tool with "Draw Polygon" button that sets mode to enable map click capture for adding vertices. (TASK-133) Polygon editing with "Edit Vertices" button for drag mode, vertices list with delete buttons for each vertex, and selection highlighting. (TASK-134) Start point selection with "Set Start" button and mode toggle, displays coordinates when set with clear option. (TASK-135) End point selection with "Set End" button and mode toggle, displays coordinates when set with clear option. (TASK-136) Altitude input with number field (0-200m range), unit label, and validation. (TASK-137) Spacing input for scan line distance (1-1000m), with field and unit label. (TASK-138) Angle input with both slider (0-360°) and number input, real-time sync between both controls. (TASK-139) Visual compass indicator showing scan angle with animated arrow, cardinal direction labels (N/E/S/W), and center dot. Component includes validation display (errors in red, warnings in yellow), statistics preview (waypoints, lines, distance, time, area), mode indicator banner, and Apply/Cancel action buttons.
 - **2026-01-13**: TASK-126 ✅, TASK-127 ✅, TASK-128 ✅, TASK-129 ✅, TASK-130 ✅ - Fly-By/Fly-Over Toggle complete. (TASK-126) Added `flyOverMode` boolean field to Waypoint interface - when true, drone must pass directly over the waypoint; when false (default), drone smoothly curves past. (TASK-127) Created toggle switch UI in waypoint editor for cruise waypoints only - styled toggle with purple highlight when fly-over is active, visual indicators (∽ for fly-by curve, ⎯○⎯ for fly-over direct). (TASK-128) Updated `generateQGCPlan()` to use params[1] (acceptance radius) for fly-over control: 0.1m for fly-over waypoints (forces precise passage), 0 for fly-by (allows smooth curving). This correctly follows MAVLink NAV_WAYPOINT spec where params = [Hold, Accept_Radius, Pass_Radius, Yaw, Lat, Lon, Alt]. (TASK-129) Enhanced `PlanMap.tsx` with visual indicators: fly-over waypoints displayed as purple diamond-shaped markers vs circular markers for regular waypoints, plus "⊙ OVER" badge below marker. (TASK-130) Added tooltips throughout: toggle title explains "Fly-by: drone smoothly curves past the waypoint. Fly-over: drone must pass directly over the waypoint (more precise but slower).", popup shows mode with color-coded text and explanatory hover text.
 - **2026-01-13**: TASK-121 ✅, TASK-122 ✅, TASK-123 ✅, TASK-124 ✅, TASK-125 ✅ - Waypoint Pause Configuration complete. (TASK-121) Added `pauseDuration` field to Waypoint interface in `PlanGenerator.tsx` - represents hold time in seconds (0-3600). (TASK-122) Added pause duration input field to waypoint editor UI with number input (min 0, max 3600), stopwatch emoji indicator, and tooltip explaining the field. (TASK-123) Updated `generateQGCPlan()` function to include pause duration in params[0] for takeoff (cmd 22), cruise (cmd 16), and landing (cmd 21) waypoints - QGC uses params[0] as hold time. (TASK-124) Added validation in `handleWaypointChange()` that clamps pauseDuration to 0-3600 range and shows toast warning when user exceeds limits. (TASK-125) Enhanced `PlanMap.tsx` with custom waypoint markers using `L.divIcon`: color-coded by type (green=takeoff, blue=cruise, red=landing), numbered markers, orange badge showing pause time (⏱ Xs or Xm Ys format) when pauseDuration > 0, and pause info displayed in marker popup. Added `formatPauseDuration()` helper for human-readable time formatting.

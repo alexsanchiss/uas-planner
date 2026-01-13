@@ -355,6 +355,340 @@ export function validateScanConfig(config: ScanConfig): ScanValidation {
 }
 
 // ============================================================================
+// LINE-POLYGON INTERSECTION HELPERS (TASK-142)
+// ============================================================================
+
+/**
+ * A 2D line segment in local Cartesian coordinates
+ */
+interface LocalSegment {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+}
+
+/**
+ * Find intersection point of two line segments
+ * Returns null if no intersection
+ */
+function lineSegmentIntersection(
+  seg1: LocalSegment,
+  seg2: LocalSegment
+): { x: number; y: number } | null {
+  const { x1: x1, y1: y1, x2: x2, y2: y2 } = seg1;
+  const { x1: x3, y1: y3, x2: x4, y2: y4 } = seg2;
+
+  const denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+  
+  // Lines are parallel or coincident
+  if (Math.abs(denom) < 1e-12) {
+    return null;
+  }
+
+  const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom;
+  const u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / denom;
+
+  // Check if intersection is within both segments
+  if (t >= -1e-10 && t <= 1 + 1e-10 && u >= -1e-10 && u <= 1 + 1e-10) {
+    return {
+      x: x1 + t * (x2 - x1),
+      y: y1 + t * (y2 - y1),
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Convert geographic coordinates to local Cartesian coordinates
+ * centered at the polygon centroid
+ */
+function toLocalCoords(
+  point: Point,
+  centroid: Point,
+  latScale: number,
+  lngScale: number
+): { x: number; y: number } {
+  return {
+    x: (point.lng - centroid.lng) * lngScale,
+    y: (point.lat - centroid.lat) * latScale,
+  };
+}
+
+/**
+ * Convert local Cartesian coordinates back to geographic coordinates
+ */
+function fromLocalCoords(
+  local: { x: number; y: number },
+  centroid: Point,
+  latScale: number,
+  lngScale: number
+): Point {
+  return {
+    lat: centroid.lat + local.y / latScale,
+    lng: centroid.lng + local.x / lngScale,
+  };
+}
+
+/**
+ * TASK-141: Generate parallel lines based on angle and spacing
+ * 
+ * This function generates parallel lines that span across the polygon's
+ * bounding box at the specified angle and spacing.
+ * 
+ * @param polygon The polygon to cover
+ * @param angle Angle in degrees (0 = North, 90 = East)
+ * @param spacing Distance between lines in meters
+ * @returns Array of line segments in local coordinates
+ */
+function generateParallelLines(
+  polygon: Polygon,
+  angle: number,
+  spacing: number,
+  centroid: Point,
+  latScale: number,
+  lngScale: number
+): LocalSegment[] {
+  // Convert polygon vertices to local coordinates
+  const localVertices = polygon.vertices.map(v => 
+    toLocalCoords(v, centroid, latScale, lngScale)
+  );
+
+  // Find the bounding box of the polygon in local coordinates
+  let minX = Infinity, maxX = -Infinity;
+  let minY = Infinity, maxY = -Infinity;
+  for (const v of localVertices) {
+    minX = Math.min(minX, v.x);
+    maxX = Math.max(maxX, v.x);
+    minY = Math.min(minY, v.y);
+    maxY = Math.max(maxY, v.y);
+  }
+
+  // Calculate the diagonal of the bounding box
+  // Lines need to extend this far to cover any rotation
+  const diagonal = Math.sqrt(
+    Math.pow(maxX - minX, 2) + Math.pow(maxY - minY, 2)
+  );
+  const halfDiag = diagonal / 2 + spacing; // Add buffer
+
+  // Center of bounding box
+  const cx = (minX + maxX) / 2;
+  const cy = (minY + maxY) / 2;
+
+  // Convert angle to radians (0° = North = up = +y direction)
+  // We want lines perpendicular to the direction of travel
+  // If angle is 0° (North), lines should be horizontal (East-West)
+  const angleRad = toRadians(angle);
+  
+  // Direction perpendicular to scan angle (the direction lines run)
+  const lineDirX = Math.sin(angleRad);
+  const lineDirY = Math.cos(angleRad);
+  
+  // Direction parallel to scan lines (for spacing)
+  const perpDirX = Math.cos(angleRad);
+  const perpDirY = -Math.sin(angleRad);
+
+  // Calculate how many lines we need
+  const numLines = Math.ceil(diagonal / spacing) + 2;
+  const halfLines = Math.floor(numLines / 2);
+
+  const lines: LocalSegment[] = [];
+
+  // Generate lines centered around the bounding box center
+  for (let i = -halfLines; i <= halfLines; i++) {
+    // Offset from center along perpendicular direction
+    const offset = i * spacing;
+    const lineBaseX = cx + perpDirX * offset;
+    const lineBaseY = cy + perpDirY * offset;
+
+    // Create line segment extending from this base point
+    lines.push({
+      x1: lineBaseX - lineDirX * halfDiag,
+      y1: lineBaseY - lineDirY * halfDiag,
+      x2: lineBaseX + lineDirX * halfDiag,
+      y2: lineBaseY + lineDirY * halfDiag,
+    });
+  }
+
+  return lines;
+}
+
+/**
+ * TASK-142: Clip parallel lines to polygon boundary
+ * 
+ * For each line, find where it intersects the polygon edges
+ * and keep only the segments that are inside the polygon.
+ * 
+ * @param lines Array of line segments
+ * @param polygon Polygon vertices in local coordinates
+ * @returns Array of clipped line segments (points inside polygon)
+ */
+function clipLinesToPolygon(
+  lines: LocalSegment[],
+  localVertices: { x: number; y: number }[]
+): LocalSegment[] {
+  const clippedLines: LocalSegment[] = [];
+  const n = localVertices.length;
+
+  for (const line of lines) {
+    // Find all intersection points with polygon edges
+    const intersections: { x: number; y: number; t: number }[] = [];
+
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n;
+      const edge: LocalSegment = {
+        x1: localVertices[i].x,
+        y1: localVertices[i].y,
+        x2: localVertices[j].x,
+        y2: localVertices[j].y,
+      };
+
+      const intersection = lineSegmentIntersection(line, edge);
+      if (intersection) {
+        // Calculate parameter t along the scan line
+        const dx = line.x2 - line.x1;
+        const dy = line.y2 - line.y1;
+        const t = Math.abs(dx) > Math.abs(dy)
+          ? (intersection.x - line.x1) / dx
+          : (intersection.y - line.y1) / dy;
+        
+        intersections.push({ ...intersection, t });
+      }
+    }
+
+    // Sort intersections by position along line
+    intersections.sort((a, b) => a.t - b.t);
+
+    // Remove duplicate intersections (at vertices)
+    const uniqueIntersections: typeof intersections = [];
+    for (const inter of intersections) {
+      if (
+        uniqueIntersections.length === 0 ||
+        Math.abs(inter.x - uniqueIntersections[uniqueIntersections.length - 1].x) > 0.01 ||
+        Math.abs(inter.y - uniqueIntersections[uniqueIntersections.length - 1].y) > 0.01
+      ) {
+        uniqueIntersections.push(inter);
+      }
+    }
+
+    // Create segments from pairs of intersections (entry/exit points)
+    // Even indices are entries, odd indices are exits
+    for (let i = 0; i + 1 < uniqueIntersections.length; i += 2) {
+      const entry = uniqueIntersections[i];
+      const exit = uniqueIntersections[i + 1];
+      
+      // Verify segment midpoint is inside polygon
+      const midX = (entry.x + exit.x) / 2;
+      const midY = (entry.y + exit.y) / 2;
+      
+      if (isPointInPolygon({ x: midX, y: midY }, localVertices)) {
+        clippedLines.push({
+          x1: entry.x,
+          y1: entry.y,
+          x2: exit.x,
+          y2: exit.y,
+        });
+      }
+    }
+  }
+
+  return clippedLines;
+}
+
+/**
+ * Check if a point is inside a polygon using ray casting algorithm
+ */
+function isPointInPolygon(
+  point: { x: number; y: number },
+  vertices: { x: number; y: number }[]
+): boolean {
+  let inside = false;
+  const n = vertices.length;
+
+  for (let i = 0, j = n - 1; i < n; j = i++) {
+    const xi = vertices[i].x, yi = vertices[i].y;
+    const xj = vertices[j].x, yj = vertices[j].y;
+
+    if (
+      yi > point.y !== yj > point.y &&
+      point.x < ((xj - xi) * (point.y - yi)) / (yj - yi) + xi
+    ) {
+      inside = !inside;
+    }
+  }
+
+  return inside;
+}
+
+/**
+ * TASK-143: Create zigzag path connecting parallel lines efficiently
+ * 
+ * Connects the scan lines in a snake pattern to minimize travel distance.
+ * Alternates direction on consecutive lines.
+ * 
+ * @param clippedLines Array of clipped line segments
+ * @param startPoint Optional start point to determine initial direction
+ * @returns Array of points forming the zigzag path
+ */
+function createZigzagPath(
+  clippedLines: LocalSegment[],
+  startPoint?: { x: number; y: number }
+): { x: number; y: number }[] {
+  if (clippedLines.length === 0) {
+    return [];
+  }
+
+  // Sort lines by their center position perpendicular to scan direction
+  // This ensures we process them in order
+  const sortedLines = [...clippedLines].sort((a, b) => {
+    const aCenterX = (a.x1 + a.x2) / 2;
+    const aCenterY = (a.y1 + a.y2) / 2;
+    const bCenterX = (b.x1 + b.x2) / 2;
+    const bCenterY = (b.y1 + b.y2) / 2;
+    
+    // Sort primarily by one axis, with the other as tiebreaker
+    // This works for any scan angle
+    const primaryA = aCenterX + aCenterY;
+    const primaryB = bCenterX + bCenterY;
+    
+    return primaryA - primaryB;
+  });
+
+  const path: { x: number; y: number }[] = [];
+  let lastEnd: { x: number; y: number } | null = startPoint ?? null;
+
+  for (let i = 0; i < sortedLines.length; i++) {
+    const line = sortedLines[i];
+    const start = { x: line.x1, y: line.y1 };
+    const end = { x: line.x2, y: line.y2 };
+
+    // Determine which endpoint is closer to the last position
+    // to minimize travel distance (zigzag pattern)
+    let useReversed = false;
+    
+    if (lastEnd) {
+      const distToStart = Math.hypot(start.x - lastEnd.x, start.y - lastEnd.y);
+      const distToEnd = Math.hypot(end.x - lastEnd.x, end.y - lastEnd.y);
+      useReversed = distToEnd < distToStart;
+    } else if (i % 2 === 1) {
+      // Alternate direction if no reference point
+      useReversed = true;
+    }
+
+    if (useReversed) {
+      path.push(end, start);
+      lastEnd = start;
+    } else {
+      path.push(start, end);
+      lastEnd = end;
+    }
+  }
+
+  return path;
+}
+
+// ============================================================================
 // MAIN ALGORITHM
 // ============================================================================
 
@@ -364,16 +698,17 @@ export function validateScanConfig(config: ScanConfig): ScanValidation {
  * Algorithm overview:
  * 1. Validate configuration
  * 2. Calculate bounding box of polygon
- * 3. Generate parallel lines at specified angle and spacing
- * 4. Clip lines to polygon boundary
- * 5. Create zigzag path connecting line endpoints
- * 6. Add takeoff/landing waypoints
- * 7. Calculate statistics
+ * 3. TASK-141: Generate parallel lines at specified angle and spacing
+ * 4. TASK-142: Clip lines to polygon boundary
+ * 5. TASK-143: Create zigzag path connecting line endpoints
+ * 6. TASK-144: Add takeoff waypoint at start point
+ * 7. TASK-145: Add landing waypoint at end point
+ * 8. TASK-150: Calculate statistics
  * 
- * TASK-140: Core algorithm implementation (full implementation in next batch)
+ * TASK-140, TASK-141, TASK-142, TASK-143, TASK-144, TASK-145: Full implementation
  */
 export function generateScanWaypoints(config: ScanConfig): ScanResult {
-  // Validate configuration
+  // Validate configuration (TASK-149)
   const validation = validateScanConfig(config);
   if (!validation.isValid) {
     throw new Error(`Invalid SCAN configuration: ${validation.errors.join(', ')}`);
@@ -382,14 +717,47 @@ export function generateScanWaypoints(config: ScanConfig): ScanResult {
   const defaultSpeed = config.speed ?? 5;
   const waypoints: ScanWaypoint[] = [];
 
-  // For now, return a placeholder result
-  // Full algorithm implementation will be in TASK-141 to TASK-145
-  
-  // Add takeoff waypoint
-  const startPoint = config.startPoint ?? config.polygon.vertices[0];
+  // Calculate centroid and scaling factors for local coordinate conversion
+  const centroid = polygonCentroid(config.polygon);
+  const latScale = 111320; // meters per degree latitude
+  const lngScale = 111320 * Math.cos(toRadians(centroid.lat)); // meters per degree longitude
+
+  // Convert polygon vertices to local coordinates
+  const localVertices = config.polygon.vertices.map(v =>
+    toLocalCoords(v, centroid, latScale, lngScale)
+  );
+
+  // TASK-141: Generate parallel lines based on angle and spacing
+  const parallelLines = generateParallelLines(
+    config.polygon,
+    normalizeAngle(config.angle),
+    config.spacing,
+    centroid,
+    latScale,
+    lngScale
+  );
+
+  // TASK-142: Clip parallel lines to polygon boundary
+  const clippedLines = clipLinesToPolygon(parallelLines, localVertices);
+
+  // Convert start point to local coordinates if provided
+  const localStartPoint = config.startPoint
+    ? toLocalCoords(config.startPoint, centroid, latScale, lngScale)
+    : undefined;
+
+  // TASK-143: Create zigzag path connecting parallel lines efficiently
+  const zigzagPath = createZigzagPath(clippedLines, localStartPoint);
+
+  // Convert path back to geographic coordinates
+  const geoPath = zigzagPath.map(p =>
+    fromLocalCoords(p, centroid, latScale, lngScale)
+  );
+
+  // TASK-144: Add takeoff waypoint at start point
+  const takeoffPoint = config.startPoint ?? geoPath[0] ?? config.polygon.vertices[0];
   waypoints.push({
-    lat: startPoint.lat,
-    lng: startPoint.lng,
+    lat: takeoffPoint.lat,
+    lng: takeoffPoint.lng,
     type: 'takeoff',
     altitude: config.altitude,
     speed: defaultSpeed,
@@ -397,33 +765,32 @@ export function generateScanWaypoints(config: ScanConfig): ScanResult {
     flyOverMode: false,
   });
 
-  // Calculate centroid for a simple placeholder scan pattern
-  const centroid = polygonCentroid(config.polygon);
-  
-  // Add a cruise waypoint at centroid (placeholder)
-  waypoints.push({
-    lat: centroid.lat,
-    lng: centroid.lng,
-    type: 'cruise',
-    altitude: config.altitude,
-    speed: defaultSpeed,
-    pauseDuration: 0,
-    flyOverMode: false,
-  });
+  // Add scan pattern waypoints as cruise points
+  for (const point of geoPath) {
+    waypoints.push({
+      lat: point.lat,
+      lng: point.lng,
+      type: 'cruise',
+      altitude: config.altitude,
+      speed: defaultSpeed,
+      pauseDuration: 0,
+      flyOverMode: false,
+    });
+  }
 
-  // Add landing waypoint
-  const endPoint = config.endPoint ?? config.polygon.vertices[0];
+  // TASK-145: Add landing waypoint at end point
+  const landingPoint = config.endPoint ?? geoPath[geoPath.length - 1] ?? config.polygon.vertices[0];
   waypoints.push({
-    lat: endPoint.lat,
-    lng: endPoint.lng,
+    lat: landingPoint.lat,
+    lng: landingPoint.lng,
     type: 'landing',
-    altitude: 0,
+    altitude: 0, // Landing at ground level
     speed: defaultSpeed,
     pauseDuration: 0,
     flyOverMode: false,
   });
 
-  // Calculate basic statistics
+  // TASK-150: Calculate statistics
   let totalDistance = 0;
   for (let i = 1; i < waypoints.length; i++) {
     totalDistance += haversineDistance(
@@ -436,7 +803,7 @@ export function generateScanWaypoints(config: ScanConfig): ScanResult {
     waypointCount: waypoints.length,
     totalDistance,
     estimatedFlightTime: totalDistance / defaultSpeed,
-    scanLineCount: 1, // Placeholder
+    scanLineCount: clippedLines.length,
     coverageArea: polygonArea(config.polygon),
   };
 
