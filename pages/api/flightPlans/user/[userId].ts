@@ -1,4 +1,14 @@
 // pages/api/flightPlans/user/[userId].ts
+//
+// ⚠️  DEPRECATED - DO NOT USE FOR NEW DEVELOPMENT
+// ================================================
+// This Pages Router API has been migrated to App Router.
+// Use the App Router endpoint instead: app/api/flightPlans/route.ts
+// The App Router version uses JWT auth and userId from token.
+//
+// Migration date: 2026-01-13
+// Removal planned: After thorough testing of App Router endpoints
+//
 import { NextApiRequest, NextApiResponse } from 'next';
 import { PrismaClient } from '@prisma/client';
 

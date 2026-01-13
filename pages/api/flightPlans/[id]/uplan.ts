@@ -1,5 +1,13 @@
 // pages/api/flightPlans/[id]/uplan.ts
 //
+// ⚠️  DEPRECATED - DO NOT USE FOR NEW DEVELOPMENT
+// ================================================
+// This Pages Router API has been migrated to App Router.
+// Use the App Router endpoint instead: app/api/flightPlans/[id]/uplan/route.ts
+//
+// Migration date: 2026-01-13
+// Removal planned: After thorough testing of App Router endpoints
+//
 // U-PLAN GENERATION ENDPOINT - Specialized Business Logic
 // =======================================================
 //

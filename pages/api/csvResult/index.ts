@@ -1,5 +1,13 @@
 // pages/api/csvResult/index.ts
 //
+// ⚠️  DEPRECATED - DO NOT USE FOR NEW DEVELOPMENT
+// ================================================
+// This Pages Router API has been migrated to App Router.
+// Use the App Router endpoint instead: app/api/csvResult/route.ts
+//
+// Migration date: 2026-01-13
+// Removal planned: After thorough testing of App Router endpoints
+//
 // UNIFIED CSV RESULT API - Optimized for Large Datasets
 // ====================================================
 //
