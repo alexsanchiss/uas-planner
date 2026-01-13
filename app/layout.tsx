@@ -4,6 +4,7 @@ import "./globals.css";
 import { Footer } from "./components/footer";
 import { Header } from "./components/header";
 import { AuthProvider } from "./components/auth/auth-provider";
+import { ToastProvider } from "./components/ui/toast-provider";
 import React, { useEffect, useState } from "react";
 import { Modal } from "./components/ui/modal";
 
@@ -58,6 +59,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen flex flex-col bg-[var(--bg-primary)] text-[var(--text-primary)]">
         <AuthProvider>
+        <ToastProvider>
         <Header />
         <Modal
           open={showDemoPopup}
@@ -97,6 +99,7 @@ export default function RootLayout({
         </Modal>
         <main className="flex-1 flex flex-col">{children}</main>
         <Footer />
+        </ToastProvider>
         </AuthProvider>
       </body>
     </html>
