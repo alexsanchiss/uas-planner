@@ -259,16 +259,16 @@
 ### 5.3 SCAN Pattern Generator
 | Task | Description | Status |
 |------|-------------|--------|
-| TASK-131 | Create ScanPatternGenerator.tsx | ⬜ |
-| TASK-132 | Implement polygon drawing | ⬜ |
-| TASK-133 | Add polygon editing | ⬜ |
-| TASK-134 | Add start point selection | ⬜ |
-| TASK-135 | Add end point selection | ⬜ |
-| TASK-136 | Create altitude input | ⬜ |
-| TASK-137 | Create spacing input | ⬜ |
-| TASK-138 | Create angle input | ⬜ |
-| TASK-139 | Create angle visual indicator | ⬜ |
-| TASK-140 | Implement SCAN algorithm | ⬜ |
+| TASK-131 | Create ScanPatternGenerator.tsx | ✅ |
+| TASK-132 | Implement polygon drawing | ✅ |
+| TASK-133 | Add polygon editing | ✅ |
+| TASK-134 | Add start point selection | ✅ |
+| TASK-135 | Add end point selection | ✅ |
+| TASK-136 | Create altitude input | ✅ |
+| TASK-137 | Create spacing input | ✅ |
+| TASK-138 | Create angle input | ✅ |
+| TASK-139 | Create angle visual indicator | ✅ |
+| TASK-140 | Implement SCAN algorithm | ✅ |
 | TASK-141 | Generate parallel lines | ⬜ |
 | TASK-142 | Clip lines to polygon | ⬜ |
 | TASK-143 | Create zigzag path | ⬜ |
@@ -398,15 +398,16 @@
 | Phase 2: Auth | 25 | 25 | 0 | 0 |
 | Phase 3: Refactor | 27 | 27 | 0 | 0 |
 | Phase 4: Production UI | 41 | 41 | 0 | 0 |
-| Phase 5: PlanGenerator | 34 | 10 | 0 | 0 |
+| Phase 5: PlanGenerator | 34 | 20 | 0 | 0 |
 | Phase 6: UI/UX | 50 | 0 | 0 | 0 |
 | Phase 7: Testing | 10 | 0 | 0 | 0 |
-| **TOTAL** | **214** | **130** | **0** | **0** |
+| **TOTAL** | **214** | **140** | **0** | **0** |
 
 ---
 
 ## Recent Updates
 
+- **2026-01-13**: TASK-131 ✅, TASK-132 ✅, TASK-133 ✅, TASK-134 ✅, TASK-135 ✅, TASK-136 ✅, TASK-137 ✅, TASK-138 ✅, TASK-139 ✅, TASK-140 ✅ - SCAN Pattern Generator Part 1 complete. Created `lib/scan-generator.ts` with: (TASK-140) `ScanConfig`, `ScanWaypoint`, `ScanResult`, `ScanStatistics`, and `ScanValidation` interfaces; helper functions for geodesic calculations (`haversineDistance`, `destinationPoint`, `polygonCentroid`, `polygonArea`, `polygonBoundingBox`); `validateScanConfig()` for parameter validation; `generateScanWaypoints()` foundation with placeholder algorithm (full implementation in TASK-141-145). Created `app/components/plan-generator/ScanPatternGenerator.tsx` with: (TASK-131) Complete component structure with state management for polygon, start/end points, and scan parameters. (TASK-132) Polygon drawing tool with "Draw Polygon" button that sets mode to enable map click capture for adding vertices. (TASK-133) Polygon editing with "Edit Vertices" button for drag mode, vertices list with delete buttons for each vertex, and selection highlighting. (TASK-134) Start point selection with "Set Start" button and mode toggle, displays coordinates when set with clear option. (TASK-135) End point selection with "Set End" button and mode toggle, displays coordinates when set with clear option. (TASK-136) Altitude input with number field (0-200m range), unit label, and validation. (TASK-137) Spacing input for scan line distance (1-1000m), with field and unit label. (TASK-138) Angle input with both slider (0-360°) and number input, real-time sync between both controls. (TASK-139) Visual compass indicator showing scan angle with animated arrow, cardinal direction labels (N/E/S/W), and center dot. Component includes validation display (errors in red, warnings in yellow), statistics preview (waypoints, lines, distance, time, area), mode indicator banner, and Apply/Cancel action buttons.
 - **2026-01-13**: TASK-126 ✅, TASK-127 ✅, TASK-128 ✅, TASK-129 ✅, TASK-130 ✅ - Fly-By/Fly-Over Toggle complete. (TASK-126) Added `flyOverMode` boolean field to Waypoint interface - when true, drone must pass directly over the waypoint; when false (default), drone smoothly curves past. (TASK-127) Created toggle switch UI in waypoint editor for cruise waypoints only - styled toggle with purple highlight when fly-over is active, visual indicators (∽ for fly-by curve, ⎯○⎯ for fly-over direct). (TASK-128) Updated `generateQGCPlan()` to use params[1] (acceptance radius) for fly-over control: 0.1m for fly-over waypoints (forces precise passage), 0 for fly-by (allows smooth curving). This correctly follows MAVLink NAV_WAYPOINT spec where params = [Hold, Accept_Radius, Pass_Radius, Yaw, Lat, Lon, Alt]. (TASK-129) Enhanced `PlanMap.tsx` with visual indicators: fly-over waypoints displayed as purple diamond-shaped markers vs circular markers for regular waypoints, plus "⊙ OVER" badge below marker. (TASK-130) Added tooltips throughout: toggle title explains "Fly-by: drone smoothly curves past the waypoint. Fly-over: drone must pass directly over the waypoint (more precise but slower).", popup shows mode with color-coded text and explanatory hover text.
 - **2026-01-13**: TASK-121 ✅, TASK-122 ✅, TASK-123 ✅, TASK-124 ✅, TASK-125 ✅ - Waypoint Pause Configuration complete. (TASK-121) Added `pauseDuration` field to Waypoint interface in `PlanGenerator.tsx` - represents hold time in seconds (0-3600). (TASK-122) Added pause duration input field to waypoint editor UI with number input (min 0, max 3600), stopwatch emoji indicator, and tooltip explaining the field. (TASK-123) Updated `generateQGCPlan()` function to include pause duration in params[0] for takeoff (cmd 22), cruise (cmd 16), and landing (cmd 21) waypoints - QGC uses params[0] as hold time. (TASK-124) Added validation in `handleWaypointChange()` that clamps pauseDuration to 0-3600 range and shows toast warning when user exceeds limits. (TASK-125) Enhanced `PlanMap.tsx` with custom waypoint markers using `L.divIcon`: color-coded by type (green=takeoff, blue=cruise, red=landing), numbered markers, orange badge showing pause time (⏱ Xs or Xm Ys format) when pauseDuration > 0, and pause info displayed in marker popup. Added `formatPauseDuration()` helper for human-readable time formatting.
 - **2026-01-13**: TASK-117 ✅, TASK-118 ✅, TASK-119 ✅, TASK-120 ✅ - Visualization Improvements complete. Enhanced `TrajectoryViewer.tsx` with: (TASK-117) Play/pause button for trajectory playback using requestAnimationFrame for smooth animation, progress bar with click-to-seek, current waypoint indicator, rewind button. (TASK-118) Speed control with 0.5x/1x/2x/4x options, both cycle button and direct selection buttons, speed persists during playback. Added `formatTime()` utility for MM:SS display. Enhanced `AuthorizationPanel.tsx` with: (TASK-119) `FASResponseViewer` component that displays authorizationMessage with JSON detection and syntax highlighting (purple keys, green strings, blue numbers, orange booleans, red null), expand/collapse for long responses, proper indentation. (TASK-120) Copy-to-clipboard button with clipboard API (fallback for older browsers), visual "Copied!" feedback, copies formatted JSON when applicable. **Phase 4 Production UI is now 100% complete!**
