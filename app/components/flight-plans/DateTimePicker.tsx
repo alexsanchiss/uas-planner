@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useMemo, useCallback } from 'react'
+import { HelpTooltip } from '../ui/tooltip'
 
 export interface DateTimePickerProps {
   /**
@@ -135,15 +136,22 @@ export function DateTimePicker({
 
   return (
     <div className={`w-full ${className}`}>
-      {/* Label */}
+      {/* Label with help tooltip (TASK-203) */}
       {label && (
-        <label
-          htmlFor={inputId}
-          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-        >
-          {label}
-          {required && <span className="text-red-500 ml-1">*</span>}
-        </label>
+        <div className="flex items-center gap-1 mb-1">
+          <label
+            htmlFor={inputId}
+            className="text-sm font-medium text-gray-700 dark:text-gray-300"
+          >
+            {label}
+            {required && <span className="text-red-500 ml-1">*</span>}
+          </label>
+          <HelpTooltip
+            content="Selecciona la fecha y hora programada para el vuelo. Se usará para generar el U-Plan y solicitar autorización. La hora se muestra en tu zona horaria local pero se almacena en UTC."
+            position="right"
+            size="sm"
+          />
+        </div>
       )}
 
       {/* Input container */}
