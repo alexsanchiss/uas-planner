@@ -68,11 +68,11 @@
 ### 2.1 Token Management
 | Task | Description | Status |
 |------|-------------|--------|
-| TASK-028 | Implement refresh token system | ⬜ |
-| TASK-029 | Create auth/refresh endpoint | ⬜ |
-| TASK-030 | Store refresh tokens in httpOnly cookies | ⬜ |
-| TASK-031 | Add token refresh to useAuth hook | ⬜ |
-| TASK-032 | Implement automatic token refresh | ⬜ |
+| TASK-028 | Implement refresh token system | ✅ |
+| TASK-029 | Create auth/refresh endpoint | ✅ |
+| TASK-030 | Store refresh tokens in httpOnly cookies | ✅ |
+| TASK-031 | Add token refresh to useAuth hook | ✅ |
+| TASK-032 | Implement automatic token refresh | ✅ |
 
 ### 2.2 Login/Signup Improvements
 | Task | Description | Status |
@@ -395,18 +395,19 @@
 | Phase | Total | Completed | In Progress | Blocked |
 |-------|-------|-----------|-------------|---------|
 | Phase 1: Backend | 27 | 27 | 0 | 0 |
-| Phase 2: Auth | 25 | 0 | 0 | 0 |
+| Phase 2: Auth | 25 | 5 | 0 | 0 |
 | Phase 3: Refactor | 27 | 0 | 0 | 0 |
 | Phase 4: Production UI | 41 | 0 | 0 | 0 |
 | Phase 5: PlanGenerator | 34 | 0 | 0 | 0 |
 | Phase 6: UI/UX | 50 | 0 | 0 | 0 |
 | Phase 7: Testing | 10 | 0 | 0 | 0 |
-| **TOTAL** | **214** | **27** | **0** | **0** |
+| **TOTAL** | **214** | **32** | **0** | **0** |
 
 ---
 
 ## Recent Updates
 
+- **2026-01-13**: TASK-028 ✅, TASK-029 ✅, TASK-030 ✅, TASK-031 ✅, TASK-032 ✅ - Token management complete. Implemented refresh token system with separate expiration (access: 15min, refresh: 7 days). Created `app/api/auth/refresh/route.ts` and `app/api/auth/logout/route.ts` endpoints. Updated login to generate both tokens and set refresh token as httpOnly cookie. Enhanced `useAuth` hook with automatic token refresh before expiration, scheduled refresh timer, and retry logic on 401 errors.
 - **2026-01-13**: TASK-025 ✅, TASK-026 ✅, TASK-027 ✅ - API cleanup complete. Added deprecation comments to all Pages Router APIs (pages/api/flightPlans/, pages/api/folders/, pages/api/csvResult/, pages/api/fas/, pages/api/machines/). Frontend API calls verified - already using correct endpoints (App Router and Pages Router share same URL paths). Old APIs marked for removal after thorough testing. **Phase 1 Backend Standardization is now 100% complete!**
 - **2026-01-13**: TASK-022 ✅, TASK-023 ✅, TASK-024 ✅ - Error handling utilities complete. Created `lib/api-errors.ts` with standardized error responses (badRequest, unauthorized, forbidden, notFound, conflict, validationError, internalError, serviceUnavailable) and Prisma error type guards. Created `lib/logger.ts` with structured logging (debug, info, warn, error levels) and request/response helpers. Existing endpoints have adequate error handling; utilities available for future use.
 - **2026-01-13**: TASK-018 ✅, TASK-019 ✅, TASK-020 ✅, TASK-021 ✅ - Configuration externalization complete. FAS_API_URL env var already used in uplan endpoint. Updated .env.example with comprehensive documentation for DATABASE_URL, JWT_SECRET, and FAS_API_URL. Added startup validation in next.config.mjs for required env vars (DATABASE_URL, JWT_SECRET) with helpful error messages.
