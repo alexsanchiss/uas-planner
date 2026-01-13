@@ -141,12 +141,49 @@ const initialFlightPlanDetails = {
 const SERVICE_LIMITS = [-0.4257, 39.415, -0.280, 39.4988]; // [minLng, minLat, maxLng, maxLat]
 const ALT_LIMITS = [0, 200];
 
+// TASK-154: Distance threshold for boundary warning (in meters)
+const BOUNDARY_WARNING_DISTANCE = 100;
+
 // Helper to check if a point is inside the limits
 function isWithinServiceLimits(lat: number, lng: number) {
   return (
     lat >= SERVICE_LIMITS[1] && lat <= SERVICE_LIMITS[3] &&
     lng >= SERVICE_LIMITS[0] && lng <= SERVICE_LIMITS[2]
   );
+}
+
+// TASK-154: Calculate approximate distance from point to service area boundary (in meters)
+// Uses Haversine formula approximation for short distances
+function distanceToBoundary(lat: number, lng: number): number {
+  const [minLng, minLat, maxLng, maxLat] = SERVICE_LIMITS;
+  
+  // Approximate meters per degree at this latitude
+  const latMetersPerDeg = 111320; // ~111km per degree latitude
+  const lngMetersPerDeg = 111320 * Math.cos((lat * Math.PI) / 180);
+  
+  // Calculate distance to each edge
+  const distToNorth = (maxLat - lat) * latMetersPerDeg;
+  const distToSouth = (lat - minLat) * latMetersPerDeg;
+  const distToEast = (maxLng - lng) * lngMetersPerDeg;
+  const distToWest = (lng - minLng) * lngMetersPerDeg;
+  
+  // Return minimum distance to any edge
+  return Math.min(distToNorth, distToSouth, distToEast, distToWest);
+}
+
+// TASK-154: Check if any waypoint is approaching the boundary
+function getWaypointsNearBoundary(waypoints: Waypoint[]): { index: number; distance: number }[] {
+  const nearBoundary: { index: number; distance: number }[] = [];
+  
+  for (let i = 0; i < waypoints.length; i++) {
+    const wp = waypoints[i];
+    const dist = distanceToBoundary(wp.lat, wp.lng);
+    if (dist < BOUNDARY_WARNING_DISTANCE) {
+      nearBoundary.push({ index: i, distance: Math.round(dist) });
+    }
+  }
+  
+  return nearBoundary;
 }
 
 function clampAltitude(alt: number) {
@@ -1279,6 +1316,65 @@ export default function PlanGenerator() {
                     disabled={loading}
                   />
                 </div>
+                
+                {/* TASK-153: Service Area Bounds Panel */}
+                <div className="mb-4 p-3 bg-zinc-800/50 border border-zinc-700 rounded-md">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-3 h-3 border-2 border-orange-400 border-dashed rounded-sm" />
+                    <span className="text-sm font-semibold text-zinc-200">FAS Service Area</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-zinc-400">
+                    <div className="flex justify-between">
+                      <span>Min Lat:</span>
+                      <span className="text-zinc-300 font-mono">{SERVICE_LIMITS[1].toFixed(4)}°</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Max Lat:</span>
+                      <span className="text-zinc-300 font-mono">{SERVICE_LIMITS[3].toFixed(4)}°</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Min Lon:</span>
+                      <span className="text-zinc-300 font-mono">{SERVICE_LIMITS[0].toFixed(4)}°</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Max Lon:</span>
+                      <span className="text-zinc-300 font-mono">{SERVICE_LIMITS[2].toFixed(4)}°</span>
+                    </div>
+                  </div>
+                  <div className="mt-2 pt-2 border-t border-zinc-700 text-xs text-zinc-500">
+                    Alt: {ALT_LIMITS[0]}-{ALT_LIMITS[1]}m AGL
+                  </div>
+                </div>
+                
+                {/* TASK-154: Boundary Warning */}
+                {(() => {
+                  const nearBoundary = getWaypointsNearBoundary(waypoints);
+                  if (nearBoundary.length === 0) return null;
+                  return (
+                    <div className="mb-4 p-3 bg-yellow-900/30 border border-yellow-600/50 rounded-md">
+                      <div className="flex items-center gap-2 mb-1">
+                        <svg className="w-4 h-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <span className="text-sm font-semibold text-yellow-400">Boundary Warning</span>
+                      </div>
+                      <div className="text-xs text-yellow-300/80">
+                        {nearBoundary.length === 1 ? (
+                          <span>Waypoint {nearBoundary[0].index + 1} is {nearBoundary[0].distance}m from the service area boundary.</span>
+                        ) : (
+                          <span>
+                            {nearBoundary.map((w, i) => (
+                              <span key={w.index}>
+                                {i > 0 && ", "}
+                                WP{w.index + 1} ({w.distance}m)
+                              </span>
+                            ))} are near the boundary.
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
               <div className="p-6 pt-2">
                 <h3 className="font-semibold mb-2 text-zinc-200">Waypoints</h3>
