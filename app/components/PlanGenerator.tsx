@@ -73,6 +73,7 @@ interface Waypoint {
   type: "takeoff" | "cruise" | "landing";
   altitude: number;
   speed: number;
+  pauseDuration: number; // TASK-121: Hold time in seconds (0-3600)
 }
 
 interface PlanInfo {
@@ -172,6 +173,7 @@ function generateQGCPlan(waypoints: Waypoint[]): any {
   });
 
   // Takeoff (22) for the first waypoint
+  // TASK-123: params[0] is hold time in seconds
   const first = waypoints[0];
   items.push({
     AMSLAltAboveTerrain: null,
@@ -181,11 +183,12 @@ function generateQGCPlan(waypoints: Waypoint[]): any {
     command: 22,
     doJumpId: doJumpId++,
     frame: 3,
-    params: [0, 0, 0, null, first.lat, first.lng, first.altitude],
+    params: [first.pauseDuration || 0, 0, 0, null, first.lat, first.lng, first.altitude],
     type: "SimpleItem",
   });
 
   // Cruise (16) for intermediate waypoints (excluding first and last)
+  // TASK-123: params[0] is hold time in seconds
   for (let i = 1; i < waypoints.length - 1; i++) {
     const wp = waypoints[i];
     items.push({
@@ -196,12 +199,13 @@ function generateQGCPlan(waypoints: Waypoint[]): any {
       command: 16,
       doJumpId: doJumpId++,
       frame: 3,
-      params: [0, 0, 0, null, wp.lat, wp.lng, wp.altitude],
+      params: [wp.pauseDuration || 0, 0, 0, null, wp.lat, wp.lng, wp.altitude],
       type: "SimpleItem",
     });
   }
 
   // Landing (21) for the last waypoint
+  // TASK-123: params[0] is hold time in seconds (typically 0 for landing)
   if (waypoints.length > 1) {
     const last = waypoints[waypoints.length - 1];
     items.push({
@@ -212,7 +216,7 @@ function generateQGCPlan(waypoints: Waypoint[]): any {
       command: 21,
       doJumpId: doJumpId++,
       frame: 3,
-      params: [0, 0, 0, null, last.lat, last.lng, 0],
+      params: [last.pauseDuration || 0, 0, 0, null, last.lat, last.lng, 0],
       type: "SimpleItem",
     });
   }
@@ -266,8 +270,10 @@ export default function PlanGenerator() {
       setToast("Waypoints must be within the FAS service area.");
       return;
     }
+    // Ensure pauseDuration is initialized
+    const newWp = { ...wp, pauseDuration: wp.pauseDuration ?? 0 };
     setWaypoints((prev) => {
-      let newWps = [...prev, wp];
+      let newWps = [...prev, newWp];
       // First waypoint is always takeoff
       if (newWps.length === 1) {
         newWps[0].type = "takeoff";
@@ -312,6 +318,14 @@ export default function PlanGenerator() {
             return { ...wp, altitude: clamped };
           }
           return { ...wp, altitude: clamped };
+        }
+        // TASK-124: Validate pause duration (0-3600 seconds)
+        if (field === "pauseDuration") {
+          const pauseValue = Math.max(0, Math.min(3600, Math.floor(Number(value))));
+          if (pauseValue !== Number(value)) {
+            setToast("Pause duration must be between 0 and 3600 seconds (1 hour max).");
+          }
+          return { ...wp, pauseDuration: pauseValue };
         }
         if ((field === "lat" || field === "lng")) {
           // Only allow if within limits
@@ -1363,6 +1377,28 @@ export default function PlanGenerator() {
                                     />
                                     <span className="text-xs text-zinc-400 ml-1">
                                       m/s
+                                    </span>
+                                  </div>
+                                  {/* TASK-122: Pause duration input */}
+                                  <div className="flex items-center gap-1">
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      max={3600}
+                                      value={wp.pauseDuration || 0}
+                                      onChange={(e) =>
+                                        handleWaypointChange(
+                                          idx,
+                                          "pauseDuration",
+                                          Number(e.target.value)
+                                        )
+                                      }
+                                      className="border border-zinc-700 bg-zinc-900 text-white rounded px-1 py-0.5 w-16 text-xs focus:outline-none"
+                                      placeholder="Pause"
+                                      title="Hold time at waypoint (0-3600 seconds)"
+                                    />
+                                    <span className="text-xs text-zinc-400 ml-1">
+                                      s ⏱️
                                     </span>
                                   </div>
                                 </div>
