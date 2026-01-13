@@ -241,11 +241,11 @@
 ### 5.1 Waypoint Pause Configuration
 | Task | Description | Status |
 |------|-------------|--------|
-| TASK-121 | Add pauseDuration to interface | ⬜ |
-| TASK-122 | Add pause input to UI | ⬜ |
-| TASK-123 | Update generateQGCPlan for pause | ⬜ |
-| TASK-124 | Add pause validation | ⬜ |
-| TASK-125 | Display pause on markers | ⬜ |
+| TASK-121 | Add pauseDuration to interface | ✅ |
+| TASK-122 | Add pause input to UI | ✅ |
+| TASK-123 | Update generateQGCPlan for pause | ✅ |
+| TASK-124 | Add pause validation | ✅ |
+| TASK-125 | Display pause on markers | ✅ |
 
 ### 5.2 Fly-By / Fly-Over Toggle
 | Task | Description | Status |
@@ -398,15 +398,16 @@
 | Phase 2: Auth | 25 | 25 | 0 | 0 |
 | Phase 3: Refactor | 27 | 27 | 0 | 0 |
 | Phase 4: Production UI | 41 | 41 | 0 | 0 |
-| Phase 5: PlanGenerator | 34 | 0 | 0 | 0 |
+| Phase 5: PlanGenerator | 34 | 5 | 0 | 0 |
 | Phase 6: UI/UX | 50 | 0 | 0 | 0 |
 | Phase 7: Testing | 10 | 0 | 0 | 0 |
-| **TOTAL** | **214** | **120** | **0** | **0** |
+| **TOTAL** | **214** | **125** | **0** | **0** |
 
 ---
 
 ## Recent Updates
 
+- **2026-01-13**: TASK-121 ✅, TASK-122 ✅, TASK-123 ✅, TASK-124 ✅, TASK-125 ✅ - Waypoint Pause Configuration complete. (TASK-121) Added `pauseDuration` field to Waypoint interface in `PlanGenerator.tsx` - represents hold time in seconds (0-3600). (TASK-122) Added pause duration input field to waypoint editor UI with number input (min 0, max 3600), stopwatch emoji indicator, and tooltip explaining the field. (TASK-123) Updated `generateQGCPlan()` function to include pause duration in params[0] for takeoff (cmd 22), cruise (cmd 16), and landing (cmd 21) waypoints - QGC uses params[0] as hold time. (TASK-124) Added validation in `handleWaypointChange()` that clamps pauseDuration to 0-3600 range and shows toast warning when user exceeds limits. (TASK-125) Enhanced `PlanMap.tsx` with custom waypoint markers using `L.divIcon`: color-coded by type (green=takeoff, blue=cruise, red=landing), numbered markers, orange badge showing pause time (⏱ Xs or Xm Ys format) when pauseDuration > 0, and pause info displayed in marker popup. Added `formatPauseDuration()` helper for human-readable time formatting.
 - **2026-01-13**: TASK-117 ✅, TASK-118 ✅, TASK-119 ✅, TASK-120 ✅ - Visualization Improvements complete. Enhanced `TrajectoryViewer.tsx` with: (TASK-117) Play/pause button for trajectory playback using requestAnimationFrame for smooth animation, progress bar with click-to-seek, current waypoint indicator, rewind button. (TASK-118) Speed control with 0.5x/1x/2x/4x options, both cycle button and direct selection buttons, speed persists during playback. Added `formatTime()` utility for MM:SS display. Enhanced `AuthorizationPanel.tsx` with: (TASK-119) `FASResponseViewer` component that displays authorizationMessage with JSON detection and syntax highlighting (purple keys, green strings, blue numbers, orange booleans, red null), expand/collapse for long responses, proper indentation. (TASK-120) Copy-to-clipboard button with clipboard API (fallback for older browsers), visual "Copied!" feedback, copies formatted JSON when applicable. **Phase 4 Production UI is now 100% complete!**
 - **2026-01-13**: TASK-111 ✅, TASK-112 ✅, TASK-113 ✅, TASK-114 ✅, TASK-115 ✅, TASK-116 ✅ - Geoawareness Integration complete. Enhanced `GeoawarenessViewer.tsx` with: (TASK-111) Removed generic placeholder fallback, replaced with proper error state handling. (TASK-112) Added comprehensive error display with error icon, descriptive message, plan name context, and styled error details in red box. (TASK-113) Added retry button with refresh icon that calls `onRetry` callback when clicked. (TASK-114) Created visual trajectory overlay placeholder with SVG path showing trajectory line, waypoint markers (green start, blue waypoints, red end), and arrow markers. Added simulated map with grid pattern background. (TASK-115) Implemented violated geozone highlighting with pulsing red overlay for violations, plus sample geozone shapes (restricted/orange, advisory/blue, controlled/yellow). Added violations list panel showing severity-coded violation messages. (TASK-116) Added comprehensive collapsible legend with all geozone types (Prohibited, Restricted, Controlled, Advisory, Warning, Temporary), trajectory markers (start/waypoint/end points), and violation indicator. Defined `GeozoneType` and `Violation` TypeScript interfaces for type safety.
 - **2026-01-13**: TASK-106 ✅, TASK-107 ✅, TASK-108 ✅, TASK-109 ✅, TASK-110 ✅ - Plan Reset Functionality complete. TASK-106/107: Reset API endpoint already existed at `app/api/flightPlans/[id]/reset/route.ts` with full implementation: deletes associated csvResult, sets status to "sin procesar", clears authorizationStatus to "sin autorización", clears authorizationMessage, externalResponseNumber, uplan, and machineAssignedId. Includes JWT auth and ownership validation. TASK-108: ResetIconButton already present in FlightPlanCard.tsx with proper click handler. TASK-109: Replaced native `confirm()` with styled `ConfirmDialog` component (warning variant) showing plan name and clear warning message about data loss. TASK-110: Reset button disabled state already implemented with `canReset = plan.status !== 'sin procesar'` - button only clickable when plan has been processed. Added `resetConfirmDialog` state and `confirmResetPlan` callback for proper dialog flow.
