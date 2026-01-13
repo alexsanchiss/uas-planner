@@ -6,6 +6,10 @@ interface User {
   username: string
 }
 
+// LocalStorage keys for sensitive data
+const AUTH_TOKEN_KEY = 'authToken'
+const SENSITIVE_STORAGE_KEYS = [AUTH_TOKEN_KEY] // Add other keys if needed
+
 // Decode JWT payload without verification (client-side)
 function decodeTokenPayload(token: string): { exp?: number; userId?: number } | null {
   try {
@@ -34,11 +38,41 @@ function isTokenExpired(token: string): boolean {
   return payload.exp * 1000 < Date.now()
 }
 
+/**
+ * Clear all sensitive data from localStorage
+ */
+function clearSensitiveData(): void {
+  SENSITIVE_STORAGE_KEYS.forEach(key => {
+    localStorage.removeItem(key)
+  })
+  // Also clear any cached user-related data that might exist
+  // Add more keys here if you cache other sensitive data
+}
+
+/**
+ * Show session expired notification to user
+ */
+function notifySessionExpired(): void {
+  // Use a non-blocking notification
+  // In production, replace with a toast notification system
+  if (typeof window !== 'undefined') {
+    // Dispatch a custom event that UI components can listen to
+    window.dispatchEvent(new CustomEvent('auth:session-expired', {
+      detail: { message: 'Your session has expired. Please log in again.' }
+    }))
+    // Fallback alert for immediate feedback
+    setTimeout(() => {
+      alert('Your session has expired. Please log in again.')
+    }, 0)
+  }
+}
+
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const refreshingRef = useRef(false)
   const refreshTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const sessionExpiredNotifiedRef = useRef(false)
 
   /**
    * Refresh the access token using the httpOnly refresh token cookie
@@ -57,15 +91,26 @@ export function useAuth() {
       })
       const { token } = response.data
       if (token) {
-        localStorage.setItem('authToken', token)
+        localStorage.setItem(AUTH_TOKEN_KEY, token)
+        sessionExpiredNotifiedRef.current = false // Reset notification flag on successful refresh
         return token
       }
       return null
     } catch (error) {
       console.error('Token refresh failed:', error)
-      // If refresh fails, clear the auth state
-      localStorage.removeItem('authToken')
+      // If refresh fails, session is expired - notify user and clear auth state
+      clearSensitiveData()
       setUser(null)
+      
+      // Only notify once per session expiration
+      if (!sessionExpiredNotifiedRef.current) {
+        sessionExpiredNotifiedRef.current = true
+        notifySessionExpired()
+        // Redirect to login page
+        if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+          window.location.href = '/login'
+        }
+      }
       return null
     } finally {
       refreshingRef.current = false
@@ -108,7 +153,7 @@ export function useAuth() {
   }, [refreshAccessToken])
 
   const fetchUser = useCallback(async () => {
-    let token = localStorage.getItem('authToken')
+    let token = localStorage.getItem(AUTH_TOKEN_KEY)
     
     if (!token) {
       setUser(null)
@@ -153,7 +198,7 @@ export function useAuth() {
           }
         }
       }
-      localStorage.removeItem('authToken')
+      clearSensitiveData()
       setUser(null)
     } finally {
       setLoading(false)
@@ -164,11 +209,26 @@ export function useAuth() {
     // Initial load
     fetchUser()
 
-    // Listen for auth changes from other tabs/components
+    // Listen for auth changes from other tabs (cross-tab synchronization)
     const onStorage = (e: StorageEvent) => {
-      if (e.key === 'authToken') {
-        setLoading(true)
-        fetchUser()
+      if (e.key === AUTH_TOKEN_KEY) {
+        // If token was removed (logout in another tab)
+        if (e.newValue === null && e.oldValue !== null) {
+          // Another tab logged out - sync this tab
+          setUser(null)
+          if (refreshTimerRef.current) {
+            clearTimeout(refreshTimerRef.current)
+            refreshTimerRef.current = null
+          }
+          // Redirect to login if not already there
+          if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+            window.location.href = '/login'
+          }
+        } else if (e.newValue !== null) {
+          // Token was added or changed (login in another tab) - refresh user
+          setLoading(true)
+          fetchUser()
+        }
       }
     }
     window.addEventListener('storage', onStorage)
@@ -196,7 +256,10 @@ export function useAuth() {
         withCredentials: true, // Include cookies for refresh token
       })
       const { token } = response.data
-      localStorage.setItem('authToken', token)
+      localStorage.setItem(AUTH_TOKEN_KEY, token)
+      
+      // Reset session expired flag on successful login
+      sessionExpiredNotifiedRef.current = false
       
       // Schedule automatic refresh
       scheduleTokenRefresh(token)
@@ -227,17 +290,20 @@ export function useAuth() {
       refreshTimerRef.current = null
     }
     
-    localStorage.removeItem('authToken')
+    // Clear all sensitive data from localStorage (TASK-043)
+    clearSensitiveData()
+    
+    // Clear user state
     setUser(null)
     
-    // Clear the refresh token cookie by calling a logout endpoint
-    // (The cookie will be cleared on the next page load or can be done via API)
+    // Clear the refresh token cookie by calling logout endpoint
     try {
       await axios.post('/api/auth/logout', {}, { withCredentials: true })
     } catch {
-      // Logout endpoint may not exist yet, that's ok
+      // Logout endpoint may fail, that's ok - local state is already cleared
     }
     
+    // Notify other tabs and components
     window.dispatchEvent(new Event('auth:changed'))
   }
 
