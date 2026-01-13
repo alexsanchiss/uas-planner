@@ -395,14 +395,13 @@ export function FlightPlansUploader() {
   }, [deleteFlightPlan, selectedPlanId, addLoadingPlan, removeLoadingPlan])
 
   // DateTime change handler for selected plan
-  const handleDateTimeChange = useCallback(async (value: string) => {
+  // The DateTimePicker component returns UTC ISO string ready for storage
+  const handleDateTimeChange = useCallback(async (utcIsoString: string) => {
     if (!selectedPlanId) return
 
     try {
-      // Convert local datetime string to ISO string
-      const isoDate = value ? new Date(value).toISOString() : null
       await updateFlightPlan(Number(selectedPlanId), {
-        scheduledAt: isoDate,
+        scheduledAt: utcIsoString || null,
       })
     } catch (error) {
       console.error('DateTime update error:', error)
@@ -548,10 +547,7 @@ export function FlightPlansUploader() {
           {(currentStep === 'datetime' || selectedPlan.scheduledAt) && (
             <div className="mt-4 p-4 bg-white rounded-lg border border-blue-100">
               <DateTimePicker
-                value={selectedPlan.scheduledAt 
-                  ? new Date(selectedPlan.scheduledAt).toISOString().slice(0, 16)
-                  : ''
-                }
+                value={selectedPlan.scheduledAt || ''}
                 onChange={handleDateTimeChange}
                 label="Fecha y hora programada"
                 disabled={isScheduledAtLocked}
