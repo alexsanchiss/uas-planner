@@ -28,17 +28,17 @@ const authorizationStatusStyles: Record<AuthorizationStatus, string> = {
 }
 
 const planStatusLabels: Record<PlanStatus, string> = {
-  'sin procesar': 'Sin procesar',
-  'en proceso': 'En proceso',
-  'procesado': 'Procesado',
+  'sin procesar': 'Unprocessed',
+  'en proceso': 'Processing',
+  'procesado': 'Processed',
   'error': 'Error',
 }
 
 const authorizationStatusLabels: Record<AuthorizationStatus, string> = {
-  'sin autorización': 'Sin autorización',
-  'pendiente': 'Pendiente',
-  'aprobado': 'Aprobado',
-  'denegado': 'Denegado',
+  'sin autorización': 'No authorization',
+  'pendiente': 'Pending',
+  'aprobado': 'Approved',
+  'denegado': 'Denied',
 }
 
 export function StatusBadge({ type, status, className = '' }: StatusBadgeProps) {

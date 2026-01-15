@@ -265,7 +265,7 @@ export function FlightPlansUploader() {
   }, [updateFolder, addLoadingFolder, removeLoadingFolder])
 
   const handleDeleteFolder = useCallback(async (folderId: string) => {
-    if (!confirm('¿Está seguro de eliminar esta carpeta y todos sus planes de vuelo?')) {
+    if (!confirm('Are you sure you want to delete this folder and all its flight plans?')) {
       return
     }
     addLoadingFolder('deleting', folderId)
@@ -281,7 +281,7 @@ export function FlightPlansUploader() {
   const handleProcessPlan = useCallback((planId: string) => {
     const plan = flightPlans.find(p => String(p.id) === planId)
     if (!plan || !plan.scheduledAt) {
-      toast.warning('Por favor, seleccione una fecha y hora antes de procesar.')
+      toast.warning('Please select a date and time before processing.')
       return
     }
 
@@ -312,7 +312,7 @@ export function FlightPlansUploader() {
   const handleDownloadPlan = useCallback((planId: string) => {
     const plan = flightPlans.find(p => String(p.id) === planId)
     if (!plan?.csvResult) {
-      toast.warning('No hay trayectoria disponible para visualizar.')
+      toast.warning('No trajectory available to view.')
       return
     }
 
@@ -327,7 +327,7 @@ export function FlightPlansUploader() {
   const handleAuthorizePlan = useCallback(async (planId: string) => {
     const plan = flightPlans.find(p => String(p.id) === planId)
     if (!plan || plan.status !== 'procesado') {
-      toast.warning('El plan debe estar procesado antes de solicitar autorización.')
+      toast.warning('The plan must be processed before requesting authorization.')
       return
     }
 
@@ -348,10 +348,10 @@ export function FlightPlansUploader() {
       }
 
       await refreshPlans()
-      toast.success('Solicitud de autorización enviada correctamente.')
+      toast.success('Authorization request sent successfully.')
     } catch (error) {
       console.error('Authorization error:', error)
-      toast.error('Error al solicitar autorización.', {
+      toast.error('Error requesting authorization.', {
         onRetry: () => handleAuthorizePlan(planId),
       })
     } finally {
@@ -393,10 +393,10 @@ export function FlightPlansUploader() {
       }
 
       await refreshPlans()
-      toast.success('Plan reiniciado correctamente.')
+      toast.success('Plan reset successfully.')
     } catch (error) {
       console.error('Reset error:', error)
-      toast.error('Error al reiniciar el plan.', {
+      toast.error('Error resetting plan.', {
         onRetry: confirmResetPlan,
       })
     } finally {
@@ -405,7 +405,7 @@ export function FlightPlansUploader() {
   }, [resetConfirmDialog.planId, refreshPlans, addLoadingPlan, removeLoadingPlan, toast])
 
   const handleDeletePlan = useCallback(async (planId: string) => {
-    if (!confirm('¿Está seguro de eliminar este plan de vuelo?')) {
+    if (!confirm('Are you sure you want to delete this flight plan?')) {
       return
     }
 
@@ -425,10 +425,10 @@ export function FlightPlansUploader() {
     addLoadingPlan('renaming', planId)
     try {
       await updateFlightPlan(Number(planId), { customName: newName })
-      toast.success('Nombre del plan actualizado.')
+      toast.success('Plan name updated.')
     } catch (error) {
       console.error('Rename error:', error)
-      toast.error('Error al renombrar el plan.')
+      toast.error('Error renaming plan.')
     } finally {
       removeLoadingPlan('renaming', planId)
     }
@@ -441,10 +441,10 @@ export function FlightPlansUploader() {
       await updateFlightPlan(Number(planId), {
         folderId: targetFolderId ? Number(targetFolderId) : null,
       })
-      toast.success('Plan movido correctamente.')
+      toast.success('Plan moved successfully.')
     } catch (error) {
       console.error('Move error:', error)
-      toast.error('Error al mover el plan.')
+      toast.error('Error moving plan.')
     } finally {
       removeLoadingPlan('moving', planId)
     }
@@ -518,10 +518,10 @@ export function FlightPlansUploader() {
       await updateFlightPlan(Number(selectedPlanId), {
         scheduledAt: utcIsoString || null,
       })
-      toast.success('Fecha y hora actualizada.')
+      toast.success('Date and time updated.')
     } catch (error) {
       console.error('DateTime update error:', error)
-      toast.error('Error al actualizar la fecha.', {
+      toast.error('Error updating date.', {
         onRetry: () => handleDateTimeChange(utcIsoString),
       })
     }
@@ -536,7 +536,7 @@ export function FlightPlansUploader() {
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-[400px] fade-in">
-        <p className="text-gray-500 dark:text-gray-400">Por favor, inicie sesión para ver sus planes de vuelo.</p>
+        <p className="text-[var(--text-secondary)]">Please log in to view your flight plans.</p>
       </div>
     )
   }
@@ -558,7 +558,7 @@ export function FlightPlansUploader() {
           <svg className="w-12 h-12 text-red-500 error-shake" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
-          <p className="text-red-600 dark:text-red-400">Error al cargar los datos</p>
+          <p className="text-red-600 dark:text-red-400">Error loading data</p>
           <button
             onClick={() => {
               refreshPlans()
@@ -566,7 +566,7 @@ export function FlightPlansUploader() {
             }}
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 btn-interactive"
           >
-            Reintentar
+            Retry
           </button>
         </div>
       </div>
@@ -583,27 +583,27 @@ export function FlightPlansUploader() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
             <p className="text-sm text-amber-800">
-              La sincronización automática se ha pausado debido a errores de conexión.
+              Automatic sync has been paused due to connection errors.
             </p>
           </div>
           <button
             onClick={resetPollingErrors}
             className="px-3 py-1.5 text-sm font-medium text-amber-700 bg-amber-100 rounded-md hover:bg-amber-200 transition-colors btn-interactive"
           >
-            Reintentar
+            Retry
           </button>
         </div>
       )}
 
       {/* Workflow guide - shows current step in the flight plan lifecycle */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 shadow-sm fade-in-up">
+      <div className="bg-[var(--surface-primary)] rounded-lg border border-[var(--border-primary)] p-6 shadow-sm fade-in-up">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Flujo de trabajo</h2>
+          <h2 className="text-lg font-semibold text-[var(--text-primary)]">Workflow</h2>
           {/* TASK-097: Refresh indicator */}
           {isRefreshing && (
-            <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 text-sm fade-in">
+            <div className="flex items-center gap-2 text-[var(--text-secondary)] text-sm fade-in">
               <LoadingSpinner size="xs" variant="gray" />
-              <span>Sincronizando...</span>
+              <span>Syncing...</span>
             </div>
           )}
         </div>
@@ -614,8 +614,8 @@ export function FlightPlansUploader() {
           authorizationStatus={selectedPlan?.authorizationStatus}
         />
         {!selectedPlan && (
-          <p className="mt-4 text-sm text-gray-500 dark:text-gray-400 text-center">
-            Seleccione un plan de vuelo de la lista para comenzar
+          <p className="mt-4 text-sm text-[var(--text-secondary)] text-center">
+            Select a flight plan from the list to begin
           </p>
         )}
       </div>
@@ -625,13 +625,13 @@ export function FlightPlansUploader() {
         <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 p-6 fade-in-up">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100">
-              Plan seleccionado: {selectedPlan.name}
+              Selected plan: {selectedPlan.name}
             </h3>
             <button
               onClick={() => setSelectedPlanId(null)}
               className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 btn-interactive-subtle"
             >
-              Deseleccionar
+              Deselect
             </button>
           </div>
 
@@ -657,11 +657,11 @@ export function FlightPlansUploader() {
 
           {/* DateTime picker for selected plan - shown when at datetime step or to show current value */}
           {(currentStep === 'datetime' || selectedPlan.scheduledAt) && (
-            <div className="mt-4 p-4 bg-white dark:bg-gray-800 rounded-lg border border-blue-100 dark:border-blue-900 fade-in">
+            <div className="mt-4 p-4 bg-[var(--surface-primary)] rounded-lg border border-blue-100 dark:border-blue-900 fade-in">
               <DateTimePicker
                 value={selectedPlan.scheduledAt || ''}
                 onChange={handleDateTimeChange}
-                label="Fecha y hora programada"
+                label="Scheduled date and time"
                 disabled={isScheduledAtLocked}
                 className="max-w-xs"
               />
@@ -670,11 +670,11 @@ export function FlightPlansUploader() {
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                   </svg>
-                  La fecha no puede modificarse después de iniciar el procesamiento.
+                  The date cannot be modified after processing starts.
                 </p>
               ) : (
-                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                  Seleccione la fecha y hora para procesar el plan.
+                <p className="mt-2 text-sm text-[var(--text-secondary)]">
+                  Select the date and time to process the plan.
                 </p>
               )}
             </div>
@@ -682,48 +682,48 @@ export function FlightPlansUploader() {
 
           {/* Process action prompt */}
           {currentStep === 'process' && (
-            <div className="mt-4 p-4 bg-white dark:bg-gray-800 rounded-lg border border-blue-100 dark:border-blue-900 fade-in">
-              <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
-                El plan está listo para ser procesado. Esto generará la trayectoria y el U-Plan.
+            <div className="mt-4 p-4 bg-[var(--surface-primary)] rounded-lg border border-blue-100 dark:border-blue-900 fade-in">
+              <p className="text-sm text-[var(--text-secondary)] mb-3">
+                The plan is ready to be processed. This will generate the trajectory and U-Plan.
               </p>
               <button
                 onClick={() => handleProcessPlan(selectedPlan.id)}
                 disabled={loadingPlanIds.processing.has(selectedPlan.id)}
                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-blue-400 transition-colors btn-interactive disabled-transition"
               >
-                {loadingPlanIds.processing.has(selectedPlan.id) ? 'Procesando...' : 'Procesar plan'}
+                {loadingPlanIds.processing.has(selectedPlan.id) ? 'Processing...' : 'Process plan'}
               </button>
             </div>
           )}
 
           {/* Geoawareness step prompt */}
           {currentStep === 'geoawareness' && selectedPlan.status === 'procesado' && (
-            <div className="mt-4 p-4 bg-white dark:bg-gray-800 rounded-lg border border-purple-100 dark:border-purple-900 fade-in">
-              <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
-                El plan ha sido procesado. Revise la información de geoawareness antes de solicitar autorización.
+            <div className="mt-4 p-4 bg-[var(--surface-primary)] rounded-lg border border-purple-100 dark:border-purple-900 fade-in">
+              <p className="text-sm text-[var(--text-secondary)] mb-3">
+                The plan has been processed. Review the geoawareness information before requesting authorization.
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                El visor de geoawareness mostrará las zonas geográficas que afectan al vuelo.
+              <p className="text-xs text-[var(--text-muted)] mb-3">
+                The geoawareness viewer will show the geographic zones that affect the flight.
               </p>
               <button
                 onClick={() => handleAuthorizePlan(selectedPlan.id)}
                 disabled={loadingPlanIds.authorizing.has(selectedPlan.id)}
                 className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 disabled:bg-purple-400 transition-colors btn-interactive disabled-transition"
               >
-                {loadingPlanIds.authorizing.has(selectedPlan.id) ? 'Solicitando...' : 'Continuar a autorización'}
+                {loadingPlanIds.authorizing.has(selectedPlan.id) ? 'Requesting...' : 'Continue to authorization'}
               </button>
             </div>
           )}
 
           {/* Authorize action prompt - when authorization is pending */}
           {currentStep === 'authorize' && selectedPlan.authorizationStatus === 'pendiente' && (
-            <div className="mt-4 p-4 bg-white dark:bg-gray-800 rounded-lg border border-amber-100 dark:border-amber-900 fade-in">
+            <div className="mt-4 p-4 bg-[var(--surface-primary)] rounded-lg border border-amber-100 dark:border-amber-900 fade-in">
               <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 mb-2">
                 <LoadingSpinner size="sm" variant="primary" />
-                <span className="font-medium">Esperando respuesta del FAS...</span>
+                <span className="font-medium">Waiting for FAS response...</span>
               </div>
-              <p className="text-sm text-gray-600 dark:text-gray-300">
-                La solicitud de autorización ha sido enviada. Recibirá una notificación cuando se procese.
+              <p className="text-sm text-[var(--text-secondary)]">
+                The authorization request has been sent. You will receive a notification when processed.
               </p>
             </div>
           )}
@@ -731,7 +731,7 @@ export function FlightPlansUploader() {
       )}
 
       {/* Main content: Folder list with flight plans */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 shadow-sm fade-in-up">
+      <div className="bg-[var(--surface-primary)] rounded-lg border border-[var(--border-primary)] p-6 shadow-sm fade-in-up">
         <FolderList
           folders={transformedFolders}
           onCreateFolder={handleCreateFolder}
@@ -766,10 +766,10 @@ export function FlightPlansUploader() {
 
         return (
           <div 
-            className={`bg-white dark:bg-gray-800 rounded-lg border p-6 shadow-sm fade-in-up transition-all ${
+            className={`bg-[var(--surface-primary)] rounded-lg border p-6 shadow-sm fade-in-up transition-all ${
               isDraggingOverOrphans
                 ? 'border-blue-500 dark:border-blue-400 border-2 bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-500/30'
-                : 'border-gray-200 dark:border-gray-700'
+                : 'border-[var(--border-primary)]'
             }`}
             onDragOver={handleOrphanDragOver}
             onDragEnter={(e) => {
@@ -782,12 +782,12 @@ export function FlightPlansUploader() {
             onDrop={handleOrphanDrop}
           >
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Planes sin carpeta ({orphanPlans.length})
+              <h2 className="text-lg font-semibold text-[var(--text-primary)]">
+                Plans without folder ({orphanPlans.length})
               </h2>
               {isDraggingOverOrphans && (
                 <span className="text-sm font-medium text-blue-600 dark:text-blue-400 animate-pulse">
-                  Soltar aquí para quitar de carpeta
+                  Drop here to remove from folder
                 </span>
               )}
             </div>
@@ -825,8 +825,8 @@ export function FlightPlansUploader() {
                 })}
               </div>
             ) : (
-              <div className="text-center py-4 text-gray-500 dark:text-gray-400 text-sm">
-                Suelte un plan aquí para quitarlo de su carpeta
+              <div className="text-center py-4 text-[var(--text-secondary)] text-sm">
+                Drop a plan here to remove it from its folder
               </div>
             )}
           </div>
@@ -838,10 +838,10 @@ export function FlightPlansUploader() {
         open={processingConfirmDialog.open}
         onClose={() => setProcessingConfirmDialog(prev => ({ ...prev, open: false }))}
         onConfirm={confirmProcessPlan}
-        title="Confirmar procesamiento"
-        message={`¿Está seguro de que desea procesar el plan "${processingConfirmDialog.planName}"? Una vez iniciado el procesamiento, no podrá modificar la fecha y hora programada.`}
-        confirmLabel="Procesar"
-        cancelLabel="Cancelar"
+        title="Confirm processing"
+        message={`Are you sure you want to process the plan "${processingConfirmDialog.planName}"? Once processing starts, you will not be able to modify the scheduled date and time, or the plan information without resetting the entire process.`}
+        confirmLabel="Process"
+        cancelLabel="Cancel"
         variant="warning"
       />
 
@@ -850,10 +850,10 @@ export function FlightPlansUploader() {
         open={resetConfirmDialog.open}
         onClose={() => setResetConfirmDialog(prev => ({ ...prev, open: false }))}
         onConfirm={confirmResetPlan}
-        title="Reiniciar plan de vuelo"
-        message={`¿Está seguro de que desea reiniciar el plan "${resetConfirmDialog.planName}"? Esta acción eliminará la trayectoria procesada, el estado de autorización y todos los datos asociados. El plan volverá al estado "sin procesar".`}
-        confirmLabel="Reiniciar"
-        cancelLabel="Cancelar"
+        title="Reset flight plan"
+        message={`Are you sure you want to reset the plan "${resetConfirmDialog.planName}"? This action will delete the processed trajectory, authorization status, and all associated data. The plan will return to "unprocessed" status.`}
+        confirmLabel="Reset"
+        cancelLabel="Cancel"
         variant="warning"
       />
 

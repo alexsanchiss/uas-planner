@@ -1,16 +1,23 @@
 "use client";
 
 import { useTheme } from "../hooks/useTheme";
+import { useI18n, Language } from "../i18n";
 import { ProtectedRoute } from "../components/auth/protected-route";
-import { Settings, Sun, Moon, Mail, HelpCircle, Shield, Bell } from "lucide-react";
+import { Settings, Sun, Moon, Mail, HelpCircle, Shield, Bell, Globe } from "lucide-react";
 import Link from "next/link";
 
 export default function SettingsPage() {
   const { theme, setTheme, isDark } = useTheme();
+  const { language, setLanguage } = useI18n();
 
   const themeOptions = [
     { value: "dark" as const, label: "Dark", icon: Moon, description: "Dark theme for low-light environments" },
     { value: "light" as const, label: "Light", icon: Sun, description: "Light theme for bright environments" },
+  ];
+
+  const languageOptions: { value: Language; label: string; nativeLabel: string }[] = [
+    { value: "en", label: "English", nativeLabel: "English" },
+    { value: "es", label: "Spanish", nativeLabel: "Español" },
   ];
 
   return (
@@ -62,6 +69,55 @@ export default function SettingsPage() {
                         {option.label}
                       </p>
                       <p className="text-xs text-[var(--text-muted)]">{option.description}</p>
+                    </div>
+                    {isSelected && (
+                      <div className="w-6 h-6 rounded-full bg-[var(--color-primary)] flex items-center justify-center">
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Language Section */}
+          <div className="bg-[var(--surface-primary)] border border-[var(--border-primary)] rounded-xl p-6 shadow-lg mb-6">
+            <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4 flex items-center gap-2">
+              <Globe className="w-5 h-5" />
+              Language
+            </h2>
+            <p className="text-sm text-[var(--text-muted)] mb-4">
+              Choose your preferred language
+            </p>
+
+            <div className="grid gap-3">
+              {languageOptions.map((option) => {
+                const isSelected = language === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    onClick={() => setLanguage(option.value)}
+                    className={`flex items-center gap-4 p-4 rounded-lg border-2 transition-all text-left ${
+                      isSelected
+                        ? "border-[var(--color-primary)] bg-[var(--color-primary-light)]"
+                        : "border-[var(--border-primary)] bg-[var(--bg-secondary)] hover:border-[var(--border-hover)]"
+                    }`}
+                  >
+                    <div
+                      className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                        isSelected ? "bg-[var(--color-primary)] text-white" : "bg-[var(--bg-tertiary)] text-[var(--text-secondary)]"
+                      }`}
+                    >
+                      <Globe className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1">
+                      <p className={`font-medium ${isSelected ? "text-[var(--color-primary)]" : "text-[var(--text-primary)]"}`}>
+                        {option.label}
+                      </p>
+                      <p className="text-xs text-[var(--text-muted)]">{option.nativeLabel}</p>
                     </div>
                     {isSelected && (
                       <div className="w-6 h-6 rounded-full bg-[var(--color-primary)] flex items-center justify-center">

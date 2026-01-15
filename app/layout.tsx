@@ -5,6 +5,7 @@ import { Footer } from "./components/footer";
 import { Header } from "./components/header";
 import { AuthProvider } from "./components/auth/auth-provider";
 import { ToastProvider } from "./components/ui/toast-provider";
+import { I18nProvider } from "./i18n";
 import React, { useEffect, useState } from "react";
 import { Modal } from "./components/ui/modal";
 
@@ -58,6 +59,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen flex flex-col bg-[var(--bg-primary)] text-[var(--text-primary)]">
+        <I18nProvider>
         <AuthProvider>
         <ToastProvider>
         <Header />
@@ -101,6 +103,7 @@ export default function RootLayout({
         <Footer />
         </ToastProvider>
         </AuthProvider>
+        </I18nProvider>
       </body>
     </html>
   );

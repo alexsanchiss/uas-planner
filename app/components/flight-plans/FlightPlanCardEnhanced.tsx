@@ -43,7 +43,7 @@ export interface FlightPlanCardEnhancedProps {
 function formatDate(date: string | Date | null | undefined): string {
   if (!date) return '—'
   const d = typeof date === 'string' ? new Date(date) : date
-  return d.toLocaleString('es-ES', {
+  return d.toLocaleString('en-US', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -253,7 +253,7 @@ export function FlightPlanCardEnhanced({
                     setIsEditing(true)
                   }}
                   className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all"
-                  title="Editar nombre"
+                  title="Edit name"
                 >
                   <EditIcon />
                 </button>
@@ -276,7 +276,7 @@ export function FlightPlanCardEnhanced({
         {/* Scheduled date */}
         {plan.scheduledAt && (
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
-            <span className="font-medium">Programado:</span> {formatDate(plan.scheduledAt)}
+            <span className="font-medium">Scheduled:</span> {formatDate(plan.scheduledAt)}
           </p>
         )}
 
@@ -293,10 +293,10 @@ export function FlightPlanCardEnhanced({
                 : 'bg-gray-100 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
               }
             `}
-            title={!plan.scheduledAt ? 'Selecciona fecha/hora primero' : !canProcess ? 'Ya procesado' : 'Procesar trayectoria'}
+            title={!plan.scheduledAt ? 'Select date/time first' : !canProcess ? 'Already processed' : 'Process trajectory'}
           >
             {loadingStates.processing ? <LoadingSpinner /> : <ProcessIcon />}
-            <span>Procesar</span>
+            <span>Process</span>
           </button>
 
           {/* View trajectory button (replaces download) */}
@@ -310,10 +310,10 @@ export function FlightPlanCardEnhanced({
                 : 'bg-gray-100 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
               }
             `}
-            title={canViewTrajectory ? 'Ver trayectoria en mapa' : 'Sin trayectoria disponible'}
+            title={canViewTrajectory ? 'View trajectory on map' : 'No trajectory available'}
           >
             {loadingStates.downloading ? <LoadingSpinner /> : <MapIcon />}
-            <span>Ver mapa</span>
+            <span>View map</span>
           </button>
 
           {/* Authorize button */}
@@ -327,10 +327,10 @@ export function FlightPlanCardEnhanced({
                 : 'bg-gray-100 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
               }
             `}
-            title={plan.status !== 'procesado' ? 'Procesa primero' : plan.authorizationStatus !== 'sin autorización' ? 'Ya autorizado' : 'Solicitar autorización FAS'}
+            title={plan.status !== 'procesado' ? 'Process first' : plan.authorizationStatus !== 'sin autorización' ? 'Already authorized' : 'Request FAS authorization'}
           >
             {loadingStates.authorizing ? <LoadingSpinner /> : <AuthorizeIcon />}
-            <span>Autorizar</span>
+            <span>Authorize</span>
           </button>
 
           {/* Reset button */}
@@ -344,7 +344,7 @@ export function FlightPlanCardEnhanced({
                 : 'bg-gray-100 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
               }
             `}
-            title={canReset ? 'Reiniciar plan' : 'Nada que reiniciar'}
+            title={canReset ? 'Reset plan' : 'Nothing to reset'}
           >
             {loadingStates.resetting ? <LoadingSpinner /> : <ResetIcon size="sm" />}
           </button>
@@ -358,7 +358,7 @@ export function FlightPlanCardEnhanced({
               bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 active:scale-95
               ${loadingStates.deleting ? 'opacity-50 cursor-not-allowed' : ''}
             `}
-            title="Eliminar plan"
+            title="Delete plan"
           >
             {loadingStates.deleting ? <LoadingSpinner /> : <DeleteIcon size="sm" />}
           </button>

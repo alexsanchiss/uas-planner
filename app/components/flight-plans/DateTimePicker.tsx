@@ -147,7 +147,7 @@ export function DateTimePicker({
             {required && <span className="text-red-500 ml-1">*</span>}
           </label>
           <HelpTooltip
-            content="Selecciona la fecha y hora programada para el vuelo. Se usará para generar el U-Plan y solicitar autorización. La hora se muestra en tu zona horaria local pero se almacena en UTC."
+            content="Select the scheduled date and time for the flight. It will be used to generate the U-Plan and request authorization. Time is shown in your local timezone but stored in UTC."
             position="right"
             size="sm"
           />
@@ -193,7 +193,7 @@ export function DateTimePicker({
                 d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
-            <span>Zona horaria:</span>
+            <span>Timezone:</span>
           </div>
           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
             {timezoneInfo.offset}

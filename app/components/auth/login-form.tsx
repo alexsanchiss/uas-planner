@@ -30,16 +30,16 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
 
     // Email validation
     if (!email) {
-      newErrors.email = 'El email es requerido'
+      newErrors.email = 'Email is required'
     } else if (!EMAIL_REGEX.test(email)) {
-      newErrors.email = 'Por favor, introduce un email válido'
+      newErrors.email = 'Please enter a valid email'
     }
 
     // Password validation
     if (!password) {
-      newErrors.password = 'La contraseña es requerida'
+      newErrors.password = 'Password is required'
     } else if (password.length < 6) {
-      newErrors.password = 'La contraseña debe tener al menos 6 caracteres'
+      newErrors.password = 'Password must be at least 6 characters'
     }
 
     setErrors(newErrors)
@@ -75,18 +75,18 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
         const data = await response.json()
         // Handle specific error messages
         if (response.status === 401) {
-          setErrors({ general: 'Credenciales incorrectas. Por favor, verifica tu email y contraseña.' })
+          setErrors({ general: 'Incorrect credentials. Please check your email and password.' })
         } else if (response.status === 404) {
-          setErrors({ general: 'Usuario no encontrado. ¿Quizás necesitas registrarte?' })
+          setErrors({ general: 'User not found. Perhaps you need to sign up?' })
         } else if (response.status === 429) {
-          setErrors({ general: 'Demasiados intentos. Por favor, espera unos minutos.' })
+          setErrors({ general: 'Too many attempts. Please wait a few minutes.' })
         } else {
-          setErrors({ general: data.error || 'Ocurrió un error durante el inicio de sesión' })
+          setErrors({ general: data.error || 'An error occurred during login' })
         }
       }
     } catch (error) {
       // Network error or server unavailable
-      setErrors({ general: 'Error de conexión. Por favor, verifica tu conexión a internet.' })
+      setErrors({ general: 'Connection error. Please check your internet connection.' })
     } finally {
       setIsLoading(false)
     }
@@ -122,7 +122,7 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
       <div className="space-y-1">
         <Input
           type="password"
-          placeholder="Contraseña"
+          placeholder="Password"
           value={password}
           onChange={(e) => {
             setPassword(e.target.value)
@@ -143,10 +143,10 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
         {isLoading ? (
           <>
             <LoadingSpinner size="sm" />
-            <span>Iniciando sesión...</span>
+            <span>Signing in...</span>
           </>
         ) : (
-          'Iniciar sesión'
+          'Sign in'
         )}
       </Button>
       <PasswordReset />

@@ -9,6 +9,46 @@ import { ThemeToggle } from "./ui/theme-toggle";
 import { useAuthContext } from "./auth/auth-provider";
 
 /**
+ * Theme-aware logo component
+ * Uses logo.jpg for dark theme, logo_black.jpg for light theme
+ */
+function ThemedLogo({ width, height, className }: { width: number; height: number; className?: string }) {
+  const [isLightTheme, setIsLightTheme] = useState(false);
+  
+  useEffect(() => {
+    // Check initial theme
+    const checkTheme = () => {
+      setIsLightTheme(document.documentElement.getAttribute('data-theme') === 'light');
+    };
+    
+    checkTheme();
+    
+    // Watch for theme changes
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === 'data-theme') {
+          checkTheme();
+        }
+      });
+    });
+    
+    observer.observe(document.documentElement, { attributes: true });
+    
+    return () => observer.disconnect();
+  }, []);
+  
+  return (
+    <Image
+      src={isLightTheme ? "/images/logo_black.jpg" : "/images/logo.jpg"}
+      alt="UAS PLANNER Logo"
+      width={width}
+      height={height}
+      className={className}
+    />
+  );
+}
+
+/**
  * Loading skeleton component for user info
  */
 function UserSkeleton() {
@@ -222,12 +262,7 @@ export function Header() {
           {/* Logo centrado */}
           <div className="flex justify-center">
             <Link href="/">
-              <Image
-                src="/images/logo.jpg"
-                alt="UAS PLANNER Logo"
-                width={150}
-                height={50}
-              />
+              <ThemedLogo width={150} height={50} />
             </Link>
           </div>
           {/* Botones de usuario a la derecha */}
@@ -259,12 +294,10 @@ export function Header() {
 
           {/* Logo centered */}
           <Link href="/" className="flex-shrink-0">
-            <Image
-              src="/images/logo.jpg"
-              alt="UAS PLANNER Logo"
-              width={120}
-              height={40}
-              className="sm:w-[150px] sm:h-[50px]"
+            <ThemedLogo 
+              width={120} 
+              height={40} 
+              className="sm:w-[150px] sm:h-[50px]" 
             />
           </Link>
 

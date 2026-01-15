@@ -54,7 +54,7 @@ export function FlightPlanList({
   onDragStart,
   onDragEnd,
   loadingPlanIds = {},
-  emptyMessage = 'No hay planes de vuelo',
+  emptyMessage = 'No flight plans',
   className = '',
   isLoading = false,
   skeletonCount = 3,

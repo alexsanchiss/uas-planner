@@ -62,7 +62,7 @@ export function WaypointPreview({ waypoints, className = '', mini = false }: Way
   if (waypoints.length === 0) {
     return (
       <div className={`flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded ${mini ? 'h-12 w-16' : 'h-32'} ${className}`}>
-        <span className="text-xs text-gray-400">Sin waypoints</span>
+        <span className="text-xs text-gray-400">No waypoints</span>
       </div>
     )
   }
