@@ -9,6 +9,10 @@ export interface FlightPlanListProps {
   onAuthorize?: (planId: string) => void
   onReset?: (planId: string) => void
   onDelete?: (planId: string) => void
+  /** TASK-217: Click handler for plan selection */
+  onSelectPlan?: (planId: string) => void
+  /** TASK-217: Currently selected plan ID */
+  selectedPlanId?: string | null
   loadingPlanIds?: {
     processing?: Set<string>
     downloading?: Set<string>
@@ -31,6 +35,8 @@ export function FlightPlanList({
   onAuthorize,
   onReset,
   onDelete,
+  onSelectPlan,
+  selectedPlanId,
   loadingPlanIds = {},
   emptyMessage = 'No hay planes de vuelo',
   className = '',
@@ -76,6 +82,8 @@ export function FlightPlanList({
             onAuthorize={onAuthorize}
             onReset={onReset}
             onDelete={onDelete}
+            onSelect={onSelectPlan}
+            isSelected={selectedPlanId === plan.id}
             loadingStates={loadingStates}
           />
         )

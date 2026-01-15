@@ -405,8 +405,46 @@
 
 ---
 
+## Phase 8: Post-Launch QA Fixes
+
+### 8.1 SCAN Pattern Generator Fixes
+| Task | Description | Status |
+|------|-------------|--------|
+| TASK-215 | Fix SCAN mode map click handler | ⬜ |
+| TASK-216 | Integrate ScanPatternGeneratorV2 with refs | ⬜ |
+
+### 8.2 Trajectory Generator UI Improvements
+| Task | Description | Status |
+|------|-------------|--------|
+| TASK-217 | Add plan selection UI | ✅ |
+| TASK-218 | Make buttons larger | ⬜ |
+| TASK-219 | Replace CSV download with map viewer | ⬜ |
+| TASK-220 | Add waypoint preview per plan | ⬜ |
+| TASK-221 | Larger editable plan names | ⬜ |
+| TASK-222 | Drag-and-drop between folders | ⬜ |
+| TASK-223 | Improve desktop layout width | ⬜ |
+
+---
+
+## Summary (Updated)
+
+| Phase | Total | Completed | In Progress | Blocked |
+|-------|-------|-----------|-------------|---------|
+| Phase 1: Backend | 27 | 27 | 0 | 0 |
+| Phase 2: Auth | 25 | 25 | 0 | 0 |
+| Phase 3: Refactor | 27 | 27 | 0 | 0 |
+| Phase 4: Production UI | 41 | 41 | 0 | 0 |
+| Phase 5: PlanGenerator | 34 | 34 | 0 | 0 |
+| Phase 6: UI/UX | 50 | 50 | 0 | 0 |
+| Phase 7: Testing | 10 | 10 | 0 | 0 |
+| Phase 8: Post-Launch QA | 9 | 1 | 0 | 0 |
+| **TOTAL** | **223** | **215** | **0** | **0** |
+
+---
+
 ## Recent Updates
 
+- **2026-01-15**: TASK-217 ✅ - Add plan selection UI to Trajectory Generator. Enhanced flight plan card components with click-to-select functionality: added `onSelect` and `isSelected` props to `FlightPlanCard.tsx` with visual selection indicator (blue border, checkmark badge, hover effects), clickable card with proper keyboard navigation and ARIA attributes. Updated `FlightPlanList.tsx` with `onSelectPlan` and `selectedPlanId` props. Updated `FolderCard.tsx` to pass selection props down to `FlightPlanList`. Updated `FolderList.tsx` to accept and propagate selection handlers. Integrated selection into `FlightPlansUploader.tsx` - plans inside folders can now be clicked to select them for the workflow, and the orphan plans section now uses the standardized selection props instead of wrapper divs. Fixed unrelated TypeScript error in `TrajectoryMapViewer.tsx` (parseCSVToTrajectory function return type). Users can now click any flight plan card (both inside folders and outside) to select it for processing, with clear visual feedback showing the selected state.
 - **2026-01-13**: TASK-210 ✅, TASK-211 ✅, TASK-212 ✅, TASK-213 ✅, TASK-214 ✅ - Documentation complete. (TASK-210) Updated README.md with: new v1.2.0 version info, comprehensive architecture overview (Next.js App Router, React 18, TypeScript, Tailwind CSS, Prisma, JWT auth), project structure diagram, theme system documentation (CSS custom properties, useTheme hook, ThemeToggle component), component architecture diagram (FlightPlansUploader hierarchy), complete API routes table for App Router. (TASK-211) Rewrote API_DOCUMENTATION.md with: authentication flow (login/refresh/logout), all endpoints with request/response examples (auth, flightPlans CRUD/bulk, folders, csvResult, fas callback, user), data types (FlightPlanStatus, AuthorizationStatus), security & validation section, migration guide from legacy APIs. (TASK-212) Added comprehensive JSDoc comments to lib/auth.ts (module overview, all functions with @param, @returns, @throws, @example), lib/validators.ts (module overview, schema descriptions, parseBody/safeParseBody/ValidationError class documentation). (TASK-213) Enhanced .env.example with: detailed comments for each variable, security requirements for JWT_SECRET, multiple examples for DATABASE_URL formats, feature flag explanations, development options section, required vs optional indicators. (TASK-214) Created CONTRIBUTING.md with: prerequisites, development setup (6 steps), code style guide (TypeScript, React, file naming, CSS, JSDoc), conventional commits specification with examples, PR process checklist, testing guide, project structure overview. **Phase 7 Testing and Documentation is now 100% complete! All 214 tasks completed.**
 - **2026-01-13**: TASK-201 ✅, TASK-202 ✅, TASK-203 ✅, TASK-204 ✅ - Tooltips and Help complete. (TASK-201) Created `app/components/ui/tooltip.tsx` with main `Tooltip` component featuring: position options (top, bottom, left, right), hover trigger with configurable show/hide delays, dark background with light text, arrow pointer for all positions, accessibility support (aria-describedby, keyboard focus), max-width control, and fade-in animation. (TASK-202) Created `IconButtonTooltip` wrapper component and updated all icon buttons in `ActionButtons.tsx` (`ProcessIconButton`, `DownloadIconButton`, `AuthorizeIconButton`, `ResetIconButton`, `DeleteIconButton`) to always show tooltips on hover - displays action name when enabled, shows disabled reason when disabled. (TASK-203) Created `HelpTooltip` component with question mark icon for form field help, added to `DateTimePicker.tsx` explaining timezone handling and usage. (TASK-204) Created `ContextualHelp` component with info icon, title, description, and optional tips list for workflow steps. Added to all 5 steps in `ProcessingWorkflow.tsx`: Seleccionar (plan selection guidance), Fecha/Hora (datetime configuration), Procesar (trajectory generation), Geoawareness (zone verification), Autorizar (FAS authorization). Added `animate-fade-in` and `animate-fade-in-fast` CSS classes to `globals.css` for tooltip animations. **Phase 6 UI/UX Polish is now 100% complete!**
 - **2026-01-13**: TASK-193 ✅, TASK-194 ✅, TASK-195 ✅, TASK-196 ✅, TASK-197 ✅, TASK-198 ✅, TASK-199 ✅, TASK-200 ✅ - Toast and Notifications complete. (TASK-193) Created `app/components/ui/toast.tsx` with `Toast` component supporting 4 variants (success, error, warning, info), each with distinct colors, icons, and styling. Toast displays title, message, close button, and optional retry action. (TASK-194) Created `app/components/ui/toast-provider.tsx` with `ToastProvider` context that manages toast state, provides `toast()`, `success()`, `error()`, `warning()`, `info()` methods, and handles max toast limit (default 5). Integrated into `layout.tsx` wrapping entire app. Added auth session-expired event listener for seamless auth notifications. (TASK-195) Created `app/hooks/useToast.ts` hook that exposes toast context for easy usage throughout components. (TASK-196) Implemented auto-dismiss with configurable duration (default 5000ms, 8000ms for errors), progress bar animation showing remaining time, set duration to 0 for persistent toasts. (TASK-197) Added toast animations in `globals.css`: `toastEnter` (slide in from right with cubic-bezier easing), `toastExit` (fade out and slide right), `.toast-enter` and `.toast-exit` classes, positioned fixed top-right with proper z-index stacking. (TASK-198) Replaced all `alert()` calls across `FlightPlansUploader.tsx` (7 calls), `FlightPlansUploaderDev.tsx` (11 calls), and `useAuth.ts` (1 call) with appropriate toast notifications. (TASK-199) Added success toasts for: CSV download complete, authorization request sent, plan reset complete, date/time updated. (TASK-200) Added error toasts with retry callbacks for: CSV download error, authorization error, reset error, date update error. Error toasts have longer duration (8s) and "Reintentar" button that triggers the retry callback.

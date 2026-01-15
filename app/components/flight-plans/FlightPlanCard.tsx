@@ -26,6 +26,10 @@ export interface FlightPlanCardProps {
   onAuthorize?: (planId: string) => void
   onReset?: (planId: string) => void
   onDelete?: (planId: string) => void
+  /** TASK-217: Click handler for plan selection */
+  onSelect?: (planId: string) => void
+  /** TASK-217: Whether this plan is currently selected */
+  isSelected?: boolean
   loadingStates?: {
     processing?: boolean
     downloading?: boolean
@@ -90,6 +94,8 @@ export function FlightPlanCard({
   onAuthorize,
   onReset,
   onDelete,
+  onSelect,
+  isSelected = false,
   loadingStates = {},
   className = '',
 }: FlightPlanCardProps) {
@@ -99,10 +105,38 @@ export function FlightPlanCard({
   const canAuthorize = plan.status === 'procesado' && plan.authorizationStatus === 'sin autorización'
   const canReset = plan.status !== 'sin procesar'
 
+  // TASK-217: Handle card click for selection
+  const handleCardClick = () => {
+    onSelect?.(plan.id)
+  }
+
   return (
     <div
-      className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3 sm:p-4 shadow-sm transition-shadow hover:shadow-md ${className}`}
+      className={`relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 rounded-lg border p-3 sm:p-4 shadow-sm transition-all cursor-pointer ${className} ${
+        isSelected
+          ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-500 ring-offset-1 dark:ring-offset-gray-900'
+          : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:shadow-md hover:border-blue-300 dark:hover:border-blue-600'
+      }`}
+      onClick={handleCardClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          handleCardClick()
+        }
+      }}
+      aria-pressed={isSelected}
+      aria-label={`Seleccionar plan ${plan.name}`}
     >
+      {/* Selection indicator */}
+      {isSelected && (
+        <div className="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center shadow-sm">
+          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+          </svg>
+        </div>
+      )}
       {/* Plan info */}
       <div className="flex flex-1 flex-col gap-2 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
@@ -124,7 +158,8 @@ export function FlightPlanCard({
       </div>
 
       {/* Actions - full width on mobile, auto on larger screens */}
-      <div className="flex items-center justify-end sm:justify-start gap-1 flex-shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100 dark:border-gray-700">
+      {/* Stop propagation on action buttons to prevent card selection */}
+      <div className="flex items-center justify-end sm:justify-start gap-1 flex-shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100 dark:border-gray-700" onClick={(e) => e.stopPropagation()}>
         <ProcessIconButton
           onClick={() => onProcess?.(plan.id)}
           disabled={!canProcess || loadingStates.processing}

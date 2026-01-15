@@ -12,6 +12,10 @@ export interface FolderListProps {
   onAuthorizePlan?: (planId: string) => void
   onResetPlan?: (planId: string) => void
   onDeletePlan?: (planId: string) => void
+  /** TASK-217: Click handler for plan selection */
+  onSelectPlan?: (planId: string) => void
+  /** TASK-217: Currently selected plan ID */
+  selectedPlanId?: string | null
   loadingPlanIds?: FlightPlanListProps['loadingPlanIds']
   loadingFolderIds?: {
     renaming?: Set<string>
@@ -48,6 +52,8 @@ export function FolderList({
   onAuthorizePlan,
   onResetPlan,
   onDeletePlan,
+  onSelectPlan,
+  selectedPlanId,
   loadingPlanIds,
   loadingFolderIds = {},
   isCreating = false,
@@ -169,6 +175,8 @@ export function FolderList({
                 onAuthorizePlan={onAuthorizePlan}
                 onResetPlan={onResetPlan}
                 onDeletePlan={onDeletePlan}
+                onSelectPlan={onSelectPlan}
+                selectedPlanId={selectedPlanId}
                 loadingPlanIds={loadingPlanIds}
                 loadingStates={folderLoadingStates}
               />
