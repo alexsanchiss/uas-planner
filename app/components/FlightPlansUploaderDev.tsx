@@ -59,8 +59,8 @@
 
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import axios from "axios";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import axios, { AxiosInstance } from "axios";
 import { useAuth } from "../hooks/useAuth";
 import { useToast } from "../hooks/useToast";
 import JSZip from "jszip";
@@ -93,6 +93,24 @@ import {
   HelpCircle,
 } from "lucide-react";
 import { Modal } from "./ui/modal";
+
+/**
+ * Create an authenticated axios instance that automatically includes
+ * the JWT token from localStorage in all requests
+ */
+function createAuthenticatedAxios(): AxiosInstance {
+  const instance = axios.create();
+  
+  instance.interceptors.request.use((config) => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  });
+  
+  return instance;
+}
 
 interface Folder {
   id: number;
@@ -703,6 +721,9 @@ function UplanEditModal({ open, onClose, uplan, onSave, readOnly = false }: {
 }
 
 export function FlightPlansUploaderDev() {
+  // Create authenticated axios instance with JWT token
+  const api = useMemo(() => createAuthenticatedAxios(), []);
+  
   const [flightPlans, setFlightPlans] = useState<FlightPlan[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [selectedPlans, setSelectedPlans] = useState<number[]>([]);
@@ -764,8 +785,8 @@ export function FlightPlansUploaderDev() {
   const fetchData = async () => {
     try {
       const [plansResponse, foldersResponse] = await Promise.all([
-        axios.get(`/api/flightPlans?userId=${user?.id}`),
-        axios.get(`/api/folders?userId=${user?.id}`),
+        api.get(`/api/flightPlans`),
+        api.get(`/api/folders`),
       ]);
       setFlightPlans(plansResponse.data);
       setFolders(foldersResponse.data);
@@ -845,12 +866,11 @@ export function FlightPlansUploaderDev() {
               customName: vf.name.replace(/\.[^/.]+$/, ""),
               status: "sin procesar",
               fileContent: await vf.getText(),
-              userId: user?.id,
               folderId: folderId,
             }))
           );
           // Use the new unified API with items array
-          const res = await axios.post("/api/flightPlans", { items: plansPayload });
+          const res = await api.post("/api/flightPlans", { items: plansPayload });
           if (res?.data?.items) createdItems.push(...res.data.items);
         }
         setFlightPlans([...flightPlans, ...createdItems]);
@@ -858,11 +878,10 @@ export function FlightPlansUploaderDev() {
         // Fallback to per-file uploads with limited concurrency
         const created: any[] = [];
         await withConcurrency(virtualFiles, 5, async (vf) => {
-          const response = await axios.post("/api/flightPlans", {
+          const response = await api.post("/api/flightPlans", {
             customName: vf.name.replace(/\.[^/.]+$/, ""),
             status: "sin procesar",
             fileContent: await vf.getText(),
-            userId: user?.id,
             folderId: folderId,
           });
           created.push({ ...response.data });
@@ -929,7 +948,7 @@ export function FlightPlansUploaderDev() {
     );
     // Procesar todos en una sola llamada usando la API unificada
     try {
-      await axios.put(`/api/flightPlans`, { ids, data: { status: "en cola" } });
+      await api.put(`/api/flightPlans`, { ids, data: { status: "en cola" } });
       fetchData();
     } catch (error) {
       console.error("Error bulk processing folder:", error);
@@ -962,7 +981,7 @@ export function FlightPlansUploaderDev() {
       const batchIds = ids.slice(i, i + BATCH);
       try {
         // Use the unified CSV API
-        const res = await axios.post(`/api/csvResult`, { ids: batchIds });
+        const res = await api.post(`/api/csvResult`, { ids: batchIds });
         const items: { id: number, customName: string, csvResult: string }[] = res.data.items || [];
         // Partition into zips of at most ZIP_MAX_FILES
         for (let j = 0; j < items.length; j += ZIP_MAX_FILES) {
@@ -1001,10 +1020,10 @@ export function FlightPlansUploaderDev() {
         const ids = folderPlans.map(p => p.id);
         if (ids.length > 0) {
           // Use the unified index route for bulk deletion
-          await axios.delete(`/api/flightPlans`, { data: { ids } });
+          await api.delete(`/api/flightPlans`, { data: { ids } });
         }
         // Eliminar la carpeta usando la API optimizada
-        await axios.delete(`/api/folders/${folderId}`);
+        await api.delete(`/api/folders/${folderId}`);
         // Actualizar estado local después de que todo se haya eliminado correctamente
         setFolders((prevFolders) =>
           prevFolders.filter((f) => f.id !== folderId)
@@ -1036,9 +1055,8 @@ export function FlightPlansUploaderDev() {
         setNewFolderName("");
 
         // Realizar la petición al servidor
-        const response = await axios.post("/api/folders", {
+        const response = await api.post("/api/folders", {
           name: newFolderName,
-          userId: user.id,
         });
 
         // Actualizar la carpeta temporal con los datos reales del servidor
@@ -1060,7 +1078,7 @@ export function FlightPlansUploaderDev() {
           plan.id === planId ? { ...plan, customName: newName } : plan
         )
       );
-      await axios.put(`/api/flightPlans`, { id: planId, data: { customName: newName } });
+      await api.put(`/api/flightPlans`, { id: planId, data: { customName: newName } });
     } catch (error) {
       console.error("Error updating plan name:", error);
       fetchData();
@@ -1082,7 +1100,7 @@ export function FlightPlansUploaderDev() {
             : plan
         )
       );
-      await axios.put(`/api/flightPlans`, { id: planId, data: { scheduledAt: value ? new Date(value).toISOString() : null } });
+      await api.put(`/api/flightPlans`, { id: planId, data: { scheduledAt: value ? new Date(value).toISOString() : null } });
     } catch (error) {
       console.error("Error updating scheduledAt:", error);
       fetchData();
@@ -1096,7 +1114,7 @@ export function FlightPlansUploaderDev() {
           plan.id === planId ? { ...plan, status: "en cola" } : plan
         )
       );
-      const response = await axios.put(`/api/flightPlans`, { id: planId, data: { status: "en cola" } });
+      const response = await api.put(`/api/flightPlans`, { id: planId, data: { status: "en cola" } });
       setFlightPlans(
         flightPlans.map((plan) =>
           plan.id === planId ? { ...plan, ...response.data } : plan
@@ -1116,7 +1134,7 @@ export function FlightPlansUploaderDev() {
     try {
       setFlightPlans(flightPlans.filter((p) => p.id !== planId));
       setSelectedPlans(selectedPlans.filter((id) => id !== planId));
-      await axios.delete(`/api/flightPlans`, { data: { id: planId } });
+      await api.delete(`/api/flightPlans`, { data: { id: planId } });
     } catch (error) {
       console.error("Error deleting plan:", error);
       fetchData();
@@ -1131,7 +1149,7 @@ export function FlightPlansUploaderDev() {
       )
     );
     try {
-      await axios.put(`/api/flightPlans`, { ids: selectedPlans, data: { status: "en cola" } });
+      await api.put(`/api/flightPlans`, { ids: selectedPlans, data: { status: "en cola" } });
       fetchData();
     } catch (error) {
       console.error("Error bulk processing selected plans:", error);
@@ -1164,7 +1182,7 @@ export function FlightPlansUploaderDev() {
       const batchIds = processedIds.slice(i, i + BATCH);
       try {
         // Use the unified CSV API
-        const res = await axios.post(`/api/csvResult`, { ids: batchIds });
+        const res = await api.post(`/api/csvResult`, { ids: batchIds });
         const items: { id: number, customName: string, csvResult: string }[] = res.data.items || [];
         for (let j = 0; j < items.length; j += ZIP_MAX_FILES) {
           const chunk = items.slice(j, j + ZIP_MAX_FILES);
@@ -1196,7 +1214,7 @@ export function FlightPlansUploaderDev() {
         const ids = [...selectedPlans];
         if (ids.length > 0) {
           // Use the unified index route for bulk deletion
-          await axios.delete(`/api/flightPlans`, { data: { ids } });
+          await api.delete(`/api/flightPlans`, { data: { ids } });
         }
         setFlightPlans(flightPlans.filter((p) => !ids.includes(p.id)));
         setSelectedPlans([]);
@@ -1210,7 +1228,7 @@ export function FlightPlansUploaderDev() {
   const downloadCsv = async (planId: number, fileName: string) => {
     try {
       // Use the unified CSV API for individual downloads
-      const response = await axios.get(`/api/csvResult?id=${planId}`);
+      const response = await api.get(`/api/csvResult?id=${planId}`);
       if (response.status === 200) {
         const csvData = response.data.csvResult;
         const blob = new Blob([csvData], { type: "text/csv" });
@@ -1287,12 +1305,11 @@ export function FlightPlansUploaderDev() {
               customName: vf.name.replace(/\.[^/.]+$/, ""),
               status: "sin procesar",
               fileContent: await vf.getText(),
-              userId: user?.id,
               folderId: folderId,
             }))
           );
           // Use the new unified API with items array
-          const res = await axios.post("/api/flightPlans", { items: plansPayload });
+          const res = await api.post("/api/flightPlans", { items: plansPayload });
           if (res?.data?.items) createdItems.push(...res.data.items);
         }
         setFlightPlans([...flightPlans, ...createdItems]);
@@ -1300,11 +1317,10 @@ export function FlightPlansUploaderDev() {
         // Fallback to per-file uploads with limited concurrency
         const created: any[] = [];
         await withConcurrency(virtualFiles, 5, async (vf) => {
-          const response = await axios.post("/api/flightPlans", {
+          const response = await api.post("/api/flightPlans", {
             customName: vf.name.replace(/\.[^/.]+$/, ""),
             status: "sin procesar",
             fileContent: await vf.getText(),
-            userId: user?.id,
             folderId: folderId,
           });
           created.push({ ...response.data });
@@ -1324,8 +1340,8 @@ export function FlightPlansUploaderDev() {
       )
     );
     try {
-      await axios.put(`/api/flightPlans`, { id: planId, data: { authorizationStatus: "procesando autorización" } });
-      await axios.post(`/api/flightPlans/${planId}/uplan`);
+      await api.put(`/api/flightPlans`, { id: planId, data: { authorizationStatus: "procesando autorización" } });
+      await api.post(`/api/flightPlans/${planId}/uplan`);
     } catch (error: any) {
       const errorMsg =
         error?.response?.data?.error || error?.message || "Unknown error";
@@ -1351,7 +1367,7 @@ export function FlightPlansUploaderDev() {
             : folder
         )
       );
-      await axios.put(`/api/folders/${folderId}`, {
+      await api.put(`/api/folders/${folderId}`, {
         [field]: value ? new Date(value).toISOString() : null,
       });
     } catch (error) {
@@ -1375,7 +1391,7 @@ export function FlightPlansUploaderDev() {
         const iso = randomTime.toISOString();
         return { id: plan.id, data: { scheduledAt: iso } };
       });
-      await axios.put(`/api/flightPlans`, { items });
+      await api.put(`/api/flightPlans`, { items });
       setFlightPlans((prevPlans) =>
         prevPlans.map((plan) => {
           const it = items.find((i) => i.id === plan.id);
@@ -1493,7 +1509,7 @@ export function FlightPlansUploaderDev() {
   const handleViewCsv = async (planId: number, customName: string) => {
     try {
       // Use the unified CSV API for individual view
-      const response = await axios.get(`/api/csvResult?id=${planId}`);
+      const response = await api.get(`/api/csvResult?id=${planId}`);
       if (response.status === 200) {
         const traj = parseTrajectoryCsv(response.data.csvResult);
         setTrajectoryData([traj]);
@@ -1524,7 +1540,7 @@ export function FlightPlansUploaderDev() {
       if (plan && plan.status === "procesado" && plan.csvResult) {
         try {
           // Use the unified CSV API for individual view
-          const response = await axios.get(`/api/csvResult?id=${id}`);
+          const response = await api.get(`/api/csvResult?id=${id}`);
           if (response.status === 200) {
             const traj = parseTrajectoryCsv(response.data.csvResult);
             trajs.push(traj);
@@ -1564,7 +1580,7 @@ export function FlightPlansUploaderDev() {
     for (const plan of folderPlans) {
       try {
         // Use the unified CSV API for individual view
-        const response = await axios.get(`/api/csvResult?id=${plan.id}`);
+        const response = await api.get(`/api/csvResult?id=${plan.id}`);
         if (response.status === 200) {
           const traj = parseTrajectoryCsv(response.data.csvResult);
           trajs.push(traj);
@@ -1642,7 +1658,7 @@ export function FlightPlansUploaderDev() {
   const handleSaveUplanEdit = async (newUplan: any) => {
     if (!uplanEditModal.planId) return;
     try {
-      await axios.put(`/api/flightPlans`, { id: uplanEditModal.planId, data: { uplan: JSON.stringify(newUplan) } });
+      await api.put(`/api/flightPlans`, { id: uplanEditModal.planId, data: { uplan: JSON.stringify(newUplan) } });
       setFlightPlans(flightPlans.map(plan =>
         plan.id === uplanEditModal.planId ? { ...plan, uplan: newUplan } : plan
       ));
