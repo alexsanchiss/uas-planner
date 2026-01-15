@@ -26,7 +26,7 @@
 // - Unified transaction management
 // - Better performance through optimized database calls
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -324,8 +324,21 @@ export default function PlanGenerator() {
     scanAngle: number;
   } | null>(null);
   
-  // Custom map click handler for SCAN mode
-  const [scanMapClickHandler, setScanMapClickHandler] = useState<((lat: number, lng: number) => void) | null>(null);
+  // TASK-216: Custom map click handler for SCAN mode using ref for stability
+  // Using a ref ensures the handler identity is stable across renders,
+  // preventing unnecessary cleanup/re-registration cycles
+  const scanMapClickHandlerRef = useRef<((lat: number, lng: number) => void) | null>(null);
+  
+  // State to trigger re-render when handler changes (for PlanMap to pick up changes)
+  const [scanHandlerVersion, setScanHandlerVersion] = useState(0);
+  
+  // Stable callback for setting the SCAN map click handler
+  // This function identity never changes, preventing useEffect cleanup issues
+  const handleSetScanMapClickHandler = useCallback((handler: ((lat: number, lng: number) => void) | null) => {
+    scanMapClickHandlerRef.current = handler;
+    // Increment version to force PlanMap to see the change
+    setScanHandlerVersion(v => v + 1);
+  }, []);
 
   // Map bounds and center
   const bounds: [[number, number], [number, number]] = [
@@ -522,7 +535,7 @@ export default function PlanGenerator() {
     setWaypoints(newWaypoints);
     setGeneratorMode('manual'); // Switch back to manual mode to allow editing
     setScanOverlays(null);
-    setScanMapClickHandler(null);
+    handleSetScanMapClickHandler(null);
     setToast(`SCAN pattern applied with ${newWaypoints.length} waypoints. You can now edit them.`);
   };
 
@@ -530,7 +543,7 @@ export default function PlanGenerator() {
   const handleCancelScanPattern = () => {
     setGeneratorMode('manual');
     setScanOverlays(null);
-    setScanMapClickHandler(null);
+    handleSetScanMapClickHandler(null);
   };
 
   // Upload plan
@@ -780,7 +793,7 @@ export default function PlanGenerator() {
                       onApply={handleApplyScanPattern}
                       onCancel={handleCancelScanPattern}
                       serviceBounds={[SERVICE_LIMITS[0], SERVICE_LIMITS[1], SERVICE_LIMITS[2], SERVICE_LIMITS[3]]}
-                      onMapClick={setScanMapClickHandler}
+                      onMapClick={handleSetScanMapClickHandler}
                       onOverlaysChange={setScanOverlays}
                     />
                   </div>
@@ -1773,6 +1786,7 @@ export default function PlanGenerator() {
         <main className="plan-gen-map flex-1">
           {/* The MapContainer and its logic have been moved to PlanMap.tsx */}
           {/* The PlanMap component will be rendered here */}
+          {/* TASK-216: Use ref-based handler for stable click handling in SCAN mode */}
           <PlanMap 
             center={center} 
             bounds={bounds} 
@@ -1784,7 +1798,8 @@ export default function PlanGenerator() {
             handleMarkerDragEnd={handleMarkerDragEnd}
             scanMode={generatorMode === 'scan'}
             scanOverlays={scanOverlays || undefined}
-            customClickHandler={scanMapClickHandler}
+            customClickHandler={scanMapClickHandlerRef.current}
+            key={`planmap-${scanHandlerVersion}`} // Force re-render when handler changes
           />
         </main>
       </div>
