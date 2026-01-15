@@ -1,9 +1,10 @@
 "use client";
-import React from "react";
-import { MapContainer, TileLayer, Polyline, Rectangle, Polygon } from "react-leaflet";
+import React, { useEffect, useRef } from "react";
+import { MapContainer, TileLayer, Polyline, Rectangle, Polygon, CircleMarker } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import { Marker, Popup, useMapEvents } from "react-leaflet";
+import { Marker, Popup, useMapEvents, useMap } from "react-leaflet";
 import L from "leaflet";
+import { Point, ScanWaypoint } from "@/lib/scan-generator";
 
 // TASK-152: Large bounds for overlay outside service area (covers the world)
 const WORLD_BOUNDS: [number, number][] = [
@@ -165,24 +166,51 @@ function WaypointMarkers({ waypoints, onSelect, onDragEndMarker }: { waypoints: 
   ));
 }
 
-function MapClickHandler({ onAddWaypoint, onToast, bounds }: { onAddWaypoint: (wp: any) => void; onToast: (msg: string) => void; bounds: [[number, number], [number, number]]; }) {
+function MapClickHandler({ 
+  onAddWaypoint, 
+  onToast, 
+  bounds,
+  customClickHandler,
+  scanMode
+}: { 
+  onAddWaypoint: (wp: any) => void; 
+  onToast: (msg: string) => void; 
+  bounds: [[number, number], [number, number]];
+  customClickHandler?: ((lat: number, lng: number) => void) | null;
+  scanMode?: boolean;
+}) {
   useMapEvents({
     click(e: L.LeafletMouseEvent) {
-      // Only add if within limits
-      if (
+      // Check if point is within service bounds
+      const isWithinBounds = 
         e.latlng.lat >= bounds[0][0] &&
         e.latlng.lat <= bounds[1][0] &&
         e.latlng.lng >= bounds[0][1] &&
-        e.latlng.lng <= bounds[1][1]
-      ) {
+        e.latlng.lng <= bounds[1][1];
+      
+      // TASK-215: When in SCAN mode, only use custom handler - NEVER add manual waypoints
+      if (scanMode) {
+        if (customClickHandler) {
+          if (isWithinBounds) {
+            customClickHandler(e.latlng.lat, e.latlng.lng);
+          } else {
+            onToast("Point must be within the FAS service area.");
+          }
+        }
+        // In SCAN mode without a handler, do nothing (user needs to complete current step)
+        return;
+      }
+      
+      // Default behavior (manual mode): add waypoint
+      if (isWithinBounds) {
         onAddWaypoint({
           lat: e.latlng.lat,
           lng: e.latlng.lng,
           type: "cruise",
           altitude: 100,
           speed: 5,
-          pauseDuration: 0, // TASK-121: Default pause duration
-          flyOverMode: false, // TASK-126: Default fly-by mode
+          pauseDuration: 0,
+          flyOverMode: false,
         });
       } else {
         onToast("Waypoints must be within the FAS service area.");
@@ -209,7 +237,237 @@ function createServiceAreaMask(bounds: [[number, number], [number, number]]): [n
   return [outer, inner];
 }
 
-const PlanMap = (props: any) => {
+// SCAN Pattern Overlays Component
+function ScanOverlays({ scanOverlays }: { scanOverlays: any }) {
+  if (!scanOverlays) return null;
+  
+  const { takeoffPoint, landingPoint, polygonVertices, polygonClosed, previewWaypoints } = scanOverlays;
+  
+  // Create custom icons for takeoff and landing
+  const takeoffIcon = L.divIcon({
+    className: "scan-takeoff-marker",
+    html: `
+      <div style="
+        width: 36px;
+        height: 36px;
+        background: #22c55e;
+        border: 3px solid white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      ">
+        <span style="color: white; font-size: 16px;">🛫</span>
+      </div>
+    `,
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+  });
+  
+  const landingIcon = L.divIcon({
+    className: "scan-landing-marker",
+    html: `
+      <div style="
+        width: 36px;
+        height: 36px;
+        background: #ef4444;
+        border: 3px solid white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      ">
+        <span style="color: white; font-size: 16px;">🛬</span>
+      </div>
+    `,
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+  });
+  
+  // Create vertex icon for polygon vertices
+  const createVertexIcon = (index: number, isFirst: boolean) => L.divIcon({
+    className: "scan-vertex-marker",
+    html: `
+      <div style="
+        width: ${isFirst ? '28px' : '24px'};
+        height: ${isFirst ? '28px' : '24px'};
+        background: ${isFirst ? '#a855f7' : '#8b5cf6'};
+        border: 2px solid white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        font-size: ${isFirst ? '12px' : '10px'};
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        ${isFirst ? 'animation: pulse 1.5s infinite;' : ''}
+      ">
+        ${index + 1}
+      </div>
+      <style>
+        @keyframes pulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.1); }
+        }
+      </style>
+    `,
+    iconSize: [isFirst ? 28 : 24, isFirst ? 28 : 24],
+    iconAnchor: [isFirst ? 14 : 12, isFirst ? 14 : 12],
+  });
+
+  // Preview waypoint icon (smaller, gray)
+  const createPreviewIcon = (index: number, total: number) => L.divIcon({
+    className: "scan-preview-marker",
+    html: `
+      <div style="
+        width: 16px;
+        height: 16px;
+        background: ${index === 0 ? '#22c55e' : index === total - 1 ? '#ef4444' : '#6366f1'};
+        border: 2px solid white;
+        border-radius: 50%;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+      "></div>
+    `,
+    iconSize: [16, 16],
+    iconAnchor: [8, 8],
+  });
+  
+  return (
+    <>
+      {/* Takeoff Point Marker */}
+      {takeoffPoint && (
+        <Marker
+          position={[takeoffPoint.lat, takeoffPoint.lng]}
+          icon={takeoffIcon}
+        >
+          <Popup>
+            <strong>Takeoff Point</strong><br />
+            {takeoffPoint.lat.toFixed(6)}, {takeoffPoint.lng.toFixed(6)}
+          </Popup>
+        </Marker>
+      )}
+      
+      {/* Landing Point Marker */}
+      {landingPoint && (
+        <Marker
+          position={[landingPoint.lat, landingPoint.lng]}
+          icon={landingIcon}
+        >
+          <Popup>
+            <strong>Landing Point</strong><br />
+            {landingPoint.lat.toFixed(6)}, {landingPoint.lng.toFixed(6)}
+          </Popup>
+        </Marker>
+      )}
+      
+      {/* Polygon Vertices */}
+      {polygonVertices && polygonVertices.length > 0 && (
+        <>
+          {/* Polygon fill (if closed) */}
+          {polygonClosed && polygonVertices.length >= 3 && (
+            <Polygon
+              positions={polygonVertices.map((v: Point) => [v.lat, v.lng])}
+              pathOptions={{
+                color: "#a855f7",
+                weight: 2,
+                fillColor: "#a855f7",
+                fillOpacity: 0.15,
+                dashArray: polygonClosed ? undefined : "5 5",
+              }}
+            />
+          )}
+          
+          {/* Polygon outline (if not closed, show as polyline) */}
+          {!polygonClosed && polygonVertices.length >= 2 && (
+            <Polyline
+              positions={polygonVertices.map((v: Point) => [v.lat, v.lng])}
+              pathOptions={{
+                color: "#a855f7",
+                weight: 2,
+                dashArray: "5 5",
+              }}
+            />
+          )}
+          
+          {/* Vertex markers */}
+          {polygonVertices.map((v: Point, idx: number) => (
+            <Marker
+              key={`vertex-${idx}`}
+              position={[v.lat, v.lng]}
+              icon={createVertexIcon(idx, idx === 0 && !polygonClosed && polygonVertices.length >= 3)}
+            >
+              <Popup>
+                <strong>Vertex {idx + 1}</strong><br />
+                {v.lat.toFixed(6)}, {v.lng.toFixed(6)}
+                {idx === 0 && !polygonClosed && polygonVertices.length >= 3 && (
+                  <><br /><em style={{color: '#a855f7'}}>Click near here to close polygon</em></>
+                )}
+              </Popup>
+            </Marker>
+          ))}
+        </>
+      )}
+      
+      {/* Preview Waypoints Polyline */}
+      {previewWaypoints && previewWaypoints.length > 1 && (
+        <Polyline
+          positions={previewWaypoints.map((wp: ScanWaypoint) => [wp.lat, wp.lng])}
+          pathOptions={{
+            color: "#6366f1",
+            weight: 3,
+            opacity: 0.8,
+          }}
+        />
+      )}
+      
+      {/* Preview Waypoint Markers (smaller, just dots) */}
+      {previewWaypoints && previewWaypoints.length > 0 && (
+        <>
+          {previewWaypoints.map((wp: ScanWaypoint, idx: number) => (
+            <Marker
+              key={`preview-${idx}`}
+              position={[wp.lat, wp.lng]}
+              icon={createPreviewIcon(idx, previewWaypoints.length)}
+            >
+              <Popup>
+                <strong>Waypoint {idx + 1}</strong><br />
+                Type: {wp.type}<br />
+                Altitude: {wp.altitude}m
+              </Popup>
+            </Marker>
+          ))}
+        </>
+      )}
+    </>
+  );
+}
+
+interface PlanMapProps {
+  center: [number, number];
+  bounds: [[number, number], [number, number]];
+  polylinePositions: [number, number][];
+  handleAddWaypoint: (wp: any) => void;
+  setToast: (msg: string) => void;
+  waypoints: any[];
+  setSelectedIdx: (idx: number) => void;
+  handleMarkerDragEnd: (idx: number, lat: number, lng: number) => void;
+  // SCAN mode props
+  scanMode?: boolean;
+  scanOverlays?: {
+    takeoffPoint: Point | null;
+    landingPoint: Point | null;
+    polygonVertices: Point[];
+    polygonClosed: boolean;
+    previewWaypoints: ScanWaypoint[];
+    scanAngle: number;
+  };
+  customClickHandler?: ((lat: number, lng: number) => void) | null;
+}
+
+const PlanMap = (props: PlanMapProps) => {
   const bounds = props.bounds as [[number, number], [number, number]];
   const maskPolygon = createServiceAreaMask(bounds);
   
@@ -249,17 +507,34 @@ const PlanMap = (props: any) => {
         }}
       />
       
-      {/* Polyline to connect waypoints */}
-      {props.polylinePositions.length > 1 ? (
-        <Polyline
-          positions={props.polylinePositions as [number, number][]}
-          pathOptions={{ color: "#2563eb", weight: 4 }}
-        />
-      ) : null}
-      {/* Map click handler for adding waypoints */}
-      <MapClickHandler onAddWaypoint={props.handleAddWaypoint} onToast={props.setToast} bounds={bounds} />
-      {/* Waypoint markers with selection and drag */}
-      <WaypointMarkers waypoints={props.waypoints} onSelect={props.setSelectedIdx} onDragEndMarker={props.handleMarkerDragEnd} />
+      {/* SCAN Mode Overlays */}
+      {props.scanMode && props.scanOverlays && (
+        <ScanOverlays scanOverlays={props.scanOverlays} />
+      )}
+      
+      {/* Regular waypoints (only in manual mode) */}
+      {!props.scanMode && (
+        <>
+          {/* Polyline to connect waypoints */}
+          {props.polylinePositions.length > 1 ? (
+            <Polyline
+              positions={props.polylinePositions as [number, number][]}
+              pathOptions={{ color: "#2563eb", weight: 4 }}
+            />
+          ) : null}
+          {/* Waypoint markers with selection and drag */}
+          <WaypointMarkers waypoints={props.waypoints} onSelect={props.setSelectedIdx} onDragEndMarker={props.handleMarkerDragEnd} />
+        </>
+      )}
+      
+      {/* Map click handler */}
+      <MapClickHandler 
+        onAddWaypoint={props.handleAddWaypoint} 
+        onToast={props.setToast} 
+        bounds={bounds}
+        customClickHandler={props.customClickHandler}
+        scanMode={props.scanMode}
+      />
     </MapContainer>
   );
 };
