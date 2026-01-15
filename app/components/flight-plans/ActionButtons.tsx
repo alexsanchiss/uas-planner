@@ -87,12 +87,12 @@ export function ProcessButton({
         {loading ? (
           <>
             <LoadingSpinner size={size} />
-            Procesando...
+            Processing...
           </>
         ) : (
           <>
             <ProcessIcon size={size} />
-            Procesar
+            Process
           </>
         )}
       </button>
@@ -120,12 +120,12 @@ export function DownloadButton({
         {loading ? (
           <>
             <LoadingSpinner size={size} />
-            Cargando...
+            Loading...
           </>
         ) : (
           <>
             <MapViewIcon size={size} />
-            Ver trayectoria
+            View trajectory
           </>
         )}
       </button>
@@ -152,12 +152,12 @@ export function AuthorizeButton({
         {loading ? (
           <>
             <LoadingSpinner size={size} />
-            Autorizando...
+            Authorizing...
           </>
         ) : (
           <>
             <AuthorizeIcon size={size} />
-            Autorizar
+            Authorize
           </>
         )}
       </button>
@@ -184,12 +184,12 @@ export function ResetButton({
         {loading ? (
           <>
             <LoadingSpinner size={size} />
-            Reiniciando...
+            Resetting...
           </>
         ) : (
           <>
             <ResetIcon size={size} />
-            Reiniciar
+            Reset
           </>
         )}
       </button>
@@ -216,12 +216,12 @@ export function DeleteButton({
         {loading ? (
           <>
             <LoadingSpinner size={size} />
-            Eliminando...
+            Deleting...
           </>
         ) : (
           <>
             <DeleteIcon size={size} />
-            Eliminar
+            Delete
           </>
         )}
       </button>
@@ -258,7 +258,7 @@ const iconButtonSizeStyles: Record<ButtonSize, string> = {
 
 export function ProcessIconButton({ onClick, disabled, disabledTooltip, loading, size = 'md', className = '', 'aria-label': ariaLabel }: IconButtonProps) {
   // TASK-202: Show appropriate tooltip based on state
-  const tooltipContent = disabled ? (disabledTooltip || 'Procesando no disponible') : 'Procesar trayectoria'
+  const tooltipContent = disabled ? (disabledTooltip || 'Processing not available') : 'Process trajectory'
   
   return (
     <IconButtonTooltip content={tooltipContent} position="top">
@@ -277,7 +277,7 @@ export function ProcessIconButton({ onClick, disabled, disabledTooltip, loading,
 
 export function DownloadIconButton({ onClick, disabled, disabledTooltip, loading, size = 'md', className = '', 'aria-label': ariaLabel }: IconButtonProps) {
   // TASK-202/219: Show appropriate tooltip based on state - now opens trajectory map viewer
-  const tooltipContent = disabled ? (disabledTooltip || 'No hay trayectoria') : 'Ver trayectoria'
+  const tooltipContent = disabled ? (disabledTooltip || 'No trajectory available') : 'View trajectory'
   
   return (
     <IconButtonTooltip content={tooltipContent} position="top">
@@ -296,7 +296,7 @@ export function DownloadIconButton({ onClick, disabled, disabledTooltip, loading
 
 export function AuthorizeIconButton({ onClick, disabled, disabledTooltip, loading, size = 'md', className = '', 'aria-label': ariaLabel }: IconButtonProps) {
   // TASK-202: Show appropriate tooltip based on state
-  const tooltipContent = disabled ? (disabledTooltip || 'Autorización no disponible') : 'Solicitar autorización'
+  const tooltipContent = disabled ? (disabledTooltip || 'Authorization not available') : 'Request authorization'
   
   return (
     <IconButtonTooltip content={tooltipContent} position="top">
@@ -315,7 +315,7 @@ export function AuthorizeIconButton({ onClick, disabled, disabledTooltip, loadin
 
 export function ResetIconButton({ onClick, disabled, disabledTooltip, loading, size = 'md', className = '', 'aria-label': ariaLabel }: IconButtonProps) {
   // TASK-202: Show appropriate tooltip based on state
-  const tooltipContent = disabled ? (disabledTooltip || 'Reinicio no disponible') : 'Reiniciar plan'
+  const tooltipContent = disabled ? (disabledTooltip || 'Reset not available') : 'Reset plan'
   
   return (
     <IconButtonTooltip content={tooltipContent} position="top">
@@ -334,7 +334,7 @@ export function ResetIconButton({ onClick, disabled, disabledTooltip, loading, s
 
 export function DeleteIconButton({ onClick, disabled, disabledTooltip, loading, size = 'md', className = '', 'aria-label': ariaLabel }: IconButtonProps) {
   // TASK-202: Show appropriate tooltip based on state
-  const tooltipContent = disabled ? (disabledTooltip || 'Eliminación no disponible') : 'Eliminar plan'
+  const tooltipContent = disabled ? (disabledTooltip || 'Deletion not available') : 'Delete plan'
   
   return (
     <IconButtonTooltip content={tooltipContent} position="top">

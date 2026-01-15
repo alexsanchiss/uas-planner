@@ -184,7 +184,7 @@ export function SuccessToast({
  * TASK-176: Success feedback within existing UI elements
  */
 export function SuccessInline({
-  message = '¡Completado!',
+  message = 'Completed!',
   className = '',
 }: {
   message?: string

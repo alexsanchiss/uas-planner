@@ -24,10 +24,10 @@ export function ConfirmDialog({
   open,
   onClose,
   onConfirm,
-  title = 'Confirmar acción',
+  title = 'Confirm action',
   message,
-  confirmLabel = 'Confirmar',
-  cancelLabel = 'Cancelar',
+  confirmLabel = 'Confirm',
+  cancelLabel = 'Cancel',
   variant = 'danger',
   loading = false,
 }: ConfirmDialogProps) {

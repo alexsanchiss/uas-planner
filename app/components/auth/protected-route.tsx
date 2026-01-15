@@ -37,7 +37,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       <div className="flex items-center justify-center min-h-[50vh] bg-gray-900">
         <div className="flex flex-col items-center gap-4">
           <LoadingSpinner size="lg" />
-          <p className="text-gray-400 text-sm">Verificando autenticación...</p>
+          <p className="text-gray-400 text-sm">Verifying authentication...</p>
         </div>
       </div>
     )
@@ -49,7 +49,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       <div className="flex items-center justify-center min-h-[50vh] bg-gray-900">
         <div className="flex flex-col items-center gap-4">
           <LoadingSpinner size="lg" />
-          <p className="text-gray-400 text-sm">Redirigiendo al inicio de sesión...</p>
+          <p className="text-gray-400 text-sm">Redirecting to sign in...</p>
         </div>
       </div>
     )

@@ -88,66 +88,66 @@ const steps: StepDefinition[] = [
   { 
     id: 'select', 
     number: 1, 
-    label: 'Seleccionar', 
-    description: 'Elegir un plan de vuelo',
-    helpTitle: 'Seleccionar Plan',
-    helpDescription: 'Elige el plan de vuelo que deseas procesar de la lista de planes disponibles.',
+    label: 'Select', 
+    description: 'Choose a flight plan',
+    helpTitle: 'Select Plan',
+    helpDescription: 'Choose the flight plan you want to process from the list of available plans.',
     helpTips: [
-      'Los planes se organizan por carpetas',
-      'Puedes expandir una carpeta para ver sus planes',
-      'Haz clic en un plan para seleccionarlo',
+      'Plans are organized by folders',
+      'You can expand a folder to see its plans',
+      'Click on a plan to select it',
     ],
   },
   { 
     id: 'datetime', 
     number: 2, 
-    label: 'Fecha/Hora', 
-    description: 'Configurar fecha y hora',
-    helpTitle: 'Configurar Fecha y Hora',
-    helpDescription: 'Establece la fecha y hora programada para el vuelo. Esta información se usará para generar el U-Plan.',
+    label: 'Date/Time', 
+    description: 'Set date and time',
+    helpTitle: 'Set Date and Time',
+    helpDescription: 'Set the scheduled date and time for the flight. This information will be used to generate the U-Plan.',
     helpTips: [
-      'Selecciona una fecha y hora futura',
-      'La zona horaria se detecta automáticamente',
-      'Una vez procesado, no podrás cambiar la fecha',
+      'Select a future date and time',
+      'Timezone is detected automatically',
+      'Once processed, you cannot change the date',
     ],
   },
   { 
     id: 'process', 
     number: 3, 
-    label: 'Procesar', 
-    description: 'Generar trayectoria y U-Plan',
-    helpTitle: 'Procesar Plan',
-    helpDescription: 'Genera la trayectoria de vuelo y el documento U-Plan requerido para la autorización.',
+    label: 'Process', 
+    description: 'Generate trajectory and U-Plan',
+    helpTitle: 'Process Plan',
+    helpDescription: 'Generate the flight trajectory and the U-Plan document required for authorization.',
     helpTips: [
-      'Asegúrate de haber configurado la fecha/hora',
-      'El proceso puede tardar unos segundos',
-      'Recibirás un archivo CSV con la trayectoria',
+      'Make sure you have set the date/time',
+      'The process may take a few seconds',
+      'You will receive a CSV file with the trajectory',
     ],
   },
   { 
     id: 'geoawareness', 
     number: 4, 
-    label: 'Geoawareness', 
-    description: 'Verificar zonas geográficas',
-    helpTitle: 'Verificación Geoawareness',
-    helpDescription: 'Verifica que la trayectoria no atraviese zonas restringidas o de espacio aéreo controlado.',
+    label: 'GeoAwareness', 
+    description: 'Verify geographic zones',
+    helpTitle: 'GeoAwareness Verification',
+    helpDescription: 'Verify that the trajectory does not cross restricted areas or controlled airspace.',
     helpTips: [
-      'Las zonas prohibidas se muestran en rojo',
-      'Las zonas de advertencia en amarillo',
-      'Puedes ver el mapa con la trayectoria superpuesta',
+      'Prohibited zones are shown in red',
+      'Warning zones in yellow',
+      'You can view the map with the trajectory overlay',
     ],
   },
   { 
     id: 'authorize', 
     number: 5, 
-    label: 'Autorizar', 
-    description: 'Solicitar autorización FAS',
-    helpTitle: 'Solicitar Autorización',
-    helpDescription: 'Envía el U-Plan al sistema FAS para obtener la autorización de vuelo.',
+    label: 'Authorize', 
+    description: 'Request FAS authorization',
+    helpTitle: 'Request Authorization',
+    helpDescription: 'Submit the U-Plan to the FAS system to obtain flight authorization.',
     helpTips: [
-      'El FAS evaluará tu plan de vuelo',
-      'Recibirás una respuesta: aprobado o denegado',
-      'Si es denegado, revisa el mensaje de error',
+      'FAS will evaluate your flight plan',
+      'You will receive a response: approved or denied',
+      'If denied, review the error message',
     ],
   },
 ]
@@ -327,7 +327,7 @@ export function ProcessingWorkflow({
 function WorkflowStateIndicator({ state }: { state: WorkflowState }) {
   const stateConfig: Record<WorkflowState, { label: string; color: string; icon: React.ReactNode }> = {
     unprocessed: {
-      label: 'Sin procesar',
+      label: 'Unprocessed',
       color: 'bg-gray-100 text-gray-700 border-gray-300',
       icon: (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -336,7 +336,7 @@ function WorkflowStateIndicator({ state }: { state: WorkflowState }) {
       ),
     },
     processing: {
-      label: 'Procesando...',
+      label: 'Processing...',
       color: 'bg-amber-100 text-amber-700 border-amber-300',
       icon: (
         <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -346,7 +346,7 @@ function WorkflowStateIndicator({ state }: { state: WorkflowState }) {
       ),
     },
     processed: {
-      label: 'Procesado',
+      label: 'Processed',
       color: 'bg-blue-100 text-blue-700 border-blue-300',
       icon: (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -355,7 +355,7 @@ function WorkflowStateIndicator({ state }: { state: WorkflowState }) {
       ),
     },
     authorizing: {
-      label: 'Autorizando...',
+      label: 'Authorizing...',
       color: 'bg-purple-100 text-purple-700 border-purple-300',
       icon: (
         <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -365,7 +365,7 @@ function WorkflowStateIndicator({ state }: { state: WorkflowState }) {
       ),
     },
     authorized: {
-      label: 'Autorizado',
+      label: 'Authorized',
       color: 'bg-green-100 text-green-700 border-green-300',
       icon: (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -374,7 +374,7 @@ function WorkflowStateIndicator({ state }: { state: WorkflowState }) {
       ),
     },
     denied: {
-      label: 'Denegado',
+      label: 'Denied',
       color: 'bg-red-100 text-red-700 border-red-300',
       icon: (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

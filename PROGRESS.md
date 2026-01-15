@@ -426,6 +426,28 @@
 
 ---
 
+## Phase 9: Internationalization (i18n)
+
+### 9.1 English Translation (Default)
+| Task | Description | Status |
+|------|-------------|--------|
+| TASK-224 | Create i18n infrastructure (translations.ts, I18nContext.tsx) | ✅ |
+| TASK-225 | Add I18nProvider to app layout | ✅ |
+| TASK-226 | Translate FlightPlansUploader.tsx | ✅ |
+| TASK-227 | Translate FolderList.tsx and FolderCard.tsx | ✅ |
+| TASK-228 | Translate FlightPlanList.tsx and FlightPlanCard.tsx | ✅ |
+| TASK-229 | Translate StatusBadge.tsx and ProcessingWorkflow.tsx | ✅ |
+| TASK-230 | Translate ActionButtons.tsx | ✅ |
+| TASK-231 | Translate DateTimePicker.tsx and WaypointPreview.tsx | ✅ |
+| TASK-232 | Translate auth forms (login, signup, password-reset) | ✅ |
+| TASK-233 | Translate protected-route.tsx | ✅ |
+| TASK-234 | Translate confirm-dialog.tsx | ✅ |
+| TASK-235 | Translate FlightPlanCardEnhanced.tsx | ✅ |
+| TASK-236 | Translate success-animation.tsx | ✅ |
+| TASK-237 | Add language selector to settings page | ✅ |
+
+---
+
 ## Summary (Updated)
 
 | Phase | Total | Completed | In Progress | Blocked |
@@ -438,7 +460,8 @@
 | Phase 6: UI/UX | 50 | 50 | 0 | 0 |
 | Phase 7: Testing | 10 | 10 | 0 | 0 |
 | Phase 8: Post-Launch QA | 9 | 9 | 0 | 0 |
-| **TOTAL** | **223** | **223** | **0** | **0** |
+| Phase 9: Internationalization | 14 | 14 | 0 | 0 |
+| **TOTAL** | **237** | **237** | **0** | **0** |
 
 ---
 

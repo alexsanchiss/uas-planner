@@ -37,31 +37,31 @@ export function SignupForm({ onSignupSuccess }: SignupFormProps) {
 
     // Email validation
     if (!email) {
-      newErrors.email = 'El email es requerido'
+      newErrors.email = 'Email is required'
     } else if (!EMAIL_REGEX.test(email)) {
-      newErrors.email = 'Por favor, introduce un email válido'
+      newErrors.email = 'Please enter a valid email'
     }
 
     // Password strength validation
     if (!password) {
-      newErrors.password = 'La contraseña es requerida'
+      newErrors.password = 'Password is required'
     } else {
       const strengthErrors: string[] = []
-      if (!hasMinLength(password)) strengthErrors.push('al menos 8 caracteres')
-      if (!hasUppercase(password)) strengthErrors.push('una mayúscula')
-      if (!hasLowercase(password)) strengthErrors.push('una minúscula')
-      if (!hasNumber(password)) strengthErrors.push('un número')
+      if (!hasMinLength(password)) strengthErrors.push('at least 8 characters')
+      if (!hasUppercase(password)) strengthErrors.push('an uppercase letter')
+      if (!hasLowercase(password)) strengthErrors.push('a lowercase letter')
+      if (!hasNumber(password)) strengthErrors.push('a number')
       
       if (strengthErrors.length > 0) {
-        newErrors.password = `La contraseña debe contener: ${strengthErrors.join(', ')}`
+        newErrors.password = `Password must contain: ${strengthErrors.join(', ')}`
       }
     }
 
     // Password confirmation validation
     if (!confirmPassword) {
-      newErrors.confirmPassword = 'Por favor, confirma tu contraseña'
+      newErrors.confirmPassword = 'Please confirm your password'
     } else if (password !== confirmPassword) {
-      newErrors.confirmPassword = 'Las contraseñas no coinciden'
+      newErrors.confirmPassword = 'Passwords do not match'
     }
 
     setErrors(newErrors)
@@ -77,10 +77,10 @@ export function SignupForm({ onSignupSuccess }: SignupFormProps) {
     if (hasLowercase(password)) strength++
     if (hasNumber(password)) strength++
 
-    if (strength <= 1) return { level: 'weak', label: 'Débil', color: 'bg-red-500' }
-    if (strength <= 2) return { level: 'fair', label: 'Regular', color: 'bg-yellow-500' }
-    if (strength <= 3) return { level: 'good', label: 'Buena', color: 'bg-blue-500' }
-    return { level: 'strong', label: 'Fuerte', color: 'bg-green-500' }
+    if (strength <= 1) return { level: 'weak', label: 'Weak', color: 'bg-red-500' }
+    if (strength <= 2) return { level: 'fair', label: 'Fair', color: 'bg-yellow-500' }
+    if (strength <= 3) return { level: 'good', label: 'Good', color: 'bg-blue-500' }
+    return { level: 'strong', label: 'Strong', color: 'bg-green-500' }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -106,16 +106,16 @@ export function SignupForm({ onSignupSuccess }: SignupFormProps) {
         const data = await response.json()
         // Handle specific error messages
         if (response.status === 409) {
-          setErrors({ general: 'Este email ya está registrado. ¿Quizás quieres iniciar sesión?' })
+          setErrors({ general: 'This email is already registered. Perhaps you want to sign in?' })
         } else if (response.status === 400) {
-          setErrors({ general: data.error || 'Datos de registro inválidos' })
+          setErrors({ general: data.error || 'Invalid registration data' })
         } else {
-          setErrors({ general: data.error || 'Ocurrió un error durante el registro' })
+          setErrors({ general: data.error || 'An error occurred during registration' })
         }
       }
     } catch (error) {
       // Network error or server unavailable
-      setErrors({ general: 'Error de conexión. Por favor, verifica tu conexión a internet.' })
+      setErrors({ general: 'Connection error. Please check your internet connection.' })
     } finally {
       setIsLoading(false)
     }
@@ -152,7 +152,7 @@ export function SignupForm({ onSignupSuccess }: SignupFormProps) {
       <div className="space-y-1">
         <Input
           type="password"
-          placeholder="Contraseña"
+          placeholder="Password"
           value={password}
           onChange={(e) => {
             setPassword(e.target.value)
@@ -184,7 +184,7 @@ export function SignupForm({ onSignupSuccess }: SignupFormProps) {
       <div className="space-y-1">
         <Input
           type="password"
-          placeholder="Confirmar contraseña"
+          placeholder="Confirm password"
           value={confirmPassword}
           onChange={(e) => {
             setConfirmPassword(e.target.value)
@@ -205,10 +205,10 @@ export function SignupForm({ onSignupSuccess }: SignupFormProps) {
         {isLoading ? (
           <>
             <LoadingSpinner size="sm" />
-            <span>Registrando...</span>
+            <span>Registering...</span>
           </>
         ) : (
-          'Registrarse'
+          'Sign up'
         )}
       </Button>
     </form>

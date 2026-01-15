@@ -130,7 +130,7 @@ function LoadingSpinner() {
   return (
     <div className="flex flex-col items-center justify-center h-full gap-4">
       <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-      <p className="text-gray-600 dark:text-gray-400">Cargando trayectoria...</p>
+      <p className="text-[var(--text-secondary)]">Loading trajectory...</p>
     </div>
   )
 }
@@ -150,18 +150,24 @@ export function TrajectoryMapViewer({ planId, planName, onClose, className = '' 
       setError(null)
 
       try {
+        const token = localStorage.getItem('authToken')
+        const headers: Record<string, string> = {}
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`
+        }
+        
         // First get the plan to find csvResult
-        const planRes = await fetch(`/api/flightPlans/${planId}`)
-        if (!planRes.ok) throw new Error('Error al obtener plan')
+        const planRes = await fetch(`/api/flightPlans/${planId}`, { headers })
+        if (!planRes.ok) throw new Error('Error loading plan')
         
         const plan = await planRes.json()
         if (!plan.csvResult?.id) {
-          throw new Error('No hay trayectoria procesada')
+          throw new Error('No processed trajectory available')
         }
 
         // Fetch the CSV content
-        const csvRes = await fetch(`/api/csvResult/${plan.csvResult.id}`)
-        if (!csvRes.ok) throw new Error('Error al obtener CSV')
+        const csvRes = await fetch(`/api/csvResult/${plan.csvResult.id}`, { headers })
+        if (!csvRes.ok) throw new Error('Error loading CSV')
         
         const data = await csvRes.json()
         const content = data.content || data.csvContent || ''
@@ -169,12 +175,12 @@ export function TrajectoryMapViewer({ planId, planName, onClose, className = '' 
         
         const points = parseCSVToTrajectory(content)
         if (points.length === 0) {
-          throw new Error('CSV sin datos de trayectoria válidos')
+          throw new Error('No valid trajectory data in CSV')
         }
         
         setTrajectory(points)
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Error desconocido')
+        setError(err instanceof Error ? err.message : 'Unknown error')
       } finally {
         setLoading(false)
       }
@@ -220,39 +226,39 @@ export function TrajectoryMapViewer({ planId, planName, onClose, className = '' 
 
   return (
     <div className={`fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 ${className}`}>
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden">
+      <div className="bg-[var(--bg-primary)] rounded-2xl shadow-2xl w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border-primary)]">
           <div>
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-              Trayectoria: {planName || 'Sin nombre'}
+            <h2 className="text-xl font-bold text-[var(--text-primary)]">
+              Trajectory: {planName || 'Unnamed'}
             </h2>
             {trajectory.length > 0 && (
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                {trajectory.length} puntos · 
-                {trajectory[0]?.alt && ` ${Math.round(trajectory[0].alt)}m alt`}
+              <p className="text-sm text-[var(--text-secondary)] mt-1">
+                {trajectory.length} points · 
+                {trajectory[0]?.alt && ` ${Math.round(trajectory[0].alt)}m altitude`}
               </p>
             )}
           </div>
           
           <div className="flex items-center gap-3">
             {/* Toggle labels */}
-            <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+            <label className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
               <input
                 type="checkbox"
                 checked={showLabels}
                 onChange={(e) => setShowLabels(e.target.checked)}
                 className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               />
-              Mostrar números
+              Show numbers
             </label>
 
             {/* Download button */}
             <button
               onClick={handleDownload}
               disabled={!csvContent}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Descargar CSV"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--bg-tertiary)] hover:bg-[var(--bg-secondary)] text-[var(--text-primary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Download CSV"
             >
               <DownloadIcon />
               <span className="hidden sm:inline">CSV</span>
@@ -261,8 +267,8 @@ export function TrajectoryMapViewer({ planId, planName, onClose, className = '' 
             {/* Close button */}
             <button
               onClick={onClose}
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors"
-              title="Cerrar"
+              className="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] transition-colors"
+              title="Close"
             >
               <CloseIcon />
             </button>
@@ -283,9 +289,9 @@ export function TrajectoryMapViewer({ planId, planName, onClose, className = '' 
               <p className="text-red-600 dark:text-red-400 font-medium">{error}</p>
               <button
                 onClick={onClose}
-                className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
+                className="px-4 py-2 rounded-lg bg-[var(--bg-tertiary)] hover:bg-[var(--bg-secondary)] text-[var(--text-primary)]"
               >
-                Cerrar
+                Close
               </button>
             </div>
           ) : (
@@ -330,12 +336,12 @@ export function TrajectoryMapViewer({ planId, planName, onClose, className = '' 
                   <Popup>
                     <div className="text-sm">
                       <p className="font-bold">
-                        {idx === 0 ? '🛫 Despegue' : idx === trajectory.length - 1 ? '🛬 Aterrizaje' : `Punto ${idx + 1}`}
+                        {idx === 0 ? '🛫 Takeoff' : idx === trajectory.length - 1 ? '🛬 Landing' : `Point ${idx + 1}`}
                       </p>
                       <p>Lat: {point.lat.toFixed(6)}</p>
                       <p>Lng: {point.lng.toFixed(6)}</p>
                       {point.alt !== undefined && <p>Alt: {point.alt.toFixed(1)}m</p>}
-                      {point.speed !== undefined && <p>Vel: {point.speed.toFixed(1)}m/s</p>}
+                      {point.speed !== undefined && <p>Speed: {point.speed.toFixed(1)}m/s</p>}
                       {point.time !== undefined && <p>T: {point.time.toFixed(1)}s</p>}
                     </div>
                   </Popup>
@@ -347,25 +353,25 @@ export function TrajectoryMapViewer({ planId, planName, onClose, className = '' 
 
         {/* Stats footer */}
         {!loading && !error && trajectory.length > 0 && (
-          <div className="px-6 py-3 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700">
+          <div className="px-6 py-3 bg-[var(--bg-secondary)] border-t border-[var(--border-primary)]">
             <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-6 text-gray-600 dark:text-gray-400">
+              <div className="flex items-center gap-6 text-[var(--text-secondary)]">
                 <span className="flex items-center gap-2">
                   <span className="w-3 h-3 bg-green-500 rounded-full" />
-                  Despegue
+                  Takeoff
                 </span>
                 <span className="flex items-center gap-2">
                   <span className="w-3 h-3 bg-blue-500 rounded-full" />
-                  Trayectoria
+                  Trajectory
                 </span>
                 <span className="flex items-center gap-2">
                   <span className="w-3 h-3 bg-red-500 rounded-full" />
-                  Aterrizaje
+                  Landing
                 </span>
               </div>
               {selectedPoint && (
-                <div className="text-gray-900 dark:text-white">
-                  Punto seleccionado: ({selectedPoint.lat.toFixed(4)}, {selectedPoint.lng.toFixed(4)})
+                <div className="text-[var(--text-primary)]">
+                  Selected point: ({selectedPoint.lat.toFixed(4)}, {selectedPoint.lng.toFixed(4)})
                 </div>
               )}
             </div>

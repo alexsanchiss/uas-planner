@@ -82,7 +82,7 @@ export interface FlightPlanCardProps {
 function formatDate(date: string | Date | null | undefined): string {
   if (!date) return '—'
   const d = typeof date === 'string' ? new Date(date) : date
-  return d.toLocaleString('es-ES', {
+  return d.toLocaleString('en-US', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -193,6 +193,7 @@ export function FlightPlanCard({
   }, [plan.name, isEditing])
 
   // TASK-089-095: Button state management with tooltips
+  // Fixed: Also disable process when status is 'en proceso' (currently processing)
   const canProcess = !!plan.scheduledAt && plan.status === 'sin procesar'
   const canDownload = !!plan.csvResult
   const canAuthorize = plan.status === 'procesado' && plan.authorizationStatus === 'sin autorización'
@@ -244,10 +245,10 @@ export function FlightPlanCard({
   const validateName = (name: string): string | null => {
     const trimmedName = name.trim()
     if (!trimmedName) {
-      return 'El nombre no puede estar vacío'
+      return 'Name cannot be empty'
     }
     if (trimmedName.length > 100) {
-      return 'El nombre no puede exceder 100 caracteres'
+      return 'Name cannot exceed 100 characters'
     }
     return null
   }
@@ -316,7 +317,7 @@ export function FlightPlanCard({
         }
       }}
       aria-pressed={isSelected}
-      aria-label={`Seleccionar plan ${plan.name}`}
+      aria-label={`Select plan ${plan.name}`}
       draggable={draggable && !isEditing}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
@@ -331,7 +332,7 @@ export function FlightPlanCard({
       )}
       {/* TASK-222: Drag handle indicator */}
       {draggable && !isEditing && (
-        <div className="absolute left-1 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 opacity-50 hidden sm:block" title="Arrastrar para mover">
+        <div className="absolute left-1 top-1/2 -translate-y-1/2 text-[var(--text-muted)] opacity-50 hidden sm:block" title="Drag to move">
           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
             <path d="M7 2a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 2zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 8zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 14zm6-8a2 2 0 1 0-.001-4.001A2 2 0 0 0 13 6zm0 2a2 2 0 1 0 .001 4.001A2 2 0 0 0 13 8zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 13 14z" />
           </svg>
@@ -367,14 +368,14 @@ export function FlightPlanCard({
                   disabled={loadingStates.renaming || !editName.trim()}
                   className="flex-1 sm:flex-none px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                  {loadingStates.renaming ? '...' : 'Guardar'}
+                  {loadingStates.renaming ? '...' : 'Save'}
                 </button>
                 <button
                   type="button"
                   onClick={handleRenameCancel}
-                  className="flex-1 sm:flex-none px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-600 rounded-md hover:bg-gray-200 dark:hover:bg-gray-500 transition-colors"
+                  className="flex-1 sm:flex-none px-3 py-1.5 text-sm font-medium text-[var(--text-secondary)] bg-[var(--bg-tertiary)] rounded-md hover:bg-[var(--bg-hover)] transition-colors"
                 >
-                  Cancelar
+                  Cancel
                 </button>
               </div>
             </div>
@@ -410,8 +411,8 @@ export function FlightPlanCard({
         </div>
 
         {plan.scheduledAt && (
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            <span className="font-medium">Programado:</span> {formatDate(plan.scheduledAt)}
+          <p className="text-xs text-[var(--text-secondary)]">
+            <span className="font-medium">Scheduled:</span> {formatDate(plan.scheduledAt)}
           </p>
         )}
       </div>
@@ -431,33 +432,33 @@ export function FlightPlanCard({
           disabled={!canProcess || loadingStates.processing}
           disabledTooltip={loadingStates.processing ? 'Processing in progress' : getProcessDisabledTooltip(plan)}
           loading={loadingStates.processing}
-          aria-label="Procesar plan"
+          aria-label="Process plan"
         />
         <DownloadIconButton
           onClick={() => onDownload?.(plan.id)}
           disabled={!canDownload}
           disabledTooltip={getDownloadDisabledTooltip(plan)}
           loading={loadingStates.downloading}
-          aria-label="Ver trayectoria"
+          aria-label="View trajectory"
         />
         <AuthorizeIconButton
           onClick={() => onAuthorize?.(plan.id)}
           disabled={!canAuthorize}
           disabledTooltip={getAuthorizeDisabledTooltip(plan)}
           loading={loadingStates.authorizing}
-          aria-label="Solicitar autorización"
+          aria-label="Request authorization"
         />
         <ResetIconButton
           onClick={() => onReset?.(plan.id)}
           disabled={!canReset}
           disabledTooltip={getResetDisabledTooltip(plan)}
           loading={loadingStates.resetting}
-          aria-label="Reiniciar plan"
+          aria-label="Reset plan"
         />
         <DeleteIconButton
           onClick={() => onDelete?.(plan.id)}
           loading={loadingStates.deleting}
-          aria-label="Eliminar plan"
+          aria-label="Delete plan"
         />
       </div>
     </div>

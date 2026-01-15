@@ -135,7 +135,7 @@ export function FolderCard({
     const trimmedName = name.trim()
     
     if (!trimmedName) {
-      return 'El nombre de la carpeta no puede estar vacío'
+      return 'Folder name cannot be empty'
     }
     
     // Check uniqueness (exclude current folder's name)
@@ -143,7 +143,7 @@ export function FolderCard({
       n => n.toLowerCase() !== folder.name.toLowerCase()
     )
     if (otherFolderNames.some(n => n.toLowerCase() === trimmedName.toLowerCase())) {
-      return 'Ya existe una carpeta con este nombre'
+      return 'A folder with this name already exists'
     }
     
     return null
@@ -306,7 +306,7 @@ export function FolderCard({
         {/* TASK-222: Drop indicator */}
         {isDragOver && (
           <span className="text-xs font-medium text-blue-600 dark:text-blue-400 animate-pulse">
-            Soltar aquí
+            Drop here
           </span>
         )}
 
@@ -337,14 +337,14 @@ export function FolderCard({
                   className="flex-1 sm:flex-none px-3 py-1.5 sm:py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={loadingStates.renaming || !editName.trim()}
                 >
-                  {loadingStates.renaming ? '...' : 'Guardar'}
+                  {loadingStates.renaming ? '...' : 'Save'}
                 </button>
                 <button
                   type="button"
                   onClick={handleRenameCancel}
                   className="flex-1 sm:flex-none px-3 py-1.5 sm:py-1 text-xs font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-600 rounded hover:bg-gray-200 dark:hover:bg-gray-500"
                 >
-                  Cancelar
+                  Cancel
                 </button>
               </div>
             </div>
@@ -365,7 +365,7 @@ export function FolderCard({
                 {folder.name}
               </h3>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                {planCount} {planCount === 1 ? 'plan de vuelo' : 'planes de vuelo'}
+                {planCount} {planCount === 1 ? 'flight plan' : 'flight plans'}
               </p>
             </div>
 
@@ -373,7 +373,7 @@ export function FolderCard({
               onClick={handleDeleteClick}
               disabled={loadingStates.deleting}
               className="p-1.5 sm:p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              aria-label="Eliminar carpeta"
+              aria-label="Delete folder"
             >
               {loadingStates.deleting ? (
                 <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -406,7 +406,7 @@ export function FolderCard({
             onDragStart={onDragStart}
             onDragEnd={onDragEnd}
             loadingPlanIds={loadingPlanIds}
-            emptyMessage="Esta carpeta está vacía"
+            emptyMessage="This folder is empty"
           />
         </div>
       )}
@@ -416,14 +416,14 @@ export function FolderCard({
         open={showDeleteConfirm}
         onClose={handleDeleteCancel}
         onConfirm={handleDeleteConfirm}
-        title="Eliminar carpeta"
-        message={`¿Estás seguro de que quieres eliminar la carpeta "${folder.name}"? ${
+        title="Delete folder"
+        message={`Are you sure you want to delete the folder "${folder.name}"? ${
           planCount > 0
-            ? `Esta acción eliminará también ${planCount} ${planCount === 1 ? 'plan de vuelo' : 'planes de vuelo'}.`
+            ? `This action will also delete ${planCount} ${planCount === 1 ? 'flight plan' : 'flight plans'}.`
             : ''
-        } Esta acción no se puede deshacer.`}
-        confirmLabel="Eliminar"
-        cancelLabel="Cancelar"
+        } This action cannot be undone.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
         variant="danger"
         loading={loadingStates.deleting}
       />
