@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, DragEvent } from 'react'
 import { FlightPlanList, type FlightPlanListProps } from './FlightPlanList'
-import { type FlightPlan } from './FlightPlanCard'
+import { type FlightPlan, type FlightPlanDragData, FLIGHT_PLAN_DRAG_TYPE } from './FlightPlanCard'
 import { ConfirmDialog } from '../ui/confirm-dialog'
 
 export interface Folder {
@@ -29,6 +29,14 @@ export interface FolderCardProps {
   selectedPlanId?: string | null
   /** TASK-221: Callback for renaming a plan */
   onRenamePlan?: (planId: string, newName: string) => void
+  /** TASK-222: Enable drag-and-drop for plans */
+  draggable?: boolean
+  /** TASK-222: Called when drag starts on a plan */
+  onDragStart?: (e: DragEvent<HTMLDivElement>, data: FlightPlanDragData) => void
+  /** TASK-222: Called when drag ends on a plan */
+  onDragEnd?: (e: DragEvent<HTMLDivElement>) => void
+  /** TASK-222: Called when a plan is dropped onto this folder */
+  onDropPlan?: (planId: string, targetFolderId: string) => void
   loadingPlanIds?: FlightPlanListProps['loadingPlanIds']
   loadingStates?: {
     renaming?: boolean
@@ -81,6 +89,10 @@ export function FolderCard({
   onSelectPlan,
   selectedPlanId,
   onRenamePlan,
+  draggable = false,
+  onDragStart,
+  onDragEnd,
+  onDropPlan,
   loadingPlanIds,
   loadingStates = {},
   className = '',
@@ -90,6 +102,7 @@ export function FolderCard({
   const [editName, setEditName] = useState(folder.name)
   const [validationError, setValidationError] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [isDragOver, setIsDragOver] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   // Focus input when entering edit mode
@@ -191,13 +204,91 @@ export function FolderCard({
     setIsEditing(true)
   }
 
+  // TASK-222: Handle drag over
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    
+    // Only allow drops from flight plans
+    if (!e.dataTransfer.types.includes(FLIGHT_PLAN_DRAG_TYPE)) {
+      return
+    }
+    
+    e.dataTransfer.dropEffect = 'move'
+    setIsDragOver(true)
+  }
+
+  // TASK-222: Handle drag enter
+  const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    
+    if (!e.dataTransfer.types.includes(FLIGHT_PLAN_DRAG_TYPE)) {
+      return
+    }
+    
+    setIsDragOver(true)
+  }
+
+  // TASK-222: Handle drag leave
+  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    
+    // Only set isDragOver to false if we're leaving the folder card entirely
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = e.clientX
+    const y = e.clientY
+    
+    if (x < rect.left || x >= rect.right || y < rect.top || y >= rect.bottom) {
+      setIsDragOver(false)
+    }
+  }
+
+  // TASK-222: Handle drop
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    setIsDragOver(false)
+    
+    const dragDataStr = e.dataTransfer.getData(FLIGHT_PLAN_DRAG_TYPE)
+    if (!dragDataStr) return
+    
+    try {
+      const dragData: FlightPlanDragData = JSON.parse(dragDataStr)
+      
+      // Don't do anything if dropping in the same folder
+      if (dragData.sourceFolderId === folder.id) {
+        return
+      }
+      
+      // Call the drop handler
+      onDropPlan?.(dragData.planId, folder.id)
+      
+      // Expand the folder to show the new plan
+      setExpanded(true)
+    } catch (err) {
+      console.error('Error parsing drag data:', err)
+    }
+  }
+
   const planCount = folder.flightPlans.length
 
   return (
-    <div className={`rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm ${className}`}>
+    <div 
+      className={`rounded-lg border bg-white dark:bg-gray-800 shadow-sm transition-all ${className} ${
+        isDragOver
+          ? 'border-blue-500 dark:border-blue-400 border-2 bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-500/30'
+          : 'border-gray-200 dark:border-gray-700'
+      }`}
+      onDragOver={handleDragOver}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       {/* Folder header */}
       <div
-        className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+        className={`flex items-center gap-2 sm:gap-3 p-3 sm:p-4 cursor-pointer transition-colors ${
+          isDragOver
+            ? 'bg-blue-100 dark:bg-blue-800/30'
+            : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
+        }`}
         onClick={handleToggle}
         role="button"
         aria-expanded={expanded}
@@ -211,6 +302,13 @@ export function FolderCard({
       >
         <ChevronIcon expanded={expanded} />
         <FolderIcon />
+        
+        {/* TASK-222: Drop indicator */}
+        {isDragOver && (
+          <span className="text-xs font-medium text-blue-600 dark:text-blue-400 animate-pulse">
+            Soltar aquí
+          </span>
+        )}
 
         {isEditing ? (
           <form onSubmit={handleRenameSubmit} className="flex-1 flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
@@ -295,6 +393,7 @@ export function FolderCard({
         <div className="border-t border-gray-200 dark:border-gray-700 p-3 sm:p-4 bg-gray-50 dark:bg-gray-900/50">
           <FlightPlanList
             plans={folder.flightPlans}
+            folderId={folder.id}
             onProcess={onProcessPlan}
             onDownload={onDownloadPlan}
             onAuthorize={onAuthorizePlan}
@@ -303,6 +402,9 @@ export function FolderCard({
             onSelectPlan={onSelectPlan}
             selectedPlanId={selectedPlanId}
             onRenamePlan={onRenamePlan}
+            draggable={draggable}
+            onDragStart={onDragStart}
+            onDragEnd={onDragEnd}
             loadingPlanIds={loadingPlanIds}
             emptyMessage="Esta carpeta está vacía"
           />

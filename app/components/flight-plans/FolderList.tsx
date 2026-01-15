@@ -1,6 +1,7 @@
-import React, { useState } from 'react'
+import React, { useState, DragEvent } from 'react'
 import { FolderCard, type Folder, type FolderCardProps } from './FolderCard'
 import { type FlightPlanListProps } from './FlightPlanList'
+import { type FlightPlanDragData } from './FlightPlanCard'
 
 export interface FolderListProps {
   folders: Folder[]
@@ -18,6 +19,14 @@ export interface FolderListProps {
   selectedPlanId?: string | null
   /** TASK-221: Callback for renaming a plan */
   onRenamePlan?: (planId: string, newName: string) => void
+  /** TASK-222: Enable drag-and-drop for plans */
+  draggable?: boolean
+  /** TASK-222: Called when drag starts on a plan */
+  onDragStart?: (e: DragEvent<HTMLDivElement>, data: FlightPlanDragData) => void
+  /** TASK-222: Called when drag ends on a plan */
+  onDragEnd?: (e: DragEvent<HTMLDivElement>) => void
+  /** TASK-222: Called when a plan is dropped onto a folder */
+  onDropPlan?: (planId: string, targetFolderId: string | null) => void
   loadingPlanIds?: FlightPlanListProps['loadingPlanIds']
   loadingFolderIds?: {
     renaming?: Set<string>
@@ -57,6 +66,10 @@ export function FolderList({
   onSelectPlan,
   selectedPlanId,
   onRenamePlan,
+  draggable = false,
+  onDragStart,
+  onDragEnd,
+  onDropPlan,
   loadingPlanIds,
   loadingFolderIds = {},
   isCreating = false,
@@ -181,6 +194,10 @@ export function FolderList({
                 onSelectPlan={onSelectPlan}
                 selectedPlanId={selectedPlanId}
                 onRenamePlan={onRenamePlan}
+                draggable={draggable}
+                onDragStart={onDragStart}
+                onDragEnd={onDragEnd}
+                onDropPlan={onDropPlan}
                 loadingPlanIds={loadingPlanIds}
                 loadingStates={folderLoadingStates}
               />
