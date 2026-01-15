@@ -35,20 +35,38 @@ function TooltipWrapper({ tooltip, disabled, children }: TooltipWrapperProps) {
   )
 }
 
+/**
+ * TASK-218: Button size variants for touch-friendly buttons
+ * sm: compact for dense UIs (min 36px touch target)
+ * md: default balanced size (min 40px touch target)
+ * lg: large touch-friendly buttons (min 48px touch target)
+ */
+type ButtonSize = 'sm' | 'md' | 'lg'
+
 interface ActionButtonProps {
   onClick?: () => void
   disabled?: boolean
   disabledTooltip?: string
   loading?: boolean
   className?: string
+  /** TASK-218: Button size - sm, md (default), or lg for touch-friendly */
+  size?: ButtonSize
   children: React.ReactNode
 }
 
 /**
  * TASK-191: Button styles using CSS custom properties from themes.css
+ * TASK-218: Updated with larger default sizes for better touch targets
  * All buttons now use the unified color scheme for consistent theming
  */
-const baseButtonStyles = 'inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed btn-interactive disabled-transition'
+const baseButtonStyles = 'inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed btn-interactive disabled-transition'
+
+/** TASK-218: Size-specific styles for full buttons */
+const buttonSizeStyles: Record<ButtonSize, string> = {
+  sm: 'px-3 py-1.5 text-sm gap-1.5',
+  md: 'px-4 py-2.5 text-sm gap-2',
+  lg: 'px-5 py-3 text-base gap-2',
+}
 
 // Process Button - Primary/Blue theme (uses --btn-primary-*)
 export function ProcessButton({ 
@@ -56,6 +74,7 @@ export function ProcessButton({
   disabled, 
   disabledTooltip = 'Select date/time first',
   loading,
+  size = 'md',
   className = '' 
 }: Omit<ActionButtonProps, 'children'>) {
   return (
@@ -63,16 +82,16 @@ export function ProcessButton({
       <button
         onClick={onClick}
         disabled={disabled || loading}
-        className={`${baseButtonStyles} btn-primary ${className}`}
+        className={`${baseButtonStyles} ${buttonSizeStyles[size]} btn-primary ${className}`}
       >
         {loading ? (
           <>
-            <LoadingSpinner />
+            <LoadingSpinner size={size} />
             Procesando...
           </>
         ) : (
           <>
-            <ProcessIcon />
+            <ProcessIcon size={size} />
             Procesar
           </>
         )}
@@ -87,6 +106,7 @@ export function DownloadButton({
   disabled, 
   disabledTooltip = 'No trajectory available',
   loading,
+  size = 'md',
   className = '' 
 }: Omit<ActionButtonProps, 'children'>) {
   return (
@@ -94,16 +114,16 @@ export function DownloadButton({
       <button
         onClick={onClick}
         disabled={disabled || loading}
-        className={`${baseButtonStyles} btn-success ${className}`}
+        className={`${baseButtonStyles} ${buttonSizeStyles[size]} btn-success ${className}`}
       >
         {loading ? (
           <>
-            <LoadingSpinner />
+            <LoadingSpinner size={size} />
             Descargando...
           </>
         ) : (
           <>
-            <DownloadIcon />
+            <DownloadIcon size={size} />
             Descargar
           </>
         )}
@@ -118,6 +138,7 @@ export function AuthorizeButton({
   disabled, 
   disabledTooltip = 'Process trajectory first',
   loading,
+  size = 'md',
   className = '' 
 }: Omit<ActionButtonProps, 'children'>) {
   return (
@@ -125,16 +146,16 @@ export function AuthorizeButton({
       <button
         onClick={onClick}
         disabled={disabled || loading}
-        className={`${baseButtonStyles} btn-warning ${className}`}
+        className={`${baseButtonStyles} ${buttonSizeStyles[size]} btn-warning ${className}`}
       >
         {loading ? (
           <>
-            <LoadingSpinner />
+            <LoadingSpinner size={size} />
             Autorizando...
           </>
         ) : (
           <>
-            <AuthorizeIcon />
+            <AuthorizeIcon size={size} />
             Autorizar
           </>
         )}
@@ -149,6 +170,7 @@ export function ResetButton({
   disabled, 
   disabledTooltip = 'Nothing to reset',
   loading,
+  size = 'md',
   className = '' 
 }: Omit<ActionButtonProps, 'children'>) {
   return (
@@ -156,16 +178,16 @@ export function ResetButton({
       <button
         onClick={onClick}
         disabled={disabled || loading}
-        className={`${baseButtonStyles} btn-secondary ${className}`}
+        className={`${baseButtonStyles} ${buttonSizeStyles[size]} btn-secondary ${className}`}
       >
         {loading ? (
           <>
-            <LoadingSpinner />
+            <LoadingSpinner size={size} />
             Reiniciando...
           </>
         ) : (
           <>
-            <ResetIcon />
+            <ResetIcon size={size} />
             Reiniciar
           </>
         )}
@@ -180,6 +202,7 @@ export function DeleteButton({
   disabled, 
   disabledTooltip,
   loading,
+  size = 'md',
   className = '' 
 }: Omit<ActionButtonProps, 'children'>) {
   return (
@@ -187,16 +210,16 @@ export function DeleteButton({
       <button
         onClick={onClick}
         disabled={disabled || loading}
-        className={`${baseButtonStyles} btn-danger ${className}`}
+        className={`${baseButtonStyles} ${buttonSizeStyles[size]} btn-danger ${className}`}
       >
         {loading ? (
           <>
-            <LoadingSpinner />
+            <LoadingSpinner size={size} />
             Eliminando...
           </>
         ) : (
           <>
-            <DeleteIcon />
+            <DeleteIcon size={size} />
             Eliminar
           </>
         )}
@@ -205,24 +228,34 @@ export function DeleteButton({
   )
 }
 
-// Icon Button variants (smaller, icon-only)
+// Icon Button variants (touch-friendly icon-only buttons)
 interface IconButtonProps {
   onClick?: () => void
   disabled?: boolean
   disabledTooltip?: string
   loading?: boolean
   className?: string
+  /** TASK-218: Icon button size - sm, md (default), or lg for touch-friendly */
+  size?: ButtonSize
   'aria-label': string
 }
 
 /**
  * TASK-191: Icon button styles using theme CSS variables
  * TASK-202: Icon buttons now always show tooltips on hover
+ * TASK-218: Updated with larger sizes for better touch targets (min 44px recommended)
  * Uses semantic color tokens for consistent theming
  */
-const iconButtonStyles = 'inline-flex items-center justify-center p-2 rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed btn-icon-interactive disabled-transition'
+const iconButtonBaseStyles = 'inline-flex items-center justify-center rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed btn-icon-interactive disabled-transition'
 
-export function ProcessIconButton({ onClick, disabled, disabledTooltip, loading, className = '', 'aria-label': ariaLabel }: IconButtonProps) {
+/** TASK-218: Size-specific styles for icon buttons - ensures minimum touch target */
+const iconButtonSizeStyles: Record<ButtonSize, string> = {
+  sm: 'p-2 min-w-[36px] min-h-[36px]',      // 36px touch target
+  md: 'p-2.5 min-w-[44px] min-h-[44px]',    // 44px touch target (recommended minimum)
+  lg: 'p-3 min-w-[52px] min-h-[52px]',      // 52px touch target (extra large)
+}
+
+export function ProcessIconButton({ onClick, disabled, disabledTooltip, loading, size = 'md', className = '', 'aria-label': ariaLabel }: IconButtonProps) {
   // TASK-202: Show appropriate tooltip based on state
   const tooltipContent = disabled ? (disabledTooltip || 'Procesando no disponible') : 'Procesar trayectoria'
   
@@ -233,15 +266,15 @@ export function ProcessIconButton({ onClick, disabled, disabledTooltip, loading,
         disabled={disabled || loading}
         aria-label={ariaLabel}
         style={{ color: 'var(--color-primary)' }}
-        className={`${iconButtonStyles} hover:bg-[var(--color-primary-light)] focus:ring-[var(--color-primary)] disabled:opacity-50 ${className}`}
+        className={`${iconButtonBaseStyles} ${iconButtonSizeStyles[size]} hover:bg-[var(--color-primary-light)] focus:ring-[var(--color-primary)] disabled:opacity-50 ${className}`}
       >
-        {loading ? <LoadingSpinner /> : <ProcessIcon />}
+        {loading ? <LoadingSpinner size={size} /> : <ProcessIcon size={size} />}
       </button>
     </IconButtonTooltip>
   )
 }
 
-export function DownloadIconButton({ onClick, disabled, disabledTooltip, loading, className = '', 'aria-label': ariaLabel }: IconButtonProps) {
+export function DownloadIconButton({ onClick, disabled, disabledTooltip, loading, size = 'md', className = '', 'aria-label': ariaLabel }: IconButtonProps) {
   // TASK-202: Show appropriate tooltip based on state
   const tooltipContent = disabled ? (disabledTooltip || 'Descarga no disponible') : 'Descargar CSV'
   
@@ -252,15 +285,15 @@ export function DownloadIconButton({ onClick, disabled, disabledTooltip, loading
         disabled={disabled || loading}
         aria-label={ariaLabel}
         style={{ color: 'var(--status-success)' }}
-        className={`${iconButtonStyles} hover:bg-[var(--status-success-bg)] focus:ring-[var(--status-success)] disabled:opacity-50 ${className}`}
+        className={`${iconButtonBaseStyles} ${iconButtonSizeStyles[size]} hover:bg-[var(--status-success-bg)] focus:ring-[var(--status-success)] disabled:opacity-50 ${className}`}
       >
-        {loading ? <LoadingSpinner /> : <DownloadIcon />}
+        {loading ? <LoadingSpinner size={size} /> : <DownloadIcon size={size} />}
       </button>
     </IconButtonTooltip>
   )
 }
 
-export function AuthorizeIconButton({ onClick, disabled, disabledTooltip, loading, className = '', 'aria-label': ariaLabel }: IconButtonProps) {
+export function AuthorizeIconButton({ onClick, disabled, disabledTooltip, loading, size = 'md', className = '', 'aria-label': ariaLabel }: IconButtonProps) {
   // TASK-202: Show appropriate tooltip based on state
   const tooltipContent = disabled ? (disabledTooltip || 'Autorización no disponible') : 'Solicitar autorización'
   
@@ -271,15 +304,15 @@ export function AuthorizeIconButton({ onClick, disabled, disabledTooltip, loadin
         disabled={disabled || loading}
         aria-label={ariaLabel}
         style={{ color: 'var(--status-warning)' }}
-        className={`${iconButtonStyles} hover:bg-[var(--status-warning-bg)] focus:ring-[var(--status-warning)] disabled:opacity-50 ${className}`}
+        className={`${iconButtonBaseStyles} ${iconButtonSizeStyles[size]} hover:bg-[var(--status-warning-bg)] focus:ring-[var(--status-warning)] disabled:opacity-50 ${className}`}
       >
-        {loading ? <LoadingSpinner /> : <AuthorizeIcon />}
+        {loading ? <LoadingSpinner size={size} /> : <AuthorizeIcon size={size} />}
       </button>
     </IconButtonTooltip>
   )
 }
 
-export function ResetIconButton({ onClick, disabled, disabledTooltip, loading, className = '', 'aria-label': ariaLabel }: IconButtonProps) {
+export function ResetIconButton({ onClick, disabled, disabledTooltip, loading, size = 'md', className = '', 'aria-label': ariaLabel }: IconButtonProps) {
   // TASK-202: Show appropriate tooltip based on state
   const tooltipContent = disabled ? (disabledTooltip || 'Reinicio no disponible') : 'Reiniciar plan'
   
@@ -290,15 +323,15 @@ export function ResetIconButton({ onClick, disabled, disabledTooltip, loading, c
         disabled={disabled || loading}
         aria-label={ariaLabel}
         style={{ color: 'var(--color-secondary)' }}
-        className={`${iconButtonStyles} hover:bg-[var(--color-secondary-light)] focus:ring-[var(--color-secondary)] disabled:opacity-50 ${className}`}
+        className={`${iconButtonBaseStyles} ${iconButtonSizeStyles[size]} hover:bg-[var(--color-secondary-light)] focus:ring-[var(--color-secondary)] disabled:opacity-50 ${className}`}
       >
-        {loading ? <LoadingSpinner /> : <ResetIcon />}
+        {loading ? <LoadingSpinner size={size} /> : <ResetIcon size={size} />}
       </button>
     </IconButtonTooltip>
   )
 }
 
-export function DeleteIconButton({ onClick, disabled, disabledTooltip, loading, className = '', 'aria-label': ariaLabel }: IconButtonProps) {
+export function DeleteIconButton({ onClick, disabled, disabledTooltip, loading, size = 'md', className = '', 'aria-label': ariaLabel }: IconButtonProps) {
   // TASK-202: Show appropriate tooltip based on state
   const tooltipContent = disabled ? (disabledTooltip || 'Eliminación no disponible') : 'Eliminar plan'
   
@@ -309,59 +342,71 @@ export function DeleteIconButton({ onClick, disabled, disabledTooltip, loading, 
         disabled={disabled || loading}
         aria-label={ariaLabel}
         style={{ color: 'var(--status-error)' }}
-        className={`${iconButtonStyles} hover:bg-[var(--status-error-bg)] focus:ring-[var(--status-error)] disabled:opacity-50 ${className}`}
+        className={`${iconButtonBaseStyles} ${iconButtonSizeStyles[size]} hover:bg-[var(--status-error-bg)] focus:ring-[var(--status-error)] disabled:opacity-50 ${className}`}
       >
-        {loading ? <LoadingSpinner /> : <DeleteIcon />}
+        {loading ? <LoadingSpinner size={size} /> : <DeleteIcon size={size} />}
       </button>
     </IconButtonTooltip>
   )
 }
 
-// Icons
-function ProcessIcon() {
+// Icons with size support
+/** TASK-218: Icon size classes based on button size */
+const iconSizeClasses: Record<ButtonSize, string> = {
+  sm: 'w-4 h-4',
+  md: 'w-5 h-5',
+  lg: 'w-6 h-6',
+}
+
+interface IconProps {
+  size?: ButtonSize
+}
+
+function ProcessIcon({ size = 'md' }: IconProps) {
   return (
-    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <svg className={iconSizeClasses[size]} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
       <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   )
 }
 
-function DownloadIcon() {
+function DownloadIcon({ size = 'md' }: IconProps) {
   return (
-    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <svg className={iconSizeClasses[size]} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
     </svg>
   )
 }
 
-function AuthorizeIcon() {
+function AuthorizeIcon({ size = 'md' }: IconProps) {
   return (
-    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <svg className={iconSizeClasses[size]} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
     </svg>
   )
 }
 
-function ResetIcon() {
+function ResetIcon({ size = 'md' }: IconProps) {
   return (
-    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <svg className={iconSizeClasses[size]} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
     </svg>
   )
 }
 
-function DeleteIcon() {
+function DeleteIcon({ size = 'md' }: IconProps) {
   return (
-    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <svg className={iconSizeClasses[size]} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
     </svg>
   )
 }
 
-function LoadingSpinner() {
+/** TASK-218: Loading spinner with size variants */
+function LoadingSpinner({ size = 'md' }: IconProps) {
   return (
-    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+    <svg className={`${iconSizeClasses[size]} animate-spin`} fill="none" viewBox="0 0 24 24">
       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
     </svg>
