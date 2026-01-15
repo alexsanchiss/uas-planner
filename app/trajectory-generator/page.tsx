@@ -11,9 +11,11 @@ const isProductionMode = process.env.NEXT_PUBLIC_PRODUCTION_MODE === "true";
 export default function TrajectoryGenerator() {
   return (
     <ProtectedRoute>
-      <div className="bg-[var(--bg-primary)] min-h-screen">
-        {/* <Header /> */}
-        {isProductionMode ? <FlightPlansUploader /> : <FlightPlansUploaderDev />}
+      <div className="bg-[var(--bg-primary)] min-h-screen w-full">
+        {/* TASK-223: Improved desktop layout with proper width constraints */}
+        <div className="w-full">
+          {isProductionMode ? <FlightPlansUploader /> : <FlightPlansUploaderDev />}
+        </div>
       </div>
     </ProtectedRoute>
   );
