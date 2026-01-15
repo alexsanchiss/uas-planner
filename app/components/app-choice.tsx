@@ -17,7 +17,7 @@ export function AppChoice({
   onLaunch,
 }: AppChoiceProps) {
   return (
-    <div className="bg-gray-800 rounded-lg shadow-md overflow-hidden">
+    <div className="bg-[var(--surface-primary)] rounded-lg shadow-md overflow-hidden border border-[var(--border-primary)]">
       <Image
         src={image}
         alt={name}
@@ -26,8 +26,8 @@ export function AppChoice({
         className="w-full h-60 object-cover"
       />
       <div className="p-4">
-        <h2 className="text-xl font-bold text-white mb-2">{name}</h2>
-        <p className="text-gray-300 mb-4">{description}</p>
+        <h2 className="text-xl font-bold text-[var(--text-primary)] mb-2">{name}</h2>
+        <p className="text-[var(--text-secondary)] mb-4">{description}</p>
         <Button onClick={onLaunch} className="w-full">
           Launch
         </Button>

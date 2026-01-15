@@ -19,6 +19,8 @@
  * 7. Clear machineAssignedId (set to null)
  */
 
+import { Prisma } from '@prisma/client';
+
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { withAuth, isAuthError } from '@/lib/auth-middleware';
@@ -124,8 +126,8 @@ export async function POST(
           status: 'sin procesar',
           csvResult: null,
           authorizationStatus: 'sin autorización',
-          authorizationMessage: null,
-          uplan: null,
+          authorizationMessage: Prisma.DbNull,
+          uplan: Prisma.DbNull,
           externalResponseNumber: null,
           machineAssignedId: null,
         },

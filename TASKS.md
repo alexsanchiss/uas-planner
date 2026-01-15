@@ -448,7 +448,26 @@ Access via: `NEXT_PUBLIC_PRODUCTION_MODE=false`
 
 ---
 
-**Total Tasks: 214**
+## Phase 8: Post-Launch QA Fixes
+
+### 8.1 SCAN Pattern Generator Fixes
+
+- [ ] 🔴 **TASK-215**: Fix SCAN mode map click handler - clicks currently add waypoints to manual mode instead of SCAN polygon
+- [ ] 🟡 **TASK-216**: Integrate ScanPatternGeneratorV2 properly with PlanMap click events using refs for stable handlers
+
+### 8.2 Trajectory Generator UI Improvements
+
+- [ ] 🔴 **TASK-217**: Add plan selection UI in Trajectory Generator - users cannot select plans to work with
+- [ ] 🟡 **TASK-218**: Make Trajectory Generator buttons larger and more touch-friendly
+- [ ] 🟡 **TASK-219**: Replace CSV download with trajectory map viewer - show trajectory on interactive map
+- [ ] 🟡 **TASK-220**: Add waypoint preview/viewer for each flight plan card
+- [ ] 🟡 **TASK-221**: Make plan names larger and add inline editing capability
+- [ ] 🟡 **TASK-222**: Implement drag-and-drop for moving plans between folders
+- [ ] 🟢 **TASK-223**: Improve desktop layout - reduce max-width and better use of horizontal space
+
+---
+
+**Total Tasks: 223**
 
 | Phase | Tasks | Priority |
 |-------|-------|----------|
@@ -459,3 +478,4 @@ Access via: `NEXT_PUBLIC_PRODUCTION_MODE=false`
 | Phase 5: PlanGenerator | 34 | 🟢 Medium |
 | Phase 6: UI/UX | 50 | 🟢 Medium |
 | Phase 7: Testing | 10 | ⚪ Low |
+| Phase 8: Post-Launch QA | 9 | 🔴🟡 Critical/High |

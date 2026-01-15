@@ -157,12 +157,14 @@ export function FlightPlansUploader() {
     authorizing: Set<string>
     resetting: Set<string>
     deleting: Set<string>
+    renaming: Set<string>
   }>({
     processing: new Set(),
     downloading: new Set(),
     authorizing: new Set(),
     resetting: new Set(),
     deleting: new Set(),
+    renaming: new Set(),
   })
   const [loadingFolderIds, setLoadingFolderIds] = useState<{
     renaming: Set<string>
@@ -411,6 +413,20 @@ export function FlightPlansUploader() {
     }
   }, [deleteFlightPlan, selectedPlanId, addLoadingPlan, removeLoadingPlan])
 
+  // TASK-221: Rename plan handler
+  const handleRenamePlan = useCallback(async (planId: string, newName: string) => {
+    addLoadingPlan('renaming', planId)
+    try {
+      await updateFlightPlan(Number(planId), { customName: newName })
+      toast.success('Nombre del plan actualizado.')
+    } catch (error) {
+      console.error('Rename error:', error)
+      toast.error('Error al renombrar el plan.')
+    } finally {
+      removeLoadingPlan('renaming', planId)
+    }
+  }, [updateFlightPlan, addLoadingPlan, removeLoadingPlan, toast])
+
   // DateTime change handler for selected plan
   // The DateTimePicker component returns UTC ISO string ready for storage
   const handleDateTimeChange = useCallback(async (utcIsoString: string) => {
@@ -545,12 +561,14 @@ export function FlightPlansUploader() {
             onAuthorize={handleAuthorizePlan}
             onReset={handleResetPlan}
             onDelete={handleDeletePlan}
+            onRename={handleRenamePlan}
             loadingStates={{
               processing: loadingPlanIds.processing.has(selectedPlan.id),
               downloading: loadingPlanIds.downloading.has(selectedPlan.id),
               authorizing: loadingPlanIds.authorizing.has(selectedPlan.id),
               resetting: loadingPlanIds.resetting.has(selectedPlan.id),
               deleting: loadingPlanIds.deleting.has(selectedPlan.id),
+              renaming: loadingPlanIds.renaming.has(selectedPlan.id),
             }}
             className="mb-4"
           />
@@ -644,6 +662,7 @@ export function FlightPlansUploader() {
           onDeletePlan={handleDeletePlan}
           onSelectPlan={handlePlanClick}
           selectedPlanId={selectedPlanId}
+          onRenamePlan={handleRenamePlan}
           loadingPlanIds={loadingPlanIds}
           loadingFolderIds={loadingFolderIds}
           isCreating={isCreatingFolder}
@@ -664,7 +683,7 @@ export function FlightPlansUploader() {
               {orphanPlans.map(plan => {
                 const transformed = transformFlightPlan(plan)
                 
-                return (
+                  return (
                   <FlightPlanCard
                     key={plan.id}
                     plan={transformed}
@@ -675,12 +694,14 @@ export function FlightPlansUploader() {
                     onDelete={handleDeletePlan}
                     onSelect={handlePlanClick}
                     isSelected={selectedPlanId === transformed.id}
+                    onRename={handleRenamePlan}
                     loadingStates={{
                       processing: loadingPlanIds.processing.has(transformed.id),
                       downloading: loadingPlanIds.downloading.has(transformed.id),
                       authorizing: loadingPlanIds.authorizing.has(transformed.id),
                       resetting: loadingPlanIds.resetting.has(transformed.id),
                       deleting: loadingPlanIds.deleting.has(transformed.id),
+                      renaming: loadingPlanIds.renaming.has(transformed.id),
                     }}
                   />
                 )

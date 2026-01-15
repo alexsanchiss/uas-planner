@@ -16,6 +16,8 @@ export interface FolderListProps {
   onSelectPlan?: (planId: string) => void
   /** TASK-217: Currently selected plan ID */
   selectedPlanId?: string | null
+  /** TASK-221: Callback for renaming a plan */
+  onRenamePlan?: (planId: string, newName: string) => void
   loadingPlanIds?: FlightPlanListProps['loadingPlanIds']
   loadingFolderIds?: {
     renaming?: Set<string>
@@ -54,6 +56,7 @@ export function FolderList({
   onDeletePlan,
   onSelectPlan,
   selectedPlanId,
+  onRenamePlan,
   loadingPlanIds,
   loadingFolderIds = {},
   isCreating = false,
@@ -177,6 +180,7 @@ export function FolderList({
                 onDeletePlan={onDeletePlan}
                 onSelectPlan={onSelectPlan}
                 selectedPlanId={selectedPlanId}
+                onRenamePlan={onRenamePlan}
                 loadingPlanIds={loadingPlanIds}
                 loadingStates={folderLoadingStates}
               />

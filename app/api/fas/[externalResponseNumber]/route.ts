@@ -64,7 +64,7 @@ export async function PUT(
       where: { id: flightPlan.id },
       data: {
         authorizationStatus: state === "ACCEPTED" ? "aprobado" : "denegado",
-        authorizationMessage: message ?? null,
+        authorizationMessage: message !== null && message !== undefined ? message : undefined,
       },
     });
 

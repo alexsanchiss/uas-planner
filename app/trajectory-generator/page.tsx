@@ -11,7 +11,7 @@ const isProductionMode = process.env.NEXT_PUBLIC_PRODUCTION_MODE === "true";
 export default function TrajectoryGenerator() {
   return (
     <ProtectedRoute>
-      <div className="bg-gray-900">
+      <div className="bg-[var(--bg-primary)] min-h-screen">
         {/* <Header /> */}
         {isProductionMode ? <FlightPlansUploader /> : <FlightPlansUploaderDev />}
       </div>

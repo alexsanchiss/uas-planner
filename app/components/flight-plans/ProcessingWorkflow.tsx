@@ -292,12 +292,12 @@ export function ProcessingWorkflow({
                   <span className={`text-sm text-center ${styles.label}`}>
                     {step.label}
                   </span>
-                  {/* TASK-204: Contextual help icon */}
+                  {/* TASK-204: Contextual help icon - positioned below to avoid header overlap */}
                   <ContextualHelp
                     title={step.helpTitle}
                     description={step.helpDescription}
                     tips={step.helpTips}
-                    position="top"
+                    position="bottom"
                   />
                 </div>
 

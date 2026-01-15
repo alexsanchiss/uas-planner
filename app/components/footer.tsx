@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export function Footer() {
   return (
-    <footer className="bg-gray-900 text-gray-200 border-t border-gray-700">
+    <footer className="bg-[var(--bg-primary)] text-[var(--text-secondary)] border-t border-[var(--border-primary)]">
       <div className="container mx-auto px-4 py-6 grid grid-cols-1 md:grid-cols-4 gap-8 items-center text-center">
         {/* Logos stacked vertically and centered */}
         <div className="flex flex-col items-center justify-center space-y-4">
@@ -98,19 +98,19 @@ export function Footer() {
           <div className="font-semibold mb-2">Apps</div>
           <Link
             href="/plan-generator"
-            className="hover:text-blue-400 transition"
+            className="hover:text-[var(--color-primary)] transition"
           >
             Plan Generator
           </Link>
           <Link
             href="/trajectory-generator"
-            className="hover:text-blue-400 transition"
+            className="hover:text-[var(--color-primary)] transition"
           >
             Trajectory Generator
           </Link>
           <Link
             href="/plan-activation"
-            className="hover:text-blue-400 transition"
+            className="hover:text-[var(--color-primary)] transition"
           >
             Plan Activation
           </Link>
@@ -118,28 +118,28 @@ export function Footer() {
         {/* Info menu */}
         <div className="flex flex-col items-center justify-center space-y-2">
           <div className="font-semibold mb-2">Information</div>
-          <Link href="/contact-us" className="hover:text-blue-400 transition">
+          <Link href="/contact-us" className="hover:text-[var(--color-primary)] transition">
             Contact Us
           </Link>
-          <Link href="/how-it-works" className="hover:text-blue-400 transition">
+          <Link href="/how-it-works" className="hover:text-[var(--color-primary)] transition">
             How it works?
           </Link>
           <Link
             href="/privacy-policy"
-            className="hover:text-blue-400 transition"
+            className="hover:text-[var(--color-primary)] transition"
           >
             Privacy Policy
           </Link>
         </div>
       </div>
       {/* Copyright row */}
-      <div className="w-full bg-gray-800 text-gray-400 text-xs text-center py-4 border-t border-gray-700">
+      <div className="w-full bg-[var(--surface-primary)] text-[var(--text-muted)] text-xs text-center py-4 border-t border-[var(--border-primary)]">
         &copy; {new Date().getFullYear()} U-PLAN PREPARATION SERVICE (UPPS) -{" "}
         <a
           href="https://www.sna-upv.com"
           target="_blank"
           rel="noopener noreferrer"
-          className="underline hover:text-blue-400 transition"
+          className="underline hover:text-[var(--color-primary)] transition"
         >
           SNA Lab, UPV
         </a>

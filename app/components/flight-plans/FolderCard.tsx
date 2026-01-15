@@ -27,6 +27,8 @@ export interface FolderCardProps {
   onSelectPlan?: (planId: string) => void
   /** TASK-217: Currently selected plan ID */
   selectedPlanId?: string | null
+  /** TASK-221: Callback for renaming a plan */
+  onRenamePlan?: (planId: string, newName: string) => void
   loadingPlanIds?: FlightPlanListProps['loadingPlanIds']
   loadingStates?: {
     renaming?: boolean
@@ -78,6 +80,7 @@ export function FolderCard({
   onDeletePlan,
   onSelectPlan,
   selectedPlanId,
+  onRenamePlan,
   loadingPlanIds,
   loadingStates = {},
   className = '',
@@ -299,6 +302,7 @@ export function FolderCard({
             onDelete={onDeletePlan}
             onSelectPlan={onSelectPlan}
             selectedPlanId={selectedPlanId}
+            onRenamePlan={onRenamePlan}
             loadingPlanIds={loadingPlanIds}
             emptyMessage="Esta carpeta está vacía"
           />

@@ -14,8 +14,8 @@ import { useAuthContext } from "./auth/auth-provider";
 function UserSkeleton() {
   return (
     <div className="flex items-center space-x-2 animate-pulse">
-      <div className="w-8 h-8 rounded-full bg-gray-600" />
-      <div className="w-24 h-4 bg-gray-600 rounded" />
+      <div className="w-8 h-8 rounded-full bg-[var(--bg-hover)]" />
+      <div className="w-24 h-4 bg-[var(--bg-hover)] rounded" />
     </div>
   );
 }
@@ -59,7 +59,7 @@ function UserDropdown({
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="flex items-center space-x-2 p-2 rounded-lg hover:bg-[var(--bg-hover)] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
         aria-expanded={isOpen}
         aria-haspopup="true"
       >
@@ -70,9 +70,9 @@ function UserDropdown({
           height={32}
           className="rounded-full"
         />
-        <span className="text-gray-300">{username}</span>
+        <span className="text-[var(--text-secondary)]">{username}</span>
         <svg 
-          className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+          className={`w-4 h-4 text-[var(--text-muted)] transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
           fill="none" 
           stroke="currentColor" 
           viewBox="0 0 24 24"
@@ -83,21 +83,21 @@ function UserDropdown({
 
       {isOpen && (
         <div 
-          className="absolute right-0 mt-2 w-56 bg-gray-700 rounded-lg shadow-lg border border-gray-600 py-1 z-50"
+          className="absolute right-0 mt-2 w-56 bg-[var(--surface-elevated)] rounded-lg shadow-lg border border-[var(--border-primary)] py-1 z-[10000]"
           role="menu"
           aria-orientation="vertical"
         >
           {/* User info header */}
-          <div className="px-4 py-3 border-b border-gray-600">
-            <p className="text-sm text-gray-400">Signed in as</p>
-            <p className="text-sm font-medium text-white truncate">{username}</p>
+          <div className="px-4 py-3 border-b border-[var(--border-primary)]">
+            <p className="text-sm text-[var(--text-muted)]">Signed in as</p>
+            <p className="text-sm font-medium text-[var(--text-primary)] truncate">{username}</p>
           </div>
 
           {/* Menu items */}
           <div className="py-1">
             <Link
               href="/profile"
-              className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-600 hover:text-white transition-colors"
+              className="flex items-center px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors"
               role="menuitem"
               onClick={() => setIsOpen(false)}
             >
@@ -108,7 +108,7 @@ function UserDropdown({
             </Link>
             <Link
               href="/settings"
-              className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-gray-600 hover:text-white transition-colors"
+              className="flex items-center px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors"
               role="menuitem"
               onClick={() => setIsOpen(false)}
             >
@@ -121,13 +121,13 @@ function UserDropdown({
           </div>
 
           {/* Logout */}
-          <div className="border-t border-gray-600 py-1">
+          <div className="border-t border-[var(--border-primary)] py-1">
             <button
               onClick={() => {
                 setIsOpen(false);
                 onLogout();
               }}
-              className="flex items-center w-full px-4 py-2 text-sm text-red-400 hover:bg-gray-600 hover:text-red-300 transition-colors"
+              className="flex items-center w-full px-4 py-2 text-sm text-[var(--status-error)] hover:bg-[var(--bg-hover)] hover:text-[var(--status-error-hover)] transition-colors"
               role="menuitem"
             >
               <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -149,17 +149,17 @@ function HamburgerIcon({ open }: { open: boolean }) {
   return (
     <div className="w-6 h-6 flex flex-col justify-center items-center">
       <span
-        className={`block h-0.5 w-6 bg-gray-300 transition-all duration-300 ${
+        className={`block h-0.5 w-6 bg-[var(--text-secondary)] transition-all duration-300 ${
           open ? 'rotate-45 translate-y-1.5' : ''
         }`}
       />
       <span
-        className={`block h-0.5 w-6 bg-gray-300 transition-all duration-300 my-1 ${
+        className={`block h-0.5 w-6 bg-[var(--text-secondary)] transition-all duration-300 my-1 ${
           open ? 'opacity-0' : ''
         }`}
       />
       <span
-        className={`block h-0.5 w-6 bg-gray-300 transition-all duration-300 ${
+        className={`block h-0.5 w-6 bg-[var(--text-secondary)] transition-all duration-300 ${
           open ? '-rotate-45 -translate-y-1.5' : ''
         }`}
       />
@@ -197,7 +197,7 @@ export function Header() {
   ];
 
   return (
-    <header className="bg-gray-800 shadow-md relative z-50">
+    <header className="bg-[var(--surface-primary)] shadow-md relative z-[9999]">
       <div className="container mx-auto px-4 py-3">
         {/* Desktop layout */}
         <div className="hidden lg:grid lg:grid-cols-3 items-center">
@@ -209,8 +209,8 @@ export function Header() {
                   className={`px-3 py-2 rounded-lg border transition-all duration-200 cursor-pointer shadow-sm
                     ${
                       isActive(link.href)
-                        ? "bg-blue-700 border-blue-800 text-white shadow-lg"
-                        : "bg-gray-700/60 border-gray-600 text-gray-200 group-hover:bg-blue-800 group-hover:text-white group-hover:shadow-lg"
+                        ? "bg-[var(--color-primary)] border-[var(--color-primary-active)] text-white shadow-lg"
+                        : "bg-[var(--surface-secondary)] border-[var(--border-primary)] text-[var(--text-secondary)] group-hover:bg-[var(--color-primary)] group-hover:text-white group-hover:shadow-lg"
                     }
                     hover:scale-105 hover:shadow-xl`}
                 >
@@ -250,7 +250,7 @@ export function Header() {
           {/* Hamburger button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 rounded-lg hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="p-2 rounded-lg hover:bg-[var(--bg-hover)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
             aria-label="Toggle menu"
             aria-expanded={mobileMenuOpen}
           >
@@ -272,7 +272,7 @@ export function Header() {
           <div className="flex items-center space-x-2 sm:space-x-4">
             <ThemeToggle />
             {loading ? (
-              <div className="w-8 h-8 rounded-full bg-gray-600 animate-pulse" />
+              <div className="w-8 h-8 rounded-full bg-[var(--bg-hover)] animate-pulse" />
             ) : user ? (
               <UserDropdown username={user.username} onLogout={logout} />
             ) : (
@@ -285,7 +285,7 @@ export function Header() {
 
         {/* Mobile menu dropdown */}
         {mobileMenuOpen && (
-          <div className="lg:hidden mt-3 pb-3 border-t border-gray-700 pt-3 animate-fadeIn">
+          <div className="lg:hidden mt-3 pb-3 border-t border-[var(--border-primary)] pt-3 animate-fadeIn">
             <nav className="flex flex-col space-y-2">
               {navLinks.map((link) => (
                 <Link
@@ -295,8 +295,8 @@ export function Header() {
                   className={`px-4 py-3 rounded-lg border transition-all duration-200 text-center
                     ${
                       isActive(link.href)
-                        ? "bg-blue-700 border-blue-800 text-white"
-                        : "bg-gray-700/60 border-gray-600 text-gray-200 hover:bg-blue-800 hover:text-white"
+                        ? "bg-[var(--color-primary)] border-[var(--color-primary-active)] text-white"
+                        : "bg-[var(--surface-secondary)] border-[var(--border-primary)] text-[var(--text-secondary)] hover:bg-[var(--color-primary)] hover:text-white"
                     }`}
                 >
                   {link.label}
