@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState, useRef, useEffect } from 'react'
 import { PlanStatusBadge, AuthorizationStatusBadge, type PlanStatus, type AuthorizationStatus } from './StatusBadge'
 import {
   ProcessIconButton,
@@ -24,6 +24,15 @@ export interface FlightPlan {
   waypoints?: Waypoint[]
 }
 
+// TASK-221: Pencil icon for inline editing
+function PencilIcon() {
+  return (
+    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+    </svg>
+  )
+}
+
 export interface FlightPlanCardProps {
   plan: FlightPlan
   onProcess?: (planId: string) => void
@@ -35,12 +44,15 @@ export interface FlightPlanCardProps {
   onSelect?: (planId: string) => void
   /** TASK-217: Whether this plan is currently selected */
   isSelected?: boolean
+  /** TASK-221: Callback for renaming the plan */
+  onRename?: (planId: string, newName: string) => void
   loadingStates?: {
     processing?: boolean
     downloading?: boolean
     authorizing?: boolean
     resetting?: boolean
     deleting?: boolean
+    renaming?: boolean
   }
   className?: string
 }
@@ -126,9 +138,31 @@ export function FlightPlanCard({
   onDelete,
   onSelect,
   isSelected = false,
+  onRename,
   loadingStates = {},
   className = '',
 }: FlightPlanCardProps) {
+  // TASK-221: Inline editing state
+  const [isEditing, setIsEditing] = useState(false)
+  const [editName, setEditName] = useState(plan.name)
+  const [validationError, setValidationError] = useState<string | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  // Focus input when entering edit mode
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus()
+      inputRef.current.select()
+    }
+  }, [isEditing])
+
+  // Reset edit name when plan name changes externally
+  useEffect(() => {
+    if (!isEditing) {
+      setEditName(plan.name)
+    }
+  }, [plan.name, isEditing])
+
   // TASK-089-095: Button state management with tooltips
   const canProcess = !!plan.scheduledAt && plan.status === 'sin procesar'
   const canDownload = !!plan.csvResult
@@ -143,21 +177,80 @@ export function FlightPlanCard({
 
   // TASK-217: Handle card click for selection
   const handleCardClick = () => {
-    onSelect?.(plan.id)
+    if (!isEditing) {
+      onSelect?.(plan.id)
+    }
+  }
+
+  // TASK-221: Validate plan name
+  const validateName = (name: string): string | null => {
+    const trimmedName = name.trim()
+    if (!trimmedName) {
+      return 'El nombre no puede estar vacío'
+    }
+    if (trimmedName.length > 100) {
+      return 'El nombre no puede exceder 100 caracteres'
+    }
+    return null
+  }
+
+  // TASK-221: Handle name input change
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value
+    setEditName(newValue)
+    if (validationError) {
+      setValidationError(null)
+    }
+  }
+
+  // TASK-221: Handle rename submit
+  const handleRenameSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    const trimmedName = editName.trim()
+    const error = validateName(trimmedName)
+    
+    if (error) {
+      setValidationError(error)
+      return
+    }
+    
+    if (trimmedName !== plan.name) {
+      onRename?.(plan.id, trimmedName)
+    }
+    
+    setIsEditing(false)
+    setValidationError(null)
+  }
+
+  // TASK-221: Handle rename cancel
+  const handleRenameCancel = () => {
+    setEditName(plan.name)
+    setIsEditing(false)
+    setValidationError(null)
+  }
+
+  // TASK-221: Start editing mode
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (onRename) {
+      setIsEditing(true)
+    }
   }
 
   return (
     <div
-      className={`relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 rounded-lg border p-3 sm:p-4 shadow-sm transition-all cursor-pointer ${className} ${
+      className={`relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 rounded-lg border p-3 sm:p-4 shadow-sm transition-all ${isEditing ? '' : 'cursor-pointer'} ${className} ${
         isSelected
           ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-500 ring-offset-1 dark:ring-offset-gray-900'
           : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:shadow-md hover:border-blue-300 dark:hover:border-blue-600'
       }`}
       onClick={handleCardClick}
       role="button"
-      tabIndex={0}
+      tabIndex={isEditing ? -1 : 0}
       onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
+        if ((e.key === 'Enter' || e.key === ' ') && !isEditing) {
           e.preventDefault()
           handleCardClick()
         }
@@ -175,11 +268,70 @@ export function FlightPlanCard({
       )}
       {/* Plan info */}
       <div className="flex flex-1 flex-col gap-2 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate" title={plan.name}>
-            {plan.name}
-          </h3>
-        </div>
+        {/* TASK-221: Larger plan name with inline editing */}
+        {isEditing ? (
+          <form onSubmit={handleRenameSubmit} className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              <input
+                ref={inputRef}
+                type="text"
+                value={editName}
+                onChange={handleNameChange}
+                className={`flex-1 px-3 py-2 text-base font-semibold border rounded-md focus:outline-none focus:ring-2 dark:bg-gray-700 dark:text-white dark:border-gray-600 ${
+                  validationError
+                    ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+                    : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                }`}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    handleRenameCancel()
+                  }
+                }}
+                aria-invalid={!!validationError}
+                aria-describedby={validationError ? 'plan-name-error' : undefined}
+              />
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  disabled={loadingStates.renaming || !editName.trim()}
+                  className="flex-1 sm:flex-none px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {loadingStates.renaming ? '...' : 'Guardar'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRenameCancel}
+                  className="flex-1 sm:flex-none px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-600 rounded-md hover:bg-gray-200 dark:hover:bg-gray-500 transition-colors"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+            {validationError && (
+              <p id="plan-name-error" className="text-xs text-red-600 ml-1">
+                {validationError}
+              </p>
+            )}
+          </form>
+        ) : (
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* TASK-221: Larger plan name (increased from text-sm to text-lg) with edit button */}
+            <h3 
+              className={`text-lg font-semibold text-gray-900 dark:text-gray-100 truncate ${
+                onRename ? 'cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 group' : ''
+              }`}
+              title={plan.name}
+              onClick={handleEditClick}
+            >
+              {plan.name}
+              {onRename && (
+                <span className="inline-flex items-center ml-2 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-blue-500">
+                  <PencilIcon />
+                </span>
+              )}
+            </h3>
+          </div>
+        )}
 
         <div className="flex items-center gap-2 flex-wrap">
           <PlanStatusBadge status={plan.status} />

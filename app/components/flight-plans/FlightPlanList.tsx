@@ -13,12 +13,15 @@ export interface FlightPlanListProps {
   onSelectPlan?: (planId: string) => void
   /** TASK-217: Currently selected plan ID */
   selectedPlanId?: string | null
+  /** TASK-221: Callback for renaming a plan */
+  onRenamePlan?: (planId: string, newName: string) => void
   loadingPlanIds?: {
     processing?: Set<string>
     downloading?: Set<string>
     authorizing?: Set<string>
     resetting?: Set<string>
     deleting?: Set<string>
+    renaming?: Set<string>
   }
   emptyMessage?: string
   className?: string
@@ -37,6 +40,7 @@ export function FlightPlanList({
   onDelete,
   onSelectPlan,
   selectedPlanId,
+  onRenamePlan,
   loadingPlanIds = {},
   emptyMessage = 'No hay planes de vuelo',
   className = '',
@@ -71,6 +75,7 @@ export function FlightPlanList({
           authorizing: loadingPlanIds.authorizing?.has(plan.id),
           resetting: loadingPlanIds.resetting?.has(plan.id),
           deleting: loadingPlanIds.deleting?.has(plan.id),
+          renaming: loadingPlanIds.renaming?.has(plan.id),
         }
 
         return (
@@ -84,6 +89,7 @@ export function FlightPlanList({
             onDelete={onDelete}
             onSelect={onSelectPlan}
             isSelected={selectedPlanId === plan.id}
+            onRename={onRenamePlan}
             loadingStates={loadingStates}
           />
         )

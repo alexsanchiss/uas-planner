@@ -41,11 +41,11 @@ export default function MainPage() {
   };
 
   return (
-    <div className="bg-gray-900">
+    <div className="bg-[var(--bg-primary)] min-h-screen">
       {/* Help Button */}
       <a
         href="/how-it-works"
-        className="fixed top-24 right-8 z-50 bg-blue-700 hover:bg-blue-800 text-white rounded-full p-3 shadow-lg flex items-center gap-2 transition-all duration-200"
+        className="fixed top-24 right-8 z-50 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white rounded-full p-3 shadow-lg flex items-center gap-2 transition-all duration-200"
         title="Need help?"
       >
         <HelpCircle className="w-6 h-6" />

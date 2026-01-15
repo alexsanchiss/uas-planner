@@ -49,16 +49,28 @@ L.Icon.Default.mergeOptions({
 
 import { useAuth } from "../hooks/useAuth";
 import axios from "axios";
+
+// Helper to get auth headers for API requests
+function getAuthHeaders(): { Authorization: string } | {} {
+  if (typeof window === "undefined") return {};
+  const token = localStorage.getItem("authToken");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 import {
   DragDropContext,
   Droppable,
   Draggable,
   DropResult,
 } from "@hello-pangea/dnd";
-import { HelpCircle } from "lucide-react";
+import { HelpCircle, Grid3X3, MousePointer2 } from "lucide-react";
 import dynamic from 'next/dynamic';
 
 const PlanMap = dynamic(() => import('./PlanMap'), { ssr: false });
+import ScanPatternGeneratorV2 from './plan-generator/ScanPatternGeneratorV2';
+import { Point, ScanWaypoint } from '@/lib/scan-generator';
+
+// Plan generator modes
+type GeneratorMode = 'manual' | 'scan';
 
 const waypointTypes = [
   { value: "takeoff", label: "Takeoff" },
@@ -298,13 +310,29 @@ export default function PlanGenerator() {
   const [detailsOpen, setDetailsOpen] = useState(false);
   // TASK-181: Collapsible sidebar for tablet/mobile
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  
+  // Generator mode: manual waypoint placement vs SCAN pattern generation
+  const [generatorMode, setGeneratorMode] = useState<GeneratorMode>('manual');
+  
+  // SCAN pattern generator V2 state - overlays for the map
+  const [scanOverlays, setScanOverlays] = useState<{
+    takeoffPoint: Point | null;
+    landingPoint: Point | null;
+    polygonVertices: Point[];
+    polygonClosed: boolean;
+    previewWaypoints: ScanWaypoint[];
+    scanAngle: number;
+  } | null>(null);
+  
+  // Custom map click handler for SCAN mode
+  const [scanMapClickHandler, setScanMapClickHandler] = useState<((lat: number, lng: number) => void) | null>(null);
 
   // Map bounds and center
-  const bounds = [
+  const bounds: [[number, number], [number, number]] = [
     [SERVICE_LIMITS[1], SERVICE_LIMITS[0]], // SW: [minLat, minLng]
     [SERVICE_LIMITS[3], SERVICE_LIMITS[2]], // NE: [maxLat, maxLng]
   ];
-  const center = [
+  const center: [number, number] = [
     (SERVICE_LIMITS[1] + SERVICE_LIMITS[3]) / 2,
     (SERVICE_LIMITS[0] + SERVICE_LIMITS[2]) / 2,
   ];
@@ -424,7 +452,7 @@ export default function PlanGenerator() {
   };
 
   // For the Polyline
-  const polylinePositions = waypoints.map((wp) => [wp.lat, wp.lng]);
+  const polylinePositions: [number, number][] = waypoints.map((wp) => [wp.lat, wp.lng] as [number, number]);
 
   // QGC Plan generated
   const qgcPlan = generateQGCPlan(waypoints);
@@ -464,6 +492,47 @@ export default function PlanGenerator() {
     );
   };
 
+  // Handle applying SCAN pattern waypoints
+  const handleApplyScanPattern = (scanWaypoints: ScanWaypoint[]) => {
+    if (scanWaypoints.length === 0) return;
+    
+    // Convert SCAN waypoints to our Waypoint format
+    const newWaypoints: Waypoint[] = scanWaypoints.map((swp, idx) => {
+      let waypointType: 'takeoff' | 'cruise' | 'landing' = 'cruise';
+      let altitude = swp.altitude;
+      
+      if (idx === 0) {
+        waypointType = 'takeoff';
+      } else if (idx === scanWaypoints.length - 1) {
+        waypointType = 'landing';
+        altitude = 0;
+      }
+      
+      return {
+        lat: swp.lat,
+        lng: swp.lng,
+        type: waypointType,
+        altitude,
+        speed: swp.speed || 5,
+        pauseDuration: 0,
+        flyOverMode: false,
+      };
+    });
+    
+    setWaypoints(newWaypoints);
+    setGeneratorMode('manual'); // Switch back to manual mode to allow editing
+    setScanOverlays(null);
+    setScanMapClickHandler(null);
+    setToast(`SCAN pattern applied with ${newWaypoints.length} waypoints. You can now edit them.`);
+  };
+
+  // Handle canceling SCAN pattern
+  const handleCancelScanPattern = () => {
+    setGeneratorMode('manual');
+    setScanOverlays(null);
+    setScanMapClickHandler(null);
+  };
+
   // Upload plan
   const handleUploadPlan = async () => {
     if (!user) {
@@ -497,9 +566,10 @@ export default function PlanGenerator() {
     }
     setLoading(true);
     try {
+      const headers = getAuthHeaders();
       // 1. Find or create "Plan Generator" folder
       let folderId: number | null = null;
-      const foldersRes = await axios.get(`/api/folders?userId=${user.id}`);
+      const foldersRes = await axios.get(`/api/folders`, { headers });
       const planGenFolder = foldersRes.data.find(
         (f: any) => f.name === "Plan Generator"
       );
@@ -509,8 +579,7 @@ export default function PlanGenerator() {
         // Create folder
         const folderRes = await axios.post("/api/folders", {
           name: "Plan Generator",
-          userId: user.id,
-        });
+        }, { headers });
         folderId = folderRes.data.id;
       }
       // 2. Create the plan
@@ -528,11 +597,10 @@ export default function PlanGenerator() {
         customName: planName,
         status: "sin procesar",
         fileContent: JSON.stringify(qgcPlan),
-        userId: user.id,
         folderId,
         uplan: JSON.stringify(uplanDetails),
         scheduledAt,
-      });
+      }, { headers });
       setToast(
         `The plan "${planName}" has been saved in the Plan Generator folder in Trajectory Generator.`
       );
@@ -675,15 +743,61 @@ export default function PlanGenerator() {
                 <h2 className="text-2xl font-bold mb-4 text-white">
                   Flight Plan
                 </h2>
-                <button
-                  className="w-full flex items-center justify-between bg-zinc-800 text-white px-4 py-2 rounded-t-md border border-zinc-700 font-semibold focus:outline-none"
-                  onClick={() => setDetailsOpen((o) => !o)}
-                  type="button"
-                >
-                  Flight Plan Details
-                  <span className="ml-2">{detailsOpen ? "▲" : "▼"}</span>
-                </button>
-                {detailsOpen && (
+                
+                {/* Mode Toggle: Manual vs SCAN Pattern */}
+                <div className="mb-4 p-3 bg-zinc-800/50 border border-zinc-700 rounded-md">
+                  <div className="text-xs text-zinc-400 mb-2 font-medium">Generation Mode</div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setGeneratorMode('manual')}
+                      className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded text-sm font-medium transition-colors ${
+                        generatorMode === 'manual'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'
+                      }`}
+                    >
+                      <MousePointer2 className="w-4 h-4" />
+                      Manual
+                    </button>
+                    <button
+                      onClick={() => setGeneratorMode('scan')}
+                      className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded text-sm font-medium transition-colors ${
+                        generatorMode === 'scan'
+                          ? 'bg-purple-600 text-white'
+                          : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'
+                      }`}
+                    >
+                      <Grid3X3 className="w-4 h-4" />
+                      SCAN Pattern
+                    </button>
+                  </div>
+                </div>
+                
+                {/* SCAN Pattern Generator */}
+                {generatorMode === 'scan' && (
+                  <div className="mb-4">
+                    <ScanPatternGeneratorV2
+                      onApply={handleApplyScanPattern}
+                      onCancel={handleCancelScanPattern}
+                      serviceBounds={[SERVICE_LIMITS[0], SERVICE_LIMITS[1], SERVICE_LIMITS[2], SERVICE_LIMITS[3]]}
+                      onMapClick={setScanMapClickHandler}
+                      onOverlaysChange={setScanOverlays}
+                    />
+                  </div>
+                )}
+                
+                {/* Manual mode: Flight Plan Details */}
+                {generatorMode === 'manual' && (
+                    <button
+                      className="w-full flex items-center justify-between bg-zinc-800 text-white px-4 py-2 rounded-t-md border border-zinc-700 font-semibold focus:outline-none"
+                      onClick={() => setDetailsOpen((o) => !o)}
+                      type="button"
+                    >
+                      Flight Plan Details
+                      <span className="ml-2">{detailsOpen ? "▲" : "▼"}</span>
+                    </button>
+                )}
+                {generatorMode === 'manual' && detailsOpen && (
                   <div className="bg-zinc-800 border-x border-b border-zinc-700 rounded-b-md p-4 space-y-4 mt-0">
                     {/* Date/Time */}
                     <div>
@@ -1357,6 +1471,7 @@ export default function PlanGenerator() {
                     </div>
                   </div>
                 )}
+                {generatorMode === 'manual' && (
                 <div className="mb-4">
                   <label className="block mb-1 font-medium text-zinc-200">
                     Plan name
@@ -1370,6 +1485,7 @@ export default function PlanGenerator() {
                     disabled={loading}
                   />
                 </div>
+                )}
                 
                 {/* TASK-153: Service Area Bounds Panel */}
                 <div className="mb-4 p-3 bg-zinc-800/50 border border-zinc-700 rounded-md">
@@ -1430,6 +1546,7 @@ export default function PlanGenerator() {
                   );
                 })()}
               </div>
+              {generatorMode === 'manual' && (
               <div className="p-6 pt-2">
                 <h3 className="font-semibold mb-2 text-zinc-200">Waypoints</h3>
                 {waypoints.length === 0 && (
@@ -1628,7 +1745,9 @@ export default function PlanGenerator() {
                   </Droppable>
                 </DragDropContext>
               </div>
+              )}
               {/* Bottom buttons (now scroll with sidebar) */}
+              {generatorMode === 'manual' && (
               <div className="bg-app-sidebar pt-4 pb-2 flex flex-col gap-2 px-6">
                 <button
                   className="w-full bg-blue-700 text-white rounded py-2 font-semibold hover:bg-blue-800 transition border border-blue-900 disabled:opacity-60"
@@ -1646,6 +1765,7 @@ export default function PlanGenerator() {
                   Clear all
                 </button>
               </div>
+              )}
             </div>
           </div>
         </aside>
@@ -1653,7 +1773,19 @@ export default function PlanGenerator() {
         <main className="plan-gen-map flex-1">
           {/* The MapContainer and its logic have been moved to PlanMap.tsx */}
           {/* The PlanMap component will be rendered here */}
-          <PlanMap center={center} bounds={bounds} polylinePositions={polylinePositions} handleAddWaypoint={handleAddWaypoint} setToast={setToast} waypoints={waypoints} setSelectedIdx={setSelectedIdx} handleMarkerDragEnd={handleMarkerDragEnd} />
+          <PlanMap 
+            center={center} 
+            bounds={bounds} 
+            polylinePositions={polylinePositions} 
+            handleAddWaypoint={handleAddWaypoint} 
+            setToast={setToast} 
+            waypoints={waypoints} 
+            setSelectedIdx={setSelectedIdx} 
+            handleMarkerDragEnd={handleMarkerDragEnd}
+            scanMode={generatorMode === 'scan'}
+            scanOverlays={scanOverlays || undefined}
+            customClickHandler={scanMapClickHandler}
+          />
         </main>
       </div>
     </div>
