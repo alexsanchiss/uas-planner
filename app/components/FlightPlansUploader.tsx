@@ -660,6 +660,8 @@ export function FlightPlansUploader() {
           onAuthorizePlan={handleAuthorizePlan}
           onResetPlan={handleResetPlan}
           onDeletePlan={handleDeletePlan}
+          onSelectPlan={handlePlanClick}
+          selectedPlanId={selectedPlanId}
           loadingPlanIds={loadingPlanIds}
           loadingFolderIds={loadingFolderIds}
           isCreating={isCreatingFolder}
@@ -679,32 +681,26 @@ export function FlightPlansUploader() {
             <div className="flex flex-col gap-3 stagger-children">
               {orphanPlans.map(plan => {
                 const transformed = transformFlightPlan(plan)
-                const isSelected = selectedPlanId === transformed.id
                 
                 return (
-                  <div
+                  <FlightPlanCard
                     key={plan.id}
-                    className={`cursor-pointer transition-all ${
-                      isSelected ? 'ring-2 ring-blue-500 ring-offset-2 rounded-lg' : ''
-                    }`}
-                    onClick={() => handlePlanClick(transformed.id)}
-                  >
-                    <FlightPlanCard
-                      plan={transformed}
-                      onProcess={handleProcessPlan}
-                      onDownload={handleDownloadPlan}
-                      onAuthorize={handleAuthorizePlan}
-                      onReset={handleResetPlan}
-                      onDelete={handleDeletePlan}
-                      loadingStates={{
-                        processing: loadingPlanIds.processing.has(transformed.id),
-                        downloading: loadingPlanIds.downloading.has(transformed.id),
-                        authorizing: loadingPlanIds.authorizing.has(transformed.id),
-                        resetting: loadingPlanIds.resetting.has(transformed.id),
-                        deleting: loadingPlanIds.deleting.has(transformed.id),
-                      }}
-                    />
-                  </div>
+                    plan={transformed}
+                    onProcess={handleProcessPlan}
+                    onDownload={handleDownloadPlan}
+                    onAuthorize={handleAuthorizePlan}
+                    onReset={handleResetPlan}
+                    onDelete={handleDeletePlan}
+                    onSelect={handlePlanClick}
+                    isSelected={selectedPlanId === transformed.id}
+                    loadingStates={{
+                      processing: loadingPlanIds.processing.has(transformed.id),
+                      downloading: loadingPlanIds.downloading.has(transformed.id),
+                      authorizing: loadingPlanIds.authorizing.has(transformed.id),
+                      resetting: loadingPlanIds.resetting.has(transformed.id),
+                      deleting: loadingPlanIds.deleting.has(transformed.id),
+                    }}
+                  />
                 )
               })}
             </div>
