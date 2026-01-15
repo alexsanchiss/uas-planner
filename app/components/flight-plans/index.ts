@@ -70,3 +70,9 @@ export {
   DateTimePicker,
   type DateTimePickerProps,
 } from './DateTimePicker'
+
+export {
+  TrajectoryMapViewer,
+  type TrajectoryMapViewerProps,
+  type TrajectoryPoint,
+} from './TrajectoryMapViewer'

@@ -418,7 +418,7 @@
 |------|-------------|--------|
 | TASK-217 | Add plan selection UI | ✅ |
 | TASK-218 | Make buttons larger | ✅ |
-| TASK-219 | Replace CSV download with map viewer | ⬜ |
+| TASK-219 | Replace CSV download with map viewer | ✅ |
 | TASK-220 | Add waypoint preview per plan | ⬜ |
 | TASK-221 | Larger editable plan names | ⬜ |
 | TASK-222 | Drag-and-drop between folders | ⬜ |
@@ -437,13 +437,14 @@
 | Phase 5: PlanGenerator | 34 | 34 | 0 | 0 |
 | Phase 6: UI/UX | 50 | 50 | 0 | 0 |
 | Phase 7: Testing | 10 | 10 | 0 | 0 |
-| Phase 8: Post-Launch QA | 9 | 3 | 0 | 0 |
-| **TOTAL** | **223** | **217** | **0** | **0** |
+| Phase 8: Post-Launch QA | 9 | 4 | 0 | 0 |
+| **TOTAL** | **223** | **218** | **0** | **0** |
 
 ---
 
 ## Recent Updates
 
+- **2026-01-15**: TASK-219 ✅ - Replace CSV download with trajectory map viewer. The download button in flight plan cards now opens an interactive `TrajectoryMapViewer` component instead of downloading CSV files directly. Changes: (1) Updated `FlightPlansUploader.tsx` - replaced `handleDownloadPlan` async CSV download with synchronous call to open trajectory viewer modal, added `trajectoryViewer` state for modal management, integrated `TrajectoryMapViewer` component. (2) Updated `ActionButtons.tsx` - changed `DownloadButton` and `DownloadIconButton` to use new `MapViewIcon` instead of download icon, updated tooltips from "Descargar CSV" to "Ver trayectoria", updated button label to "Ver trayectoria". (3) Added `TrajectoryMapViewer` export to `flight-plans/index.ts` barrel file. (4) Updated `FlightPlanCard.tsx` aria-label to "Ver trayectoria". The `TrajectoryMapViewer` component shows the trajectory on an interactive Leaflet map with: trajectory polyline, color-coded waypoint markers (green=takeoff, blue=waypoints, red=landing), click-to-inspect popups showing coordinates and data, legend, and a CSV download button still available for users who want to download the raw data.
 - **2026-01-15**: TASK-215 ✅ - Fix SCAN mode map click handler. The issue was that map clicks in SCAN mode were incorrectly falling through to manual waypoint addition when the custom click handler was null (between step transitions). Fixed `MapClickHandler` in `PlanMap.tsx` by adding explicit `scanMode` prop - when scanMode is true, clicks are ONLY processed by the custom handler and NEVER add manual waypoints. This ensures clean separation between manual and SCAN mode map interactions. If no handler is active in SCAN mode (e.g., between steps or after completing a step), clicks are simply ignored rather than polluting the manual waypoint list.
 - **2026-01-15**: TASK-218 ✅ - Make buttons larger and more touch-friendly. Enhanced `ActionButtons.tsx` with size variants system: (1) Added `ButtonSize` type with 'sm', 'md', and 'lg' options. (2) Updated full buttons (ProcessButton, DownloadButton, etc.) with `buttonSizeStyles` - sm: px-3 py-1.5, md: px-4 py-2.5, lg: px-5 py-3 with appropriate text sizes. (3) Updated icon buttons with `iconButtonSizeStyles` ensuring minimum touch targets - sm: 36px, md: 44px (recommended minimum), lg: 52px. (4) Icons now scale with button size via `iconSizeClasses` - sm: w-4 h-4, md: w-5 h-5, lg: w-6 h-6. (5) Changed default icon button size from ~32px to 44px (minimum recommended touch target). (6) Added size prop to all exported button components and icon functions. All buttons now meet accessibility guidelines for touch targets.
 - **2026-01-15**: TASK-217 ✅ - Add plan selection UI to Trajectory Generator. Enhanced flight plan card components with click-to-select functionality: added `onSelect` and `isSelected` props to `FlightPlanCard.tsx` with visual selection indicator (blue border, checkmark badge, hover effects), clickable card with proper keyboard navigation and ARIA attributes. Updated `FlightPlanList.tsx` with `onSelectPlan` and `selectedPlanId` props. Updated `FolderCard.tsx` to pass selection props down to `FlightPlanList`. Updated `FolderList.tsx` to accept and propagate selection handlers. Integrated selection into `FlightPlansUploader.tsx` - plans inside folders can now be clicked to select them for the workflow, and the orphan plans section now uses the standardized selection props instead of wrapper divs. Fixed unrelated TypeScript error in `TrajectoryMapViewer.tsx` (parseCSVToTrajectory function return type). Users can now click any flight plan card (both inside folders and outside) to select it for processing, with clear visual feedback showing the selected state.
