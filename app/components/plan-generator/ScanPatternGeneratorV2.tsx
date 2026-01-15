@@ -8,6 +8,10 @@
  * 3. Set Landing Point (click on map)
  * 4. Configure Parameters (altitude, spacing, angle)
  * 5. Preview & Apply
+ * 
+ * TASK-216: This component uses refs for stable map click handlers to avoid
+ * stale closure issues. The mapClickHandler ref provides a stable callback
+ * that dispatches to the appropriate step handler based on current state.
  */
 
 "use client";
@@ -55,7 +59,7 @@ export interface ScanPatternGeneratorV2Props {
   onCancel: () => void;
   /** Service area bounds for validation [minLng, minLat, maxLng, maxLat] */
   serviceBounds?: [number, number, number, number];
-  /** Callback when map click should be handled */
+  /** Callback when map click should be handled - uses ref internally for stability */
   onMapClick?: (callback: ((lat: number, lng: number) => void) | null) => void;
   /** Callback to update map overlays */
   onOverlaysChange?: (overlays: {
@@ -138,110 +142,119 @@ export default function ScanPatternGeneratorV2({
   const [statistics, setStatistics] = useState<ScanStatistics | null>(null);
   const [validation, setValidation] = useState<ScanValidation | null>(null);
   
-  // Ref to store onMapClick to avoid stale closures
+  // ---- TASK-216: Refs for stable handler management ----
+  // Store onMapClick in a ref to avoid dependency issues in the main click handler
   const onMapClickRef = useRef(onMapClick);
   useEffect(() => {
     onMapClickRef.current = onMapClick;
   }, [onMapClick]);
-
-  // ---- Validation ----
   
-  const isWithinBounds = useCallback((lat: number, lng: number): boolean => {
-    if (!serviceBounds) return true;
-    const [minLng, minLat, maxLng, maxLat] = serviceBounds;
-    return lat >= minLat && lat <= maxLat && lng >= minLng && lng <= maxLng;
+  // Store all state needed by click handlers in refs to avoid stale closures
+  const stateRef = useRef({
+    currentStep,
+    takeoffPoint,
+    polygonVertices,
+    polygonClosed,
+    landingPoint,
+  });
+  
+  // Update state ref whenever state changes
+  useEffect(() => {
+    stateRef.current = {
+      currentStep,
+      takeoffPoint,
+      polygonVertices,
+      polygonClosed,
+      landingPoint,
+    };
+  }, [currentStep, takeoffPoint, polygonVertices, polygonClosed, landingPoint]);
+  
+  // Store serviceBounds in ref for validation in click handler
+  const serviceBoundsRef = useRef(serviceBounds);
+  useEffect(() => {
+    serviceBoundsRef.current = serviceBounds;
   }, [serviceBounds]);
 
-  // ---- Map Click Handlers (using refs to avoid stale closures) ----
-  
-  // Store current state in refs
-  const polygonVerticesRef = useRef(polygonVertices);
-  const polygonClosedRef = useRef(polygonClosed);
-  
-  useEffect(() => {
-    polygonVerticesRef.current = polygonVertices;
-    polygonClosedRef.current = polygonClosed;
-  }, [polygonVertices, polygonClosed]);
-  
-  const handleMapClickForTakeoff = useCallback((lat: number, lng: number) => {
-    if (!isWithinBounds(lat, lng)) return;
-    setTakeoffPoint({ lat, lng });
-    // Auto-advance to next step
-    setCurrentStep(2);
-  }, [isWithinBounds]);
-
-  const handleMapClickForPolygon = useCallback((lat: number, lng: number) => {
-    if (!isWithinBounds(lat, lng)) return;
-    if (polygonClosedRef.current) return; // Don't add more vertices if closed
+  // ---- TASK-216: Single stable map click handler using refs ----
+  // This handler is created once and uses refs to access current state,
+  // avoiding stale closure issues that occur with callback props
+  const stableMapClickHandler = useCallback((lat: number, lng: number) => {
+    // Access current state from ref
+    const state = stateRef.current;
+    const bounds = serviceBoundsRef.current;
     
-    const newVertex: Point = { lat, lng };
-    const currentVertices = polygonVerticesRef.current;
-    
-    // Check if clicking near first vertex to close polygon
-    if (currentVertices.length >= 3) {
-      const firstVertex = currentVertices[0];
-      const distance = Math.sqrt(
-        Math.pow((lat - firstVertex.lat) * 111320, 2) +
-        Math.pow((lng - firstVertex.lng) * 111320 * Math.cos(lat * Math.PI / 180), 2)
-      );
-      
-      // If within 30 meters of first vertex, close the polygon
-      if (distance < 30) {
-        setPolygonClosed(true);
-        // Auto-advance to next step
-        setCurrentStep(3);
-        return;
+    // Validate bounds
+    if (bounds) {
+      const [minLng, minLat, maxLng, maxLat] = bounds;
+      if (lat < minLat || lat > maxLat || lng < minLng || lng > maxLng) {
+        return; // Outside service area
       }
     }
     
-    setPolygonVertices(prev => [...prev, newVertex]);
-  }, [isWithinBounds]);
+    // Dispatch based on current step
+    if (state.currentStep === 1 && !state.takeoffPoint) {
+      // Step 1: Set takeoff point
+      setTakeoffPoint({ lat, lng });
+      setCurrentStep(2);
+    } else if (state.currentStep === 2 && !state.polygonClosed) {
+      // Step 2: Add polygon vertex
+      const newVertex: Point = { lat, lng };
+      const currentVertices = state.polygonVertices;
+      
+      // Check if clicking near first vertex to close polygon
+      if (currentVertices.length >= 3) {
+        const firstVertex = currentVertices[0];
+        const distance = Math.sqrt(
+          Math.pow((lat - firstVertex.lat) * 111320, 2) +
+          Math.pow((lng - firstVertex.lng) * 111320 * Math.cos(lat * Math.PI / 180), 2)
+        );
+        
+        // If within 30 meters of first vertex, close the polygon
+        if (distance < 30) {
+          setPolygonClosed(true);
+          setCurrentStep(3);
+          return;
+        }
+      }
+      
+      setPolygonVertices(prev => [...prev, newVertex]);
+    } else if (state.currentStep === 3 && !state.landingPoint) {
+      // Step 3: Set landing point
+      setLandingPoint({ lat, lng });
+      setCurrentStep(4);
+    }
+    // Step 4 (parameters) doesn't need map clicks
+  }, []); // Empty deps - uses refs for all state access
 
-  const handleMapClickForLanding = useCallback((lat: number, lng: number) => {
-    if (!isWithinBounds(lat, lng)) return;
-    setLandingPoint({ lat, lng });
-    // Auto-advance to parameters step
-    setCurrentStep(4);
-  }, [isWithinBounds]);
-  
-  // Store handlers in refs for stable references
-  const handlersRef = useRef({
-    takeoff: handleMapClickForTakeoff,
-    polygon: handleMapClickForPolygon,
-    landing: handleMapClickForLanding,
-  });
-  
-  useEffect(() => {
-    handlersRef.current = {
-      takeoff: handleMapClickForTakeoff,
-      polygon: handleMapClickForPolygon,
-      landing: handleMapClickForLanding,
-    };
-  }, [handleMapClickForTakeoff, handleMapClickForPolygon, handleMapClickForLanding]);
-
-  // ---- Set up map click handler based on current step ----
+  // ---- Set up map click handler ----
+  // TASK-216: Use a stable reference that doesn't change between renders
+  const hasActiveClickTarget = useCallback(() => {
+    const state = stateRef.current;
+    return (
+      (state.currentStep === 1 && !state.takeoffPoint) ||
+      (state.currentStep === 2 && !state.polygonClosed) ||
+      (state.currentStep === 3 && !state.landingPoint)
+    );
+  }, []);
   
   useEffect(() => {
     if (!onMapClick) return;
     
-    // Determine the correct handler based on current step
-    let handler: ((lat: number, lng: number) => void) | null = null;
-    
-    if (currentStep === 1 && !takeoffPoint) {
-      handler = (lat, lng) => handlersRef.current.takeoff(lat, lng);
-    } else if (currentStep === 2 && !polygonClosed) {
-      handler = (lat, lng) => handlersRef.current.polygon(lat, lng);
-    } else if (currentStep === 3 && !landingPoint) {
-      handler = (lat, lng) => handlersRef.current.landing(lat, lng);
+    // Always provide the stable handler when there's an active click target
+    // The handler itself checks state to determine what action to take
+    if (hasActiveClickTarget()) {
+      onMapClick(stableMapClickHandler);
+    } else {
+      onMapClick(null);
     }
     
-    onMapClick(handler);
-    
-    // Cleanup only on unmount
+    // Cleanup on unmount only
     return () => {
       onMapClick(null);
     };
-  }, [currentStep, takeoffPoint, polygonClosed, landingPoint, onMapClick]);
+  }, [onMapClick, stableMapClickHandler, hasActiveClickTarget, 
+      // Re-evaluate when these change to update whether we need click handling
+      currentStep, takeoffPoint, polygonClosed, landingPoint]);
 
   // ---- Generate preview when all data is ready ----
   
