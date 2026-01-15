@@ -41,6 +41,7 @@ import { useToast } from '../hooks/useToast'
 
 /**
  * Transform API flight plan data to component flight plan format
+ * TASK-220: Include fileContent for waypoint preview extraction
  */
 function transformFlightPlan(plan: FlightPlanData): FlightPlan {
   return {
@@ -56,6 +57,8 @@ function transformFlightPlan(plan: FlightPlanData): FlightPlan {
     createdAt: plan.createdAt,
     updatedAt: plan.updatedAt,
     csvResult: plan.csvResult ? { id: String(plan.csvResult) } : null,
+    // TASK-220: Pass fileContent for waypoint preview visualization
+    fileContent: plan.fileContent,
   }
 }
 

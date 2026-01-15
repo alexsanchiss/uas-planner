@@ -76,3 +76,10 @@ export {
   type TrajectoryMapViewerProps,
   type TrajectoryPoint,
 } from './TrajectoryMapViewer'
+
+// TASK-220: Waypoint preview component for flight plan cards
+export {
+  WaypointPreview,
+  type Waypoint,
+  type WaypointPreviewProps,
+} from './WaypointPreview'

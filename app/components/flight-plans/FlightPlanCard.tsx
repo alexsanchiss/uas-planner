@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { PlanStatusBadge, AuthorizationStatusBadge, type PlanStatus, type AuthorizationStatus } from './StatusBadge'
 import {
   ProcessIconButton,
@@ -7,6 +7,7 @@ import {
   ResetIconButton,
   DeleteIconButton,
 } from './ActionButtons'
+import { WaypointPreview, type Waypoint } from './WaypointPreview'
 
 export interface FlightPlan {
   id: string
@@ -17,6 +18,10 @@ export interface FlightPlan {
   createdAt?: string | Date
   updatedAt?: string | Date
   csvResult?: { id: string } | null
+  /** Raw QGC plan JSON for waypoint extraction */
+  fileContent?: string
+  /** Pre-parsed waypoints (optional, will parse from fileContent if not provided) */
+  waypoints?: Waypoint[]
 }
 
 export interface FlightPlanCardProps {
@@ -50,6 +55,31 @@ function formatDate(date: string | Date | null | undefined): string {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+/**
+ * Parse waypoints from QGC plan JSON fileContent
+ * TASK-220: Extract waypoints for visual preview
+ */
+function parseWaypointsFromPlan(fileContent?: string): Waypoint[] {
+  if (!fileContent) return []
+  
+  try {
+    const plan = JSON.parse(fileContent)
+    const items = plan?.mission?.items || []
+    
+    return items
+      .filter((item: { params?: number[] }) => item.params && item.params.length >= 7)
+      .map((item: { params: number[]; Altitude?: number }, idx: number, arr: unknown[]) => ({
+        lat: item.params[4],
+        lng: item.params[5],
+        alt: item.params[6] || item.Altitude || 0,
+        type: idx === 0 ? 'takeoff' as const : idx === arr.length - 1 ? 'landing' as const : 'cruise' as const,
+      }))
+      .filter((wp: Waypoint) => wp.lat && wp.lng && !isNaN(wp.lat) && !isNaN(wp.lng))
+  } catch {
+    return []
+  }
 }
 
 // Helper to get the appropriate disabled tooltip for each button
@@ -105,6 +135,12 @@ export function FlightPlanCard({
   const canAuthorize = plan.status === 'procesado' && plan.authorizationStatus === 'sin autorización'
   const canReset = plan.status !== 'sin procesar'
 
+  // TASK-220: Parse waypoints for preview
+  const waypoints = useMemo(() => {
+    // Use pre-parsed waypoints if available, otherwise parse from fileContent
+    return plan.waypoints || parseWaypointsFromPlan(plan.fileContent)
+  }, [plan.waypoints, plan.fileContent])
+
   // TASK-217: Handle card click for selection
   const handleCardClick = () => {
     onSelect?.(plan.id)
@@ -156,6 +192,13 @@ export function FlightPlanCard({
           </p>
         )}
       </div>
+
+      {/* TASK-220: Waypoint preview mini visualization */}
+      {waypoints.length > 0 && (
+        <div className="hidden sm:block flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+          <WaypointPreview waypoints={waypoints} mini className="border border-gray-200 dark:border-gray-600" />
+        </div>
+      )}
 
       {/* Actions - full width on mobile, auto on larger screens */}
       {/* Stop propagation on action buttons to prevent card selection */}
