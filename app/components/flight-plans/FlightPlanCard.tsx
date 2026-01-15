@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef, useEffect } from 'react'
+import React, { useMemo, useState, useRef, useEffect, DragEvent } from 'react'
 import { PlanStatusBadge, AuthorizationStatusBadge, type PlanStatus, type AuthorizationStatus } from './StatusBadge'
 import {
   ProcessIconButton,
@@ -8,6 +8,20 @@ import {
   DeleteIconButton,
 } from './ActionButtons'
 import { WaypointPreview, type Waypoint } from './WaypointPreview'
+
+/**
+ * TASK-222: Drag data structure for flight plan drag-and-drop
+ */
+export interface FlightPlanDragData {
+  planId: string
+  planName: string
+  sourceFolderId: string | null
+}
+
+/**
+ * MIME type for flight plan drag-and-drop
+ */
+export const FLIGHT_PLAN_DRAG_TYPE = 'application/x-flight-plan'
 
 export interface FlightPlan {
   id: string
@@ -35,6 +49,8 @@ function PencilIcon() {
 
 export interface FlightPlanCardProps {
   plan: FlightPlan
+  /** TASK-222: Folder ID this plan belongs to (for drag-and-drop) */
+  folderId?: string | null
   onProcess?: (planId: string) => void
   onDownload?: (planId: string) => void
   onAuthorize?: (planId: string) => void
@@ -46,6 +62,12 @@ export interface FlightPlanCardProps {
   isSelected?: boolean
   /** TASK-221: Callback for renaming the plan */
   onRename?: (planId: string, newName: string) => void
+  /** TASK-222: Enable drag-and-drop */
+  draggable?: boolean
+  /** TASK-222: Called when drag starts */
+  onDragStart?: (e: DragEvent<HTMLDivElement>, data: FlightPlanDragData) => void
+  /** TASK-222: Called when drag ends */
+  onDragEnd?: (e: DragEvent<HTMLDivElement>) => void
   loadingStates?: {
     processing?: boolean
     downloading?: boolean
@@ -131,6 +153,7 @@ function getResetDisabledTooltip(plan: FlightPlan): string | undefined {
 
 export function FlightPlanCard({
   plan,
+  folderId,
   onProcess,
   onDownload,
   onAuthorize,
@@ -139,6 +162,9 @@ export function FlightPlanCard({
   onSelect,
   isSelected = false,
   onRename,
+  draggable = false,
+  onDragStart,
+  onDragEnd,
   loadingStates = {},
   className = '',
 }: FlightPlanCardProps) {
@@ -147,6 +173,9 @@ export function FlightPlanCard({
   const [editName, setEditName] = useState(plan.name)
   const [validationError, setValidationError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  
+  // TASK-222: Drag state
+  const [isDragging, setIsDragging] = useState(false)
 
   // Focus input when entering edit mode
   useEffect(() => {
@@ -174,6 +203,35 @@ export function FlightPlanCard({
     // Use pre-parsed waypoints if available, otherwise parse from fileContent
     return plan.waypoints || parseWaypointsFromPlan(plan.fileContent)
   }, [plan.waypoints, plan.fileContent])
+
+  // TASK-222: Handle drag start
+  const handleDragStart = (e: DragEvent<HTMLDivElement>) => {
+    if (!draggable || isEditing) {
+      e.preventDefault()
+      return
+    }
+    
+    setIsDragging(true)
+    
+    const dragData: FlightPlanDragData = {
+      planId: plan.id,
+      planName: plan.name,
+      sourceFolderId: folderId ?? null,
+    }
+    
+    // Set drag data
+    e.dataTransfer.setData(FLIGHT_PLAN_DRAG_TYPE, JSON.stringify(dragData))
+    e.dataTransfer.setData('text/plain', plan.name)
+    e.dataTransfer.effectAllowed = 'move'
+    
+    onDragStart?.(e, dragData)
+  }
+  
+  // TASK-222: Handle drag end
+  const handleDragEnd = (e: DragEvent<HTMLDivElement>) => {
+    setIsDragging(false)
+    onDragEnd?.(e)
+  }
 
   // TASK-217: Handle card click for selection
   const handleCardClick = () => {
@@ -242,10 +300,12 @@ export function FlightPlanCard({
   return (
     <div
       className={`relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 rounded-lg border p-3 sm:p-4 shadow-sm transition-all ${isEditing ? '' : 'cursor-pointer'} ${className} ${
-        isSelected
-          ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-500 ring-offset-1 dark:ring-offset-gray-900'
-          : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:shadow-md hover:border-blue-300 dark:hover:border-blue-600'
-      }`}
+        isDragging
+          ? 'opacity-50 border-dashed border-blue-400 dark:border-blue-500 bg-blue-50/50 dark:bg-blue-900/30 scale-95'
+          : isSelected
+            ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-500 ring-offset-1 dark:ring-offset-gray-900'
+            : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:shadow-md hover:border-blue-300 dark:hover:border-blue-600'
+      } ${draggable && !isEditing ? 'cursor-grab active:cursor-grabbing' : ''}`}
       onClick={handleCardClick}
       role="button"
       tabIndex={isEditing ? -1 : 0}
@@ -257,12 +317,23 @@ export function FlightPlanCard({
       }}
       aria-pressed={isSelected}
       aria-label={`Seleccionar plan ${plan.name}`}
+      draggable={draggable && !isEditing}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
     >
       {/* Selection indicator */}
       {isSelected && (
         <div className="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center shadow-sm">
           <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+          </svg>
+        </div>
+      )}
+      {/* TASK-222: Drag handle indicator */}
+      {draggable && !isEditing && (
+        <div className="absolute left-1 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 opacity-50 hidden sm:block" title="Arrastrar para mover">
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M7 2a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 2zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 8zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 14zm6-8a2 2 0 1 0-.001-4.001A2 2 0 0 0 13 6zm0 2a2 2 0 1 0 .001 4.001A2 2 0 0 0 13 8zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 13 14z" />
           </svg>
         </div>
       )}

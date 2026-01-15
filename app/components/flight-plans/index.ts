@@ -22,8 +22,10 @@ export {
 
 export {
   FlightPlanCard,
+  FLIGHT_PLAN_DRAG_TYPE,
   type FlightPlan,
   type FlightPlanCardProps,
+  type FlightPlanDragData,
 } from './FlightPlanCard'
 
 export {

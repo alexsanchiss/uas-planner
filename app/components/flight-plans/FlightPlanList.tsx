@@ -1,9 +1,11 @@
-import React from 'react'
-import { FlightPlanCard, type FlightPlan, type FlightPlanCardProps } from './FlightPlanCard'
+import React, { DragEvent } from 'react'
+import { FlightPlanCard, type FlightPlan, type FlightPlanCardProps, type FlightPlanDragData } from './FlightPlanCard'
 import { FlightPlanCardSkeleton } from '../ui/loading-skeleton'
 
 export interface FlightPlanListProps {
   plans: FlightPlan[]
+  /** TASK-222: Folder ID this list belongs to (for drag-and-drop) */
+  folderId?: string | null
   onProcess?: (planId: string) => void
   onDownload?: (planId: string) => void
   onAuthorize?: (planId: string) => void
@@ -15,6 +17,12 @@ export interface FlightPlanListProps {
   selectedPlanId?: string | null
   /** TASK-221: Callback for renaming a plan */
   onRenamePlan?: (planId: string, newName: string) => void
+  /** TASK-222: Enable drag-and-drop for plans */
+  draggable?: boolean
+  /** TASK-222: Called when drag starts on a plan */
+  onDragStart?: (e: DragEvent<HTMLDivElement>, data: FlightPlanDragData) => void
+  /** TASK-222: Called when drag ends on a plan */
+  onDragEnd?: (e: DragEvent<HTMLDivElement>) => void
   loadingPlanIds?: {
     processing?: Set<string>
     downloading?: Set<string>
@@ -33,6 +41,7 @@ export interface FlightPlanListProps {
 
 export function FlightPlanList({
   plans,
+  folderId,
   onProcess,
   onDownload,
   onAuthorize,
@@ -41,6 +50,9 @@ export function FlightPlanList({
   onSelectPlan,
   selectedPlanId,
   onRenamePlan,
+  draggable = false,
+  onDragStart,
+  onDragEnd,
   loadingPlanIds = {},
   emptyMessage = 'No hay planes de vuelo',
   className = '',
@@ -82,6 +94,7 @@ export function FlightPlanList({
           <FlightPlanCard
             key={plan.id}
             plan={plan}
+            folderId={folderId}
             onProcess={onProcess}
             onDownload={onDownload}
             onAuthorize={onAuthorize}
@@ -90,6 +103,9 @@ export function FlightPlanList({
             onSelect={onSelectPlan}
             isSelected={selectedPlanId === plan.id}
             onRename={onRenamePlan}
+            draggable={draggable}
+            onDragStart={onDragStart}
+            onDragEnd={onDragEnd}
             loadingStates={loadingStates}
           />
         )

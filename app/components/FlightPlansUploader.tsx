@@ -18,7 +18,7 @@
  * Uses modular components from flight-plans/ directory.
  */
 
-import React, { useState, useCallback, useMemo } from 'react'
+import React, { useState, useCallback, useMemo, DragEvent } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { useFlightPlans, type FlightPlan as FlightPlanData } from '../hooks/useFlightPlans'
 import { useFolders } from '../hooks/useFolders'
@@ -28,11 +28,13 @@ import {
   ProcessingWorkflow,
   DateTimePicker,
   TrajectoryMapViewer,
+  FLIGHT_PLAN_DRAG_TYPE,
   getWorkflowState,
   hasProcessingStarted,
   type Folder,
   type FlightPlan,
   type WorkflowStep,
+  type FlightPlanDragData,
 } from './flight-plans'
 import { ConfirmDialog } from './ui/confirm-dialog'
 import { FlightPlansListSkeleton } from './ui/loading-skeleton'
@@ -158,6 +160,7 @@ export function FlightPlansUploader() {
     resetting: Set<string>
     deleting: Set<string>
     renaming: Set<string>
+    moving: Set<string>
   }>({
     processing: new Set(),
     downloading: new Set(),
@@ -165,6 +168,7 @@ export function FlightPlansUploader() {
     resetting: new Set(),
     deleting: new Set(),
     renaming: new Set(),
+    moving: new Set(),
   })
   const [loadingFolderIds, setLoadingFolderIds] = useState<{
     renaming: Set<string>
@@ -173,6 +177,9 @@ export function FlightPlansUploader() {
     renaming: new Set(),
     deleting: new Set(),
   })
+  
+  // TASK-222: Drag state for orphan plans drop zone
+  const [isDraggingOverOrphans, setIsDraggingOverOrphans] = useState(false)
 
   // Transform folders with their flight plans
   const transformedFolders = useMemo(() => {
@@ -427,6 +434,81 @@ export function FlightPlansUploader() {
     }
   }, [updateFlightPlan, addLoadingPlan, removeLoadingPlan, toast])
 
+  // TASK-222: Move plan to a different folder (drag-and-drop)
+  const handleMovePlan = useCallback(async (planId: string, targetFolderId: string | null) => {
+    addLoadingPlan('moving', planId)
+    try {
+      await updateFlightPlan(Number(planId), {
+        folderId: targetFolderId ? Number(targetFolderId) : null,
+      })
+      toast.success('Plan movido correctamente.')
+    } catch (error) {
+      console.error('Move error:', error)
+      toast.error('Error al mover el plan.')
+    } finally {
+      removeLoadingPlan('moving', planId)
+    }
+  }, [updateFlightPlan, addLoadingPlan, removeLoadingPlan, toast])
+  
+  // TASK-222: Handle drag start
+  const handleDragStart = useCallback((_e: DragEvent<HTMLDivElement>, _data: FlightPlanDragData) => {
+    // Optional: Could add visual feedback during drag
+  }, [])
+  
+  // TASK-222: Handle drag end
+  const handleDragEnd = useCallback((_e: DragEvent<HTMLDivElement>) => {
+    setIsDraggingOverOrphans(false)
+  }, [])
+  
+  // TASK-222: Handle drag over orphan section
+  const handleOrphanDragOver = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    
+    if (!e.dataTransfer.types.includes(FLIGHT_PLAN_DRAG_TYPE)) {
+      return
+    }
+    
+    e.dataTransfer.dropEffect = 'move'
+    setIsDraggingOverOrphans(true)
+  }, [])
+  
+  // TASK-222: Handle drag leave orphan section
+  const handleOrphanDragLeave = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    
+    // Only set false if we're leaving the container entirely
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = e.clientX
+    const y = e.clientY
+    
+    if (x < rect.left || x >= rect.right || y < rect.top || y >= rect.bottom) {
+      setIsDraggingOverOrphans(false)
+    }
+  }, [])
+  
+  // TASK-222: Handle drop on orphan section (remove from folder)
+  const handleOrphanDrop = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    setIsDraggingOverOrphans(false)
+    
+    const dragDataStr = e.dataTransfer.getData(FLIGHT_PLAN_DRAG_TYPE)
+    if (!dragDataStr) return
+    
+    try {
+      const dragData: FlightPlanDragData = JSON.parse(dragDataStr)
+      
+      // Don't do anything if already not in a folder
+      if (dragData.sourceFolderId === null) {
+        return
+      }
+      
+      // Move to no folder (orphan)
+      handleMovePlan(dragData.planId, null)
+    } catch (err) {
+      console.error('Error parsing drag data:', err)
+    }
+  }, [handleMovePlan])
+
   // DateTime change handler for selected plan
   // The DateTimePicker component returns UTC ISO string ready for storage
   const handleDateTimeChange = useCallback(async (utcIsoString: string) => {
@@ -663,6 +745,10 @@ export function FlightPlansUploader() {
           onSelectPlan={handlePlanClick}
           selectedPlanId={selectedPlanId}
           onRenamePlan={handleRenamePlan}
+          draggable={true}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          onDropPlan={handleMovePlan}
           loadingPlanIds={loadingPlanIds}
           loadingFolderIds={loadingFolderIds}
           isCreating={isCreatingFolder}
@@ -672,41 +758,77 @@ export function FlightPlansUploader() {
       {/* Orphan plans section - plans without a folder */}
       {(() => {
         const orphanPlans = flightPlans.filter(p => !p.folderId)
-        if (orphanPlans.length === 0) return null
+        
+        // Show drop zone even if no orphan plans, when dragging
+        const showDropZone = orphanPlans.length > 0 || isDraggingOverOrphans
+
+        if (!showDropZone) return null
 
         return (
-          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 shadow-sm fade-in-up">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Planes sin carpeta ({orphanPlans.length})
-            </h2>
-            <div className="flex flex-col gap-3 stagger-children">
-              {orphanPlans.map(plan => {
-                const transformed = transformFlightPlan(plan)
-                
-                  return (
-                  <FlightPlanCard
-                    key={plan.id}
-                    plan={transformed}
-                    onProcess={handleProcessPlan}
-                    onDownload={handleDownloadPlan}
-                    onAuthorize={handleAuthorizePlan}
-                    onReset={handleResetPlan}
-                    onDelete={handleDeletePlan}
-                    onSelect={handlePlanClick}
-                    isSelected={selectedPlanId === transformed.id}
-                    onRename={handleRenamePlan}
-                    loadingStates={{
-                      processing: loadingPlanIds.processing.has(transformed.id),
-                      downloading: loadingPlanIds.downloading.has(transformed.id),
-                      authorizing: loadingPlanIds.authorizing.has(transformed.id),
-                      resetting: loadingPlanIds.resetting.has(transformed.id),
-                      deleting: loadingPlanIds.deleting.has(transformed.id),
-                      renaming: loadingPlanIds.renaming.has(transformed.id),
-                    }}
-                  />
-                )
-              })}
+          <div 
+            className={`bg-white dark:bg-gray-800 rounded-lg border p-6 shadow-sm fade-in-up transition-all ${
+              isDraggingOverOrphans
+                ? 'border-blue-500 dark:border-blue-400 border-2 bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-500/30'
+                : 'border-gray-200 dark:border-gray-700'
+            }`}
+            onDragOver={handleOrphanDragOver}
+            onDragEnter={(e) => {
+              e.preventDefault()
+              if (e.dataTransfer.types.includes(FLIGHT_PLAN_DRAG_TYPE)) {
+                setIsDraggingOverOrphans(true)
+              }
+            }}
+            onDragLeave={handleOrphanDragLeave}
+            onDrop={handleOrphanDrop}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Planes sin carpeta ({orphanPlans.length})
+              </h2>
+              {isDraggingOverOrphans && (
+                <span className="text-sm font-medium text-blue-600 dark:text-blue-400 animate-pulse">
+                  Soltar aquí para quitar de carpeta
+                </span>
+              )}
             </div>
+            {orphanPlans.length > 0 ? (
+              <div className="flex flex-col gap-3 stagger-children">
+                {orphanPlans.map(plan => {
+                  const transformed = transformFlightPlan(plan)
+                  
+                  return (
+                    <FlightPlanCard
+                      key={plan.id}
+                      plan={transformed}
+                      folderId={null}
+                      onProcess={handleProcessPlan}
+                      onDownload={handleDownloadPlan}
+                      onAuthorize={handleAuthorizePlan}
+                      onReset={handleResetPlan}
+                      onDelete={handleDeletePlan}
+                      onSelect={handlePlanClick}
+                      isSelected={selectedPlanId === transformed.id}
+                      onRename={handleRenamePlan}
+                      draggable={true}
+                      onDragStart={handleDragStart}
+                      onDragEnd={handleDragEnd}
+                      loadingStates={{
+                        processing: loadingPlanIds.processing.has(transformed.id),
+                        downloading: loadingPlanIds.downloading.has(transformed.id),
+                        authorizing: loadingPlanIds.authorizing.has(transformed.id),
+                        resetting: loadingPlanIds.resetting.has(transformed.id),
+                        deleting: loadingPlanIds.deleting.has(transformed.id),
+                        renaming: loadingPlanIds.renaming.has(transformed.id),
+                      }}
+                    />
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-4 text-gray-500 dark:text-gray-400 text-sm">
+                Suelte un plan aquí para quitarlo de su carpeta
+              </div>
+            )}
           </div>
         )
       })()}
