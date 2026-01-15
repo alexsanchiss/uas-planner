@@ -492,7 +492,7 @@ export function FlightPlansUploader() {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
       {/* Polling error banner - TASK-100 */}
       {pollingErrorCount >= 3 && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center justify-between">

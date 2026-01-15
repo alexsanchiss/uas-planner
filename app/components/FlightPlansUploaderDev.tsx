@@ -1653,7 +1653,7 @@ export function FlightPlansUploaderDev() {
   };
 
   return (
-    <div className="bg-gray-900 p-6 pt-8 pb-2">
+    <div className="bg-gray-900 w-full">
       {/* Help Button */}
       <a
         href="/how-it-works#trajectory-generator-help"
@@ -1663,7 +1663,8 @@ export function FlightPlansUploaderDev() {
       >
         <HelpCircle className="w-6 h-6" />
       </a>
-      <div className="max-w-6xl mx-auto">
+      {/* TASK-223: Improved desktop layout with max-width and proper centering */}
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pt-8 pb-2">
         <h1 className="text-3xl font-bold text-white mb-6">
           Flight Plan Manager
         </h1>
