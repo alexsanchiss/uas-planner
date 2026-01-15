@@ -27,6 +27,7 @@ import {
   FlightPlanCard,
   ProcessingWorkflow,
   DateTimePicker,
+  TrajectoryMapViewer,
   getWorkflowState,
   hasProcessingStarted,
   type Folder,
@@ -137,6 +138,12 @@ export function FlightPlansUploader() {
   }>({ open: false, planId: null, planName: '' })
   // TASK-109: Reset confirmation dialog state
   const [resetConfirmDialog, setResetConfirmDialog] = useState<{
+    open: boolean
+    planId: string | null
+    planName: string
+  }>({ open: false, planId: null, planName: '' })
+  // TASK-219: Trajectory map viewer state (replaces CSV download)
+  const [trajectoryViewer, setTrajectoryViewer] = useState<{
     open: boolean
     planId: string | null
     planName: string
@@ -289,49 +296,21 @@ export function FlightPlansUploader() {
     }
   }, [processingConfirmDialog.planId, updateFlightPlan, addLoadingPlan, removeLoadingPlan])
 
-  const handleDownloadPlan = useCallback(async (planId: string) => {
+  // TASK-219: Open trajectory map viewer instead of downloading CSV
+  const handleDownloadPlan = useCallback((planId: string) => {
     const plan = flightPlans.find(p => String(p.id) === planId)
     if (!plan?.csvResult) {
-      toast.warning('No hay CSV disponible para descargar.')
+      toast.warning('No hay trayectoria disponible para visualizar.')
       return
     }
 
-    addLoadingPlan('downloading', planId)
-    try {
-      // Fetch CSV and download
-      const response = await fetch(`/api/csvResult?id=${plan.csvResult}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('authToken')}`,
-        },
-      })
-      
-      if (!response.ok) {
-        throw new Error('Error fetching CSV')
-      }
-      
-      const data = await response.json()
-      
-      // Create and download file
-      const blob = new Blob([data.csvContent], { type: 'text/csv' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `${plan.customName}.csv`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-      
-      toast.success('CSV descargado correctamente.')
-    } catch (error) {
-      console.error('Download error:', error)
-      toast.error('Error al descargar el CSV.', {
-        onRetry: () => handleDownloadPlan(planId),
-      })
-    } finally {
-      removeLoadingPlan('downloading', planId)
-    }
-  }, [flightPlans, addLoadingPlan, removeLoadingPlan, toast])
+    // Open trajectory map viewer
+    setTrajectoryViewer({
+      open: true,
+      planId,
+      planName: plan.customName,
+    })
+  }, [flightPlans, toast])
 
   const handleAuthorizePlan = useCallback(async (planId: string) => {
     const plan = flightPlans.find(p => String(p.id) === planId)
@@ -731,6 +710,15 @@ export function FlightPlansUploader() {
         cancelLabel="Cancelar"
         variant="warning"
       />
+
+      {/* TASK-219: Trajectory map viewer - replaces CSV download */}
+      {trajectoryViewer.open && trajectoryViewer.planId && (
+        <TrajectoryMapViewer
+          planId={trajectoryViewer.planId}
+          planName={trajectoryViewer.planName}
+          onClose={() => setTrajectoryViewer({ open: false, planId: null, planName: '' })}
+        />
+      )}
     </div>
   )
 }

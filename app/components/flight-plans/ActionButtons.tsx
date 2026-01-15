@@ -100,7 +100,8 @@ export function ProcessButton({
   )
 }
 
-// Download Button - Success/Green theme (uses --btn-success-*)
+// Download/View Button - Success/Green theme (uses --btn-success-*)
+// TASK-219: Now opens trajectory map viewer instead of downloading
 export function DownloadButton({ 
   onClick, 
   disabled, 
@@ -119,12 +120,12 @@ export function DownloadButton({
         {loading ? (
           <>
             <LoadingSpinner size={size} />
-            Descargando...
+            Cargando...
           </>
         ) : (
           <>
-            <DownloadIcon size={size} />
-            Descargar
+            <MapViewIcon size={size} />
+            Ver trayectoria
           </>
         )}
       </button>
@@ -275,8 +276,8 @@ export function ProcessIconButton({ onClick, disabled, disabledTooltip, loading,
 }
 
 export function DownloadIconButton({ onClick, disabled, disabledTooltip, loading, size = 'md', className = '', 'aria-label': ariaLabel }: IconButtonProps) {
-  // TASK-202: Show appropriate tooltip based on state
-  const tooltipContent = disabled ? (disabledTooltip || 'Descarga no disponible') : 'Descargar CSV'
+  // TASK-202/219: Show appropriate tooltip based on state - now opens trajectory map viewer
+  const tooltipContent = disabled ? (disabledTooltip || 'No hay trayectoria') : 'Ver trayectoria'
   
   return (
     <IconButtonTooltip content={tooltipContent} position="top">
@@ -287,7 +288,7 @@ export function DownloadIconButton({ onClick, disabled, disabledTooltip, loading
         style={{ color: 'var(--status-success)' }}
         className={`${iconButtonBaseStyles} ${iconButtonSizeStyles[size]} hover:bg-[var(--status-success-bg)] focus:ring-[var(--status-success)] disabled:opacity-50 ${className}`}
       >
-        {loading ? <LoadingSpinner size={size} /> : <DownloadIcon size={size} />}
+        {loading ? <LoadingSpinner size={size} /> : <MapViewIcon size={size} />}
       </button>
     </IconButtonTooltip>
   )
@@ -371,10 +372,11 @@ function ProcessIcon({ size = 'md' }: IconProps) {
   )
 }
 
-function DownloadIcon({ size = 'md' }: IconProps) {
+/** TASK-219: Map view icon for trajectory viewer button */
+function MapViewIcon({ size = 'md' }: IconProps) {
   return (
     <svg className={iconSizeClasses[size]} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
     </svg>
   )
 }

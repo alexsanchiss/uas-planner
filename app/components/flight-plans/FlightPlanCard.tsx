@@ -172,7 +172,7 @@ export function FlightPlanCard({
           disabled={!canDownload}
           disabledTooltip={getDownloadDisabledTooltip(plan)}
           loading={loadingStates.downloading}
-          aria-label="Descargar CSV"
+          aria-label="Ver trayectoria"
         />
         <AuthorizeIconButton
           onClick={() => onAuthorize?.(plan.id)}
