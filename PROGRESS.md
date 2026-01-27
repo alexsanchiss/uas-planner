@@ -10,9 +10,9 @@
 | 2 | Formulario U-Plan | 15/15 | ✅ Completado |
 | 3 | Generación de Volúmenes | 8/8 | ✅ Completado |
 | 4 | Flujo Autorización FAS | 7/7 | ✅ Completado |
-| 5 | Integración Geoawareness WebSocket | 6/21 | 🟡 En progreso |
+| 5 | Integración Geoawareness WebSocket | 9/21 | 🟡 En progreso |
 | 6 | Correcciones de Tema | 9/9 | ✅ Completado |
-| **TOTAL** | | **54/69** | 🟡 78% |
+| **TOTAL** | | **57/69** | 🟡 83% |
 
 ---
 
@@ -148,9 +148,9 @@
 
 | Task ID | Descripción | Estado |
 |---------|-------------|--------|
-| TASK-046 | Create useGeoawarenessWebSocket hook | ⬜ Pendiente |
-| TASK-047 | Implement exponential backoff reconnection | ⬜ Pendiente |
-| TASK-048 | Add NEXT_PUBLIC env variable | ⬜ Pendiente |
+| TASK-046 | Create useGeoawarenessWebSocket hook | ✅ Completado |
+| TASK-047 | Implement exponential backoff reconnection | ✅ Completado |
+| TASK-048 | Add NEXT_PUBLIC env variable | ✅ Completado |
 
 ### 5.4 Capa de Geozonas
 
@@ -208,6 +208,7 @@
 
 | Fecha | Task ID | Descripción | Commit |
 |-------|---------|-------------|--------|
+| 2026-01-27 | TASK-046 to TASK-048 | Create useGeoawarenessWebSocket hook with exponential backoff reconnection (1s, 2s, 4s, 8s, 16s), status tracking, and auto-cleanup. NEXT_PUBLIC env variable already exists in .env.example | feat(geoawareness): add WebSocket hook for real-time geozone updates |
 | 2026-01-27 | TASK-045 | Store uspace_identifier in geoawarenessData when publishing plan from PlanGenerator, enabling future WebSocket connections and GeoawarenessViewer integration | feat(geoawareness): persist uspace_identifier on flight plan creation |
 | 2026-01-27 | TASK-043, TASK-044 | Integrate UspaceSelector in PlanGenerator with step-based flow: U-space selection before waypoint planning, dynamic bounds based on selected U-space, and loading state while fetching | feat(plan-generator): add U-space selection step before waypoint planning |
 | 2026-01-27 | TASK-040 to TASK-042 | Add U-space selection: useUspaces hook, API endpoint proxy, and interactive UspaceSelector component with map-based selection | feat(geoawareness): add U-space selector for flight area selection |
