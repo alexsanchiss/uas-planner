@@ -11,8 +11,8 @@
 | 3 | Generación de Volúmenes | 8/8 | ✅ Completado |
 | 4 | Flujo Autorización FAS | 7/7 | ✅ Completado |
 | 5 | Integración Geoawareness WebSocket | 0/21 | 🔴 Pendiente |
-| 6 | Correcciones de Tema | 0/9 | 🔴 Pendiente |
-| **TOTAL** | | **39/69** | 🟡 57% |
+| 6 | Correcciones de Tema | 4/9 | 🟡 En Progreso |
+| **TOTAL** | | **43/69** | 🟡 62% |
 
 ---
 
@@ -187,10 +187,10 @@
 
 | Task ID | Descripción | Estado |
 |---------|-------------|--------|
-| TASK-061 | Replace hardcoded background colors | ⬜ Pendiente |
-| TASK-062 | Replace hardcoded text colors | ⬜ Pendiente |
-| TASK-063 | Fix LoginLoading component theme | ⬜ Pendiente |
-| TASK-064 | Fix warning box theme in signup | ⬜ Pendiente |
+| TASK-061 | Replace hardcoded background colors | ✅ Completado |
+| TASK-062 | Replace hardcoded text colors | ✅ Completado |
+| TASK-063 | Fix LoginLoading component theme | ✅ Completado |
+| TASK-064 | Fix warning box theme in signup | ✅ Completado |
 
 ### 6.2 Footer Logos
 
@@ -208,6 +208,7 @@
 
 | Fecha | Task ID | Descripción | Commit |
 |-------|---------|-------------|--------|
+| 2026-01-27 | TASK-061 to TASK-064 | Fix login page theme: replace hardcoded colors with CSS variables for backgrounds, text, warning box, and loading skeleton | fix(ui): make login page respect theme settings |
 | 2026-01-27 | TASK-033 to TASK-039 | Implement FAS authorization flow: processing state detection, animated spinner during FAS processing, disable button during processing, verify FASResponseViewer with copy-to-clipboard | feat(auth): improve FAS authorization flow with processing state feedback |
 | 2026-01-27 | TASK-030 to TASK-032 | Update tray_to_uplan.ts to use C++ parameters and replace generate_bbox with generateOrientedBBox | feat(uplan): integrate oriented volumes in U-Plan generation pipeline |
 | 2026-01-27 | TASK-026 to TASK-029 | Create generate_oriented_volumes.ts with segment type detection, track buffer calculations, and oriented rectangle generation | feat(uplan): add oriented volume generation for trajectory-aligned operation volumes |
