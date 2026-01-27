@@ -6,13 +6,13 @@
 
 | Fase | Descripción | Progreso | Estado |
 |------|-------------|----------|--------|
-| 1 | Correcciones Críticas | 4/9 | 🟡 En progreso |
+| 1 | Correcciones Críticas | 6/9 | 🟡 En progreso |
 | 2 | Formulario U-Plan | 0/15 | 🔴 Pendiente |
 | 3 | Generación de Volúmenes | 0/8 | 🔴 Pendiente |
 | 4 | Flujo Autorización FAS | 0/7 | 🔴 Pendiente |
 | 5 | Integración Geoawareness WebSocket | 0/21 | 🔴 Pendiente |
 | 6 | Correcciones de Tema | 0/9 | 🔴 Pendiente |
-| **TOTAL** | | **4/69** | 🟡 6% |
+| **TOTAL** | | **6/69** | 🟡 9% |
 
 ---
 
@@ -22,8 +22,8 @@
 
 | Task ID | Descripción | Estado |
 |---------|-------------|--------|
-| TASK-001 | Fix View Trajectory button enable condition | ⬜ Pendiente |
-| TASK-002 | Add tooltip to disabled View Trajectory button | ⬜ Pendiente |
+| TASK-001 | Fix View Trajectory button enable condition | ✅ Completado |
+| TASK-002 | Add tooltip to disabled View Trajectory button | ✅ Completado |
 | TASK-003 | Improve TrajectoryMapViewer error handling | ⬜ Pendiente |
 
 ### 1.2 Map Overflow Fix
@@ -208,6 +208,7 @@
 
 | Fecha | Task ID | Descripción | Commit |
 |-------|---------|-------------|--------|
+| 2026-01-27 | TASK-001, TASK-002 | Fix View Trajectory button to require status=procesado AND csvResult, with tooltip | fix(flight-plans): require processed status for View Trajectory button |
 | 2026-01-27 | TASK-004 | Fix UplanViewModal map overflow with responsive dimensions | fix(ui): make UplanViewModal map responsive to prevent overflow |
 | 2026-01-27 | TASK-007, TASK-008, TASK-009 | Fix cascade delete for csvResult (single & bulk) + audit logging | fix(api): correct cascade delete to use actual csvResult IDs |
 
