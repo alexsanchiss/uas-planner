@@ -154,8 +154,10 @@ function getAuthorizeDisabledTooltip(plan: FlightPlan): string | undefined {
 }
 
 function getDownloadDisabledTooltip(plan: FlightPlan): string | undefined {
+  // TASK-001: Must be processed first
+  if (plan.status !== 'procesado') return 'Plan must be processed first'
   // TASK-094: No CSV result
-  if (!plan.csvResult) return 'No trajectory available'
+  if (!plan.csvResult) return 'Trajectory data not available'
   return undefined
 }
 
@@ -211,7 +213,8 @@ export function FlightPlanCard({
   // TASK-089-095: Button state management with tooltips
   // Fixed: Also disable process when status is 'en proceso' (currently processing)
   const canProcess = !!plan.scheduledAt && plan.status === 'sin procesar'
-  const canDownload = !!plan.csvResult
+  // TASK-001: Can only view trajectory when processed AND csvResult exists
+  const canDownload = plan.status === 'procesado' && !!plan.csvResult
   const canAuthorize = plan.status === 'procesado' && plan.authorizationStatus === 'sin autorización'
   const canReset = plan.status !== 'sin procesar'
 
