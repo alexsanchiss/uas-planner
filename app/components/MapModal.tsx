@@ -1,8 +1,34 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Polyline, Marker, Tooltip, CircleMarker } from 'react-leaflet';
+import { MapContainer, TileLayer, Polyline, Tooltip, CircleMarker, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Modal } from "./ui/modal";
+
+// Handler to invalidate map size on container/window resize
+function MapResizeHandler() {
+  const map = useMap();
+  
+  useEffect(() => {
+    // Invalidate size on mount to ensure proper initial render
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 100);
+    
+    // Handle window resize
+    const handleResize = () => {
+      map.invalidateSize();
+    };
+    
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [map]);
+  
+  return null;
+}
 
 // TrajectoryViewerModal moved from FlightPlansUploader
 export type TrajectoryRow = {
@@ -32,11 +58,9 @@ interface MapModalProps {
 const colors = ["#3b82f6", "#22d3ee", "#f59e42", "#ef4444", "#a78bfa", "#10b981", "#f472b6", "#facc15"];
 
 const MapModal: React.FC<MapModalProps> = ({ open, onClose, title, trajectories, currentIdxs, setCurrentIdxs, names }) => {
-  if (!open || !trajectories || trajectories.length === 0 || trajectories[0].length === 0) return null;
-  const polylines = trajectories.map(traj => traj.map(row => [row.Lat, row.Lon] as [number, number]));
-  const currentMarkers = trajectories.map((traj, i) => traj[currentIdxs[i]] || traj[0]);
-  const center = polylines[0][0];
   const [playing, setPlaying] = useState(false);
+  
+  // ESC key to close modal
   useEffect(() => {
     if (!open) return;
     if (typeof window === "undefined") return;
@@ -46,8 +70,10 @@ const MapModal: React.FC<MapModalProps> = ({ open, onClose, title, trajectories,
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [open, onClose]);
+  
+  // Animation playback effect
   useEffect(() => {
-    if (!playing) return;
+    if (!playing || !trajectories || trajectories.length === 0) return;
     const interval = setInterval(() => {
       setCurrentIdxs((prev: number[]) => {
         const max = Math.max(...trajectories.map(t => t.length - 1));
@@ -56,18 +82,26 @@ const MapModal: React.FC<MapModalProps> = ({ open, onClose, title, trajectories,
     }, 60);
     return () => clearInterval(interval);
   }, [playing, trajectories, setCurrentIdxs]);
+  
+  // Early return after hooks
+  if (!open || !trajectories || trajectories.length === 0 || trajectories[0].length === 0) return null;
+  
+  const polylines = trajectories.map(traj => traj.map(row => [row.Lat, row.Lon] as [number, number]));
+  const currentMarkers = trajectories.map((traj, i) => traj[currentIdxs[i]] || traj[0]);
+  const center = polylines[0][0];
   const minLen = Math.min(...trajectories.map(t => t.length));
   const globalIdx = currentIdxs[0] || 0;
   const handleSlider = (val: number) => setCurrentIdxs(currentIdxs.map(() => val));
   return (
     <Modal open={open} onClose={onClose} title={title}>
-      <div className="w-full sm:w-[400px] md:w-[500px] lg:w-[600px] h-[300px] sm:h-[400px] mb-4 relative">
+      <div className="w-full max-w-[95vw] md:max-w-[600px] h-[50vh] md:h-[400px] max-h-[70vh] min-h-[200px] mb-4 relative overflow-hidden rounded-lg">
         <MapContainer
           center={center}
           zoom={16}
           scrollWheelZoom={false}
           style={{ width: '100%', height: '100%' }}
         >
+          <MapResizeHandler />
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution="&copy; OpenStreetMap contributors"
