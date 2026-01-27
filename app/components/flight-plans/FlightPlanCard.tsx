@@ -148,9 +148,23 @@ function getAuthorizeDisabledTooltip(plan: FlightPlan): string | undefined {
   if (plan.authorizationStatus === 'aprobado' || plan.authorizationStatus === 'denegado') {
     return 'Already authorized'
   }
-  // Authorization pending
-  if (plan.authorizationStatus === 'pendiente') return 'Authorization pending'
+  // TASK-033: Detect FAS processing state
+  if (plan.authorizationStatus === 'pendiente') {
+    const messageStr = typeof plan.authorizationMessage === 'string' ? plan.authorizationMessage : ''
+    if (messageStr === 'FAS procesando...') {
+      return 'FAS is processing the request'
+    }
+    return 'Authorization pending'
+  }
   return undefined
+}
+
+/**
+ * TASK-033: Check if FAS is currently processing the authorization request
+ */
+function isFasProcessingPlan(plan: FlightPlan): boolean {
+  const messageStr = typeof plan.authorizationMessage === 'string' ? plan.authorizationMessage : ''
+  return messageStr === 'FAS procesando...' || plan.authorizationStatus === 'pendiente'
 }
 
 function getDownloadDisabledTooltip(plan: FlightPlan): string | undefined {

@@ -246,6 +246,15 @@ export function FlightPlansUploader() {
     return plan ? transformFlightPlan(plan) : null
   }, [selectedPlanId, flightPlans])
 
+  // TASK-033: Detect FAS processing state
+  // FAS is processing when authorizationMessage is 'FAS procesando...' OR status is 'pendiente'
+  const isFasProcessing = useMemo(() => {
+    if (!selectedPlan) return false
+    const message = selectedPlan.authorizationMessage
+    const messageStr = typeof message === 'string' ? message : ''
+    return messageStr === 'FAS procesando...' || selectedPlan.authorizationStatus === 'pendiente'
+  }, [selectedPlan])
+
   // TASK-087: Check if scheduledAt editing should be locked
   const isScheduledAtLocked = useMemo(() => {
     if (!selectedPlan) return false
@@ -926,26 +935,62 @@ export function FlightPlansUploader() {
               <p className="text-xs text-[var(--text-muted)] mb-3">
                 Review the U-Plan, check geoawareness for conflicting zones, and view the trajectory before continuing to authorization.
               </p>
+              {/* TASK-035: Disable authorization button during FAS processing */}
               <button
                 onClick={() => handleAuthorizePlan(selectedPlan.id)}
-                disabled={loadingPlanIds.authorizing.has(selectedPlan.id)}
-                className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 disabled:bg-purple-400 transition-colors btn-interactive disabled-transition"
+                disabled={loadingPlanIds.authorizing.has(selectedPlan.id) || isFasProcessing}
+                className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 disabled:bg-purple-400 transition-colors btn-interactive disabled-transition flex items-center gap-2"
               >
-                {loadingPlanIds.authorizing.has(selectedPlan.id) ? 'Requesting...' : 'Continue to authorization'}
+                {loadingPlanIds.authorizing.has(selectedPlan.id) ? (
+                  <>
+                    <LoadingSpinner size="xs" variant="white" />
+                    Requesting...
+                  </>
+                ) : isFasProcessing ? (
+                  <>
+                    <LoadingSpinner size="xs" variant="white" />
+                    FAS Processing...
+                  </>
+                ) : (
+                  'Continue to authorization'
+                )}
               </button>
             </div>
           )}
 
-          {/* Authorize action prompt - when authorization is pending */}
-          {currentStep === 'authorize' && selectedPlan.authorizationStatus === 'pendiente' && (
+          {/* TASK-034: Authorize action prompt with enhanced UI when FAS is processing */}
+          {(currentStep === 'authorize' || isFasProcessing) && selectedPlan.authorizationStatus === 'pendiente' && (
             <div className="mt-4 p-4 bg-[var(--surface-primary)] rounded-lg border border-amber-100 dark:border-amber-900 fade-in">
-              <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 mb-2">
-                <LoadingSpinner size="sm" variant="primary" />
-                <span className="font-medium">Waiting for FAS response...</span>
+              {/* TASK-034: Animated FAS processing indicator */}
+              <div className="flex items-center gap-3 mb-3">
+                <div className="relative">
+                  <LoadingSpinner size="md" variant="primary" />
+                  <div className="absolute inset-0 animate-ping opacity-30">
+                    <LoadingSpinner size="md" variant="primary" />
+                  </div>
+                </div>
+                <div>
+                  <span className="font-semibold text-amber-700 dark:text-amber-400">FAS Processing...</span>
+                  <p className="text-xs text-[var(--text-muted)]">
+                    Authorization request submitted
+                  </p>
+                </div>
+              </div>
+              {/* Animated progress bar */}
+              <div className="w-full h-1.5 bg-amber-100 dark:bg-amber-900/30 rounded-full overflow-hidden mb-3">
+                <div className="h-full bg-amber-500 dark:bg-amber-400 rounded-full animate-pulse" style={{ width: '60%' }} />
               </div>
               <p className="text-sm text-[var(--text-secondary)]">
-                The authorization request has been sent. You will receive a notification when processed.
+                The authorization request has been sent to FAS. Status will update automatically.
               </p>
+              {/* TASK-035: Disabled authorization button during processing */}
+              <button
+                disabled={true}
+                className="mt-3 px-4 py-2 text-sm font-medium text-white bg-amber-400 dark:bg-amber-600 rounded-md cursor-not-allowed opacity-70 flex items-center gap-2"
+              >
+                <LoadingSpinner size="xs" variant="white" />
+                Awaiting FAS Response
+              </button>
             </div>
           )}
         </div>
