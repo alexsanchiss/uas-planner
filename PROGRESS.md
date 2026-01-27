@@ -10,9 +10,9 @@
 | 2 | Formulario U-Plan | 15/15 | ✅ Completado |
 | 3 | Generación de Volúmenes | 8/8 | ✅ Completado |
 | 4 | Flujo Autorización FAS | 7/7 | ✅ Completado |
-| 5 | Integración Geoawareness WebSocket | 11/21 | 🟡 En progreso |
+| 5 | Integración Geoawareness WebSocket | 12/21 | 🟡 En progreso |
 | 6 | Correcciones de Tema | 9/9 | ✅ Completado |
-| **TOTAL** | | **59/69** | 🟡 86% |
+| **TOTAL** | | **60/69** | 🟡 87% |
 
 ---
 
@@ -158,7 +158,7 @@
 |---------|-------------|--------|
 | TASK-049 | Create GeozoneLayer component | ✅ Completado |
 | TASK-050 | Create GeozoneInfoPopup component | ✅ Completado |
-| TASK-051 | Integrate GeozoneLayer in PlanMap | ⬜ Pendiente |
+| TASK-051 | Integrate GeozoneLayer in PlanMap | ✅ Completado |
 | TASK-052 | Add geozone visibility toggle | ⬜ Pendiente |
 | TASK-053 | Differentiate geozone click from waypoint | ⬜ Pendiente |
 
@@ -208,6 +208,7 @@
 
 | Fecha | Task ID | Descripción | Commit |
 |-------|---------|-------------|--------|
+| 2026-01-27 | TASK-051 | Integrate GeozoneLayer in PlanMap with WebSocket connection for real-time geozone data, info popup on click, and proper layer ordering between bounds and waypoints | feat(geoawareness): integrate GeozoneLayer in PlanMap for geozone visualization |
 | 2026-01-27 | TASK-050 | Create GeozoneInfoPopup component for detailed geozone information display with name, type, restrictions, temporal limits, and authority contact information in a themed popup | feat(geoawareness): add GeozoneInfoPopup for detailed geozone info |
 | 2026-01-27 | TASK-049 | Create GeozoneLayer component for rendering geozones on Leaflet maps with color-coded types (prohibited, restricted, controlled, advisory, warning, temporary), hover effects, and tooltips | feat(geoawareness): add GeozoneLayer component for geozone visualization |
 | 2026-01-27 | TASK-046 to TASK-048 | Create useGeoawarenessWebSocket hook with exponential backoff reconnection (1s, 2s, 4s, 8s, 16s), status tracking, and auto-cleanup. NEXT_PUBLIC env variable already exists in .env.example | feat(geoawareness): add WebSocket hook for real-time geozone updates |
