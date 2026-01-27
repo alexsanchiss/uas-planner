@@ -17,6 +17,10 @@ module.exports = {
       },
     }],
   },
+  // Transform ESM modules from node_modules
+  transformIgnorePatterns: [
+    'node_modules/(?!(geodesy)/)',
+  ],
   collectCoverageFrom: [
     'lib/**/*.ts',
     '!lib/**/*.d.ts',

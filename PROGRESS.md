@@ -8,11 +8,11 @@
 |------|-------------|----------|--------|
 | 1 | Correcciones Críticas | 9/9 | ✅ Completado |
 | 2 | Formulario U-Plan | 15/15 | ✅ Completado |
-| 3 | Generación de Volúmenes | 0/8 | 🔴 Pendiente |
+| 3 | Generación de Volúmenes | 1/8 | 🟡 En Progreso |
 | 4 | Flujo Autorización FAS | 0/7 | 🔴 Pendiente |
 | 5 | Integración Geoawareness WebSocket | 0/21 | 🔴 Pendiente |
 | 6 | Correcciones de Tema | 0/9 | 🔴 Pendiente |
-| **TOTAL** | | **24/69** | 🟡 35% |
+| **TOTAL** | | **25/69** | 🟡 36% |
 
 ---
 
@@ -84,7 +84,7 @@
 
 | Task ID | Descripción | Estado |
 |---------|-------------|--------|
-| TASK-025 | Create geodesy-utils.ts with Vincenty functions | ⬜ Pendiente |
+| TASK-025 | Create geodesy-utils.ts with Vincenty functions | ✅ Completado |
 
 ### 3.2 Volúmenes Orientados
 
@@ -208,6 +208,7 @@
 
 | Fecha | Task ID | Descripción | Commit |
 |-------|---------|-------------|--------|
+| 2026-01-27 | TASK-025 | Create geodesy-utils.ts with Vincenty functions for oriented volume generation | feat(uplan): add geodesy utilities for volume generation |
 | 2026-01-27 | TASK-003 | Improve TrajectoryMapViewer error handling with specific error types | fix(trajectory): improve error handling with detailed error messages |
 | 2026-01-27 | TASK-005, TASK-006 | Add map resize handler to UplanViewModal and MapModal for responsive behavior | fix(ui): add map resize handler for responsive map rendering |
 | 2026-01-27 | TASK-001, TASK-002 | Fix View Trajectory button to require status=procesado AND csvResult, with tooltip | fix(flight-plans): require processed status for View Trajectory button |
