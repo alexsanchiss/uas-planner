@@ -10,9 +10,9 @@
 | 2 | Formulario U-Plan | 15/15 | ✅ Completado |
 | 3 | Generación de Volúmenes | 8/8 | ✅ Completado |
 | 4 | Flujo Autorización FAS | 7/7 | ✅ Completado |
-| 5 | Integración Geoawareness WebSocket | 17/21 | 🟡 En progreso |
+| 5 | Integración Geoawareness WebSocket | 21/21 | ✅ Completado |
 | 6 | Correcciones de Tema | 9/9 | ✅ Completado |
-| **TOTAL** | | **65/69** | 🟡 94% |
+| **TOTAL** | | **69/69** | ✅ 100% |
 
 ---
 
@@ -174,10 +174,10 @@
 
 | Task ID | Descripción | Estado |
 |---------|-------------|--------|
-| TASK-057 | Refactor GeoawarenessViewer for WebSocket | ⬜ Pendiente |
-| TASK-058 | Add loading state to GeoawarenessViewer | ⬜ Pendiente |
-| TASK-059 | Add error handling to GeoawarenessViewer | ⬜ Pendiente |
-| TASK-060 | Add trajectory overlay | ⬜ Pendiente |
+| TASK-057 | Refactor GeoawarenessViewer for WebSocket | ✅ Completado |
+| TASK-058 | Add loading state to GeoawarenessViewer | ✅ Completado |
+| TASK-059 | Add error handling to GeoawarenessViewer | ✅ Completado |
+| TASK-060 | Add trajectory overlay | ✅ Completado |
 
 ---
 
@@ -208,6 +208,7 @@
 
 | Fecha | Task ID | Descripción | Commit |
 |-------|---------|-------------|--------|
+| 2026-01-27 | TASK-057 to TASK-060 | Refactor GeoawarenessViewer to use WebSocket for real-time geozone data: connect via useGeoawarenessWebSocket hook, render geozones using GeozoneLayer component, add trajectory overlay from plan's CSV data, loading state during connection, error handling with retry button | feat(geoawareness): integrate WebSocket for real-time geozone updates |
 | 2026-01-27 | TASK-054 to TASK-056 | Replace hardcoded FAS Service Area with dynamic U-space bounds: add uspaceName prop to PlanMap, update error messages with dynamic area name, add visual label overlay on map showing selected U-space name | feat(plan-generator): display U-space name on map and in error messages |
 | 2026-01-27 | TASK-052 | Add geozone visibility toggle in PlanGenerator sidebar with count badge, allowing users to show/hide geozones on the map via a switch control in the U-space bounds panel | feat(geoawareness): add toggle to show/hide geozones on map |
 | 2026-01-27 | TASK-053 | Differentiate geozone info click from waypoint placement by stopping event propagation on original DOM event, preventing accidental waypoints when clicking geozones to view info | fix(geoawareness): prevent waypoint placement when clicking geozones |

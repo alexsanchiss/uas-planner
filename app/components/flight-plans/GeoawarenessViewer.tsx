@@ -1,6 +1,41 @@
 'use client'
 
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect, useMemo } from 'react'
+import dynamic from 'next/dynamic'
+import { useGeoawarenessWebSocket, type GeozoneData } from '@/app/hooks/useGeoawarenessWebSocket'
+import L from 'leaflet'
+
+// Dynamically import Leaflet components to avoid SSR issues
+const MapContainer = dynamic(
+  () => import('react-leaflet').then((mod) => mod.MapContainer),
+  { ssr: false }
+)
+const TileLayer = dynamic(
+  () => import('react-leaflet').then((mod) => mod.TileLayer),
+  { ssr: false }
+)
+const Polyline = dynamic(
+  () => import('react-leaflet').then((mod) => mod.Polyline),
+  { ssr: false }
+)
+const CircleMarker = dynamic(
+  () => import('react-leaflet').then((mod) => mod.CircleMarker),
+  { ssr: false }
+)
+const Popup = dynamic(
+  () => import('react-leaflet').then((mod) => mod.Popup),
+  { ssr: false }
+)
+
+// Dynamically import GeozoneLayer
+const GeozoneLayer = dynamic(
+  () => import('@/app/components/plan-generator/GeozoneLayer').then((mod) => mod.GeozoneLayer),
+  { ssr: false }
+)
+const GeozoneInfoPopup = dynamic(
+  () => import('@/app/components/plan-generator/GeozoneInfoPopup').then((mod) => mod.GeozoneInfoPopup),
+  { ssr: false }
+)
 
 // Geozone types for the legend and visualization
 export type GeozoneType = 
@@ -30,9 +65,20 @@ export interface Violation {
   waypointIndex?: number
 }
 
+/** Trajectory point from CSV */
+interface TrajectoryPoint {
+  lat: number
+  lng: number
+  alt?: number
+  time?: number
+  type?: 'takeoff' | 'cruise' | 'landing' | 'waypoint'
+}
+
 export interface GeoawarenessViewerProps {
   planId?: string
   planName?: string
+  /** U-space identifier for WebSocket connection (from flightPlan.geoawarenessData.uspace_identifier) */
+  uspaceId?: string | null
   trajectoryData?: unknown
   geozones?: Geozone[]
   violations?: Violation[]
@@ -59,49 +105,251 @@ const SEVERITY_COLORS = {
   info: 'text-blue-600 dark:text-blue-400',
 }
 
+// Parse CSV content to trajectory points
+function parseCSVToTrajectory(csvContent: string): TrajectoryPoint[] {
+  if (!csvContent || csvContent.trim().length === 0) return []
+
+  const lines = csvContent.trim().split('\n')
+  if (lines.length < 2) return []
+
+  const header = lines[0].toLowerCase().split(',').map(h => h.trim())
+  const latIdx = header.findIndex(h => h.includes('lat'))
+  const lngIdx = header.findIndex(h => h.includes('lon') || h.includes('lng'))
+  const altIdx = header.findIndex(h => h.includes('alt'))
+  const timeIdx = header.findIndex(h => h.includes('time'))
+
+  if (latIdx === -1 || lngIdx === -1) return []
+
+  const points: TrajectoryPoint[] = []
+  const dataLines = lines.slice(1).filter(line => line.trim().length > 0)
+
+  for (let idx = 0; idx < dataLines.length; idx++) {
+    const values = dataLines[idx].split(',').map(v => v.trim())
+    const lat = parseFloat(values[latIdx])
+    const lng = parseFloat(values[lngIdx])
+
+    if (isNaN(lat) || isNaN(lng)) continue
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) continue
+
+    points.push({
+      lat,
+      lng,
+      alt: altIdx !== -1 ? parseFloat(values[altIdx]) || undefined : undefined,
+      time: timeIdx !== -1 ? parseFloat(values[timeIdx]) || undefined : undefined,
+      type: idx === 0 ? 'takeoff' : idx === dataLines.length - 1 ? 'landing' : 'waypoint',
+    })
+  }
+
+  return points
+}
+
+// Calculate bounds from trajectory points
+function calculateBounds(points: TrajectoryPoint[]): [[number, number], [number, number]] | null {
+  if (points.length === 0) return null
+
+  let minLat = Infinity, maxLat = -Infinity
+  let minLng = Infinity, maxLng = -Infinity
+
+  for (const p of points) {
+    minLat = Math.min(minLat, p.lat)
+    maxLat = Math.max(maxLat, p.lat)
+    minLng = Math.min(minLng, p.lng)
+    maxLng = Math.max(maxLng, p.lng)
+  }
+
+  const latPad = (maxLat - minLat) * 0.15 || 0.01
+  const lngPad = (maxLng - minLng) * 0.15 || 0.01
+
+  return [
+    [minLat - latPad, minLng - lngPad],
+    [maxLat + latPad, maxLng + lngPad],
+  ]
+}
+
+// Get point color based on type
+function getPointColor(type?: string): string {
+  switch (type) {
+    case 'takeoff': return '#22c55e' // green
+    case 'landing': return '#ef4444' // red
+    default: return '#3b82f6' // blue
+  }
+}
+
 /**
  * GeoawarenessViewer - Component for geoawareness map visualization
  * 
+ * TASK-057: Refactored to use WebSocket for real-time geozone data
+ * TASK-058: Loading state while connecting to WebSocket
+ * TASK-059: Error handling with retry button when connection fails
+ * TASK-060: Trajectory overlay from flight plan CSV data
+ * 
  * Features:
- * - Error state handling with retry button (TASK-111, TASK-112, TASK-113)
- * - Trajectory overlay visualization placeholder (TASK-114)
- * - Violated geozone highlighting with colors/patterns (TASK-115)
- * - Comprehensive legend for geozone types (TASK-116)
+ * - Real-time geozone data via WebSocket connection
+ * - Trajectory overlay visualization from plan's CSV data
+ * - Error state handling with retry button
+ * - Comprehensive legend for geozone types
  */
 export function GeoawarenessViewer({
   planId,
   planName,
+  uspaceId,
   trajectoryData,
   geozones = [],
   violations = [],
-  isLoading = false,
-  error = null,
-  onRetry,
+  isLoading: externalLoading = false,
+  error: externalError = null,
+  onRetry: externalRetry,
   className = '',
 }: GeoawarenessViewerProps) {
   const [showLegend, setShowLegend] = useState(true)
+  const [trajectory, setTrajectory] = useState<TrajectoryPoint[]>([])
+  const [trajectoryLoading, setTrajectoryLoading] = useState(false)
+  const [trajectoryError, setTrajectoryError] = useState<string | null>(null)
+  const [selectedGeozone, setSelectedGeozone] = useState<GeozoneData | null>(null)
+  const [popupPosition, setPopupPosition] = useState<L.LatLngExpression | null>(null)
+  const [showGeozones, setShowGeozones] = useState(true)
+
+  // TASK-057: Connect to WebSocket for geozone data
+  const {
+    status: wsStatus,
+    data: wsData,
+    error: wsError,
+    reconnect,
+    isConnected,
+    retryCount,
+  } = useGeoawarenessWebSocket({
+    uspaceId: uspaceId || null,
+    enabled: !!uspaceId && !!planId,
+  })
+
+  // Combine WebSocket geozones with any externally provided ones
+  const allGeozones = useMemo(() => {
+    const wsGeozones = wsData?.geozones_data || []
+    return wsGeozones.length > 0 ? wsGeozones : []
+  }, [wsData])
+
+  // Loading state combines external + WebSocket + trajectory
+  const isLoading = externalLoading || wsStatus === 'connecting' || trajectoryLoading
+  
+  // Error state combines external + WebSocket + trajectory
+  const displayError = externalError || 
+    (wsError?.message && wsStatus === 'error' ? wsError.message : null) ||
+    trajectoryError
+
   const hasViolations = violations.length > 0
-  const hasData = geozones.length > 0 || trajectoryData
+  const hasTrajectory = trajectory.length > 0
+  const hasGeozones = allGeozones.length > 0
 
-  // Get violated geozone IDs for highlighting
-  const violatedGeozoneIds = new Set(violations.map(v => v.geozoneId))
+  // TASK-060: Fetch trajectory data when planId changes
+  useEffect(() => {
+    async function fetchTrajectory() {
+      if (!planId) {
+        setTrajectory([])
+        return
+      }
 
-  const handleRetry = useCallback(() => {
-    if (onRetry) {
-      onRetry()
+      setTrajectoryLoading(true)
+      setTrajectoryError(null)
+
+      try {
+        const token = localStorage.getItem('authToken')
+        const headers: Record<string, string> = {}
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`
+        }
+        
+        // Get the plan to find csvResult
+        const planRes = await fetch(`/api/flightPlans/${planId}`, { headers })
+        if (!planRes.ok) {
+          if (planRes.status === 404) {
+            setTrajectoryError('Flight plan not found')
+            return
+          }
+          throw new Error(`Failed to load plan (HTTP ${planRes.status})`)
+        }
+        
+        const plan = await planRes.json()
+        const csvResultId = plan.csvResult
+        
+        if (!csvResultId) {
+          // No trajectory data yet - not necessarily an error
+          setTrajectory([])
+          return
+        }
+
+        // Fetch the CSV content
+        const csvRes = await fetch(`/api/csvResult?id=${csvResultId}`, { headers })
+        if (!csvRes.ok) {
+          if (csvRes.status === 404) {
+            setTrajectoryError('Trajectory data not found')
+            return
+          }
+          throw new Error(`Error loading CSV (HTTP ${csvRes.status})`)
+        }
+        
+        const data = await csvRes.json()
+        const content = data.csvResult || data.content || data.csvContent || ''
+        
+        const points = parseCSVToTrajectory(content)
+        setTrajectory(points)
+      } catch (err) {
+        setTrajectoryError(err instanceof Error ? err.message : 'Failed to load trajectory')
+      } finally {
+        setTrajectoryLoading(false)
+      }
     }
-  }, [onRetry])
+
+    fetchTrajectory()
+  }, [planId])
+
+  // Calculate map bounds and center
+  const { bounds, center } = useMemo(() => {
+    if (trajectory.length > 0) {
+      const calculatedBounds = calculateBounds(trajectory)
+      const lat = trajectory.reduce((sum, p) => sum + p.lat, 0) / trajectory.length
+      const lng = trajectory.reduce((sum, p) => sum + p.lng, 0) / trajectory.length
+      return { bounds: calculatedBounds, center: [lat, lng] as [number, number] }
+    }
+    // Default to Madrid if no trajectory
+    return { bounds: null, center: [40.4168, -3.7038] as [number, number] }
+  }, [trajectory])
+
+  // Create polyline positions
+  const polylinePositions = useMemo(() => 
+    trajectory.map(p => [p.lat, p.lng] as [number, number]),
+    [trajectory]
+  )
+
+  // Handle retry
+  const handleRetry = useCallback(() => {
+    if (externalRetry) {
+      externalRetry()
+    }
+    if (wsError && uspaceId) {
+      reconnect()
+    }
+    if (trajectoryError && planId) {
+      setTrajectoryError(null)
+      setTrajectory([])
+    }
+  }, [externalRetry, wsError, uspaceId, reconnect, trajectoryError, planId])
+
+  // Handle geozone click
+  const handleGeozoneClick = useCallback((geozone: GeozoneData, event: L.LeafletMouseEvent) => {
+    setSelectedGeozone(geozone)
+    setPopupPosition(event.latlng)
+  }, [])
 
   return (
     <div
-      className={`relative bg-gray-100 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden ${className}`}
+      className={`relative bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] overflow-hidden ${className}`}
       style={{ minHeight: '400px' }}
     >
-      {/* Loading overlay */}
+      {/* Loading overlay (TASK-058) */}
       {isLoading && (
-        <div className="absolute inset-0 bg-white/80 dark:bg-gray-900/80 flex items-center justify-center z-10">
-          <div className="flex flex-col items-center gap-2">
-            <svg className="animate-spin h-8 w-8 text-blue-500" viewBox="0 0 24 24">
+        <div className="absolute inset-0 bg-[var(--bg-primary)]/80 flex items-center justify-center z-20">
+          <div className="flex flex-col items-center gap-3">
+            <svg className="animate-spin h-10 w-10 text-blue-500" viewBox="0 0 24 24">
               <circle
                 className="opacity-25"
                 cx="12"
@@ -117,18 +365,24 @@ export function GeoawarenessViewer({
                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
               />
             </svg>
-            <span className="text-sm text-gray-600 dark:text-gray-400">
-              Loading geoawareness data...
+            <span className="text-sm text-[var(--text-secondary)]">
+              {wsStatus === 'connecting' && 'Connecting to geoawareness service...'}
+              {trajectoryLoading && !wsStatus.includes('connecting') && 'Loading trajectory data...'}
+              {externalLoading && 'Loading...'}
             </span>
+            {wsStatus === 'connecting' && retryCount > 0 && (
+              <span className="text-xs text-[var(--text-tertiary)]">
+                Retry attempt {retryCount}/5
+              </span>
+            )}
           </div>
         </div>
       )}
 
-      {/* Error state (TASK-111, TASK-112, TASK-113) */}
-      {error && !isLoading && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center p-6 z-10 bg-white/95 dark:bg-gray-900/95">
+      {/* Error state (TASK-059) */}
+      {displayError && !isLoading && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-6 z-20 bg-[var(--bg-primary)]/95">
           <div className="flex flex-col items-center gap-4 max-w-md text-center">
-            {/* Error icon */}
             <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
               <svg
                 className="w-8 h-8 text-red-500"
@@ -146,125 +400,51 @@ export function GeoawarenessViewer({
             </div>
 
             <div>
-              <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              <h4 className="text-lg font-semibold text-[var(--text-primary)] mb-2">
                 Geoawareness Error
               </h4>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+              <p className="text-sm text-[var(--text-secondary)] mb-1">
                 Failed to load geoawareness data
                 {planName && <span className="font-medium"> for &ldquo;{planName}&rdquo;</span>}
               </p>
-              <p className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded px-3 py-2">
-                {error}
+              <p className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded px-3 py-2 mt-2">
+                {displayError}
               </p>
             </div>
 
-            {/* Retry button (TASK-113) */}
-            {onRetry && (
-              <button
-                onClick={handleRetry}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+            <button
+              onClick={handleRetry}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                  />
-                </svg>
-                Retry
-              </button>
-            )}
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+              Retry
+            </button>
           </div>
         </div>
       )}
 
-      {/* Map placeholder content (TASK-114) */}
-      {!error && (
+      {/* Map content */}
+      {!displayError && (
         <div className="absolute inset-0 flex flex-col">
-          {/* Map area - placeholder for actual map integration */}
-          <div className="flex-1 relative bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-800 dark:to-gray-900">
-            {/* Simulated map grid pattern */}
-            <div 
-              className="absolute inset-0 opacity-20"
-              style={{
-                backgroundImage: 'linear-gradient(to right, #94a3b8 1px, transparent 1px), linear-gradient(to bottom, #94a3b8 1px, transparent 1px)',
-                backgroundSize: '40px 40px',
-              }}
-            />
-
-            {/* Placeholder trajectory line (TASK-114) */}
-            {planId && Boolean(trajectoryData) && (
-              <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
-                <defs>
-                  <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-                    <polygon points="0 0, 10 3.5, 0 7" fill="#3b82f6" />
-                  </marker>
-                </defs>
-                {/* Sample trajectory path */}
-                <path
-                  d="M 10% 70% Q 25% 40%, 40% 50% T 60% 35% T 85% 25%"
-                  fill="none"
-                  stroke="#3b82f6"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  strokeDasharray="none"
-                  markerEnd="url(#arrowhead)"
-                  className="drop-shadow-md"
-                />
-                {/* Waypoint markers */}
-                <circle cx="10%" cy="70%" r="6" fill="#22c55e" stroke="white" strokeWidth="2" />
-                <circle cx="40%" cy="50%" r="5" fill="#3b82f6" stroke="white" strokeWidth="2" />
-                <circle cx="60%" cy="35%" r="5" fill="#3b82f6" stroke="white" strokeWidth="2" />
-                <circle cx="85%" cy="25%" r="6" fill="#ef4444" stroke="white" strokeWidth="2" />
-              </svg>
-            )}
-
-            {/* Sample geozone overlays (TASK-115) */}
-            {planId && (
-              <div className="absolute inset-0 pointer-events-none">
-                {/* Restricted zone example - orange with pattern for violations */}
-                <div
-                  className={`absolute w-24 h-24 rounded-full border-2 ${
-                    hasViolations ? 'border-red-500 bg-red-500/30' : 'border-orange-400 bg-orange-400/20'
-                  }`}
-                  style={{ top: '30%', left: '35%', transform: 'translate(-50%, -50%)' }}
-                >
-                  {hasViolations && (
-                    <div className="absolute inset-0 rounded-full animate-pulse bg-red-500/20" />
-                  )}
-                </div>
-
-                {/* Advisory zone example */}
-                <div
-                  className="absolute w-32 h-20 rounded-lg border-2 border-blue-400 bg-blue-400/15"
-                  style={{ top: '60%', right: '15%', transform: 'translate(0, -50%)' }}
-                />
-
-                {/* Controlled airspace example */}
-                <div
-                  className="absolute border-2 border-yellow-400 bg-yellow-400/15"
-                  style={{
-                    top: '15%',
-                    left: '55%',
-                    width: '80px',
-                    height: '60px',
-                    borderRadius: '8px',
-                  }}
-                />
-              </div>
-            )}
-
-            {/* Center content when no plan selected */}
+          {/* Map area */}
+          <div className="flex-1 relative">
+            {/* No plan selected state */}
             {!planId && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center p-4">
+              <div className="absolute inset-0 flex flex-col items-center justify-center p-4 bg-[var(--bg-secondary)]">
                 <svg
-                  className="w-16 h-16 text-gray-400 dark:text-gray-600 mb-4"
+                  className="w-16 h-16 text-[var(--text-tertiary)] mb-4"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -276,53 +456,158 @@ export function GeoawarenessViewer({
                     d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
                   />
                 </svg>
-                <h4 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <h4 className="text-lg font-medium text-[var(--text-secondary)] mb-2">
                   Geoawareness Map
                 </h4>
-                <p className="text-sm text-gray-500 dark:text-gray-400 text-center max-w-xs">
+                <p className="text-sm text-[var(--text-tertiary)] text-center max-w-xs">
                   Select a flight plan to view trajectory and geoawareness data
                 </p>
               </div>
             )}
 
-            {/* Plan info overlay */}
+            {/* Leaflet Map (TASK-060) */}
             {planId && (
-              <div className="absolute top-3 left-3 bg-white/90 dark:bg-gray-800/90 rounded-lg px-3 py-2 shadow-md backdrop-blur-sm">
-                <div className="text-xs text-gray-500 dark:text-gray-400">Flight Plan</div>
-                <div className="text-sm font-medium text-gray-900 dark:text-white">
-                  {planName || planId}
-                </div>
-              </div>
+              <MapContainer
+                center={center}
+                zoom={13}
+                bounds={bounds || undefined}
+                className="w-full h-full"
+                style={{ background: '#f3f4f6', zIndex: 1 }}
+              >
+                <TileLayer
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                />
+
+                {/* Geozone layer from WebSocket (TASK-057) */}
+                {hasGeozones && showGeozones && (
+                  <GeozoneLayer
+                    geozones={allGeozones}
+                    visible={showGeozones}
+                    onGeozoneClick={handleGeozoneClick}
+                    fillOpacity={0.3}
+                    hoverFillOpacity={0.5}
+                  />
+                )}
+
+                {/* Geozone info popup */}
+                {selectedGeozone && popupPosition && (
+                  <GeozoneInfoPopup
+                    geozone={selectedGeozone}
+                    position={popupPosition}
+                    onClose={() => {
+                      setSelectedGeozone(null)
+                      setPopupPosition(null)
+                    }}
+                  />
+                )}
+
+                {/* Trajectory overlay (TASK-060) */}
+                {hasTrajectory && (
+                  <>
+                    <Polyline
+                      positions={polylinePositions}
+                      pathOptions={{
+                        color: '#3b82f6',
+                        weight: 3,
+                        opacity: 0.9,
+                      }}
+                    />
+
+                    {trajectory.map((point, idx) => (
+                      <CircleMarker
+                        key={idx}
+                        center={[point.lat, point.lng]}
+                        radius={idx === 0 || idx === trajectory.length - 1 ? 8 : 5}
+                        pathOptions={{
+                          color: '#fff',
+                          fillColor: getPointColor(point.type),
+                          fillOpacity: 1,
+                          weight: 2,
+                        }}
+                      >
+                        <Popup>
+                          <div className="text-sm min-w-[150px]">
+                            <p className="font-bold text-gray-900 mb-1">
+                              {idx === 0 ? '🛫 Takeoff' : idx === trajectory.length - 1 ? '🛬 Landing' : `📍 Point ${idx + 1}`}
+                            </p>
+                            <div className="text-xs text-gray-600 space-y-0.5">
+                              <p>Lat: {point.lat.toFixed(6)}</p>
+                              <p>Lng: {point.lng.toFixed(6)}</p>
+                              {point.alt !== undefined && <p>Alt: {point.alt.toFixed(1)}m</p>}
+                              {point.time !== undefined && <p>Time: {point.time.toFixed(1)}s</p>}
+                            </div>
+                          </div>
+                        </Popup>
+                      </CircleMarker>
+                    ))}
+                  </>
+                )}
+              </MapContainer>
             )}
 
-            {/* Status indicator */}
+            {/* Overlay controls */}
             {planId && (
-              <div className="absolute top-3 right-3 bg-white/90 dark:bg-gray-800/90 rounded-lg px-3 py-2 shadow-md backdrop-blur-sm">
-                <div className="flex items-center gap-2">
-                  <div
-                    className={`w-3 h-3 rounded-full ${
-                      hasViolations
-                        ? 'bg-red-500 animate-pulse'
-                        : hasData
-                        ? 'bg-green-500'
-                        : 'bg-gray-400'
-                    }`}
-                  />
-                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                    {hasViolations
-                      ? `${violations.length} Violation${violations.length !== 1 ? 's' : ''}`
-                      : hasData
-                      ? 'Clear'
-                      : 'No Data'}
-                  </span>
+              <>
+                {/* Plan info overlay */}
+                <div className="absolute top-3 left-3 bg-[var(--surface-primary)]/95 backdrop-blur-sm rounded-lg px-3 py-2 shadow-md z-[1000]">
+                  <div className="text-xs text-[var(--text-tertiary)]">Flight Plan</div>
+                  <div className="text-sm font-medium text-[var(--text-primary)]">
+                    {planName || planId}
+                  </div>
                 </div>
-              </div>
+
+                {/* Status indicator */}
+                <div className="absolute top-3 right-3 bg-[var(--surface-primary)]/95 backdrop-blur-sm rounded-lg px-3 py-2 shadow-md z-[1000]">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-3 h-3 rounded-full ${
+                        hasViolations
+                          ? 'bg-red-500 animate-pulse'
+                          : isConnected
+                          ? 'bg-green-500'
+                          : wsStatus === 'connecting'
+                          ? 'bg-yellow-500 animate-pulse'
+                          : 'bg-gray-400'
+                      }`}
+                    />
+                    <span className="text-xs font-medium text-[var(--text-secondary)]">
+                      {hasViolations
+                        ? `${violations.length} Violation${violations.length !== 1 ? 's' : ''}`
+                        : isConnected
+                        ? `${allGeozones.length} Geozones`
+                        : wsStatus === 'connecting'
+                        ? 'Connecting...'
+                        : !uspaceId
+                        ? 'No U-space'
+                        : 'Disconnected'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Geozone visibility toggle */}
+                {hasGeozones && (
+                  <div className="absolute bottom-24 right-3 bg-[var(--surface-primary)]/95 backdrop-blur-sm rounded-lg px-3 py-2 shadow-md z-[1000]">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={showGeozones}
+                        onChange={(e) => setShowGeozones(e.target.checked)}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-xs text-[var(--text-secondary)]">
+                        Show Geozones
+                      </span>
+                    </label>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
-          {/* Violations list (TASK-115) */}
+          {/* Violations list */}
           {hasViolations && (
-            <div className="border-t border-gray-200 dark:border-gray-700 bg-red-50 dark:bg-red-900/20 p-3">
+            <div className="border-t border-[var(--border-primary)] bg-red-50 dark:bg-red-900/20 p-3">
               <div className="flex items-center gap-2 mb-2">
                 <svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20">
                   <path
@@ -349,11 +634,11 @@ export function GeoawarenessViewer({
             </div>
           )}
 
-          {/* Legend (TASK-116) */}
-          <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2">
+          {/* Legend */}
+          <div className="border-t border-[var(--border-primary)] bg-[var(--bg-primary)] px-3 py-2">
             <button
               onClick={() => setShowLegend(!showLegend)}
-              className="flex items-center justify-between w-full text-xs font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+              className="flex items-center justify-between w-full text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
             >
               <span>Map Legend</span>
               <svg
@@ -371,22 +656,22 @@ export function GeoawarenessViewer({
                 {/* Trajectory markers */}
                 <div className="flex items-center gap-2 text-xs">
                   <div className="w-4 h-0.5 bg-blue-500 rounded" />
-                  <span className="text-gray-600 dark:text-gray-400">Trajectory</span>
+                  <span className="text-[var(--text-tertiary)]">Trajectory</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs">
                   <div className="w-3 h-3 bg-green-500 rounded-full border border-white shadow-sm" />
-                  <span className="text-gray-600 dark:text-gray-400">Start Point</span>
+                  <span className="text-[var(--text-tertiary)]">Takeoff</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs">
                   <div className="w-3 h-3 bg-blue-500 rounded-full border border-white shadow-sm" />
-                  <span className="text-gray-600 dark:text-gray-400">Waypoint</span>
+                  <span className="text-[var(--text-tertiary)]">Waypoint</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs">
                   <div className="w-3 h-3 bg-red-500 rounded-full border border-white shadow-sm" />
-                  <span className="text-gray-600 dark:text-gray-400">End Point</span>
+                  <span className="text-[var(--text-tertiary)]">Landing</span>
                 </div>
 
-                {/* Geozone types - comprehensive legend (TASK-116) */}
+                {/* Geozone types */}
                 {Object.entries(GEOZONE_COLORS).map(([type, config]) => (
                   <div key={type} className="flex items-center gap-2 text-xs">
                     <div
@@ -395,14 +680,14 @@ export function GeoawarenessViewer({
                         backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(255,255,255,0.3) 2px, rgba(255,255,255,0.3) 4px)'
                       } : undefined}
                     />
-                    <span className="text-gray-600 dark:text-gray-400">{config.label}</span>
+                    <span className="text-[var(--text-tertiary)]">{config.label}</span>
                   </div>
                 ))}
 
                 {/* Violation indicator */}
                 <div className="flex items-center gap-2 text-xs">
                   <div className="w-3 h-3 bg-red-500/30 border-2 border-red-500 rounded animate-pulse" />
-                  <span className="text-gray-600 dark:text-gray-400">Violation Zone</span>
+                  <span className="text-[var(--text-tertiary)]">Violation Zone</span>
                 </div>
               </div>
             )}
