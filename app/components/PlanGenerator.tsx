@@ -320,6 +320,9 @@ export default function PlanGenerator() {
   // TASK-051: Extract geozones from WebSocket data
   const geozonesData: GeozoneData[] = geoawarenessData?.geozones_data || [];
   
+  // TASK-052: Geozone visibility toggle state
+  const [geozonesVisible, setGeozonesVisible] = useState<boolean>(true);
+  
   // Generator mode: manual waypoint placement vs SCAN pattern generation
   const [generatorMode, setGeneratorMode] = useState<GeneratorMode>('manual');
   
@@ -1689,6 +1692,33 @@ export default function PlanGenerator() {
                       </button>
                     )}
                   </div>
+                  
+                  {/* TASK-052: Geozone visibility toggle */}
+                  {geozonesData.length > 0 && (
+                    <div className="flex items-center justify-between py-2 border-b border-[var(--border-primary)]">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-sm bg-gradient-to-r from-red-500 via-yellow-500 to-blue-500" />
+                        <span className="text-sm text-[var(--text-secondary)]">
+                          Geozones
+                        </span>
+                        <span className="text-xs text-[var(--text-muted)] bg-[var(--bg-tertiary)] px-1.5 py-0.5 rounded">
+                          {geozonesData.length}
+                        </span>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer" title={geozonesVisible ? 'Hide geozones' : 'Show geozones'}>
+                        <input
+                          type="checkbox"
+                          checked={geozonesVisible}
+                          onChange={(e) => setGeozonesVisible(e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-9 h-5 bg-[var(--bg-tertiary)] peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[var(--color-primary)] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--color-primary)]"></div>
+                        <span className="ml-2 text-xs text-[var(--text-muted)]">
+                          {geozonesVisible ? 'On' : 'Off'}
+                        </span>
+                      </label>
+                    </div>
+                  )}
                   <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-[var(--text-tertiary)]">
                     <div className="flex justify-between">
                       <span>Min Lat:</span>
@@ -1985,7 +2015,8 @@ export default function PlanGenerator() {
             key={`planmap-${scanHandlerVersion}`} // Force re-render when handler changes
             // TASK-051: Pass geozone data to PlanMap
             geozonesData={geozonesData}
-            geozonesVisible={true}
+            // TASK-052: Control geozone visibility via toggle
+            geozonesVisible={geozonesVisible}
           />
         </main>
       </div>
