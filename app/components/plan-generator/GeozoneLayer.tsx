@@ -21,7 +21,7 @@
 import React, { useMemo, useState } from "react";
 import { Polygon, Tooltip } from "react-leaflet";
 import L from "leaflet";
-import type { GeozoneData, GeozoneProperties } from "@/app/hooks/useGeoawarenessWebSocket";
+import type { GeozoneData } from "@/app/hooks/useGeoawarenessWebSocket";
 
 /**
  * Geozone type for styling
@@ -164,7 +164,13 @@ function GeozonePolygon({
       pathOptions={pathOptions}
       eventHandlers={{
         click: (e) => {
-          // Prevent map click event from firing
+          // TASK-053: Prevent map click event from firing (avoid waypoint placement on geozone click)
+          // Stop propagation on the original DOM event to prevent useMapEvents from receiving it
+          if (e.originalEvent) {
+            e.originalEvent.stopPropagation();
+            e.originalEvent.preventDefault();
+          }
+          // Also stop Leaflet event propagation
           L.DomEvent.stopPropagation(e);
           onClick?.(geozone, e);
         },
