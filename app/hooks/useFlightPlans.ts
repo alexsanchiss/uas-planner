@@ -51,6 +51,7 @@ export interface FlightPlan {
   folderId: number | null
   folder?: FlightPlanFolder | null
   uplan: string | null
+  geoawarenessData: unknown | null
   scheduledAt: string | null
   csvResult: number | null
   machineAssignedId: number | null

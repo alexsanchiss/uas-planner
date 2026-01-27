@@ -19,6 +19,7 @@
  */
 
 import React, { useState, useCallback, useMemo, DragEvent } from 'react'
+import dynamic from 'next/dynamic'
 import { useAuth } from '../hooks/useAuth'
 import { useFlightPlans, type FlightPlan as FlightPlanData } from '../hooks/useFlightPlans'
 import { useFolders } from '../hooks/useFolders'
@@ -28,6 +29,7 @@ import {
   ProcessingWorkflow,
   DateTimePicker,
   TrajectoryMapViewer,
+  WaypointMapModal,
   FLIGHT_PLAN_DRAG_TYPE,
   getWorkflowState,
   hasProcessingStarted,
@@ -35,11 +37,15 @@ import {
   type FlightPlan,
   type WorkflowStep,
   type FlightPlanDragData,
+  type Waypoint,
 } from './flight-plans'
 import { ConfirmDialog } from './ui/confirm-dialog'
 import { FlightPlansListSkeleton } from './ui/loading-skeleton'
 import { LoadingSpinner } from './ui/loading-spinner'
 import { useToast } from '../hooks/useToast'
+
+// Dynamic import for UplanViewModal (uses Leaflet, requires SSR disabled)
+const UplanViewModal = dynamic(() => import('./UplanViewModal'), { ssr: false })
 
 /**
  * Transform API flight plan data to component flight plan format
@@ -55,6 +61,11 @@ function transformFlightPlan(plan: FlightPlanData): FlightPlan {
     authorizationStatus: plan.authorizationStatus === 'pendiente' ? 'pendiente' :
                          plan.authorizationStatus === 'aprobado' ? 'aprobado' :
                          plan.authorizationStatus === 'denegado' ? 'denegado' : 'sin autorización',
+    authorizationMessage: plan.authorizationMessage,
+    // Parse uplan from string to object for U-Plan review
+    uplan: plan.uplan ? (typeof plan.uplan === 'string' ? JSON.parse(plan.uplan) : plan.uplan) : null,
+    // Include geoawareness response if available
+    geoawarenessData: plan.geoawarenessData,
     scheduledAt: plan.scheduledAt,
     createdAt: plan.createdAt,
     updatedAt: plan.updatedAt,
@@ -153,6 +164,27 @@ export function FlightPlansUploader() {
     planId: string | null
     planName: string
   }>({ open: false, planId: null, planName: '' })
+  // Waypoint map modal state - opens when clicking on a plan card
+  const [waypointMapModal, setWaypointMapModal] = useState<{
+    open: boolean
+    planId: string | null
+    planName: string
+    waypoints: { lat: number; lng: number; alt: number; type?: 'takeoff' | 'cruise' | 'landing' }[]
+  }>({ open: false, planId: null, planName: '', waypoints: [] })
+  // Authorization message modal state - shows authorization response
+  const [authorizationMessageModal, setAuthorizationMessageModal] = useState<{
+    open: boolean
+    planId: string | null
+    planName: string
+    message: unknown
+    status: 'aprobado' | 'denegado' | null
+  }>({ open: false, planId: null, planName: '', message: null, status: null })
+  // U-Plan review modal state - shows U-Plan before authorization
+  const [uplanViewModal, setUplanViewModal] = useState<{
+    open: boolean
+    uplan: unknown
+    name: string
+  }>({ open: false, uplan: null, name: '' })
   const [loadingPlanIds, setLoadingPlanIds] = useState<{
     processing: Set<string>
     downloading: Set<string>
@@ -161,6 +193,7 @@ export function FlightPlansUploader() {
     deleting: Set<string>
     renaming: Set<string>
     moving: Set<string>
+    geoawareness: Set<string>
   }>({
     processing: new Set(),
     downloading: new Set(),
@@ -169,6 +202,7 @@ export function FlightPlansUploader() {
     deleting: new Set(),
     renaming: new Set(),
     moving: new Set(),
+    geoawareness: new Set(),
   })
   const [loadingFolderIds, setLoadingFolderIds] = useState<{
     renaming: Set<string>
@@ -359,6 +393,53 @@ export function FlightPlansUploader() {
     }
   }, [flightPlans, refreshPlans, addLoadingPlan, removeLoadingPlan, toast])
 
+  // Handle geoawareness service call
+  const handleGeoawareness = useCallback(async (planId: string) => {
+    const plan = flightPlans.find(p => String(p.id) === planId)
+    if (!plan || plan.status !== 'procesado') {
+      toast.warning('The plan must be processed before checking geoawareness.')
+      return
+    }
+
+    if (!plan.uplan) {
+      toast.warning('U-Plan data not available. Process the plan first.')
+      return
+    }
+
+    addLoadingPlan('geoawareness', planId)
+    try {
+      const response = await fetch(`/api/flightPlans/${planId}/geoawareness`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('authToken')}`,
+        },
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Error calling geoawareness service')
+      }
+
+      const data = await response.json()
+      await refreshPlans()
+      
+      const featuresCount = data.featuresCount || 0
+      if (featuresCount === 0) {
+        toast.success('Geoawareness check complete. No conflicting zones found.')
+      } else {
+        toast.warning(`Geoawareness check complete. Found ${featuresCount} zone(s) that may affect the flight.`)
+      }
+    } catch (error) {
+      console.error('Geoawareness error:', error)
+      toast.error(error instanceof Error ? error.message : 'Error checking geoawareness.', {
+        onRetry: () => handleGeoawareness(planId),
+      })
+    } finally {
+      removeLoadingPlan('geoawareness', planId)
+    }
+  }, [flightPlans, refreshPlans, addLoadingPlan, removeLoadingPlan, toast])
+
   // TASK-109: Show reset confirmation dialog
   const handleResetPlan = useCallback((planId: string) => {
     const plan = flightPlans.find(p => String(p.id) === planId)
@@ -527,10 +608,43 @@ export function FlightPlansUploader() {
     }
   }, [selectedPlanId, updateFlightPlan, toast])
 
-  // Handle plan click/selection
+  // Handle plan click/selection - toggles selection only, does NOT open map
   const handlePlanClick = useCallback((planId: string) => {
+    // Toggle selection for workflow UI
     setSelectedPlanId(prev => prev === planId ? null : planId)
   }, [])
+
+  // Handle waypoint preview click - opens waypoint map modal
+  const handleWaypointPreviewClick = useCallback((planId: string, waypoints: Waypoint[]) => {
+    const plan = flightPlans.find(p => String(p.id) === planId)
+    if (plan) {
+      if (waypoints.length > 0) {
+        setWaypointMapModal({
+          open: true,
+          planId,
+          planName: plan.customName,
+          waypoints,
+        })
+      } else {
+        toast.warning('No waypoints found in this flight plan.')
+      }
+    }
+  }, [flightPlans, toast])
+
+  // Handle viewing authorization message - opens modal with FAS response
+  const handleViewAuthorizationMessage = useCallback((planId: string, message: unknown) => {
+    const plan = flightPlans.find(p => String(p.id) === planId)
+    if (plan) {
+      setAuthorizationMessageModal({
+        open: true,
+        planId,
+        planName: plan.customName,
+        message,
+        status: plan.authorizationStatus === 'aprobado' ? 'aprobado' : 
+                plan.authorizationStatus === 'denegado' ? 'denegado' : null,
+      })
+    }
+  }, [flightPlans])
 
   // Loading state
   if (!user) {
@@ -644,6 +758,7 @@ export function FlightPlansUploader() {
             onReset={handleResetPlan}
             onDelete={handleDeletePlan}
             onRename={handleRenamePlan}
+            onViewAuthorizationMessage={handleViewAuthorizationMessage}
             loadingStates={{
               processing: loadingPlanIds.processing.has(selectedPlan.id),
               downloading: loadingPlanIds.downloading.has(selectedPlan.id),
@@ -700,10 +815,87 @@ export function FlightPlansUploader() {
           {currentStep === 'geoawareness' && selectedPlan.status === 'procesado' && (
             <div className="mt-4 p-4 bg-[var(--surface-primary)] rounded-lg border border-purple-100 dark:border-purple-900 fade-in">
               <p className="text-sm text-[var(--text-secondary)] mb-3">
-                The plan has been processed. Review the geoawareness information before requesting authorization.
+                The plan has been processed. Review the U-Plan information and check geoawareness data before requesting authorization.
               </p>
+              <div className="flex flex-wrap items-center gap-3 mb-3">
+                {/* Review U-Plan button */}
+                <button
+                  onClick={() => {
+                    if (selectedPlan.uplan) {
+                      setUplanViewModal({
+                        open: true,
+                        uplan: selectedPlan.uplan,
+                        name: selectedPlan.name,
+                      })
+                    } else {
+                      toast.warning('U-Plan data not yet available.')
+                    }
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-md hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors btn-interactive flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                  </svg>
+                  Review U-Plan
+                </button>
+                {/* View trajectory button */}
+                <button
+                  onClick={() => handleDownloadPlan(selectedPlan.id)}
+                  disabled={!selectedPlan.csvResult}
+                  className="px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors btn-interactive flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                  </svg>
+                  View Trajectory
+                </button>
+                {/* Check Geoawareness button */}
+                <button
+                  onClick={() => handleGeoawareness(selectedPlan.id)}
+                  disabled={loadingPlanIds.geoawareness.has(selectedPlan.id)}
+                  className="px-4 py-2 text-sm font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700 rounded-md hover:bg-emerald-100 dark:hover:bg-emerald-900/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors btn-interactive flex items-center gap-2"
+                >
+                  {loadingPlanIds.geoawareness.has(selectedPlan.id) ? (
+                    <>
+                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Checking...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Check Geoawareness
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Geoawareness status indicator */}
+              {selectedPlan.geoawarenessData ? (
+                <div className="mb-3 p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200 dark:border-emerald-700">
+                  <div className="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-300">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span>Geoawareness check completed</span>
+                    {typeof selectedPlan.geoawarenessData === 'object' && 
+                     selectedPlan.geoawarenessData !== null &&
+                     'features' in selectedPlan.geoawarenessData &&
+                     Array.isArray((selectedPlan.geoawarenessData as { features: unknown[] }).features) ? (
+                      <span className="text-xs">
+                        ({(selectedPlan.geoawarenessData as { features: unknown[] }).features.length} zone(s) found)
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+
               <p className="text-xs text-[var(--text-muted)] mb-3">
-                The geoawareness viewer will show the geographic zones that affect the flight.
+                Review the U-Plan, check geoawareness for conflicting zones, and view the trajectory before continuing to authorization.
               </p>
               <button
                 onClick={() => handleAuthorizePlan(selectedPlan.id)}
@@ -749,6 +941,8 @@ export function FlightPlansUploader() {
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
           onDropPlan={handleMovePlan}
+          onWaypointPreviewClick={handleWaypointPreviewClick}
+          onViewAuthorizationMessage={handleViewAuthorizationMessage}
           loadingPlanIds={loadingPlanIds}
           loadingFolderIds={loadingFolderIds}
           isCreating={isCreatingFolder}
@@ -809,6 +1003,8 @@ export function FlightPlansUploader() {
                       onSelect={handlePlanClick}
                       isSelected={selectedPlanId === transformed.id}
                       onRename={handleRenamePlan}
+                      onViewAuthorizationMessage={handleViewAuthorizationMessage}
+                      onWaypointPreviewClick={handleWaypointPreviewClick}
                       draggable={true}
                       onDragStart={handleDragStart}
                       onDragEnd={handleDragEnd}
@@ -865,6 +1061,109 @@ export function FlightPlansUploader() {
           onClose={() => setTrajectoryViewer({ open: false, planId: null, planName: '' })}
         />
       )}
+
+      {/* Waypoint map modal - shows flight plan waypoints on interactive map */}
+      {waypointMapModal.open && (
+        <WaypointMapModal
+          open={waypointMapModal.open}
+          onClose={() => setWaypointMapModal({ open: false, planId: null, planName: '', waypoints: [] })}
+          title="Flight Plan Waypoints"
+          planName={waypointMapModal.planName}
+          waypoints={waypointMapModal.waypoints}
+        />
+      )}
+
+      {/* Authorization message modal - shows FAS authorization response */}
+      {authorizationMessageModal.open && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          onClick={() => setAuthorizationMessageModal({ open: false, planId: null, planName: '', message: null, status: null })}
+        >
+          <div
+            className="bg-[var(--surface-primary)] rounded-xl shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className={`px-6 py-4 border-b border-[var(--border-primary)] flex items-center justify-between ${
+              authorizationMessageModal.status === 'aprobado' 
+                ? 'bg-green-50 dark:bg-green-900/20' 
+                : authorizationMessageModal.status === 'denegado'
+                  ? 'bg-red-50 dark:bg-red-900/20'
+                  : ''
+            }`}>
+              <div className="flex items-center gap-3">
+                {authorizationMessageModal.status === 'aprobado' ? (
+                  <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="currentColor" viewBox="0 0 24 24">
+                    <path fillRule="evenodd" d="M12 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016A11.955 11.955 0 0112 2.944zm3.707 7.763a1 1 0 00-1.414-1.414L11 12.586l-1.293-1.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                ) : authorizationMessageModal.status === 'denegado' ? (
+                  <svg className="w-6 h-6 text-red-600 dark:text-red-400" fill="currentColor" viewBox="0 0 24 24">
+                    <path fillRule="evenodd" d="M12 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016A11.955 11.955 0 0112 2.944zM9.707 9.707a1 1 0 00-1.414 1.414L10.586 12l-2.293 2.879a1 1 0 101.414 1.414L12 14.414l2.293 1.879a1 1 0 001.414-1.414L13.414 12l2.293-2.879a1 1 0 00-1.414-1.414L12 9.586l-2.293-1.879z" clipRule="evenodd" />
+                  </svg>
+                ) : null}
+                <div>
+                  <h2 className={`text-lg font-semibold ${
+                    authorizationMessageModal.status === 'aprobado' 
+                      ? 'text-green-800 dark:text-green-200' 
+                      : authorizationMessageModal.status === 'denegado'
+                        ? 'text-red-800 dark:text-red-200'
+                        : 'text-[var(--text-primary)]'
+                  }`}>
+                    {authorizationMessageModal.status === 'aprobado' ? 'Authorization Approved' : 
+                     authorizationMessageModal.status === 'denegado' ? 'Authorization Denied' : 
+                     'Authorization Response'}
+                  </h2>
+                  <p className="text-sm text-[var(--text-secondary)]">{authorizationMessageModal.planName}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setAuthorizationMessageModal({ open: false, planId: null, planName: '', message: null, status: null })}
+                className="p-2 rounded-lg text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors"
+                aria-label="Close"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            {/* Content */}
+            <div className="p-6 overflow-auto flex-1">
+              {authorizationMessageModal.message ? (
+                <pre className="text-sm text-[var(--text-secondary)] whitespace-pre-wrap font-mono bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] overflow-x-auto">
+                  {typeof authorizationMessageModal.message === 'string' 
+                    ? authorizationMessageModal.message 
+                    : JSON.stringify(authorizationMessageModal.message, null, 2)}
+                </pre>
+              ) : (
+                <div className="text-center py-8 text-[var(--text-muted)]">
+                  <svg className="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                  </svg>
+                  <p className="text-sm">No authorization message available.</p>
+                  <p className="text-xs mt-1">The FAS response was not stored or is empty.</p>
+                </div>
+              )}
+            </div>
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-[var(--border-primary)] flex justify-end">
+              <button
+                onClick={() => setAuthorizationMessageModal({ open: false, planId: null, planName: '', message: null, status: null })}
+                className="px-4 py-2 text-sm font-medium text-[var(--text-secondary)] bg-[var(--bg-tertiary)] rounded-md hover:bg-[var(--bg-hover)] transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* U-Plan review modal - shows generated U-Plan before authorization */}
+      <UplanViewModal
+        open={uplanViewModal.open}
+        onClose={() => setUplanViewModal({ open: false, uplan: null, name: '' })}
+        uplan={uplanViewModal.uplan}
+        name={uplanViewModal.name}
+      />
     </div>
   )
 }

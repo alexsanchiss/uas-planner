@@ -4,10 +4,14 @@ import {
   ProcessIconButton,
   DownloadIconButton,
   AuthorizeIconButton,
+  AuthorizationResultIconButton,
   ResetIconButton,
   DeleteIconButton,
 } from './ActionButtons'
 import { WaypointPreview, type Waypoint } from './WaypointPreview'
+
+// Re-export Waypoint type for convenience
+export type { Waypoint }
 
 /**
  * TASK-222: Drag data structure for flight plan drag-and-drop
@@ -28,6 +32,12 @@ export interface FlightPlan {
   name: string
   status: PlanStatus
   authorizationStatus: AuthorizationStatus
+  /** Authorization response message (JSON) - stored when authorization completes */
+  authorizationMessage?: unknown
+  /** Generated U-Plan JSON - available after processing */
+  uplan?: unknown
+  /** Geoawareness service response (GeoJSON) - available after calling service */
+  geoawarenessData?: unknown
   scheduledAt?: string | Date | null
   createdAt?: string | Date
   updatedAt?: string | Date
@@ -68,6 +78,10 @@ export interface FlightPlanCardProps {
   onDragStart?: (e: DragEvent<HTMLDivElement>, data: FlightPlanDragData) => void
   /** TASK-222: Called when drag ends */
   onDragEnd?: (e: DragEvent<HTMLDivElement>) => void
+  /** Callback when user clicks to view authorization message */
+  onViewAuthorizationMessage?: (planId: string, message: unknown) => void
+  /** Callback when user clicks on waypoint preview to open map */
+  onWaypointPreviewClick?: (planId: string, waypoints: Waypoint[]) => void
   loadingStates?: {
     processing?: boolean
     downloading?: boolean
@@ -165,6 +179,8 @@ export function FlightPlanCard({
   draggable = false,
   onDragStart,
   onDragEnd,
+  onViewAuthorizationMessage,
+  onWaypointPreviewClick,
   loadingStates = {},
   className = '',
 }: FlightPlanCardProps) {
@@ -300,7 +316,7 @@ export function FlightPlanCard({
 
   return (
     <div
-      className={`relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 rounded-lg border p-3 sm:p-4 shadow-sm transition-all ${isEditing ? '' : 'cursor-pointer'} ${className} ${
+      className={`relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 rounded-lg border !pl-8 p-3 sm:p-4 shadow-sm  transition-all ${isEditing ? '' : 'cursor-pointer'} ${className} ${
         isDragging
           ? 'opacity-50 border-dashed border-blue-400 dark:border-blue-500 bg-blue-50/50 dark:bg-blue-900/30 scale-95'
           : isSelected
@@ -417,9 +433,16 @@ export function FlightPlanCard({
         )}
       </div>
 
-      {/* TASK-220: Waypoint preview mini visualization */}
+      {/* TASK-220: Waypoint preview mini visualization - clickable to open map */}
       {waypoints.length > 0 && (
-        <div className="hidden sm:block flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+        <div 
+          className="hidden sm:block flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity" 
+          onClick={(e) => {
+            e.stopPropagation()
+            onWaypointPreviewClick?.(plan.id, waypoints)
+          }}
+          title="Click to view waypoints on map"
+        >
           <WaypointPreview waypoints={waypoints} mini className="border border-gray-200 dark:border-gray-600" />
         </div>
       )}
@@ -441,12 +464,27 @@ export function FlightPlanCard({
           loading={loadingStates.downloading}
           aria-label="View trajectory"
         />
-        <AuthorizeIconButton
+        {/* Show color-coded authorization status button (green=approved, red=denied) or regular authorize button */}
+        <AuthorizationResultIconButton
+          authorizationStatus={plan.authorizationStatus}
           onClick={() => onAuthorize?.(plan.id)}
-          disabled={!canAuthorize}
+          onViewMessage={
+            plan.authorizationMessage && (plan.authorizationStatus === 'aprobado' || plan.authorizationStatus === 'denegado')
+              ? () => onViewAuthorizationMessage?.(plan.id, plan.authorizationMessage)
+              : undefined
+          }
+          disabled={!canAuthorize && plan.authorizationStatus === 'sin autorización'}
           disabledTooltip={getAuthorizeDisabledTooltip(plan)}
           loading={loadingStates.authorizing}
-          aria-label="Request authorization"
+          aria-label={
+            plan.authorizationStatus === 'aprobado' 
+              ? 'Authorization approved' 
+              : plan.authorizationStatus === 'denegado'
+                ? 'Authorization denied'
+                : plan.authorizationStatus === 'pendiente'
+                  ? 'Authorization pending'
+                  : 'Request authorization'
+          }
         />
         <ResetIconButton
           onClick={() => onReset?.(plan.id)}

@@ -16,6 +16,7 @@ export {
   ProcessIconButton,
   DownloadIconButton,
   AuthorizeIconButton,
+  AuthorizationResultIconButton,
   ResetIconButton,
   DeleteIconButton,
 } from './ActionButtons'
@@ -85,3 +86,9 @@ export {
   type Waypoint,
   type WaypointPreviewProps,
 } from './WaypointPreview'
+
+// Waypoint map modal for viewing flight plan waypoints on street map
+export {
+  WaypointMapModal,
+  type WaypointMapModalProps,
+} from './WaypointMapModal'
