@@ -24,10 +24,6 @@ const Popup = dynamic(
   () => import('react-leaflet').then((mod) => mod.Popup),
   { ssr: false }
 )
-const Marker = dynamic(
-  () => import('react-leaflet').then((mod) => mod.Marker),
-  { ssr: false }
-)
 
 export interface TrajectoryPoint {
   lat: number
@@ -46,10 +42,69 @@ export interface TrajectoryMapViewerProps {
   className?: string
 }
 
-// Parse CSV content to trajectory points
-function parseCSVToTrajectory(csvContent: string): TrajectoryPoint[] {
+// Error types for better error handling
+type TrajectoryErrorType = 
+  | 'PLAN_NOT_FOUND'
+  | 'NO_CSV_RESULT' 
+  | 'CSV_RECORD_DELETED'
+  | 'CSV_EMPTY'
+  | 'CSV_MALFORMED_NO_HEADER'
+  | 'CSV_MALFORMED_NO_COLUMNS'
+  | 'CSV_NO_DATA_ROWS'
+  | 'CSV_NO_VALID_POINTS'
+  | 'NETWORK_ERROR'
+  | 'UNKNOWN'
+
+interface TrajectoryError {
+  type: TrajectoryErrorType
+  message: string
+  details?: string
+}
+
+// Create detailed error messages for each case
+function createTrajectoryError(type: TrajectoryErrorType, details?: string): TrajectoryError {
+  const messages: Record<TrajectoryErrorType, string> = {
+    PLAN_NOT_FOUND: 'Flight plan not found. It may have been deleted.',
+    NO_CSV_RESULT: 'No processed trajectory available. The plan needs to be processed first.',
+    CSV_RECORD_DELETED: 'Trajectory data not found. The CSV result may have been deleted. Please reprocess the plan.',
+    CSV_EMPTY: 'The trajectory CSV file is empty.',
+    CSV_MALFORMED_NO_HEADER: 'Invalid CSV format: Missing or empty header row.',
+    CSV_MALFORMED_NO_COLUMNS: 'Invalid CSV format: Could not find latitude/longitude columns. Expected columns containing "lat" and "lon" or "lng".',
+    CSV_NO_DATA_ROWS: 'The trajectory CSV contains only headers but no data points.',
+    CSV_NO_VALID_POINTS: 'No valid waypoints found. All coordinates in the CSV are invalid or contain errors.',
+    NETWORK_ERROR: 'Network error while loading trajectory. Please check your connection and try again.',
+    UNKNOWN: 'An unexpected error occurred while loading the trajectory.'
+  }
+  
+  return {
+    type,
+    message: messages[type],
+    details
+  }
+}
+
+// Result type for CSV parsing
+type ParseResult = {
+  success: true
+  points: TrajectoryPoint[]
+} | {
+  success: false
+  error: TrajectoryError
+}
+
+// Parse CSV content to trajectory points with detailed error handling
+function parseCSVToTrajectory(csvContent: string): ParseResult {
+  // Check for empty content
+  if (!csvContent || csvContent.trim().length === 0) {
+    return { success: false, error: createTrajectoryError('CSV_EMPTY') }
+  }
+
   const lines = csvContent.trim().split('\n')
-  if (lines.length < 2) return []
+  
+  // Check for header row
+  if (lines.length === 0 || !lines[0].trim()) {
+    return { success: false, error: createTrajectoryError('CSV_MALFORMED_NO_HEADER') }
+  }
 
   const header = lines[0].toLowerCase().split(',').map(h => h.trim())
   const latIdx = header.findIndex(h => h.includes('lat'))
@@ -59,10 +114,26 @@ function parseCSVToTrajectory(csvContent: string): TrajectoryPoint[] {
   const speedIdx = header.findIndex(h => h.includes('speed') || h.includes('vel'))
   const headingIdx = header.findIndex(h => h.includes('head') || h.includes('bearing'))
 
-  if (latIdx === -1 || lngIdx === -1) return []
+  // Check for required columns
+  if (latIdx === -1 || lngIdx === -1) {
+    const foundColumns = header.filter(h => h.length > 0).join(', ')
+    return { 
+      success: false, 
+      error: createTrajectoryError(
+        'CSV_MALFORMED_NO_COLUMNS',
+        `Found columns: ${foundColumns || 'none'}`
+      ) 
+    }
+  }
 
-  const dataLines = lines.slice(1)
+  // Check for data rows
+  const dataLines = lines.slice(1).filter(line => line.trim().length > 0)
+  if (dataLines.length === 0) {
+    return { success: false, error: createTrajectoryError('CSV_NO_DATA_ROWS') }
+  }
+
   const points: TrajectoryPoint[] = []
+  let invalidRowCount = 0
 
   for (let idx = 0; idx < dataLines.length; idx++) {
     const line = dataLines[idx]
@@ -70,7 +141,16 @@ function parseCSVToTrajectory(csvContent: string): TrajectoryPoint[] {
     const lat = parseFloat(values[latIdx])
     const lng = parseFloat(values[lngIdx])
 
-    if (isNaN(lat) || isNaN(lng)) continue
+    if (isNaN(lat) || isNaN(lng)) {
+      invalidRowCount++
+      continue
+    }
+
+    // Validate coordinate ranges
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      invalidRowCount++
+      continue
+    }
 
     points.push({
       lat,
@@ -83,7 +163,18 @@ function parseCSVToTrajectory(csvContent: string): TrajectoryPoint[] {
     })
   }
 
-  return points
+  // Check if any valid points were found
+  if (points.length === 0) {
+    return { 
+      success: false, 
+      error: createTrajectoryError(
+        'CSV_NO_VALID_POINTS',
+        `${dataLines.length} rows examined, ${invalidRowCount} had invalid coordinates`
+      )
+    }
+  }
+
+  return { success: true, points }
 }
 
 // Calculate bounds from trajectory
@@ -138,7 +229,7 @@ function LoadingSpinner() {
 export function TrajectoryMapViewer({ planId, planName, onClose, className = '' }: TrajectoryMapViewerProps) {
   const [trajectory, setTrajectory] = useState<TrajectoryPoint[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<TrajectoryError | null>(null)
   const [csvContent, setCsvContent] = useState<string>('')
   const [showLabels, setShowLabels] = useState(true)
   const [selectedPoint, setSelectedPoint] = useState<TrajectoryPoint | null>(null)
@@ -158,22 +249,30 @@ export function TrajectoryMapViewer({ planId, planName, onClose, className = '' 
         
         // First get the plan to find csvResult
         const planRes = await fetch(`/api/flightPlans/${planId}`, { headers })
-        if (!planRes.ok) throw new Error('Error loading plan')
+        if (!planRes.ok) {
+          if (planRes.status === 404) {
+            setError(createTrajectoryError('PLAN_NOT_FOUND'))
+            return
+          }
+          throw new Error(`Failed to load plan (HTTP ${planRes.status})`)
+        }
         
         const plan = await planRes.json()
         // csvResult is a number ID, not an object
         const csvResultId = plan.csvResult
         if (!csvResultId) {
-          throw new Error('No processed trajectory available')
+          setError(createTrajectoryError('NO_CSV_RESULT'))
+          return
         }
 
         // Fetch the CSV content using query param
         const csvRes = await fetch(`/api/csvResult?id=${csvResultId}`, { headers })
         if (!csvRes.ok) {
           if (csvRes.status === 404) {
-            throw new Error('Trajectory data not found. The plan may need to be reprocessed.')
+            setError(createTrajectoryError('CSV_RECORD_DELETED'))
+            return
           }
-          throw new Error(`Error loading CSV (${csvRes.status})`)
+          throw new Error(`Error loading CSV (HTTP ${csvRes.status})`)
         }
         
         const data = await csvRes.json()
@@ -181,14 +280,20 @@ export function TrajectoryMapViewer({ planId, planName, onClose, className = '' 
         const content = data.csvResult || data.content || data.csvContent || ''
         setCsvContent(content)
         
-        const points = parseCSVToTrajectory(content)
-        if (points.length === 0) {
-          throw new Error('No valid trajectory data in CSV')
+        const parseResult = parseCSVToTrajectory(content)
+        if (!parseResult.success) {
+          setError(parseResult.error)
+          return
         }
         
-        setTrajectory(points)
+        setTrajectory(parseResult.points)
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error')
+        // Handle network errors specifically
+        if (err instanceof TypeError && err.message.includes('fetch')) {
+          setError(createTrajectoryError('NETWORK_ERROR'))
+        } else {
+          setError(createTrajectoryError('UNKNOWN', err instanceof Error ? err.message : 'Unknown error'))
+        }
       } finally {
         setLoading(false)
       }
@@ -288,13 +393,21 @@ export function TrajectoryMapViewer({ planId, planName, onClose, className = '' 
           {loading ? (
             <LoadingSpinner />
           ) : error ? (
-            <div className="flex flex-col items-center justify-center h-full gap-4">
+            <div className="flex flex-col items-center justify-center h-full gap-4 px-6">
               <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
                 <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               </div>
-              <p className="text-red-600 dark:text-red-400 font-medium">{error}</p>
+              <div className="text-center max-w-md">
+                <p className="text-red-600 dark:text-red-400 font-medium text-lg mb-2">{error.message}</p>
+                {error.details && (
+                  <p className="text-sm text-[var(--text-secondary)] mb-4">{error.details}</p>
+                )}
+                <p className="text-xs text-[var(--text-tertiary)] mb-4">
+                  Error code: {error.type}
+                </p>
+              </div>
               <button
                 onClick={onClose}
                 className="px-4 py-2 rounded-lg bg-[var(--bg-tertiary)] hover:bg-[var(--bg-secondary)] text-[var(--text-primary)]"
