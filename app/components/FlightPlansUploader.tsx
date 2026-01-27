@@ -47,6 +47,9 @@ import { useToast } from '../hooks/useToast'
 // Dynamic import for UplanViewModal (uses Leaflet, requires SSR disabled)
 const UplanViewModal = dynamic(() => import('./UplanViewModal'), { ssr: false })
 
+// Dynamic import for UplanFormModal (TASK-023: Wire Review U-Plan to form modal)
+const UplanFormModal = dynamic(() => import('./flight-plans/UplanFormModal'), { ssr: false })
+
 /**
  * Transform API flight plan data to component flight plan format
  * TASK-220: Include fileContent for waypoint preview extraction
@@ -185,6 +188,13 @@ export function FlightPlansUploader() {
     uplan: unknown
     name: string
   }>({ open: false, uplan: null, name: '' })
+  // TASK-023: UplanFormModal state for editing U-Plan before authorization
+  const [uplanFormModal, setUplanFormModal] = useState<{
+    open: boolean
+    planId: string
+    uplan: unknown
+    name: string
+  }>({ open: false, planId: '', uplan: null, name: '' })
   const [loadingPlanIds, setLoadingPlanIds] = useState<{
     processing: Set<string>
     downloading: Set<string>
@@ -818,7 +828,24 @@ export function FlightPlansUploader() {
                 The plan has been processed. Review the U-Plan information and check geoawareness data before requesting authorization.
               </p>
               <div className="flex flex-wrap items-center gap-3 mb-3">
-                {/* Review U-Plan button */}
+                {/* Review U-Plan button - TASK-023: Opens UplanFormModal for editing */}
+                <button
+                  onClick={() => {
+                    setUplanFormModal({
+                      open: true,
+                      planId: selectedPlan.id,
+                      uplan: selectedPlan.uplan,
+                      name: selectedPlan.name,
+                    })
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-md hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors btn-interactive flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  Review U-Plan
+                </button>
+                {/* View U-Plan Map button - shows operation volumes on map */}
                 <button
                   onClick={() => {
                     if (selectedPlan.uplan) {
@@ -831,12 +858,13 @@ export function FlightPlansUploader() {
                       toast.warning('U-Plan data not yet available.')
                     }
                   }}
-                  className="px-4 py-2 text-sm font-medium text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-md hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors btn-interactive flex items-center gap-2"
+                  disabled={!selectedPlan.uplan}
+                  className="px-4 py-2 text-sm font-medium text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-md hover:bg-purple-100 dark:hover:bg-purple-900/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors btn-interactive flex items-center gap-2"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                   </svg>
-                  Review U-Plan
+                  View U-Plan Map
                 </button>
                 {/* View trajectory button - TASK-001: Require status=procesado AND csvResult */}
                 <button
@@ -1158,12 +1186,33 @@ export function FlightPlansUploader() {
         </div>
       )}
 
-      {/* U-Plan review modal - shows generated U-Plan before authorization */}
+      {/* U-Plan map viewer modal - shows operation volumes on map */}
       <UplanViewModal
         open={uplanViewModal.open}
         onClose={() => setUplanViewModal({ open: false, uplan: null, name: '' })}
         uplan={uplanViewModal.uplan}
         name={uplanViewModal.name}
+      />
+
+      {/* U-Plan form modal - TASK-023: editable form for U-Plan data */}
+      <UplanFormModal
+        open={uplanFormModal.open}
+        onClose={() => setUplanFormModal({ open: false, planId: '', uplan: null, name: '' })}
+        planId={uplanFormModal.planId}
+        existingUplan={uplanFormModal.uplan}
+        planName={uplanFormModal.name}
+        authToken={typeof window !== 'undefined' ? localStorage.getItem('authToken') || '' : ''}
+        hasBeenProcessed={selectedPlan?.status === 'procesado'}
+        hasScheduledAt={!!selectedPlan?.scheduledAt}
+        onSave={() => {
+          // Refresh flight plans after saving draft
+          refreshPlans()
+        }}
+        onSubmitToFAS={() => {
+          // Refresh flight plans after FAS submission
+          refreshPlans()
+          setUplanFormModal({ open: false, planId: '', uplan: null, name: '' })
+        }}
       />
     </div>
   )
