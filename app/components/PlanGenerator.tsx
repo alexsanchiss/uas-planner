@@ -641,20 +641,20 @@ export default function PlanGenerator() {
   // Add login check at the top of the return
   if (!user) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-zinc-900">
-        <div className="text-2xl text-white font-semibold">You must be logged in to access the Plan Generator.</div>
+      <div className="flex items-center justify-center min-h-screen bg-[var(--bg-primary)]">
+        <div className="text-2xl text-[var(--text-primary)] font-semibold">You must be logged in to access the Plan Generator.</div>
       </div>
     );
   }
   return (
-    <div className="w-full bg-zinc-900 overflow-x-hidden">
+    <div className="w-full bg-[var(--bg-primary)] overflow-x-hidden">
       {/* Toast notification */}
       {toast && (
         <div
           className={`fixed top-6 left-1/2 transform -translate-x-1/2 z-[2000] px-4 sm:px-6 py-3 rounded shadow-lg text-sm sm:text-base font-semibold animate-fade-in max-w-[90vw] text-center ${
             toast.includes('has been saved in the Plan Generator folder in Trajectory Generator.')
-              ? 'bg-green-600 text-white'
-              : 'bg-red-600 text-white'
+              ? 'bg-[var(--status-success)] text-white'
+              : 'bg-[var(--status-error)] text-white'
           }`}
         >
           {toast}
@@ -748,25 +748,25 @@ export default function PlanGenerator() {
         )}
         
         {/* Sidebar */}
-        <aside className={`plan-gen-sidebar relative z-10 flex flex-col w-full lg:w-[420px] lg:min-w-[320px] lg:max-w-[520px] bg-app-sidebar border-r border-zinc-800 shadow-lg ${sidebarOpen ? 'sidebar-open' : ''}`}>
+        <aside className={`plan-gen-sidebar relative z-10 flex flex-col w-full lg:w-[420px] lg:min-w-[320px] lg:max-w-[520px] bg-[var(--surface-primary)] border-r border-[var(--border-primary)] shadow-lg ${sidebarOpen ? 'sidebar-open' : ''}`}>
           <div className="flex flex-col h-full w-full">
             {/* Scrollable content: header, plan details, waypoint list, and bottom buttons */}
             <div>
               <div className="p-6 pb-0">
-                <h2 className="text-2xl font-bold mb-4 text-white">
+                <h2 className="text-2xl font-bold mb-4 text-[var(--text-primary)]">
                   Flight Plan
                 </h2>
                 
                 {/* Mode Toggle: Manual vs SCAN Pattern */}
-                <div className="mb-4 p-3 bg-zinc-800/50 border border-zinc-700 rounded-md">
-                  <div className="text-xs text-zinc-400 mb-2 font-medium">Generation Mode</div>
+                <div className="mb-4 p-3 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md">
+                  <div className="text-xs text-[var(--text-tertiary)] mb-2 font-medium">Generation Mode</div>
                   <div className="flex gap-2">
                     <button
                       onClick={() => setGeneratorMode('manual')}
                       className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded text-sm font-medium transition-colors ${
                         generatorMode === 'manual'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'
+                          ? 'bg-[var(--color-primary)] text-white'
+                          : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
                       }`}
                     >
                       <MousePointer2 className="w-4 h-4" />
@@ -776,8 +776,8 @@ export default function PlanGenerator() {
                       onClick={() => setGeneratorMode('scan')}
                       className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded text-sm font-medium transition-colors ${
                         generatorMode === 'scan'
-                          ? 'bg-purple-600 text-white'
-                          : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'
+                          ? 'bg-[var(--color-accent)] text-white'
+                          : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
                       }`}
                     >
                       <Grid3X3 className="w-4 h-4" />
@@ -802,7 +802,7 @@ export default function PlanGenerator() {
                 {/* Manual mode: Flight Plan Details */}
                 {generatorMode === 'manual' && (
                     <button
-                      className="w-full flex items-center justify-between bg-zinc-800 text-white px-4 py-2 rounded-t-md border border-zinc-700 font-semibold focus:outline-none"
+                      className="w-full flex items-center justify-between bg-[var(--bg-secondary)] text-[var(--text-primary)] px-4 py-2 rounded-t-md border border-[var(--border-primary)] font-semibold focus:outline-none"
                       onClick={() => setDetailsOpen((o) => !o)}
                       type="button"
                     >
@@ -811,10 +811,10 @@ export default function PlanGenerator() {
                     </button>
                 )}
                 {generatorMode === 'manual' && detailsOpen && (
-                  <div className="bg-zinc-800 border-x border-b border-zinc-700 rounded-b-md p-4 space-y-4 mt-0">
+                  <div className="bg-[var(--bg-secondary)] border-x border-b border-[var(--border-primary)] rounded-b-md p-4 space-y-4 mt-0">
                     {/* Date/Time */}
                     <div>
-                      <label className="block mb-1 font-medium text-zinc-200">
+                      <label className="block mb-1 font-medium text-[var(--text-secondary)]">
                         Flight date & time
                       </label>
                       <input
@@ -826,13 +826,13 @@ export default function PlanGenerator() {
                             datetime: e.target.value,
                           }))
                         }
-                        className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="input w-full"
                         style={{ colorScheme: "dark" }}
                       />
                     </div>
                     {/* Data Owner Identifier */}
-                    <div className="border-b border-zinc-700 pb-2 mb-2">
-                      <div className="font-semibold text-zinc-300 mb-1">
+                    <div className="border-b border-[var(--border-primary)] pb-2 mb-2">
+                      <div className="font-semibold text-[var(--text-secondary)] mb-1">
                         Data Owner Identifier
                       </div>
                       <div className="flex gap-2">
@@ -850,7 +850,7 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-20 text-xs focus:outline-none"
+                          className="input w-20 text-xs"
                         />
                         <input
                           type="text"
@@ -866,13 +866,13 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-20 text-xs focus:outline-none"
+                          className="input w-20 text-xs"
                         />
                       </div>
                     </div>
                     {/* Data Source Identifier */}
-                    <div className="border-b border-zinc-700 pb-2 mb-2">
-                      <div className="font-semibold text-zinc-300 mb-1">
+                    <div className="border-b border-[var(--border-primary)] pb-2 mb-2">
+                      <div className="font-semibold text-[var(--text-secondary)] mb-1">
                         Data Source Identifier
                       </div>
                       <div className="flex gap-2">
@@ -890,7 +890,7 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-20 text-xs focus:outline-none"
+                          className="input w-20 text-xs"
                         />
                         <input
                           type="text"
@@ -906,13 +906,13 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-20 text-xs focus:outline-none"
+                          className="input w-20 text-xs"
                         />
                       </div>
                     </div>
                     {/* Contact Details */}
-                    <div className="border-b border-zinc-700 pb-2 mb-2">
-                      <div className="font-semibold text-zinc-300 mb-1">
+                    <div className="border-b border-[var(--border-primary)] pb-2 mb-2">
+                      <div className="font-semibold text-[var(--text-secondary)] mb-1">
                         Contact Details
                       </div>
                       <div className="flex gap-2 mb-2">
@@ -929,7 +929,7 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-32 text-xs focus:outline-none"
+                          className="input w-32 text-xs"
                         />
                         <input
                           type="text"
@@ -944,11 +944,11 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-32 text-xs focus:outline-none"
+                          className="input w-32 text-xs"
                         />
                       </div>
                       <div className="mb-2">
-                        <div className="text-xs text-zinc-400 mb-1">Phones</div>
+                        <div className="text-xs text-[var(--text-tertiary)] mb-1">Phones</div>
                         {flightPlanDetails.contactDetails.phones.map(
                           (phone, i) => (
                             <div key={i} className="flex gap-2 mb-1">
@@ -969,11 +969,11 @@ export default function PlanGenerator() {
                                     };
                                   })
                                 }
-                                className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-40 text-xs focus:outline-none"
+                                className="input w-40 text-xs"
                               />
                               <button
                                 type="button"
-                                className="text-red-400 hover:text-red-600 text-xs font-bold"
+                                className="text-[var(--status-error)] hover:text-[var(--status-error-hover)] text-xs font-bold"
                                 onClick={() =>
                                   setFlightPlanDetails((d) => {
                                     const phones =
@@ -997,7 +997,7 @@ export default function PlanGenerator() {
                         )}
                         <button
                           type="button"
-                          className="text-blue-400 hover:underline text-xs"
+                          className="text-[var(--color-primary)] hover:underline text-xs"
                           onClick={() =>
                             setFlightPlanDetails((d) => ({
                               ...d,
@@ -1012,7 +1012,7 @@ export default function PlanGenerator() {
                         </button>
                       </div>
                       <div>
-                        <div className="text-xs text-zinc-400 mb-1">Emails</div>
+                        <div className="text-xs text-[var(--text-tertiary)] mb-1">Emails</div>
                         {flightPlanDetails.contactDetails.emails.map(
                           (email, i) => (
                             <div key={i} className="flex gap-2 mb-1">
@@ -1033,11 +1033,11 @@ export default function PlanGenerator() {
                                     };
                                   })
                                 }
-                                className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-40 text-xs focus:outline-none"
+                                className="input w-40 text-xs"
                               />
                               <button
                                 type="button"
-                                className="text-red-400 hover:text-red-600 text-xs font-bold"
+                                className="text-[var(--status-error)] hover:text-[var(--status-error-hover)] text-xs font-bold"
                                 onClick={() =>
                                   setFlightPlanDetails((d) => {
                                     const emails =
@@ -1061,7 +1061,7 @@ export default function PlanGenerator() {
                         )}
                         <button
                           type="button"
-                          className="text-blue-400 hover:underline text-xs"
+                          className="text-[var(--color-primary)] hover:underline text-xs"
                           onClick={() =>
                             setFlightPlanDetails((d) => ({
                               ...d,
@@ -1077,8 +1077,8 @@ export default function PlanGenerator() {
                       </div>
                     </div>
                     {/* Flight Details */}
-                    <div className="border-b border-zinc-700 pb-2 mb-2">
-                      <div className="font-semibold text-zinc-300 mb-1">
+                    <div className="border-b border-[var(--border-primary)] pb-2 mb-2">
+                      <div className="font-semibold text-[var(--text-secondary)] mb-1">
                         Flight Details
                       </div>
                       <div className="flex gap-2 mb-2 flex-wrap">
@@ -1093,7 +1093,7 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 text-xs focus:outline-none"
+                          className="input select text-xs py-1"
                         >
                           <option value="">Select mode</option>
                           {FLIGHT_MODES.map((opt) => (
@@ -1113,7 +1113,7 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 text-xs focus:outline-none"
+                          className="input select text-xs py-1"
                         >
                           <option value="">Select category</option>
                           {FLIGHT_CATEGORIES.map((opt) => (
@@ -1122,7 +1122,7 @@ export default function PlanGenerator() {
                             </option>
                           ))}
                         </select>
-                        <label className="flex items-center gap-1 text-xs text-zinc-400">
+                        <label className="flex items-center gap-1 text-xs text-[var(--text-tertiary)]">
                           <input
                             type="checkbox"
                             checked={
@@ -1155,7 +1155,7 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 text-xs focus:outline-none w-full"
+                          className="input select text-xs py-1 w-full"
                         >
                           <option value="">Special operation?</option>
                           {SPECIAL_OPERATIONS.map((opt) => (
@@ -1167,8 +1167,8 @@ export default function PlanGenerator() {
                       </div>
                     </div>
                     {/* UAS */}
-                    <div className="border-b border-zinc-700 pb-2 mb-2">
-                      <div className="font-semibold text-zinc-300 mb-1">
+                    <div className="border-b border-[var(--border-primary)] pb-2 mb-2">
+                      <div className="font-semibold text-[var(--text-secondary)] mb-1">
                         UAS
                       </div>
                       <div className="flex gap-2 mb-2">
@@ -1185,7 +1185,7 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-32 text-xs focus:outline-none"
+                          className="input w-32 text-xs"
                         />
                         <input
                           type="text"
@@ -1198,10 +1198,10 @@ export default function PlanGenerator() {
                               uas: { ...d.uas, serialNumber: e.target.value },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-32 text-xs focus:outline-none"
+                          className="input w-32 text-xs"
                         />
                       </div>
-                      <div className="font-semibold text-zinc-400 mb-1 mt-2">
+                      <div className="font-semibold text-[var(--text-tertiary)] mb-1 mt-2">
                         Flight Characteristics
                       </div>
                       <div className="flex gap-2 mb-2 flex-wrap">
@@ -1223,7 +1223,7 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-24 text-xs focus:outline-none"
+                          className="input w-24 text-xs"
                         />
                         <input
                           type="number"
@@ -1244,7 +1244,7 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-28 text-xs focus:outline-none"
+                          className="input w-28 text-xs"
                         />
                         <select
                           value={
@@ -1263,7 +1263,7 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 text-xs focus:outline-none"
+                          className="input select text-xs py-1"
                         >
                           <option value="">Connectivity</option>
                           {CONNECTIVITY.map((opt) => (
@@ -1289,7 +1289,7 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 text-xs focus:outline-none"
+                          className="input select text-xs py-1"
                         >
                           <option value="">ID Technology</option>
                           {ID_TECHNOLOGY.map((opt) => (
@@ -1317,10 +1317,10 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-40 text-xs focus:outline-none"
+                          className="input w-40 text-xs"
                         />
                       </div>
-                      <div className="font-semibold text-zinc-400 mb-1 mt-2">
+                      <div className="font-semibold text-[var(--text-tertiary)] mb-1 mt-2">
                         General Characteristics
                       </div>
                       <div className="flex gap-2 flex-wrap">
@@ -1342,7 +1342,7 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-24 text-xs focus:outline-none"
+                          className="input w-24 text-xs"
                         />
                         <input
                           type="text"
@@ -1362,7 +1362,7 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-24 text-xs focus:outline-none"
+                          className="input w-24 text-xs"
                         />
                         <input
                           type="text"
@@ -1383,7 +1383,7 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-28 text-xs focus:outline-none"
+                          className="input w-28 text-xs"
                         />
                         <select
                           value={
@@ -1401,7 +1401,7 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 text-xs focus:outline-none"
+                          className="input select text-xs py-1"
                         >
                           <option value="">UAS Type</option>
                           {UAS_TYPE.map((opt) => (
@@ -1427,7 +1427,7 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 text-xs focus:outline-none"
+                          className="input select text-xs py-1"
                         >
                           <option value="">UAS Class</option>
                           {UAS_CLASS.map((opt) => (
@@ -1453,7 +1453,7 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 text-xs focus:outline-none"
+                          className="input select text-xs py-1"
                         >
                           <option value="">UAS Dimension</option>
                           {UAS_DIMENSION.map((opt) => (
@@ -1466,7 +1466,7 @@ export default function PlanGenerator() {
                     </div>
                     {/* Operator ID */}
                     <div>
-                      <label className="block mb-1 font-medium text-zinc-200">
+                      <label className="block mb-1 font-medium text-[var(--text-secondary)]">
                         Operator ID
                       </label>
                       <input
@@ -1478,7 +1478,7 @@ export default function PlanGenerator() {
                             operatorId: e.target.value,
                           }))
                         }
-                        className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="input w-full"
                         placeholder="Operator registration number"
                       />
                     </div>
@@ -1486,14 +1486,14 @@ export default function PlanGenerator() {
                 )}
                 {generatorMode === 'manual' && (
                 <div className="mb-4">
-                  <label className="block mb-1 font-medium text-zinc-200">
+                  <label className="block mb-1 font-medium text-[var(--text-secondary)]">
                     Plan name
                   </label>
                   <input
                     type="text"
                     value={planName}
                     onChange={(e) => setPlanName(e.target.value)}
-                    className="border border-zinc-700 bg-zinc-800 text-white rounded px-2 py-1 w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="input w-full"
                     placeholder="e.g. Mission 1"
                     disabled={loading}
                   />
@@ -1501,30 +1501,30 @@ export default function PlanGenerator() {
                 )}
                 
                 {/* TASK-153: Service Area Bounds Panel */}
-                <div className="mb-4 p-3 bg-zinc-800/50 border border-zinc-700 rounded-md">
+                <div className="mb-4 p-3 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md">
                   <div className="flex items-center gap-2 mb-2">
                     <div className="w-3 h-3 border-2 border-orange-400 border-dashed rounded-sm" />
-                    <span className="text-sm font-semibold text-zinc-200">FAS Service Area</span>
+                    <span className="text-sm font-semibold text-[var(--text-secondary)]">FAS Service Area</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-zinc-400">
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-[var(--text-tertiary)]">
                     <div className="flex justify-between">
                       <span>Min Lat:</span>
-                      <span className="text-zinc-300 font-mono">{SERVICE_LIMITS[1].toFixed(4)}°</span>
+                      <span className="text-[var(--text-secondary)] font-mono">{SERVICE_LIMITS[1].toFixed(4)}°</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Max Lat:</span>
-                      <span className="text-zinc-300 font-mono">{SERVICE_LIMITS[3].toFixed(4)}°</span>
+                      <span className="text-[var(--text-secondary)] font-mono">{SERVICE_LIMITS[3].toFixed(4)}°</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Min Lon:</span>
-                      <span className="text-zinc-300 font-mono">{SERVICE_LIMITS[0].toFixed(4)}°</span>
+                      <span className="text-[var(--text-secondary)] font-mono">{SERVICE_LIMITS[0].toFixed(4)}°</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Max Lon:</span>
-                      <span className="text-zinc-300 font-mono">{SERVICE_LIMITS[2].toFixed(4)}°</span>
+                      <span className="text-[var(--text-secondary)] font-mono">{SERVICE_LIMITS[2].toFixed(4)}°</span>
                     </div>
                   </div>
-                  <div className="mt-2 pt-2 border-t border-zinc-700 text-xs text-zinc-500">
+                  <div className="mt-2 pt-2 border-t border-[var(--border-primary)] text-xs text-[var(--text-muted)]">
                     Alt: {ALT_LIMITS[0]}-{ALT_LIMITS[1]}m AGL
                   </div>
                 </div>
@@ -1561,9 +1561,9 @@ export default function PlanGenerator() {
               </div>
               {generatorMode === 'manual' && (
               <div className="p-6 pt-2">
-                <h3 className="font-semibold mb-2 text-zinc-200">Waypoints</h3>
+                <h3 className="font-semibold mb-2 text-[var(--text-secondary)]">Waypoints</h3>
                 {waypoints.length === 0 && (
-                  <div className="text-zinc-400 text-sm">
+                  <div className="text-[var(--text-tertiary)] text-sm">
                     Click on the map to add waypoints.
                   </div>
                 )}
@@ -1588,17 +1588,17 @@ export default function PlanGenerator() {
                                 {...dragProvided.dragHandleProps}
                                 className={`relative flex flex-col gap-1 p-2 rounded border ${
                                   selectedIdx === idx
-                                    ? "bg-blue-900 border-blue-400"
-                                    : "bg-zinc-800 border-zinc-700"
+                                    ? "bg-[var(--color-primary-light)] border-[var(--color-primary)]"
+                                    : "bg-[var(--bg-secondary)] border-[var(--border-primary)]"
                                 } ${
                                   dragSnapshot.isDragging
-                                    ? "ring-2 ring-blue-400"
+                                    ? "ring-2 ring-[var(--color-primary)]"
                                     : ""
                                 }`}
                               >
                                 {/* Remove button top right */}
                                 <button
-                                  className="absolute top-2 right-2 text-red-400 hover:text-red-600 text-lg font-bold p-0.5 rounded focus:outline-none focus:ring-2 focus:ring-red-400"
+                                  className="absolute top-2 right-2 text-[var(--status-error)] hover:text-[var(--status-error-hover)] text-lg font-bold p-0.5 rounded focus:outline-none focus:ring-2 focus:ring-[var(--status-error)]"
                                   onClick={() => handleRemoveWaypoint(idx)}
                                   type="button"
                                   aria-label="Remove waypoint"
@@ -1606,7 +1606,7 @@ export default function PlanGenerator() {
                                   ×
                                 </button>
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="text-xs text-zinc-400 font-mono">
+                                  <span className="text-xs text-[var(--text-tertiary)] font-mono">
                                     {idx + 1}
                                   </span>
                                   <select
@@ -1618,7 +1618,7 @@ export default function PlanGenerator() {
                                         e.target.value
                                       )
                                     }
-                                    className="border border-zinc-700 bg-zinc-900 text-white rounded px-1 py-0.5 text-xs focus:outline-none"
+                                    className="input select text-xs py-0.5"
                                   >
                                     {waypointTypes.map((t) => (
                                       <option key={t.value} value={t.value}>
@@ -1638,11 +1638,11 @@ export default function PlanGenerator() {
                                           Number(e.target.value)
                                         )
                                       }
-                                      className="border border-zinc-700 bg-zinc-900 text-white rounded px-1 py-0.5 w-20 text-xs focus:outline-none"
+                                      className="input w-20 text-xs py-0.5"
                                       placeholder="Altitude (m)"
                                       disabled={wp.type === "landing"}
                                     />
-                                    <span className="text-xs text-zinc-400 ml-1">
+                                    <span className="text-xs text-[var(--text-tertiary)] ml-1">
                                       m
                                     </span>
                                   </div>
@@ -1658,10 +1658,10 @@ export default function PlanGenerator() {
                                           Number(e.target.value)
                                         )
                                       }
-                                      className="border border-zinc-700 bg-zinc-900 text-white rounded px-1 py-0.5 w-16 text-xs focus:outline-none"
+                                      className="input w-16 text-xs py-0.5"
                                       placeholder="Speed (m/s)"
                                     />
-                                    <span className="text-xs text-zinc-400 ml-1">
+                                    <span className="text-xs text-[var(--text-tertiary)] ml-1">
                                       m/s
                                     </span>
                                   </div>
@@ -1679,11 +1679,11 @@ export default function PlanGenerator() {
                                           Number(e.target.value)
                                         )
                                       }
-                                      className="border border-zinc-700 bg-zinc-900 text-white rounded px-1 py-0.5 w-16 text-xs focus:outline-none"
+                                      className="input w-16 text-xs py-0.5"
                                       placeholder="Pause"
                                       title="Hold time at waypoint (0-3600 seconds)"
                                     />
-                                    <span className="text-xs text-zinc-400 ml-1">
+                                    <span className="text-xs text-[var(--text-tertiary)] ml-1">
                                       s ⏱️
                                     </span>
                                   </div>
@@ -1703,19 +1703,19 @@ export default function PlanGenerator() {
                                           }
                                           className="sr-only peer"
                                         />
-                                        <div className="w-8 h-4 bg-zinc-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-purple-600"></div>
+                                        <div className="w-8 h-4 bg-[var(--bg-tertiary)] peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[var(--color-primary)] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-[var(--color-accent)]"></div>
                                       </label>
-                                      <span className={`text-xs font-medium ${wp.flyOverMode ? 'text-purple-400' : 'text-zinc-400'}`}>
+                                      <span className={`text-xs font-medium ${wp.flyOverMode ? 'text-[var(--color-accent)]' : 'text-[var(--text-tertiary)]'}`}>
                                         {wp.flyOverMode ? '⎯○⎯' : '⌒'}
                                       </span>
-                                      <span className="text-[10px] text-zinc-500 hidden sm:inline" title="Fly-by: smooth curve past waypoint. Fly-over: pass directly over waypoint.">
+                                      <span className="text-[10px] text-[var(--text-muted)] hidden sm:inline" title="Fly-by: smooth curve past waypoint. Fly-over: pass directly over waypoint.">
                                         {wp.flyOverMode ? 'Over' : 'By'}
                                       </span>
                                     </div>
                                   )}
                                 </div>
                                 <div className="flex items-center gap-2 flex-wrap mt-1">
-                                  <label className="text-xs text-zinc-400">
+                                  <label className="text-xs text-[var(--text-tertiary)]">
                                     Lat:
                                   </label>
                                   <input
@@ -1729,9 +1729,9 @@ export default function PlanGenerator() {
                                         Number(e.target.value)
                                       )
                                     }
-                                    className="border border-zinc-700 bg-zinc-900 text-white rounded px-1 py-0.5 w-28 text-xs focus:outline-none"
+                                    className="input w-28 text-xs py-0.5"
                                   />
-                                  <label className="text-xs text-zinc-400">
+                                  <label className="text-xs text-[var(--text-tertiary)]">
                                     Lon:
                                   </label>
                                   <input
@@ -1745,7 +1745,7 @@ export default function PlanGenerator() {
                                         Number(e.target.value)
                                       )
                                     }
-                                    className="border border-zinc-700 bg-zinc-900 text-white rounded px-1 py-0.5 w-28 text-xs focus:outline-none"
+                                    className="input w-28 text-xs py-0.5"
                                   />
                                 </div>
                               </li>
@@ -1761,9 +1761,9 @@ export default function PlanGenerator() {
               )}
               {/* Bottom buttons (now scroll with sidebar) */}
               {generatorMode === 'manual' && (
-              <div className="bg-app-sidebar pt-4 pb-2 flex flex-col gap-2 px-6">
+              <div className="bg-[var(--surface-primary)] pt-4 pb-2 flex flex-col gap-2 px-6">
                 <button
-                  className="w-full bg-blue-700 text-white rounded py-2 font-semibold hover:bg-blue-800 transition border border-blue-900 disabled:opacity-60"
+                  className="btn btn-primary w-full py-2 font-semibold disabled:opacity-60"
                   onClick={handleUploadPlan}
                   type="button"
                   disabled={loading}
@@ -1771,7 +1771,7 @@ export default function PlanGenerator() {
                   {loading ? "Uploading..." : "Upload to Trajectory Generator"}
                 </button>
                 <button
-                  className="w-full bg-red-900 text-red-200 rounded py-2 font-semibold hover:bg-red-800 transition border border-red-800"
+                  className="btn btn-danger w-full py-2 font-semibold"
                   onClick={handleClearAll}
                   type="button"
                 >

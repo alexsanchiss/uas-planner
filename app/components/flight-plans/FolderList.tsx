@@ -1,7 +1,7 @@
 import React, { useState, DragEvent } from 'react'
 import { FolderCard, type Folder, type FolderCardProps } from './FolderCard'
 import { type FlightPlanListProps } from './FlightPlanList'
-import { type FlightPlanDragData } from './FlightPlanCard'
+import { type FlightPlanDragData, type Waypoint } from './FlightPlanCard'
 
 export interface FolderListProps {
   folders: Folder[]
@@ -27,6 +27,10 @@ export interface FolderListProps {
   onDragEnd?: (e: DragEvent<HTMLDivElement>) => void
   /** TASK-222: Called when a plan is dropped onto a folder */
   onDropPlan?: (planId: string, targetFolderId: string | null) => void
+  /** Callback when clicking on waypoint preview to open map */
+  onWaypointPreviewClick?: (planId: string, waypoints: Waypoint[]) => void
+  /** Callback to view authorization message */
+  onViewAuthorizationMessage?: (planId: string, message: unknown) => void
   loadingPlanIds?: FlightPlanListProps['loadingPlanIds']
   loadingFolderIds?: {
     renaming?: Set<string>
@@ -70,6 +74,8 @@ export function FolderList({
   onDragStart,
   onDragEnd,
   onDropPlan,
+  onWaypointPreviewClick,
+  onViewAuthorizationMessage,
   loadingPlanIds,
   loadingFolderIds = {},
   isCreating = false,
@@ -97,7 +103,7 @@ export function FolderList({
     <div className={`flex flex-col gap-3 sm:gap-4 ${className}`}>
       {/* Header with create button */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-        <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">Folders</h2>
+        <h2 className="text-base sm:text-lg font-semibold text-[var(--text-primary)]">Folders</h2>
         {onCreateFolder && !showCreateForm && (
           <button
             onClick={() => setShowCreateForm(true)}
@@ -152,9 +158,9 @@ export function FolderList({
 
       {/* Empty state */}
       {folders.length === 0 && !showCreateForm && (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 p-6 sm:p-8">
+        <div className="flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-[var(--border-primary)] p-6 sm:p-8">
           <FolderPlusIcon />
-          <p className="text-sm text-gray-500 dark:text-gray-400 text-center px-4">{emptyMessage}</p>
+          <p className="text-sm text-[var(--text-secondary)] text-center px-4">{emptyMessage}</p>
           {onCreateFolder && (
             <button
               onClick={() => setShowCreateForm(true)}
@@ -198,6 +204,8 @@ export function FolderList({
                 onDragStart={onDragStart}
                 onDragEnd={onDragEnd}
                 onDropPlan={onDropPlan}
+                onWaypointPreviewClick={onWaypointPreviewClick}
+                onViewAuthorizationMessage={onViewAuthorizationMessage}
                 loadingPlanIds={loadingPlanIds}
                 loadingStates={folderLoadingStates}
               />

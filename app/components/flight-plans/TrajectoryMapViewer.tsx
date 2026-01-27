@@ -161,16 +161,24 @@ export function TrajectoryMapViewer({ planId, planName, onClose, className = '' 
         if (!planRes.ok) throw new Error('Error loading plan')
         
         const plan = await planRes.json()
-        if (!plan.csvResult?.id) {
+        // csvResult is a number ID, not an object
+        const csvResultId = plan.csvResult
+        if (!csvResultId) {
           throw new Error('No processed trajectory available')
         }
 
-        // Fetch the CSV content
-        const csvRes = await fetch(`/api/csvResult/${plan.csvResult.id}`, { headers })
-        if (!csvRes.ok) throw new Error('Error loading CSV')
+        // Fetch the CSV content using query param
+        const csvRes = await fetch(`/api/csvResult?id=${csvResultId}`, { headers })
+        if (!csvRes.ok) {
+          if (csvRes.status === 404) {
+            throw new Error('Trajectory data not found. The plan may need to be reprocessed.')
+          }
+          throw new Error(`Error loading CSV (${csvRes.status})`)
+        }
         
         const data = await csvRes.json()
-        const content = data.content || data.csvContent || ''
+        // API returns { csvResult: "csv content string" }
+        const content = data.csvResult || data.content || data.csvContent || ''
         setCsvContent(content)
         
         const points = parseCSVToTrajectory(content)

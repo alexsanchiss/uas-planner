@@ -45,6 +45,7 @@ model flightPlan {
   authorizationMessage  Json?    // Mensaje de autorización (JSON, puede ser largo)
   scheduledAt           DateTime? // <-- Nueva línea: fecha y hora de vuelo (opcional)
   externalResponseNumber String?
+  geoawarenessData  Json?    // Respuesta del servicio de geoawareness (GeoJSON)
 }
 
 model csvResult {

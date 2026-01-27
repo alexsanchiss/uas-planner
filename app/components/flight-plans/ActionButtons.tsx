@@ -313,6 +313,95 @@ export function AuthorizeIconButton({ onClick, disabled, disabledTooltip, loadin
   )
 }
 
+/**
+ * Authorization result icon button - shows different colors based on authorization status
+ * Green (approved), Red (denied), or Amber (pending/request)
+ * Clickable to view the authorization message
+ */
+export interface AuthorizationResultButtonProps extends IconButtonProps {
+  authorizationStatus: 'sin autorización' | 'pendiente' | 'aprobado' | 'denegado'
+  onViewMessage?: () => void
+}
+
+export function AuthorizationResultIconButton({ 
+  onClick, 
+  disabled, 
+  disabledTooltip, 
+  loading, 
+  size = 'md', 
+  className = '', 
+  'aria-label': ariaLabel,
+  authorizationStatus,
+  onViewMessage,
+}: AuthorizationResultButtonProps) {
+  // Determine color and tooltip based on authorization status
+  const getColorAndTooltip = () => {
+    switch (authorizationStatus) {
+      case 'aprobado':
+        return {
+          color: 'var(--status-success)',
+          hoverBg: 'var(--status-success-bg)',
+          ring: 'var(--status-success)',
+          tooltip: 'Authorization approved - click to view',
+          icon: <CheckShieldIcon size={size} />,
+        }
+      case 'denegado':
+        return {
+          color: 'var(--status-error)',
+          hoverBg: 'var(--status-error-bg)',
+          ring: 'var(--status-error)',
+          tooltip: 'Authorization denied - click to view reason',
+          icon: <DeniedShieldIcon size={size} />,
+        }
+      case 'pendiente':
+        return {
+          color: 'var(--status-warning)',
+          hoverBg: 'var(--status-warning-bg)',
+          ring: 'var(--status-warning)',
+          tooltip: 'Authorization pending',
+          icon: <PendingShieldIcon size={size} />,
+        }
+      default:
+        return {
+          color: 'var(--status-warning)',
+          hoverBg: 'var(--status-warning-bg)',
+          ring: 'var(--status-warning)',
+          tooltip: disabled ? (disabledTooltip || 'Authorization not available') : 'Request authorization',
+          icon: <AuthorizeIcon size={size} />,
+        }
+    }
+  }
+
+  const { color, hoverBg, ring, tooltip, icon } = getColorAndTooltip()
+  
+  // If approved or denied, clicking should show the message
+  const handleClick = () => {
+    if ((authorizationStatus === 'aprobado' || authorizationStatus === 'denegado') && onViewMessage) {
+      onViewMessage()
+    } else if (onClick) {
+      onClick()
+    }
+  }
+
+  // Only disable if status is pending or no authorization and the original disabled condition
+  const isDisabled = authorizationStatus === 'pendiente' || 
+                     (authorizationStatus === 'sin autorización' && disabled)
+  
+  return (
+    <IconButtonTooltip content={tooltip} position="top">
+      <button
+        onClick={handleClick}
+        disabled={isDisabled || loading}
+        aria-label={ariaLabel}
+        style={{ color }}
+        className={`${iconButtonBaseStyles} ${iconButtonSizeStyles[size]} hover:bg-[${hoverBg}] focus:ring-[${ring}] disabled:opacity-50 ${className}`}
+      >
+        {loading ? <LoadingSpinner size={size} /> : icon}
+      </button>
+    </IconButtonTooltip>
+  )
+}
+
 export function ResetIconButton({ onClick, disabled, disabledTooltip, loading, size = 'md', className = '', 'aria-label': ariaLabel }: IconButtonProps) {
   // TASK-202: Show appropriate tooltip based on state
   const tooltipContent = disabled ? (disabledTooltip || 'Reset not available') : 'Reset plan'
@@ -385,6 +474,34 @@ function AuthorizeIcon({ size = 'md' }: IconProps) {
   return (
     <svg className={iconSizeClasses[size]} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+    </svg>
+  )
+}
+
+/** Approved shield icon with checkmark */
+function CheckShieldIcon({ size = 'md' }: IconProps) {
+  return (
+    <svg className={iconSizeClasses[size]} fill="currentColor" viewBox="0 0 24 24">
+      <path fillRule="evenodd" d="M12 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016A11.955 11.955 0 0112 2.944zm3.707 7.763a1 1 0 00-1.414-1.414L11 12.586l-1.293-1.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+    </svg>
+  )
+}
+
+/** Denied shield icon with X */
+function DeniedShieldIcon({ size = 'md' }: IconProps) {
+  return (
+    <svg className={iconSizeClasses[size]} fill="currentColor" viewBox="0 0 24 24">
+      <path fillRule="evenodd" d="M12 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016A11.955 11.955 0 0112 2.944zM9.707 9.707a1 1 0 00-1.414 1.414L10.586 12l-2.293 2.879a1 1 0 101.414 1.414L12 14.414l2.293 1.879a1 1 0 001.414-1.414L13.414 12l2.293-2.879a1 1 0 00-1.414-1.414L12 9.586l-2.293-1.879z" clipRule="evenodd" />
+    </svg>
+  )
+}
+
+/** Pending shield icon with clock/dots */
+function PendingShieldIcon({ size = 'md' }: IconProps) {
+  return (
+    <svg className={iconSizeClasses[size]} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+      <circle cx="12" cy="12" r="2" fill="currentColor" opacity="0.5" />
     </svg>
   )
 }

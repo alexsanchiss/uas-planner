@@ -1,5 +1,5 @@
 import React, { DragEvent } from 'react'
-import { FlightPlanCard, type FlightPlan, type FlightPlanCardProps, type FlightPlanDragData } from './FlightPlanCard'
+import { FlightPlanCard, type FlightPlan, type FlightPlanCardProps, type FlightPlanDragData, type Waypoint } from './FlightPlanCard'
 import { FlightPlanCardSkeleton } from '../ui/loading-skeleton'
 
 export interface FlightPlanListProps {
@@ -23,6 +23,10 @@ export interface FlightPlanListProps {
   onDragStart?: (e: DragEvent<HTMLDivElement>, data: FlightPlanDragData) => void
   /** TASK-222: Called when drag ends on a plan */
   onDragEnd?: (e: DragEvent<HTMLDivElement>) => void
+  /** Callback when clicking on waypoint preview to open map */
+  onWaypointPreviewClick?: (planId: string, waypoints: Waypoint[]) => void
+  /** Callback to view authorization message */
+  onViewAuthorizationMessage?: (planId: string, message: unknown) => void
   loadingPlanIds?: {
     processing?: Set<string>
     downloading?: Set<string>
@@ -53,6 +57,8 @@ export function FlightPlanList({
   draggable = false,
   onDragStart,
   onDragEnd,
+  onWaypointPreviewClick,
+  onViewAuthorizationMessage,
   loadingPlanIds = {},
   emptyMessage = 'No flight plans',
   className = '',
@@ -106,6 +112,8 @@ export function FlightPlanList({
             draggable={draggable}
             onDragStart={onDragStart}
             onDragEnd={onDragEnd}
+            onWaypointPreviewClick={onWaypointPreviewClick}
+            onViewAuthorizationMessage={onViewAuthorizationMessage}
             loadingStates={loadingStates}
           />
         )

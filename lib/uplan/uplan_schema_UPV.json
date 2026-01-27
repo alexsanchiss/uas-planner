@@ -1,0 +1,516 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/schemas/uplan.schema.json",
+  "title": "U-Plan Data Model",
+  "description": "JSON Schema for U-Plan objects and related components (English field names).",
+  "type": "object",
+  "$defs": {
+    "DataOwnerIdentifier": {
+      "type": "object",
+      "properties": {
+        "sac": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 3
+        },
+        "sic": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 3
+        }
+      },
+      "required": [
+        "sac",
+        "sic"
+      ],
+      "additionalProperties": false
+    },
+    "DataSourceIdentifier": {
+      "type": "object",
+      "properties": {
+        "sac": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 3
+        },
+        "sic": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 3
+        }
+      },
+      "required": [
+        "sac",
+        "sic"
+      ],
+      "additionalProperties": false
+    },
+    "ContactDetails": {
+      "type": "object",
+      "properties": {
+        "firstName": {
+          "type": "string"
+        },
+        "lastName": {
+          "type": "string"
+        },
+        "phones": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ]
+        },
+        "emails": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "email"
+              }
+            }
+          ]
+        }
+      },
+      "required": [
+        "firstName",
+        "lastName",
+        "phones",
+        "emails"
+      ],
+      "additionalProperties": false
+    },
+    "FlightDetails": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "VLOS",
+            "BVLOS"
+          ]
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "OPENA1",
+            "OPENA2",
+            "OPENA3",
+            "SAIL_I-II",
+            "SAIL_III-IV",
+            "SAIL_V-VI",
+            "Certi_No_Pass",
+            "Certi_Pass"
+          ]
+        },
+        "specialOperation": {
+          "type": "string",
+          "enum": [
+            "",
+            "POLICE_AND_CUSTOMS",
+            "TRAFFIC_SURVEILLANCE_AND_PURSUIT",
+            "ENVIRONMENTAL_CONTROL",
+            "SEARCH_AND_RESCUE",
+            "MEDICAL",
+            "EVACUATIONS",
+            "FIREFIGHTING",
+            "STATE_OFFICIALS"
+          ]
+        },
+        "privateFlight": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "mode",
+        "category",
+        "specialOperation",
+        "privateFlight"
+      ],
+      "additionalProperties": false
+    },
+    "FlightCharacteristics": {
+      "type": "object",
+      "properties": {
+        "uasMTOM": {
+          "type": "number"
+        },
+        "uasMaxSpeed": {
+          "type": "number"
+        },
+        "Connectivity": {
+          "type": "string",
+          "enum": [
+            "RF",
+            "LTE",
+            "SAT",
+            "5G"
+          ]
+        },
+        "idTechnology": {
+          "type": "string",
+          "enum": [
+            "NRID",
+            "ADSB",
+            "OTHER"
+          ]
+        },
+        "maxFlightTime": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "uasMTOM",
+        "uasMaxSpeed",
+        "Connectivity",
+        "idTechnology",
+        "maxFlightTime"
+      ],
+      "additionalProperties": false
+    },
+    "GeneralCharacteristics": {
+      "type": "object",
+      "properties": {
+        "brand": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "typeCertificate": {
+          "type": "string"
+        },
+        "uasType": {
+          "type": "string",
+          "enum": [
+            "NONE_NOT_DECLARED",
+            "MULTIROTOR",
+            "FIXED_WING"
+          ]
+        },
+        "uasClass": {
+          "type": "string",
+          "enum": [
+            "NONE",
+            "C0",
+            "C1",
+            "C2",
+            "C3",
+            "C4",
+            "C5",
+            "C6"
+          ]
+        },
+        "uasDimension": {
+          "type": "string",
+          "enum": [
+            "LT_1",
+            "LT_3",
+            "LT_8",
+            "GTE_8"
+          ]
+        }
+      },
+      "required": [
+        "brand",
+        "model",
+        "typeCertificate",
+        "uasType",
+        "uasClass",
+        "uasDimension"
+      ],
+      "additionalProperties": false
+    },
+    "UAS": {
+      "type": "object",
+      "properties": {
+        "registrationNumber": {
+          "type": "string"
+        },
+        "serialNumber": {
+          "type": "string",
+          "maxLength": 20
+        },
+        "flightCharacteristics": {
+          "$ref": "#/$defs/FlightCharacteristics"
+        },
+        "generalCharacteristics": {
+          "$ref": "#/$defs/GeneralCharacteristics"
+        }
+      },
+      "required": [
+        "registrationNumber",
+        "serialNumber",
+        "flightCharacteristics",
+        "generalCharacteristics"
+      ],
+      "additionalProperties": false
+    },
+    "GeoJSONPoint": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "Point"
+        },
+        "coordinates": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 3,
+          "items": {
+            "type": "number"
+          }
+        },
+        "properties": {
+          "type": "object",
+          "properties": {
+            "altitude": {
+              "type": "number"
+            }
+          },
+          "required": [],
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "type",
+        "coordinates"
+      ],
+      "additionalProperties": false
+    },
+    "GeoJSONPolygon": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "Polygon"
+        },
+        "coordinates": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 2
+            },
+            "minItems": 4
+          }
+        },
+        "bbox": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 4,
+          "maxItems": 4
+        }
+      },
+      "required": [
+        "type",
+        "coordinates",
+        "bbox"
+      ],
+      "additionalProperties": false
+    },
+    "Altitude": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "number"
+        },
+        "reference": {
+          "type": "string",
+          "enum": [
+            "AGL"
+          ]
+        },
+        "uom": {
+          "type": "string",
+          "enum": [
+            "M",
+            "FT"
+          ]
+        }
+      },
+      "required": [
+        "value",
+        "reference",
+        "uom"
+      ],
+      "additionalProperties": false
+    },
+    "OperationVolume": {
+      "type": "object",
+      "properties": {
+        "geometry": {
+          "$ref": "#/$defs/GeoJSONPolygon"
+        },
+        "timeBegin": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "timeEnd": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "minAltitude": {
+          "$ref": "#/$defs/Altitude"
+        },
+        "maxAltitude": {
+          "$ref": "#/$defs/Altitude"
+        },
+        "ordinal": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "geometry",
+        "timeBegin",
+        "timeEnd",
+        "minAltitude",
+        "maxAltitude",
+        "ordinal"
+      ],
+      "additionalProperties": false
+    },
+    "State": {
+      "type": "string",
+      "enum": [
+        "SENT",
+        "PROCESSING",
+        "ACCEPTED",
+        "ACTIVATED",
+        "WITHDRAWN",
+        "ENDED"
+      ]
+    },
+    "Uplan": {
+      "type": "object",
+      "properties": {
+        "idplan": {
+          "type": "integer"
+        },
+        "nameplan": {
+          "type": "string"
+        },
+        "dataOwnerIdentifier": {
+          "$ref": "#/$defs/DataOwnerIdentifier"
+        },
+        "dataSourceIdentifier": {
+          "$ref": "#/$defs/DataSourceIdentifier"
+        },
+        "contactDetails": {
+          "$ref": "#/$defs/ContactDetails"
+        },
+        "flightDetails": {
+          "$ref": "#/$defs/FlightDetails"
+        },
+        "takeoffLocation": {
+          "$ref": "#/$defs/GeoJSONPoint"
+        },
+        "landingLocation": {
+          "$ref": "#/$defs/GeoJSONPoint"
+        },
+        "gcsLocation": {
+          "$ref": "#/$defs/GeoJSONPoint"
+        },
+        "uas": {
+          "$ref": "#/$defs/UAS"
+        },
+        "operationVolumes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/OperationVolume"
+          }
+        },
+        "operatorId": {
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/State"
+        },
+        "creationTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updateTime": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "idplan",
+        "nameplan",
+        "dataOwnerIdentifier",
+        "dataSourceIdentifier",
+        "contactDetails",
+        "flightDetails",
+        "takeoffLocation",
+        "landingLocation",
+        "gcsLocation",
+        "uas",
+        "operationVolumes",
+        "operatorId",
+        "state",
+        "creationTime",
+        "updateTime"
+      ],
+      "additionalProperties": false
+    },
+    "StateUpdate": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "$ref": "#/$defs/State"
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "Volumes": {
+      "type": "object",
+      "properties": {
+        "nameplan": {
+          "type": "string"
+        },
+        "volumes": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/$defs/OperationVolume"
+          }
+        },
+        "num_vol": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "nameplan",
+        "num_vol"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "#/$defs/Uplan"
+    }
+  ]
+}

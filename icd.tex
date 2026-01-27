@@ -131,7 +131,7 @@ Las salidas del sistema consisten en respuestas HTTP al cliente web y en peticio
 \endfoot
 \hline
 \endlastfoot
-HTTP request a FAS & JSON & application/json & \texttt{POST }\icdendpoint{http://<FAS_IP>/<FAS_ENDPOINT>} (si no se define \texttt{FAS\_ENDPOINT}, se usa el path \icdendpoint{/uplan}). Cuerpo: U-Plan. Cabecera: \texttt{Content-Type: application/json}. \\
+HTTP request a FAS & JSON & application/json & \texttt{POST }\icdendpoint{<FAS_API_URL>} (si no se define \texttt{FAS\_ENDPOINT}, se usa el path \icdendpoint{/uplan}). Cuerpo: U-Plan. Cabecera: \texttt{Content-Type: application/json}. \\
 \hline
 HTTP request a Geoawareness & JSON & application/json & \texttt{POST }\icdendpoint{http://<GEOAWARENESS_SERVICE_IP>/geozones_searcher_by_volumes} con cuerpo U-Plan. \\
 \hline

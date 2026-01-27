@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, DragEvent } from 'react'
 import { FlightPlanList, type FlightPlanListProps } from './FlightPlanList'
-import { type FlightPlan, type FlightPlanDragData, FLIGHT_PLAN_DRAG_TYPE } from './FlightPlanCard'
+import { type FlightPlan, type FlightPlanDragData, type Waypoint, FLIGHT_PLAN_DRAG_TYPE } from './FlightPlanCard'
 import { ConfirmDialog } from '../ui/confirm-dialog'
 
 export interface Folder {
@@ -37,6 +37,10 @@ export interface FolderCardProps {
   onDragEnd?: (e: DragEvent<HTMLDivElement>) => void
   /** TASK-222: Called when a plan is dropped onto this folder */
   onDropPlan?: (planId: string, targetFolderId: string) => void
+  /** Callback when clicking on waypoint preview to open map */
+  onWaypointPreviewClick?: (planId: string, waypoints: Waypoint[]) => void
+  /** Callback to view authorization message */
+  onViewAuthorizationMessage?: (planId: string, message: unknown) => void
   loadingPlanIds?: FlightPlanListProps['loadingPlanIds']
   loadingStates?: {
     renaming?: boolean
@@ -93,6 +97,8 @@ export function FolderCard({
   onDragStart,
   onDragEnd,
   onDropPlan,
+  onWaypointPreviewClick,
+  onViewAuthorizationMessage,
   loadingPlanIds,
   loadingStates = {},
   className = '',
@@ -272,10 +278,10 @@ export function FolderCard({
 
   return (
     <div 
-      className={`rounded-lg border bg-white dark:bg-gray-800 shadow-sm transition-all ${className} ${
+      className={`rounded-lg border bg-[var(--surface-primary)] shadow-sm transition-all ${className} ${
         isDragOver
           ? 'border-blue-500 dark:border-blue-400 border-2 bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-500/30'
-          : 'border-gray-200 dark:border-gray-700'
+          : 'border-[var(--border-primary)]'
       }`}
       onDragOver={handleDragOver}
       onDragEnter={handleDragEnter}
@@ -287,7 +293,7 @@ export function FolderCard({
         className={`flex items-center gap-2 sm:gap-3 p-3 sm:p-4 cursor-pointer transition-colors ${
           isDragOver
             ? 'bg-blue-100 dark:bg-blue-800/30'
-            : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
+            : 'hover:bg-[var(--bg-hover)]'
         }`}
         onClick={handleToggle}
         role="button"
@@ -358,13 +364,13 @@ export function FolderCard({
           <>
             <div className="flex-1 min-w-0">
               <h3
-                className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate cursor-pointer hover:text-blue-600 dark:hover:text-blue-400"
+                className="text-sm font-semibold text-[var(--text-primary)] truncate cursor-pointer hover:text-blue-600 dark:hover:text-blue-400"
                 title={folder.name}
                 onClick={handleEditClick}
               >
                 {folder.name}
               </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-xs text-[var(--text-secondary)]">
                 {planCount} {planCount === 1 ? 'flight plan' : 'flight plans'}
               </p>
             </div>
@@ -390,7 +396,7 @@ export function FolderCard({
 
       {/* Expanded content - flight plans list */}
       {expanded && (
-        <div className="border-t border-gray-200 dark:border-gray-700 p-3 sm:p-4 bg-gray-50 dark:bg-gray-900/50">
+        <div className="border-t border-[var(--border-primary)] p-3 sm:p-4 bg-[var(--bg-secondary)]">
           <FlightPlanList
             plans={folder.flightPlans}
             folderId={folder.id}
@@ -405,6 +411,8 @@ export function FolderCard({
             draggable={draggable}
             onDragStart={onDragStart}
             onDragEnd={onDragEnd}
+            onWaypointPreviewClick={onWaypointPreviewClick}
+            onViewAuthorizationMessage={onViewAuthorizationMessage}
             loadingPlanIds={loadingPlanIds}
             emptyMessage="This folder is empty"
           />

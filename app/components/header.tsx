@@ -10,7 +10,7 @@ import { useAuthContext } from "./auth/auth-provider";
 
 /**
  * Theme-aware logo component
- * Uses logo.jpg for dark theme, logo_black.jpg for light theme
+ * Uses logo.jpg for dark theme, logo_black.png for light theme
  */
 function ThemedLogo({ width, height, className }: { width: number; height: number; className?: string }) {
   const [isLightTheme, setIsLightTheme] = useState(false);
@@ -39,7 +39,7 @@ function ThemedLogo({ width, height, className }: { width: number; height: numbe
   
   return (
     <Image
-      src={isLightTheme ? "/images/logo_black.jpg" : "/images/logo.jpg"}
+      src={isLightTheme ? "/images/logo_black.png" : "/images/logo.jpg"}
       alt="UAS PLANNER Logo"
       width={width}
       height={height}
