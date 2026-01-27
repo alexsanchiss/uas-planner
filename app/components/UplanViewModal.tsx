@@ -101,7 +101,7 @@ const UplanViewModal = ({ open, onClose, uplan, name }: { open: boolean, onClose
   const utcTime = formatUtcTime(posixTime);
   return (
     <Modal open={open} onClose={onClose} title={`U-plan: ${name}`}>
-      <div className="w-[400px] h-[400px] mb-4 relative">
+      <div className="w-full max-w-[95vw] md:max-w-[600px] h-[50vh] md:h-[400px] max-h-[70vh] min-h-[200px] mb-4 relative overflow-hidden rounded-lg">
         <MapContainer
           center={center}
           zoom={16}
