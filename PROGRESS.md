@@ -8,11 +8,11 @@
 |------|-------------|----------|--------|
 | 1 | Correcciones Críticas | 9/9 | ✅ Completado |
 | 2 | Formulario U-Plan | 15/15 | ✅ Completado |
-| 3 | Generación de Volúmenes | 5/8 | 🟡 En Progreso |
+| 3 | Generación de Volúmenes | 8/8 | ✅ Completado |
 | 4 | Flujo Autorización FAS | 0/7 | 🔴 Pendiente |
 | 5 | Integración Geoawareness WebSocket | 0/21 | 🔴 Pendiente |
 | 6 | Correcciones de Tema | 0/9 | 🔴 Pendiente |
-| **TOTAL** | | **29/69** | 🟡 42% |
+| **TOTAL** | | **32/69** | 🟡 46% |
 
 ---
 
@@ -99,9 +99,9 @@
 
 | Task ID | Descripción | Estado |
 |---------|-------------|--------|
-| TASK-030 | Update tray_to_uplan.ts parameters | ⬜ Pendiente |
-| TASK-031 | Replace generate_bbox with oriented volumes | ⬜ Pendiente |
-| TASK-032 | Update generateJSON compatibility | ⬜ Pendiente |
+| TASK-030 | Update tray_to_uplan.ts parameters | ✅ Completado |
+| TASK-031 | Replace generate_bbox with oriented volumes | ✅ Completado |
+| TASK-032 | Update generateJSON compatibility | ✅ Completado |
 
 ---
 
@@ -208,6 +208,7 @@
 
 | Fecha | Task ID | Descripción | Commit |
 |-------|---------|-------------|--------|
+| 2026-01-27 | TASK-030 to TASK-032 | Update tray_to_uplan.ts to use C++ parameters and replace generate_bbox with generateOrientedBBox | feat(uplan): integrate oriented volumes in U-Plan generation pipeline |
 | 2026-01-27 | TASK-026 to TASK-029 | Create generate_oriented_volumes.ts with segment type detection, track buffer calculations, and oriented rectangle generation | feat(uplan): add oriented volume generation for trajectory-aligned operation volumes |
 | 2026-01-27 | TASK-025 | Create geodesy-utils.ts with Vincenty functions for oriented volume generation | feat(uplan): add geodesy utilities for volume generation |
 | 2026-01-27 | TASK-003 | Improve TrajectoryMapViewer error handling with specific error types | fix(trajectory): improve error handling with detailed error messages |

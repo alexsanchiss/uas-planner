@@ -1,6 +1,12 @@
 import { BBox, Waypoint } from "./generate_bbox";
+import { OrientedBBox } from "./generate_oriented_volumes";
 
-export function generateRandomJSON(bbox: BBox, wp: Waypoint[]): unknown {
+/**
+ * Union type for volume data - supports both old BBox and new OrientedBBox
+ */
+type VolumeData = BBox | OrientedBBox;
+
+export function generateRandomJSON(bbox: VolumeData, wp: Waypoint[]): unknown {
   if (!wp || wp.length === 0) {
     throw new Error("Waypoints array is empty or undefined.");
   }

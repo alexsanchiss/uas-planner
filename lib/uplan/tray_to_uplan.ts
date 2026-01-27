@@ -1,16 +1,17 @@
 import Papa from "papaparse";
-import { generate_bbox, Waypoint } from "./generate_bbox";
+import { generateOrientedBBox, Waypoint, DEFAULT_UPLAN_CONFIG, UplanConfig } from "./generate_oriented_volumes";
 import { generateRandomJSON } from "./generate_random_json";
 import { generateJSON } from "./generate_json";
 
 export interface TrayToUplanParams {
   scheduledAt: number; // POSIX timestamp (segundos)
   csv: string; // CSV string con columnas: time, lat, lon, h
-  compressionFactor?: number;
-  TSE_H?: number;
-  TSE_V?: number;
-  Alpha?: number;
-  tbuf?: number;
+  compressionFactor?: number; // Default: 20 (was 50 in old implementation)
+  TSE_H?: number; // Default: 15.0m (was ~14.3m in old implementation)
+  TSE_V?: number; // Default: 10.0m (was ~9.1m in old implementation)
+  Alpha_H?: number; // Default: 7.0 (new: horizontal dominance threshold)
+  Alpha_V?: number; // Default: 1.0 (new: vertical dominance threshold)
+  tbuf?: number; // Default: 5.0s (time buffer)
   uplan?: any; // user-provided uplan details (optional)
 }
 
@@ -88,11 +89,12 @@ function fillUplan(u: any): any {
 export function trayToUplan({
   scheduledAt,
   csv,
-  compressionFactor = 50,
-  TSE_H = 2 * Math.sqrt(0.75 ** 2 + 1 ** 2 + 7.05 ** 2), //TSE_H = 2*sqrt(PDE_H^2+NSE_H^2+FTE_H^2);
-  TSE_V = 2 * Math.sqrt(4 ** 2 + 1.5 ** 2 + 1.45 ** 2), //TSE_V = 2*sqrt(PDE_V^2+NSE_V^2+FTE_V^2);
-  Alpha = 1,
-  tbuf = 5,
+  compressionFactor = DEFAULT_UPLAN_CONFIG.compressionFactor, // 20 (was 50)
+  TSE_H = DEFAULT_UPLAN_CONFIG.TSE_H, // 15.0m (was ~14.3m)
+  TSE_V = DEFAULT_UPLAN_CONFIG.TSE_V, // 10.0m (was ~9.1m)
+  Alpha_H = DEFAULT_UPLAN_CONFIG.Alpha_H, // 7.0 (new parameter)
+  Alpha_V = DEFAULT_UPLAN_CONFIG.Alpha_V, // 1.0 (new parameter)
+  tbuf = DEFAULT_UPLAN_CONFIG.tbuf, // 5.0s
   uplan,
 }: TrayToUplanParams) {
   // Parse CSV
@@ -117,10 +119,21 @@ export function trayToUplan({
       lon: Number(row.Lon),
       h: Number(row.Alt),
     }));
-  // Compresión
-  const wpReduced = waypoints.filter((_, i) => i % compressionFactor === 1);
-  // Generar BBOX
-  const bbox = generate_bbox(scheduledAt, wpReduced, TSE_H, TSE_V, Alpha, tbuf);
+  // Compresión - keep every Nth waypoint (start from index 0 for new algorithm)
+  const wpReduced = waypoints.filter((_, i) => i % compressionFactor === 0);
+  
+  // Build config for oriented volume generation
+  const volumeConfig: UplanConfig = {
+    TSE_H,
+    TSE_V,
+    Alpha_H,
+    Alpha_V,
+    tbuf,
+    compressionFactor,
+  };
+  
+  // Generate oriented volumes (replaces axis-aligned bbox)
+  const bbox = generateOrientedBBox(scheduledAt, wpReduced, volumeConfig);
   // Generar JSON final
   if (uplan && typeof uplan === "object") {
     const filledUplan = fillUplan(uplan);
