@@ -53,13 +53,13 @@ function LoginContent() {
   };
 
   return (
-    <div className="flex flex-col bg-gray-900 min-h-0">
+    <div className="flex flex-col bg-[var(--bg-primary)] min-h-0">
       <main className="flex items-center justify-center w-full py-20">
-        <div className="bg-gray-800 p-6 rounded-lg shadow-md w-full max-w-sm my-0">
-          <h1 className="text-2xl font-bold text-white mb-6">
+        <div className="bg-[var(--surface-primary)] p-6 rounded-lg shadow-md w-full max-w-sm my-0">
+          <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-6">
             {isSignup ? "Sign Up" : "Login"}
           </h1>
-          {error && <p className="text-red-500 mb-4">{error}</p>}
+          {error && <p className="text-[var(--status-error)] mb-4">{error}</p>}
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
               type="email"
@@ -77,23 +77,23 @@ function LoginContent() {
             />
             {isSignup && (
               <>
-                <div className="bg-yellow-900/30 border border-yellow-700 rounded p-2 text-yellow-200 text-xs mb-2">
+                <div className="bg-[var(--status-warning-bg)] border border-[var(--status-warning-border)] rounded p-2 text-[var(--status-warning-text)] text-xs mb-2">
                   <strong>Advice:</strong> This is a demonstration version and
                   may include bugs or not work as expected.
                 </div>
-                <label className="flex items-center text-xs text-gray-300">
+                <label className="flex items-center text-xs text-[var(--text-secondary)]">
                   <input
                     type="checkbox"
                     checked={acceptPolicy}
                     onChange={(e) => setAcceptPolicy(e.target.checked)}
-                    className="accent-blue-500 mr-2 align-middle"
+                    className="accent-[var(--color-primary)] mr-2 align-middle"
                     required
                   />
                   <span>
                     I accept the{" "}
                     <a
                       href="/privacy-policy"
-                      className="text-blue-400 hover:text-blue-300 hover:underline"
+                      className="text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] hover:underline"
                       target="_blank"
                     >
                       Privacy Policy
@@ -107,11 +107,11 @@ function LoginContent() {
               {isSignup ? "Sign Up" : "Login"}
             </Button>
           </form>
-          <p className="text-gray-400 text-sm mt-4 text-center">
+          <p className="text-[var(--text-tertiary)] text-sm mt-4 text-center">
             {isSignup ? "Already have an account?" : "Don't have an account?"}{" "}
             <button
               onClick={() => setIsSignup(!isSignup)}
-              className="text-blue-400 hover:underline hover:text-blue-300"
+              className="text-[var(--color-primary)] hover:underline hover:text-[var(--color-primary-hover)]"
             >
               {isSignup ? "Login" : "Sign Up"}
             </button>
@@ -124,14 +124,14 @@ function LoginContent() {
 
 function LoginLoading() {
   return (
-    <div className="flex flex-col bg-gray-900 min-h-0">
+    <div className="flex flex-col bg-[var(--bg-primary)] min-h-0">
       <main className="flex items-center justify-center w-full py-20">
-        <div className="bg-gray-800 p-6 rounded-lg shadow-md w-full max-w-sm my-0 animate-pulse">
-          <div className="h-8 bg-gray-700 rounded w-24 mb-6"></div>
+        <div className="bg-[var(--surface-primary)] p-6 rounded-lg shadow-md w-full max-w-sm my-0 animate-pulse">
+          <div className="h-8 bg-[var(--bg-tertiary)] rounded w-24 mb-6"></div>
           <div className="space-y-4">
-            <div className="h-10 bg-gray-700 rounded"></div>
-            <div className="h-10 bg-gray-700 rounded"></div>
-            <div className="h-10 bg-gray-700 rounded"></div>
+            <div className="h-10 bg-[var(--bg-tertiary)] rounded"></div>
+            <div className="h-10 bg-[var(--bg-tertiary)] rounded"></div>
+            <div className="h-10 bg-[var(--bg-tertiary)] rounded"></div>
           </div>
         </div>
       </main>
