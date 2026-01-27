@@ -174,13 +174,15 @@ function MapClickHandler({
   onToast, 
   bounds,
   customClickHandler,
-  scanMode
+  scanMode,
+  areaName
 }: { 
   onAddWaypoint: (wp: any) => void; 
   onToast: (msg: string) => void; 
   bounds: [[number, number], [number, number]];
   customClickHandler?: ((lat: number, lng: number) => void) | null;
   scanMode?: boolean;
+  areaName?: string;
 }) {
   useMapEvents({
     click(e: L.LeafletMouseEvent) {
@@ -191,13 +193,16 @@ function MapClickHandler({
         e.latlng.lng >= bounds[0][1] &&
         e.latlng.lng <= bounds[1][1];
       
+      // TASK-054: Use dynamic area name in error messages
+      const displayName = areaName || 'service area';
+      
       // TASK-215: When in SCAN mode, only use custom handler - NEVER add manual waypoints
       if (scanMode) {
         if (customClickHandler) {
           if (isWithinBounds) {
             customClickHandler(e.latlng.lat, e.latlng.lng);
           } else {
-            onToast("Point must be within the FAS service area.");
+            onToast(`Point must be within the ${displayName}.`);
           }
         }
         // In SCAN mode without a handler, do nothing (user needs to complete current step)
@@ -216,7 +221,7 @@ function MapClickHandler({
           flyOverMode: false,
         });
       } else {
-        onToast("Waypoints must be within the FAS service area.");
+        onToast(`Waypoints must be within the ${displayName}.`);
       }
     },
   });
@@ -472,6 +477,8 @@ interface PlanMapProps {
   geozonesData?: GeozoneData[];
   geozonesVisible?: boolean;
   onGeozoneClick?: (geozone: GeozoneData, event: L.LeafletMouseEvent) => void;
+  // TASK-054/056: U-space name for display
+  uspaceName?: string;
 }
 
 const PlanMap = (props: PlanMapProps) => {
@@ -572,6 +579,36 @@ const PlanMap = (props: PlanMapProps) => {
         </>
       )}
       
+      {/* TASK-056: U-space name label overlay */}
+      {props.uspaceName && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '20px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 1000,
+            pointerEvents: 'none',
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: 'rgba(0, 0, 0, 0.7)',
+              color: '#f59e42',
+              padding: '6px 14px',
+              borderRadius: '6px',
+              fontSize: '13px',
+              fontWeight: 600,
+              border: '2px dashed #f59e42',
+              whiteSpace: 'nowrap',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+            }}
+          >
+            📍 {props.uspaceName}
+          </div>
+        </div>
+      )}
+      
       {/* Map click handler */}
       <MapClickHandler 
         onAddWaypoint={props.handleAddWaypoint} 
@@ -579,6 +616,7 @@ const PlanMap = (props: PlanMapProps) => {
         bounds={bounds}
         customClickHandler={props.customClickHandler}
         scanMode={props.scanMode}
+        areaName={props.uspaceName}
       />
     </MapContainer>
   );

@@ -2017,6 +2017,8 @@ export default function PlanGenerator() {
             geozonesData={geozonesData}
             // TASK-052: Control geozone visibility via toggle
             geozonesVisible={geozonesVisible}
+            // TASK-054/056: Pass U-space name for display and error messages
+            uspaceName={selectedUspace?.name}
           />
         </main>
       </div>

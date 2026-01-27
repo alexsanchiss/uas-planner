@@ -10,9 +10,9 @@
 | 2 | Formulario U-Plan | 15/15 | ✅ Completado |
 | 3 | Generación de Volúmenes | 8/8 | ✅ Completado |
 | 4 | Flujo Autorización FAS | 7/7 | ✅ Completado |
-| 5 | Integración Geoawareness WebSocket | 14/21 | 🟡 En progreso |
+| 5 | Integración Geoawareness WebSocket | 17/21 | 🟡 En progreso |
 | 6 | Correcciones de Tema | 9/9 | ✅ Completado |
-| **TOTAL** | | **62/69** | 🟡 90% |
+| **TOTAL** | | **65/69** | 🟡 94% |
 
 ---
 
@@ -166,9 +166,9 @@
 
 | Task ID | Descripción | Estado |
 |---------|-------------|--------|
-| TASK-054 | Replace FAS Service Area with U-space bounds | ⬜ Pendiente |
-| TASK-055 | Update world mask for U-space bounds | ⬜ Pendiente |
-| TASK-056 | Update label to U-space name | ⬜ Pendiente |
+| TASK-054 | Replace FAS Service Area with U-space bounds | ✅ Completado |
+| TASK-055 | Update world mask for U-space bounds | ✅ Completado |
+| TASK-056 | Update label to U-space name | ✅ Completado |
 
 ### 5.6 GeoawarenessViewer
 
@@ -208,6 +208,7 @@
 
 | Fecha | Task ID | Descripción | Commit |
 |-------|---------|-------------|--------|
+| 2026-01-27 | TASK-054 to TASK-056 | Replace hardcoded FAS Service Area with dynamic U-space bounds: add uspaceName prop to PlanMap, update error messages with dynamic area name, add visual label overlay on map showing selected U-space name | feat(plan-generator): display U-space name on map and in error messages |
 | 2026-01-27 | TASK-052 | Add geozone visibility toggle in PlanGenerator sidebar with count badge, allowing users to show/hide geozones on the map via a switch control in the U-space bounds panel | feat(geoawareness): add toggle to show/hide geozones on map |
 | 2026-01-27 | TASK-053 | Differentiate geozone info click from waypoint placement by stopping event propagation on original DOM event, preventing accidental waypoints when clicking geozones to view info | fix(geoawareness): prevent waypoint placement when clicking geozones |
 | 2026-01-27 | TASK-051 | Integrate GeozoneLayer in PlanMap with WebSocket connection for real-time geozone data, info popup on click, and proper layer ordering between bounds and waypoints | feat(geoawareness): integrate GeozoneLayer in PlanMap for geozone visualization |
