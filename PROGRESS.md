@@ -10,9 +10,9 @@
 | 2 | Formulario U-Plan | 15/15 | ✅ Completado |
 | 3 | Generación de Volúmenes | 8/8 | ✅ Completado |
 | 4 | Flujo Autorización FAS | 7/7 | ✅ Completado |
-| 5 | Integración Geoawareness WebSocket | 13/21 | 🟡 En progreso |
+| 5 | Integración Geoawareness WebSocket | 14/21 | 🟡 En progreso |
 | 6 | Correcciones de Tema | 9/9 | ✅ Completado |
-| **TOTAL** | | **61/69** | 🟡 88% |
+| **TOTAL** | | **62/69** | 🟡 90% |
 
 ---
 
@@ -159,7 +159,7 @@
 | TASK-049 | Create GeozoneLayer component | ✅ Completado |
 | TASK-050 | Create GeozoneInfoPopup component | ✅ Completado |
 | TASK-051 | Integrate GeozoneLayer in PlanMap | ✅ Completado |
-| TASK-052 | Add geozone visibility toggle | ⬜ Pendiente |
+| TASK-052 | Add geozone visibility toggle | ✅ Completado |
 | TASK-053 | Differentiate geozone click from waypoint | ✅ Completado |
 
 ### 5.5 Reemplazo Service Area
@@ -208,6 +208,7 @@
 
 | Fecha | Task ID | Descripción | Commit |
 |-------|---------|-------------|--------|
+| 2026-01-27 | TASK-052 | Add geozone visibility toggle in PlanGenerator sidebar with count badge, allowing users to show/hide geozones on the map via a switch control in the U-space bounds panel | feat(geoawareness): add toggle to show/hide geozones on map |
 | 2026-01-27 | TASK-053 | Differentiate geozone info click from waypoint placement by stopping event propagation on original DOM event, preventing accidental waypoints when clicking geozones to view info | fix(geoawareness): prevent waypoint placement when clicking geozones |
 | 2026-01-27 | TASK-051 | Integrate GeozoneLayer in PlanMap with WebSocket connection for real-time geozone data, info popup on click, and proper layer ordering between bounds and waypoints | feat(geoawareness): integrate GeozoneLayer in PlanMap for geozone visualization |
 | 2026-01-27 | TASK-050 | Create GeozoneInfoPopup component for detailed geozone information display with name, type, restrictions, temporal limits, and authority contact information in a themed popup | feat(geoawareness): add GeozoneInfoPopup for detailed geozone info |
