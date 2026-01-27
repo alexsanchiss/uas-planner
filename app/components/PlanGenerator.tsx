@@ -653,6 +653,12 @@ export default function PlanGenerator() {
         const d = new Date(flightPlanDetails.datetime);
         if (!isNaN(d.getTime())) scheduledAt = d.toISOString();
       }
+      // TASK-045: Include geoawarenessData with uspace_identifier
+      const geoawarenessData = selectedUspace ? {
+        uspace_identifier: selectedUspace.id,
+        uspace_name: selectedUspace.name,
+      } : null;
+      
       // Use the new unified API
       const createRes = await axios.post("/api/flightPlans", {
         customName: planName,
@@ -661,6 +667,7 @@ export default function PlanGenerator() {
         folderId,
         uplan: JSON.stringify(uplanDetails),
         scheduledAt,
+        geoawarenessData,
       }, { headers });
       setToast(
         `The plan "${planName}" has been saved in the Plan Generator folder in Trajectory Generator.`

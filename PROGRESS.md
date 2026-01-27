@@ -10,9 +10,9 @@
 | 2 | Formulario U-Plan | 15/15 | ✅ Completado |
 | 3 | Generación de Volúmenes | 8/8 | ✅ Completado |
 | 4 | Flujo Autorización FAS | 7/7 | ✅ Completado |
-| 5 | Integración Geoawareness WebSocket | 5/21 | 🟡 En progreso |
+| 5 | Integración Geoawareness WebSocket | 6/21 | 🟡 En progreso |
 | 6 | Correcciones de Tema | 9/9 | ✅ Completado |
-| **TOTAL** | | **53/69** | 🟡 77% |
+| **TOTAL** | | **54/69** | 🟡 78% |
 
 ---
 
@@ -142,7 +142,7 @@
 | TASK-042 | Create UspaceSelector component | ✅ Completado |
 | TASK-043 | Integrate UspaceSelector in PlanGenerator | ✅ Completado |
 | TASK-044 | Add loading state for U-spaces | ✅ Completado |
-| TASK-045 | Store uspace_identifier in geoawarenessData | ⬜ Pendiente |
+| TASK-045 | Store uspace_identifier in geoawarenessData | ✅ Completado |
 
 ### 5.3 WebSocket Hook
 
@@ -208,6 +208,7 @@
 
 | Fecha | Task ID | Descripción | Commit |
 |-------|---------|-------------|--------|
+| 2026-01-27 | TASK-045 | Store uspace_identifier in geoawarenessData when publishing plan from PlanGenerator, enabling future WebSocket connections and GeoawarenessViewer integration | feat(geoawareness): persist uspace_identifier on flight plan creation |
 | 2026-01-27 | TASK-043, TASK-044 | Integrate UspaceSelector in PlanGenerator with step-based flow: U-space selection before waypoint planning, dynamic bounds based on selected U-space, and loading state while fetching | feat(plan-generator): add U-space selection step before waypoint planning |
 | 2026-01-27 | TASK-040 to TASK-042 | Add U-space selection: useUspaces hook, API endpoint proxy, and interactive UspaceSelector component with map-based selection | feat(geoawareness): add U-space selector for flight area selection |
 | 2026-01-27 | TASK-065 to TASK-069 | Make footer logos theme-aware: SNA, UPV logos and LinkedIn, Instagram icons now adapt to light/dark theme | feat(ui): make footer logos adapt to light/dark theme |
