@@ -6,13 +6,13 @@
 
 | Fase | Descripción | Progreso | Estado |
 |------|-------------|----------|--------|
-| 1 | Correcciones Críticas | 6/9 | 🟡 En progreso |
+| 1 | Correcciones Críticas | 8/9 | 🟡 En progreso |
 | 2 | Formulario U-Plan | 0/15 | 🔴 Pendiente |
 | 3 | Generación de Volúmenes | 0/8 | 🔴 Pendiente |
 | 4 | Flujo Autorización FAS | 0/7 | 🔴 Pendiente |
 | 5 | Integración Geoawareness WebSocket | 0/21 | 🔴 Pendiente |
 | 6 | Correcciones de Tema | 0/9 | 🔴 Pendiente |
-| **TOTAL** | | **6/69** | 🟡 9% |
+| **TOTAL** | | **8/69** | 🟡 12% |
 
 ---
 
@@ -31,8 +31,8 @@
 | Task ID | Descripción | Estado |
 |---------|-------------|--------|
 | TASK-004 | Fix UplanViewModal map overflow | ✅ Completado |
-| TASK-005 | Add map resize handler in UplanViewModal | ⬜ Pendiente |
-| TASK-006 | Verify MapModal consistency | ⬜ Pendiente |
+| TASK-005 | Add map resize handler in UplanViewModal | ✅ Completado |
+| TASK-006 | Verify MapModal consistency | ✅ Completado |
 
 ### 1.3 Cascade Delete CsvResult
 
@@ -208,6 +208,7 @@
 
 | Fecha | Task ID | Descripción | Commit |
 |-------|---------|-------------|--------|
+| 2026-01-27 | TASK-005, TASK-006 | Add map resize handler to UplanViewModal and MapModal for responsive behavior | fix(ui): add map resize handler for responsive map rendering |
 | 2026-01-27 | TASK-001, TASK-002 | Fix View Trajectory button to require status=procesado AND csvResult, with tooltip | fix(flight-plans): require processed status for View Trajectory button |
 | 2026-01-27 | TASK-004 | Fix UplanViewModal map overflow with responsive dimensions | fix(ui): make UplanViewModal map responsive to prevent overflow |
 | 2026-01-27 | TASK-007, TASK-008, TASK-009 | Fix cascade delete for csvResult (single & bulk) + audit logging | fix(api): correct cascade delete to use actual csvResult IDs |

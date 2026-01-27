@@ -13,6 +13,32 @@ function FitBoundsHandler({ bounds, names }: { bounds: [[number, number], [numbe
   return null;
 }
 
+// Handler to invalidate map size on container/window resize
+function MapResizeHandler() {
+  const map = useMap();
+  
+  useEffect(() => {
+    // Invalidate size on mount to ensure proper initial render
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 100);
+    
+    // Handle window resize
+    const handleResize = () => {
+      map.invalidateSize();
+    };
+    
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [map]);
+  
+  return null;
+}
+
 function extractAlt(val: any): number | string | null {
   if (val == null) return null;
   if (typeof val === 'number') return val;
@@ -109,6 +135,7 @@ const UplanViewModal = ({ open, onClose, uplan, name }: { open: boolean, onClose
           style={{ width: '100%', height: '100%' }}
         >
           <FitBoundsHandler bounds={bounds} names={[name]} />
+          <MapResizeHandler />
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution="&copy; OpenStreetMap contributors"
