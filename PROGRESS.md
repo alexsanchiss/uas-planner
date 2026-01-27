@@ -7,12 +7,12 @@
 | Fase | Descripción | Progreso | Estado |
 |------|-------------|----------|--------|
 | 1 | Correcciones Críticas | 9/9 | ✅ Completado |
-| 2 | Formulario U-Plan | 0/15 | 🔴 Pendiente |
+| 2 | Formulario U-Plan | 2/15 | 🟡 En progreso |
 | 3 | Generación de Volúmenes | 0/8 | 🔴 Pendiente |
 | 4 | Flujo Autorización FAS | 0/7 | 🔴 Pendiente |
 | 5 | Integración Geoawareness WebSocket | 0/21 | 🔴 Pendiente |
 | 6 | Correcciones de Tema | 0/9 | 🔴 Pendiente |
-| **TOTAL** | | **9/69** | 🟡 13% |
+| **TOTAL** | | **11/69** | 🟡 16% |
 
 ---
 
@@ -50,8 +50,8 @@
 
 | Task ID | Descripción | Estado |
 |---------|-------------|--------|
-| TASK-010 | Create Zod schema for U-Plan validation | ⬜ Pendiente |
-| TASK-011 | Add partial validation mode for draft saving | ⬜ Pendiente |
+| TASK-010 | Create Zod schema for U-Plan validation | ✅ Completado |
+| TASK-011 | Add partial validation mode for draft saving | ✅ Completado |
 
 ### 2.2 Componente UplanFormModal
 
@@ -213,6 +213,7 @@
 | 2026-01-27 | TASK-001, TASK-002 | Fix View Trajectory button to require status=procesado AND csvResult, with tooltip | fix(flight-plans): require processed status for View Trajectory button |
 | 2026-01-27 | TASK-004 | Fix UplanViewModal map overflow with responsive dimensions | fix(ui): make UplanViewModal map responsive to prevent overflow |
 | 2026-01-27 | TASK-007, TASK-008, TASK-009 | Fix cascade delete for csvResult (single & bulk) + audit logging | fix(api): correct cascade delete to use actual csvResult IDs |
+| 2026-01-27 | TASK-010, TASK-011 | Create Zod schema for U-Plan validation with full and partial validation modes | feat(validators): add comprehensive U-Plan validation with Zod |
 
 ---
 
