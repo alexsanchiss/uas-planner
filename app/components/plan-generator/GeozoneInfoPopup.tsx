@@ -1,0 +1,661 @@
+/**
+ * GeozoneInfoPopup Component
+ * TASK-050: Popup component for displaying detailed geozone information
+ *
+ * Features:
+ * - Displays geozone identifier and name prominently
+ * - Shows general information (type, country, region)
+ * - Shows restrictions with color-coded badges
+ * - Shows temporal limits (start/end dates)
+ * - Shows authority contact information
+ * - Respects theme settings
+ * - Styled to match geozones_map.html popup design
+ */
+
+"use client";
+
+import React, { useMemo } from "react";
+import { Popup } from "react-leaflet";
+import L from "leaflet";
+import type { GeozoneData } from "@/app/hooks/useGeoawarenessWebSocket";
+
+/**
+ * Color configuration for geozone types
+ */
+const GEOZONE_TYPE_COLORS: Record<string, string> = {
+  prohibited: "#DC2626",
+  restricted: "#F97316",
+  controlled: "#EAB308",
+  advisory: "#3B82F6",
+  warning: "#8B5CF6",
+  temporary: "#6B7280",
+  PROHIBITED: "#4daf4a",
+  REQ_AUTHORIZATION: "#ff7f00",
+  CONDITIONAL: "#a65628",
+  NO_RESTRICTION: "#999999",
+  "U-SPACE": "#e41a1c",
+};
+
+/**
+ * Get display name for geozone type
+ */
+function getTypeDisplayName(type?: string): string {
+  if (!type) return "Unknown";
+  
+  const displayNames: Record<string, string> = {
+    prohibited: "Prohibited",
+    restricted: "Restricted",
+    controlled: "Controlled",
+    advisory: "Advisory",
+    warning: "Warning",
+    temporary: "Temporary",
+    PROHIBITED: "Prohibited",
+    REQ_AUTHORIZATION: "Requires Authorization",
+    CONDITIONAL: "Conditional",
+    NO_RESTRICTION: "No Restriction",
+    "U-SPACE": "U-Space",
+  };
+  
+  return displayNames[type] || type;
+}
+
+/**
+ * Get color for geozone type
+ */
+function getTypeColor(type?: string): string {
+  if (!type) return "#6B7280";
+  return GEOZONE_TYPE_COLORS[type] || GEOZONE_TYPE_COLORS[type.toLowerCase()] || "#6B7280";
+}
+
+/**
+ * Parse JSON string safely
+ */
+function safeParseJSON<T>(str: string | undefined | null): T | null {
+  if (!str || str === "null") return null;
+  try {
+    return JSON.parse(str) as T;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Format date string for display
+ */
+function formatDate(dateStr: string | undefined | null): string {
+  if (!dateStr || dateStr === "null") return "N/A";
+  try {
+    const date = new Date(dateStr);
+    return date.toLocaleString();
+  } catch {
+    return dateStr;
+  }
+}
+
+interface RestrictionConditions {
+  maxNoise?: number;
+  uasClass?: string[];
+  authorized?: string;
+  photograph?: string;
+  uasCategory?: string | string[];
+  specialoperation?: string;
+  uasOperationMode?: string | string[];
+}
+
+interface LimitedApplicability {
+  schedule?: {
+    day?: string[];
+    startTime?: string | null;
+    endTime?: string | null;
+    startEvent?: string | null;
+    endEvent?: string | null;
+  } | string;
+  startDateTime?: string;
+  endDateTime?: string;
+}
+
+interface ZoneAuthority {
+  name?: string;
+  email?: string;
+  phone?: string;
+  siteURL?: string;
+  purpose?: string;
+  service?: string;
+  contact?: {
+    contactName?: string;
+    contactRole?: string;
+  };
+}
+
+interface GeozoneInfoPopupProps {
+  /** The geozone data to display */
+  geozone: GeozoneData;
+  /** Position for the popup (Leaflet LatLng) */
+  position: L.LatLngExpression;
+  /** Callback when popup is closed */
+  onClose?: () => void;
+}
+
+/**
+ * Section component for grouping information
+ */
+function InfoSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="mb-3">
+      <div className="text-xs font-semibold text-[var(--text-primary)] mb-1.5 border-b border-[var(--border-primary)] pb-1">
+        {title}
+      </div>
+      <div className="text-xs text-[var(--text-secondary)]">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Info row component for key-value pairs
+ */
+function InfoRow({ label, value, valueClassName = "" }: { label: string; value: React.ReactNode; valueClassName?: string }) {
+  return (
+    <div className="flex justify-between items-start py-0.5">
+      <span className="text-[var(--text-secondary)] font-medium mr-2">{label}:</span>
+      <span className={`text-right flex-1 ${valueClassName}`}>{value || "N/A"}</span>
+    </div>
+  );
+}
+
+/**
+ * Badge component for displaying status/type
+ */
+function TypeBadge({ type }: { type?: string }) {
+  const color = getTypeColor(type);
+  const displayName = getTypeDisplayName(type);
+  
+  return (
+    <span
+      className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium text-white"
+      style={{ backgroundColor: color }}
+    >
+      {displayName}
+    </span>
+  );
+}
+
+/**
+ * GeozoneInfoPopup - Displays detailed information about a geozone
+ * 
+ * @example
+ * ```tsx
+ * const [selectedGeozone, setSelectedGeozone] = useState<GeozoneData | null>(null);
+ * const [popupPosition, setPopupPosition] = useState<L.LatLngExpression | null>(null);
+ * 
+ * // When geozone is clicked
+ * const handleGeozoneClick = (geozone: GeozoneData, event: L.LeafletMouseEvent) => {
+ *   setSelectedGeozone(geozone);
+ *   setPopupPosition(event.latlng);
+ * };
+ * 
+ * return (
+ *   <MapContainer>
+ *     <GeozoneLayer geozones={geozones} onGeozoneClick={handleGeozoneClick} />
+ *     {selectedGeozone && popupPosition && (
+ *       <GeozoneInfoPopup
+ *         geozone={selectedGeozone}
+ *         position={popupPosition}
+ *         onClose={() => setSelectedGeozone(null)}
+ *       />
+ *     )}
+ *   </MapContainer>
+ * );
+ * ```
+ */
+export function GeozoneInfoPopup({ geozone, position, onClose }: GeozoneInfoPopupProps) {
+  const { properties } = geozone;
+  
+  // Parse extended properties if they exist (from geozones_map.html format)
+  const extendedProps = useMemo(() => {
+    // Check if geozone has additional properties (from real data)
+    const geo = geozone as GeozoneData & {
+      properties: GeozoneData["properties"] & {
+        restrictionConditions?: string;
+        limitedApplicability?: string;
+        zoneAuthority?: string;
+        country?: string;
+        region?: string;
+        identifier?: string;
+      };
+    };
+    
+    const restrictions = safeParseJSON<RestrictionConditions>(
+      geo.properties?.restrictionConditions as string
+    );
+    
+    const limitedApplicability = safeParseJSON<LimitedApplicability>(
+      geo.properties?.limitedApplicability as string
+    );
+    
+    const zoneAuthority = safeParseJSON<ZoneAuthority>(
+      geo.properties?.zoneAuthority as string
+    );
+    
+    return {
+      restrictions,
+      limitedApplicability,
+      zoneAuthority,
+      country: (geo.properties as Record<string, unknown>)?.country as string,
+      region: (geo.properties as Record<string, unknown>)?.region as string,
+      identifier: geo.uas_geozones_identifier || (geo.properties as Record<string, unknown>)?.identifier as string,
+    };
+  }, [geozone]);
+  
+  // Get display values
+  const geozoneName = properties?.name || geozone.uas_geozones_identifier;
+  const geozoneType = properties?.type;
+  const typeColor = getTypeColor(geozoneType);
+  
+  return (
+    <Popup
+      position={position}
+      eventHandlers={{
+        remove: () => onClose?.(),
+      }}
+      maxWidth={380}
+      minWidth={280}
+      closeButton={true}
+      className="geozone-info-popup"
+    >
+      <div className="min-w-[260px] max-w-[360px]">
+        {/* Header with identifier and type badge */}
+        <div 
+          className="px-3 py-2 -mx-2 -mt-2 mb-3 rounded-t"
+          style={{ backgroundColor: `${typeColor}20`, borderBottom: `2px solid ${typeColor}` }}
+        >
+          <div className="font-bold text-[var(--text-primary)] text-sm">
+            {extendedProps.identifier || geozone.uas_geozones_identifier}
+          </div>
+          <div className="text-xs text-[var(--text-secondary)] mt-0.5 flex items-center gap-2">
+            <span className="truncate flex-1">{geozoneName}</span>
+            <TypeBadge type={geozoneType} />
+          </div>
+        </div>
+        
+        {/* Two-column layout */}
+        <div className="grid grid-cols-2 gap-4">
+          {/* Left column: General info & Restrictions */}
+          <div>
+            {/* General Information */}
+            <InfoSection title="General Information">
+              {extendedProps.country && (
+                <InfoRow label="Country" value={extendedProps.country} />
+              )}
+              {extendedProps.region && (
+                <InfoRow label="Region" value={extendedProps.region} />
+              )}
+              {properties?.description && (
+                <InfoRow label="Description" value={properties.description} />
+              )}
+            </InfoSection>
+            
+            {/* Restriction Conditions */}
+            {extendedProps.restrictions && (
+              <InfoSection title="Restrictions">
+                {extendedProps.restrictions.authorized && (
+                  <InfoRow 
+                    label="Authorization" 
+                    value={extendedProps.restrictions.authorized.replace(/_/g, " ")} 
+                  />
+                )}
+                {extendedProps.restrictions.uasOperationMode && (
+                  <InfoRow 
+                    label="Mode" 
+                    value={
+                      Array.isArray(extendedProps.restrictions.uasOperationMode)
+                        ? extendedProps.restrictions.uasOperationMode.join(", ")
+                        : extendedProps.restrictions.uasOperationMode
+                    } 
+                  />
+                )}
+                {extendedProps.restrictions.maxNoise !== undefined && (
+                  <InfoRow 
+                    label="Max Noise" 
+                    value={`${extendedProps.restrictions.maxNoise} dB`} 
+                  />
+                )}
+                {extendedProps.restrictions.photograph && (
+                  <InfoRow 
+                    label="Photography" 
+                    value={extendedProps.restrictions.photograph.replace(/_/g, " ")} 
+                  />
+                )}
+              </InfoSection>
+            )}
+          </div>
+          
+          {/* Right column: Temporal & Authority */}
+          <div>
+            {/* Temporal Limits */}
+            {(geozone.temporal_limits || extendedProps.limitedApplicability) && (
+              <InfoSection title="Validity Period">
+                {geozone.temporal_limits?.startDateTime && (
+                  <InfoRow 
+                    label="Start" 
+                    value={formatDate(geozone.temporal_limits.startDateTime)} 
+                  />
+                )}
+                {geozone.temporal_limits?.endDateTime && (
+                  <InfoRow 
+                    label="End" 
+                    value={formatDate(geozone.temporal_limits.endDateTime)} 
+                  />
+                )}
+                {extendedProps.limitedApplicability?.startDateTime && !geozone.temporal_limits?.startDateTime && (
+                  <InfoRow 
+                    label="Start" 
+                    value={formatDate(extendedProps.limitedApplicability.startDateTime)} 
+                  />
+                )}
+                {extendedProps.limitedApplicability?.endDateTime && !geozone.temporal_limits?.endDateTime && (
+                  <InfoRow 
+                    label="End" 
+                    value={formatDate(extendedProps.limitedApplicability.endDateTime)} 
+                  />
+                )}
+                {geozone.temporal_limits?.permanentStatus && (
+                  <InfoRow 
+                    label="Status" 
+                    value={<span className="text-amber-600 font-medium">Permanent</span>} 
+                  />
+                )}
+              </InfoSection>
+            )}
+            
+            {/* Schedule */}
+            {extendedProps.limitedApplicability?.schedule && 
+             typeof extendedProps.limitedApplicability.schedule === "object" && (
+              <InfoSection title="Schedule">
+                {extendedProps.limitedApplicability.schedule.day && (
+                  <InfoRow 
+                    label="Days" 
+                    value={Array.isArray(extendedProps.limitedApplicability.schedule.day)
+                      ? extendedProps.limitedApplicability.schedule.day.join(", ")
+                      : extendedProps.limitedApplicability.schedule.day
+                    } 
+                  />
+                )}
+                {extendedProps.limitedApplicability.schedule.startTime && 
+                 extendedProps.limitedApplicability.schedule.startTime !== "null" && (
+                  <InfoRow 
+                    label="Start Time" 
+                    value={extendedProps.limitedApplicability.schedule.startTime} 
+                  />
+                )}
+                {extendedProps.limitedApplicability.schedule.endTime && 
+                 extendedProps.limitedApplicability.schedule.endTime !== "null" && (
+                  <InfoRow 
+                    label="End Time" 
+                    value={extendedProps.limitedApplicability.schedule.endTime} 
+                  />
+                )}
+              </InfoSection>
+            )}
+            
+            {/* Zone Authority */}
+            {extendedProps.zoneAuthority && (
+              <InfoSection title="Authority">
+                {extendedProps.zoneAuthority.name && (
+                  <InfoRow 
+                    label="Name" 
+                    value={extendedProps.zoneAuthority.name} 
+                  />
+                )}
+                {extendedProps.zoneAuthority.phone && (
+                  <InfoRow 
+                    label="Phone" 
+                    value={
+                      <a 
+                        href={`tel:${extendedProps.zoneAuthority.phone.replace(/\s/g, "")}`}
+                        className="text-blue-500 hover:underline"
+                      >
+                        {extendedProps.zoneAuthority.phone}
+                      </a>
+                    } 
+                  />
+                )}
+                {extendedProps.zoneAuthority.email && (
+                  <InfoRow 
+                    label="Email" 
+                    value={
+                      <a 
+                        href={`mailto:${extendedProps.zoneAuthority.email}`}
+                        className="text-blue-500 hover:underline"
+                      >
+                        {extendedProps.zoneAuthority.email}
+                      </a>
+                    } 
+                  />
+                )}
+                {extendedProps.zoneAuthority.siteURL && (
+                  <InfoRow 
+                    label="Website" 
+                    value={
+                      <a 
+                        href={extendedProps.zoneAuthority.siteURL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-500 hover:underline truncate block"
+                        title={extendedProps.zoneAuthority.siteURL}
+                      >
+                        Visit site →
+                      </a>
+                    } 
+                  />
+                )}
+                {extendedProps.zoneAuthority.purpose && (
+                  <InfoRow 
+                    label="Purpose" 
+                    value={extendedProps.zoneAuthority.purpose} 
+                  />
+                )}
+              </InfoSection>
+            )}
+          </div>
+        </div>
+        
+        {/* Altitude restrictions if available */}
+        {geozone.restrictions && (
+          <InfoSection title="Altitude Restrictions">
+            <div className="grid grid-cols-2 gap-2">
+              <InfoRow 
+                label="Min Altitude" 
+                value={
+                  geozone.restrictions.minAltitude !== undefined
+                    ? `${geozone.restrictions.minAltitude} ${geozone.restrictions.uomDimensions || "m"}`
+                    : "N/A"
+                } 
+              />
+              <InfoRow 
+                label="Max Altitude" 
+                value={
+                  geozone.restrictions.maxAltitude !== undefined
+                    ? `${geozone.restrictions.maxAltitude} ${geozone.restrictions.uomDimensions || "m"}`
+                    : "N/A"
+                } 
+              />
+            </div>
+          </InfoSection>
+        )}
+        
+        {/* UAS Classes if available in restrictions */}
+        {extendedProps.restrictions?.uasClass && extendedProps.restrictions.uasClass.length > 0 && (
+          <div className="mt-2 pt-2 border-t border-[var(--border-primary)]">
+            <div className="text-xs text-[var(--text-secondary)]">
+              <span className="font-medium">Affected UAS Classes: </span>
+              <span className="text-[var(--text-primary)]">
+                {extendedProps.restrictions.uasClass.join(", ")}
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+    </Popup>
+  );
+}
+
+/**
+ * Standalone popup wrapper for use outside of react-leaflet's component tree
+ * This can be used with a marker or programmatically opened popups
+ */
+export function GeozoneInfoCard({ geozone, onClose }: { geozone: GeozoneData; onClose?: () => void }) {
+  const { properties } = geozone;
+  
+  // Parse extended properties
+  const extendedProps = useMemo(() => {
+    const geo = geozone as GeozoneData & {
+      properties: GeozoneData["properties"] & {
+        restrictionConditions?: string;
+        limitedApplicability?: string;
+        zoneAuthority?: string;
+        country?: string;
+        region?: string;
+        identifier?: string;
+      };
+    };
+    
+    const restrictions = safeParseJSON<RestrictionConditions>(
+      geo.properties?.restrictionConditions as string
+    );
+    
+    const limitedApplicability = safeParseJSON<LimitedApplicability>(
+      geo.properties?.limitedApplicability as string
+    );
+    
+    const zoneAuthority = safeParseJSON<ZoneAuthority>(
+      geo.properties?.zoneAuthority as string
+    );
+    
+    return {
+      restrictions,
+      limitedApplicability,
+      zoneAuthority,
+      country: (geo.properties as Record<string, unknown>)?.country as string,
+      region: (geo.properties as Record<string, unknown>)?.region as string,
+      identifier: geo.uas_geozones_identifier || (geo.properties as Record<string, unknown>)?.identifier as string,
+    };
+  }, [geozone]);
+  
+  const geozoneName = properties?.name || geozone.uas_geozones_identifier;
+  const geozoneType = properties?.type;
+  const typeColor = getTypeColor(geozoneType);
+  
+  return (
+    <div className="bg-[var(--surface-primary)] rounded-lg shadow-lg border border-[var(--border-primary)] overflow-hidden max-w-[400px]">
+      {/* Header */}
+      <div 
+        className="px-4 py-3 flex items-start justify-between"
+        style={{ backgroundColor: `${typeColor}15`, borderBottom: `2px solid ${typeColor}` }}
+      >
+        <div className="flex-1 min-w-0 mr-2">
+          <div className="font-bold text-[var(--text-primary)] text-base">
+            {extendedProps.identifier || geozone.uas_geozones_identifier}
+          </div>
+          <div className="text-sm text-[var(--text-secondary)] mt-0.5 truncate">
+            {geozoneName}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <TypeBadge type={geozoneType} />
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+              aria-label="Close"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </button>
+          )}
+        </div>
+      </div>
+      
+      {/* Content */}
+      <div className="p-4 grid grid-cols-2 gap-4">
+        {/* Left column */}
+        <div>
+          {(extendedProps.country || extendedProps.region) && (
+            <InfoSection title="Location">
+              {extendedProps.country && <InfoRow label="Country" value={extendedProps.country} />}
+              {extendedProps.region && <InfoRow label="Region" value={extendedProps.region} />}
+            </InfoSection>
+          )}
+          
+          {extendedProps.restrictions && (
+            <InfoSection title="Restrictions">
+              {extendedProps.restrictions.authorized && (
+                <InfoRow 
+                  label="Auth" 
+                  value={extendedProps.restrictions.authorized.replace(/_/g, " ")} 
+                />
+              )}
+              {extendedProps.restrictions.photograph && (
+                <InfoRow 
+                  label="Photo" 
+                  value={extendedProps.restrictions.photograph.replace(/_/g, " ")} 
+                />
+              )}
+            </InfoSection>
+          )}
+        </div>
+        
+        {/* Right column */}
+        <div>
+          {extendedProps.zoneAuthority && (
+            <InfoSection title="Contact">
+              {extendedProps.zoneAuthority.name && (
+                <InfoRow label="Authority" value={extendedProps.zoneAuthority.name} />
+              )}
+              {extendedProps.zoneAuthority.phone && (
+                <InfoRow 
+                  label="Phone" 
+                  value={
+                    <a 
+                      href={`tel:${extendedProps.zoneAuthority.phone.replace(/\s/g, "")}`}
+                      className="text-blue-500 hover:underline"
+                    >
+                      Call
+                    </a>
+                  } 
+                />
+              )}
+            </InfoSection>
+          )}
+          
+          {(geozone.temporal_limits || extendedProps.limitedApplicability) && (
+            <InfoSection title="Valid">
+              {(geozone.temporal_limits?.startDateTime || extendedProps.limitedApplicability?.startDateTime) && (
+                <InfoRow 
+                  label="From" 
+                  value={formatDate(
+                    geozone.temporal_limits?.startDateTime || 
+                    extendedProps.limitedApplicability?.startDateTime
+                  )} 
+                />
+              )}
+              {(geozone.temporal_limits?.endDateTime || extendedProps.limitedApplicability?.endDateTime) && (
+                <InfoRow 
+                  label="Until" 
+                  value={formatDate(
+                    geozone.temporal_limits?.endDateTime || 
+                    extendedProps.limitedApplicability?.endDateTime
+                  )} 
+                />
+              )}
+            </InfoSection>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default GeozoneInfoPopup;
