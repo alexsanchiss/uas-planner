@@ -407,13 +407,13 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
   }
 
   try {
-    // First, get the flight plans that belong to this user
+    // First, get the flight plans that belong to this user along with their csvResult IDs
     const userPlans = await prisma.flightPlan.findMany({
       where: {
         id: { in: targetIds },
         userId,
       },
-      select: { id: true },
+      select: { id: true, csvResult: true, customName: true },
     });
 
     const userPlanIds = userPlans.map((p) => p.id);
@@ -425,17 +425,27 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // CSV result IDs share the same values as flight plan IDs
-    const csvIds = userPlanIds;
+    // Extract the actual csvResult IDs from the flight plans (filter out nulls)
+    const csvResultIds = userPlans
+      .map((p) => p.csvResult)
+      .filter((id): id is number => id !== null);
+
+    // Log the deletion operation for audit purposes
+    console.log(`[BULK DELETE] userId=${userId} deleting ${userPlanIds.length} flight plans: [${userPlanIds.join(', ')}]`);
+    console.log(`[BULK DELETE] Associated csvResult IDs to delete: [${csvResultIds.length > 0 ? csvResultIds.join(', ') : 'none'}]`);
 
     // Delete in transaction: CSV results first, then flight plans
+    // Use the actual csvResult IDs from the flightPlan records, not the flightPlan IDs
     const [deletedCsvResult, deletedPlansResult] = await prisma.$transaction([
-      prisma.csvResult.deleteMany({ where: { id: { in: csvIds } } }),
+      prisma.csvResult.deleteMany({ where: { id: { in: csvResultIds } } }),
       prisma.flightPlan.deleteMany({ where: { id: { in: userPlanIds } } }),
     ]);
 
     const deletedCsvs = deletedCsvResult.count;
     const deletedPlans = deletedPlansResult.count;
+
+    // Log successful deletion
+    console.log(`[BULK DELETE] Successfully deleted ${deletedPlans} flight plans and ${deletedCsvs} CSV results`);
 
     return NextResponse.json({
       deletedPlans,

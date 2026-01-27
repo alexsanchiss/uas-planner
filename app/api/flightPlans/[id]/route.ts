@@ -265,10 +265,10 @@ export async function DELETE(
   }
 
   try {
-    // First check if the flight plan exists and belongs to the user
+    // First check if the flight plan exists, belongs to the user, and get its csvResult ID
     const existing = await prisma.flightPlan.findUnique({
       where: { id },
-      select: { userId: true },
+      select: { userId: true, csvResult: true, customName: true },
     });
 
     if (!existing) {
@@ -286,12 +286,29 @@ export async function DELETE(
       );
     }
 
+    // Get the actual csvResult ID from the flight plan (may be different from flightPlan.id)
+    const csvResultId = existing.csvResult;
+
+    // Log the deletion operation for audit purposes
+    console.log(`[DELETE] Flight plan id=${id} ("${existing.customName}") by userId=${userId}. Associated csvResult id=${csvResultId ?? 'none'}`);
+
     // Delete in transaction: CSV result first (if exists), then flight plan
-    // CSV result ID matches flight plan ID in this schema
-    const [deletedCsvResult, deletedPlan] = await prisma.$transaction([
-      prisma.csvResult.deleteMany({ where: { id } }),
-      prisma.flightPlan.delete({ where: { id } }),
-    ]);
+    // Use the actual csvResult ID from the flightPlan record, not the flightPlan ID
+    const operations: ReturnType<typeof prisma.csvResult.delete | typeof prisma.flightPlan.delete>[] = [];
+    
+    if (csvResultId !== null) {
+      operations.push(prisma.csvResult.delete({ where: { id: csvResultId } }));
+    }
+    operations.push(prisma.flightPlan.delete({ where: { id } }));
+    
+    const results = await prisma.$transaction(operations);
+    
+    // Extract deleted plan from results (last operation)
+    const deletedPlan = results[results.length - 1] as { id: number; customName: string };
+    const deletedCsvResult = csvResultId !== null;
+
+    // Log successful deletion
+    console.log(`[DELETE] Successfully deleted flight plan id=${id}${deletedCsvResult ? ` and csvResult id=${csvResultId}` : ''}`);
 
     return NextResponse.json({
       message: 'Flight plan deleted successfully',
@@ -299,7 +316,7 @@ export async function DELETE(
         id: deletedPlan.id,
         customName: deletedPlan.customName,
       },
-      deletedCsvResult: deletedCsvResult.count > 0,
+      deletedCsvResult,
     });
   } catch (error) {
     console.error('Error deleting flight plan:', error);
