@@ -10,9 +10,9 @@
 | 2 | Formulario U-Plan | 15/15 | ✅ Completado |
 | 3 | Generación de Volúmenes | 8/8 | ✅ Completado |
 | 4 | Flujo Autorización FAS | 7/7 | ✅ Completado |
-| 5 | Integración Geoawareness WebSocket | 0/21 | 🔴 Pendiente |
+| 5 | Integración Geoawareness WebSocket | 3/21 | 🟡 En progreso |
 | 6 | Correcciones de Tema | 9/9 | ✅ Completado |
-| **TOTAL** | | **48/69** | 🟡 70% |
+| **TOTAL** | | **51/69** | 🟡 74% |
 
 ---
 
@@ -132,14 +132,14 @@
 
 | Task ID | Descripción | Estado |
 |---------|-------------|--------|
-| TASK-040 | Create useUspaces hook | ⬜ Pendiente |
-| TASK-041 | Create API endpoint for U-spaces proxy | ⬜ Pendiente |
+| TASK-040 | Create useUspaces hook | ✅ Completado |
+| TASK-041 | Create API endpoint for U-spaces proxy | ✅ Completado |
 
 ### 5.2 Selector de U-space
 
 | Task ID | Descripción | Estado |
 |---------|-------------|--------|
-| TASK-042 | Create UspaceSelector component | ⬜ Pendiente |
+| TASK-042 | Create UspaceSelector component | ✅ Completado |
 | TASK-043 | Integrate UspaceSelector in PlanGenerator | ⬜ Pendiente |
 | TASK-044 | Add loading state for U-spaces | ⬜ Pendiente |
 | TASK-045 | Store uspace_identifier in geoawarenessData | ⬜ Pendiente |
@@ -208,6 +208,7 @@
 
 | Fecha | Task ID | Descripción | Commit |
 |-------|---------|-------------|--------|
+| 2026-01-27 | TASK-040 to TASK-042 | Add U-space selection: useUspaces hook, API endpoint proxy, and interactive UspaceSelector component with map-based selection | feat(geoawareness): add U-space selector for flight area selection |
 | 2026-01-27 | TASK-065 to TASK-069 | Make footer logos theme-aware: SNA, UPV logos and LinkedIn, Instagram icons now adapt to light/dark theme | feat(ui): make footer logos adapt to light/dark theme |
 | 2026-01-27 | TASK-061 to TASK-064 | Fix login page theme: replace hardcoded colors with CSS variables for backgrounds, text, warning box, and loading skeleton | fix(ui): make login page respect theme settings |
 | 2026-01-27 | TASK-033 to TASK-039 | Implement FAS authorization flow: processing state detection, animated spinner during FAS processing, disable button during processing, verify FASResponseViewer with copy-to-clipboard | feat(auth): improve FAS authorization flow with processing state feedback |
