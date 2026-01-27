@@ -1,10 +1,13 @@
 "use client";
-import React, { useEffect, useRef } from "react";
-import { MapContainer, TileLayer, Polyline, Rectangle, Polygon, CircleMarker } from "react-leaflet";
+import React, { useState } from "react";
+import { MapContainer, TileLayer, Polyline, Rectangle, Polygon } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import { Marker, Popup, useMapEvents, useMap } from "react-leaflet";
+import { Marker, Popup, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import { Point, ScanWaypoint } from "@/lib/scan-generator";
+import { GeozoneLayer } from "./plan-generator/GeozoneLayer";
+import { GeozoneInfoPopup } from "./plan-generator/GeozoneInfoPopup";
+import type { GeozoneData } from "@/app/hooks/useGeoawarenessWebSocket";
 
 // TASK-152: Large bounds for overlay outside service area (covers the world)
 const WORLD_BOUNDS: [number, number][] = [
@@ -465,11 +468,33 @@ interface PlanMapProps {
     scanAngle: number;
   };
   customClickHandler?: ((lat: number, lng: number) => void) | null;
+  // TASK-051: Geozone layer props
+  geozonesData?: GeozoneData[];
+  geozonesVisible?: boolean;
+  onGeozoneClick?: (geozone: GeozoneData, event: L.LeafletMouseEvent) => void;
 }
 
 const PlanMap = (props: PlanMapProps) => {
   const bounds = props.bounds as [[number, number], [number, number]];
   const maskPolygon = createServiceAreaMask(bounds);
+  
+  // TASK-051: State for selected geozone popup
+  const [selectedGeozone, setSelectedGeozone] = useState<GeozoneData | null>(null);
+  const [popupPosition, setPopupPosition] = useState<L.LatLngExpression | null>(null);
+  
+  // TASK-051: Handle geozone click - show info popup
+  const handleGeozoneClick = (geozone: GeozoneData, event: L.LeafletMouseEvent) => {
+    setSelectedGeozone(geozone);
+    setPopupPosition(event.latlng);
+    // Also call external handler if provided
+    props.onGeozoneClick?.(geozone, event);
+  };
+  
+  // Close popup handler
+  const handleClosePopup = () => {
+    setSelectedGeozone(null);
+    setPopupPosition(null);
+  };
   
   return (
     <MapContainer
@@ -506,6 +531,26 @@ const PlanMap = (props: PlanMapProps) => {
           fillOpacity: 0.08,
         }}
       />
+      
+      {/* TASK-051: Geozone layer - rendered between bounds and waypoints */}
+      {props.geozonesData && props.geozonesData.length > 0 && (
+        <GeozoneLayer
+          geozones={props.geozonesData}
+          visible={props.geozonesVisible !== false}
+          onGeozoneClick={handleGeozoneClick}
+          fillOpacity={0.2}
+          hoverFillOpacity={0.4}
+        />
+      )}
+      
+      {/* TASK-051: Geozone info popup */}
+      {selectedGeozone && popupPosition && (
+        <GeozoneInfoPopup
+          geozone={selectedGeozone}
+          position={popupPosition}
+          onClose={handleClosePopup}
+        />
+      )}
       
       {/* SCAN Mode Overlays */}
       {props.scanMode && props.scanOverlays && (

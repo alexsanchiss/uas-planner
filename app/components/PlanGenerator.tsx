@@ -62,6 +62,8 @@ const UspaceSelector = dynamic(() => import('./plan-generator/UspaceSelector'), 
 import ScanPatternGeneratorV2 from './plan-generator/ScanPatternGeneratorV2';
 import { Point, ScanWaypoint } from '@/lib/scan-generator';
 import { useUspaces, USpace } from '@/app/hooks/useUspaces';
+import { useGeoawarenessWebSocket } from '@/app/hooks/useGeoawarenessWebSocket';
+import type { GeozoneData } from '@/app/hooks/useGeoawarenessWebSocket';
 
 // Plan generator modes
 type GeneratorMode = 'manual' | 'scan';
@@ -302,6 +304,21 @@ export default function PlanGenerator() {
   // TASK-043: U-space selection state
   const [selectedUspace, setSelectedUspace] = useState<USpace | null>(null);
   const { getUspaceBounds, getUspaceCenter } = useUspaces();
+  
+  // TASK-051: Connect to geoawareness WebSocket when U-space is selected
+  const {
+    data: geoawarenessData,
+    reconnect: reconnectWs,
+  } = useGeoawarenessWebSocket({
+    uspaceId: selectedUspace?.id || null,
+    enabled: !!selectedUspace && selectedUspace.id !== 'default-fas',
+  });
+  
+  // For future use: expose reconnectWs for manual retry
+  void reconnectWs;
+  
+  // TASK-051: Extract geozones from WebSocket data
+  const geozonesData: GeozoneData[] = geoawarenessData?.geozones_data || [];
   
   // Generator mode: manual waypoint placement vs SCAN pattern generation
   const [generatorMode, setGeneratorMode] = useState<GeneratorMode>('manual');
@@ -1966,6 +1983,9 @@ export default function PlanGenerator() {
             scanOverlays={scanOverlays || undefined}
             customClickHandler={scanMapClickHandlerRef.current}
             key={`planmap-${scanHandlerVersion}`} // Force re-render when handler changes
+            // TASK-051: Pass geozone data to PlanMap
+            geozonesData={geozonesData}
+            geozonesVisible={true}
           />
         </main>
       </div>
