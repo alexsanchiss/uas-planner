@@ -96,6 +96,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     folderId?: number | null;
     uplan?: unknown;
     scheduledAt?: string | null;
+    geoawarenessData?: unknown;
   }) => ({
     customName: p.customName,
     status: p.status,
@@ -104,6 +105,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     folderId: p.folderId ?? null,
     uplan: p.uplan !== undefined && p.uplan !== null ? JSON.stringify(p.uplan) : Prisma.DbNull,
     scheduledAt: p.scheduledAt ?? null,
+    geoawarenessData: p.geoawarenessData !== undefined && p.geoawarenessData !== null ? p.geoawarenessData : Prisma.DbNull,
   });
 
   try {
@@ -119,6 +121,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             folderId: z.number().int().positive().nullable().optional(),
             uplan: z.unknown().nullable().optional(),
             scheduledAt: z.string().nullable().optional(),
+            geoawarenessData: z.unknown().nullable().optional(),
           })
         ).min(1).max(MAX_BULK_ITEMS),
       });
@@ -158,6 +161,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       folderId: z.number().int().positive().nullable().optional(),
       uplan: z.unknown().nullable().optional(),
       scheduledAt: z.string().nullable().optional(),
+      geoawarenessData: z.unknown().nullable().optional(),
     });
 
     const result = safeParseBody(singleSchema, body);
@@ -230,6 +234,8 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
     if (typeof d.csvResult === 'number' || d.csvResult === null) out.csvResult = d.csvResult;
     if (typeof d.machineAssignedId === 'number' || d.machineAssignedId === null) out.machineAssignedId = d.machineAssignedId;
     if (typeof d.folderId === 'number' || d.folderId === null) out.folderId = d.folderId;
+    // TASK-045: Allow updating geoawarenessData (for storing uspace_identifier)
+    if (d.geoawarenessData !== undefined) out.geoawarenessData = d.geoawarenessData;
     return out;
   };
 
