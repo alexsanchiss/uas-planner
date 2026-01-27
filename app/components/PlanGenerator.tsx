@@ -26,16 +26,8 @@
 // - Unified transaction management
 // - Better performance through optimized database calls
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import {
-  MapContainer,
-  TileLayer,
-  Marker,
-  Popup,
-  Polyline,
-  useMapEvents,
-  Rectangle, // <-- add Rectangle
-} from "react-leaflet";
+import React, { useState, useRef, useCallback } from "react";
+// Note: react-leaflet imports are used by PlanMap component via dynamic import
 import "leaflet/dist/leaflet.css";
 
 // Fix for leaflet icons in Next.js
@@ -51,7 +43,7 @@ import { useAuth } from "../hooks/useAuth";
 import axios from "axios";
 
 // Helper to get auth headers for API requests
-function getAuthHeaders(): { Authorization: string } | {} {
+function getAuthHeaders(): { Authorization: string } | Record<string, never> {
   if (typeof window === "undefined") return {};
   const token = localStorage.getItem("authToken");
   return token ? { Authorization: `Bearer ${token}` } : {};
@@ -62,12 +54,14 @@ import {
   Draggable,
   DropResult,
 } from "@hello-pangea/dnd";
-import { HelpCircle, Grid3X3, MousePointer2 } from "lucide-react";
+import { HelpCircle, Grid3X3, MousePointer2, ChevronRight, Edit2 } from "lucide-react";
 import dynamic from 'next/dynamic';
 
 const PlanMap = dynamic(() => import('./PlanMap'), { ssr: false });
+const UspaceSelector = dynamic(() => import('./plan-generator/UspaceSelector'), { ssr: false });
 import ScanPatternGeneratorV2 from './plan-generator/ScanPatternGeneratorV2';
 import { Point, ScanWaypoint } from '@/lib/scan-generator';
+import { useUspaces, USpace } from '@/app/hooks/useUspaces';
 
 // Plan generator modes
 type GeneratorMode = 'manual' | 'scan';
@@ -156,18 +150,11 @@ const ALT_LIMITS = [0, 200];
 // TASK-154: Distance threshold for boundary warning (in meters)
 const BOUNDARY_WARNING_DISTANCE = 100;
 
-// Helper to check if a point is inside the limits
-function isWithinServiceLimits(lat: number, lng: number) {
-  return (
-    lat >= SERVICE_LIMITS[1] && lat <= SERVICE_LIMITS[3] &&
-    lng >= SERVICE_LIMITS[0] && lng <= SERVICE_LIMITS[2]
-  );
-}
-
 // TASK-154: Calculate approximate distance from point to service area boundary (in meters)
+// TASK-043: Updated to accept limits parameter for U-space support
 // Uses Haversine formula approximation for short distances
-function distanceToBoundary(lat: number, lng: number): number {
-  const [minLng, minLat, maxLng, maxLat] = SERVICE_LIMITS;
+function distanceToBoundary(lat: number, lng: number, limits: number[]): number {
+  const [minLng, minLat, maxLng, maxLat] = limits;
   
   // Approximate meters per degree at this latitude
   const latMetersPerDeg = 111320; // ~111km per degree latitude
@@ -184,12 +171,13 @@ function distanceToBoundary(lat: number, lng: number): number {
 }
 
 // TASK-154: Check if any waypoint is approaching the boundary
-function getWaypointsNearBoundary(waypoints: Waypoint[]): { index: number; distance: number }[] {
+// TASK-043: Updated to accept limits parameter for U-space support
+function getWaypointsNearBoundary(waypoints: Waypoint[], limits: number[]): { index: number; distance: number }[] {
   const nearBoundary: { index: number; distance: number }[] = [];
   
   for (let i = 0; i < waypoints.length; i++) {
     const wp = waypoints[i];
-    const dist = distanceToBoundary(wp.lat, wp.lng);
+    const dist = distanceToBoundary(wp.lat, wp.lng, limits);
     if (dist < BOUNDARY_WARNING_DISTANCE) {
       nearBoundary.push({ index: i, distance: Math.round(dist) });
     }
@@ -311,6 +299,10 @@ export default function PlanGenerator() {
   // TASK-181: Collapsible sidebar for tablet/mobile
   const [sidebarOpen, setSidebarOpen] = useState(false);
   
+  // TASK-043: U-space selection state
+  const [selectedUspace, setSelectedUspace] = useState<USpace | null>(null);
+  const { getUspaceBounds, getUspaceCenter } = useUspaces();
+  
   // Generator mode: manual waypoint placement vs SCAN pattern generation
   const [generatorMode, setGeneratorMode] = useState<GeneratorMode>('manual');
   
@@ -340,20 +332,72 @@ export default function PlanGenerator() {
     setScanHandlerVersion(v => v + 1);
   }, []);
 
-  // Map bounds and center
-  const bounds: [[number, number], [number, number]] = [
-    [SERVICE_LIMITS[1], SERVICE_LIMITS[0]], // SW: [minLat, minLng]
-    [SERVICE_LIMITS[3], SERVICE_LIMITS[2]], // NE: [maxLat, maxLng]
-  ];
-  const center: [number, number] = [
-    (SERVICE_LIMITS[1] + SERVICE_LIMITS[3]) / 2,
-    (SERVICE_LIMITS[0] + SERVICE_LIMITS[2]) / 2,
-  ];
+  // Map bounds and center - TASK-043: Use selected U-space bounds when available
+  const bounds: [[number, number], [number, number]] = selectedUspace 
+    ? (() => {
+        const uspaceBounds = getUspaceBounds(selectedUspace);
+        return [
+          [uspaceBounds.south, uspaceBounds.west], // SW: [minLat, minLng]
+          [uspaceBounds.north, uspaceBounds.east], // NE: [maxLat, maxLng]
+        ];
+      })()
+    : [
+        [SERVICE_LIMITS[1], SERVICE_LIMITS[0]], // SW: [minLat, minLng]
+        [SERVICE_LIMITS[3], SERVICE_LIMITS[2]], // NE: [maxLat, maxLng]
+      ];
+  const center: [number, number] = selectedUspace 
+    ? (() => {
+        const uspaceCenter = getUspaceCenter(selectedUspace);
+        return [uspaceCenter.lat, uspaceCenter.lon];
+      })()
+    : [
+        (SERVICE_LIMITS[1] + SERVICE_LIMITS[3]) / 2,
+        (SERVICE_LIMITS[0] + SERVICE_LIMITS[2]) / 2,
+      ];
+      
+  // TASK-043: Effective service limits based on selected U-space
+  const effectiveServiceLimits = selectedUspace
+    ? (() => {
+        const uspaceBounds = getUspaceBounds(selectedUspace);
+        return [uspaceBounds.west, uspaceBounds.south, uspaceBounds.east, uspaceBounds.north];
+      })()
+    : SERVICE_LIMITS;
+    
+  // TASK-043: Handler for U-space selection
+  const handleUspaceSelect = (uspace: USpace) => {
+    setSelectedUspace(uspace);
+    // Clear existing waypoints when changing U-space
+    if (waypoints.length > 0) {
+      setWaypoints([]);
+      setSelectedIdx(null);
+    }
+    setToast(`Selected U-space: ${uspace.name}`);
+  };
+  
+  // TASK-043: Handler to change U-space (go back to selection)
+  const handleChangeUspace = () => {
+    if (waypoints.length > 0) {
+      if (!window.confirm('Changing U-space will clear your current waypoints. Continue?')) {
+        return;
+      }
+      setWaypoints([]);
+      setSelectedIdx(null);
+    }
+    setSelectedUspace(null);
+  };
+  
+  // TASK-043: Check if point is within bounds (using effective limits)
+  const isWithinEffectiveBounds = (lat: number, lng: number) => {
+    const [minLng, minLat, maxLng, maxLat] = effectiveServiceLimits;
+    return lat >= minLat && lat <= maxLat && lng >= minLng && lng <= maxLng;
+  };
 
   const handleAddWaypoint = (wp: Waypoint) => {
-    // Only add if within limits
-    if (!isWithinServiceLimits(wp.lat, wp.lng)) {
-      setToast("Waypoints must be within the FAS service area.");
+    // TASK-043: Check within selected U-space bounds or default service limits
+    if (!isWithinEffectiveBounds(wp.lat, wp.lng)) {
+      setToast(selectedUspace 
+        ? `Waypoints must be within the ${selectedUspace.name} area.`
+        : "Waypoints must be within the FAS service area.");
       return;
     }
     // Ensure pauseDuration and flyOverMode are initialized
@@ -414,11 +458,13 @@ export default function PlanGenerator() {
           return { ...wp, pauseDuration: pauseValue };
         }
         if ((field === "lat" || field === "lng")) {
-          // Only allow if within limits
+          // TASK-043: Check within selected U-space bounds
           const newLat = field === "lat" ? Number(value) : wp.lat;
           const newLng = field === "lng" ? Number(value) : wp.lng;
-          if (!isWithinServiceLimits(newLat, newLng)) {
-            setToast("Waypoints must be within the FAS service area.");
+          if (!isWithinEffectiveBounds(newLat, newLng)) {
+            setToast(selectedUspace 
+              ? `Waypoints must be within the ${selectedUspace.name} area.`
+              : "Waypoints must be within the FAS service area.");
             return wp; // revert
           }
           return { ...wp, [field]: Number(value) };
@@ -495,9 +541,11 @@ export default function PlanGenerator() {
 
   // Update waypoint position from marker drag
   const handleMarkerDragEnd = (idx: number, lat: number, lng: number) => {
-    // Only allow if within limits
-    if (!isWithinServiceLimits(lat, lng)) {
-      setToast("Waypoints must be within the FAS service area.");
+    // TASK-043: Check within selected U-space bounds
+    if (!isWithinEffectiveBounds(lat, lng)) {
+      setToast(selectedUspace 
+        ? `Waypoints must be within the ${selectedUspace.name} area.`
+        : "Waypoints must be within the FAS service area.");
       return;
     }
     setWaypoints((wps) =>
@@ -646,6 +694,103 @@ export default function PlanGenerator() {
       </div>
     );
   }
+  
+  // TASK-043: U-space selection step
+  if (!selectedUspace) {
+    return (
+      <div className="w-full bg-[var(--bg-primary)] overflow-x-hidden min-h-screen">
+        {/* Toast notification */}
+        {toast && (
+          <div
+            className={`fixed top-6 left-1/2 transform -translate-x-1/2 z-[2000] px-4 sm:px-6 py-3 rounded shadow-lg text-sm sm:text-base font-semibold animate-fade-in max-w-[90vw] text-center ${
+              toast.includes('Selected U-space')
+                ? 'bg-[var(--status-success)] text-white'
+                : 'bg-[var(--status-error)] text-white'
+            }`}
+          >
+            {toast}
+          </div>
+        )}
+        
+        {/* Help Button */}
+        <a
+          href="/how-it-works#plan-generator-help"
+          target="_self"
+          className="fixed top-24 right-4 sm:right-8 z-[2000] bg-blue-700 hover:bg-blue-800 text-white rounded-full p-2 sm:p-3 shadow-lg flex items-center gap-2 transition-all duration-200"
+          title="Need help with Plan Generator?"
+        >
+          <HelpCircle className="w-5 h-5 sm:w-6 sm:h-6" />
+        </a>
+        
+        <div className="container mx-auto px-4 py-8 max-w-4xl">
+          {/* Step Indicator */}
+          <div className="flex items-center justify-center gap-4 mb-8">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-[var(--color-primary)] text-white flex items-center justify-center font-bold text-sm">
+                1
+              </div>
+              <span className="text-[var(--text-primary)] font-medium">Select U-space</span>
+            </div>
+            <ChevronRight className="w-5 h-5 text-[var(--text-tertiary)]" />
+            <div className="flex items-center gap-2 opacity-50">
+              <div className="w-8 h-8 rounded-full bg-[var(--bg-tertiary)] text-[var(--text-tertiary)] flex items-center justify-center font-bold text-sm">
+                2
+              </div>
+              <span className="text-[var(--text-tertiary)] font-medium">Plan Waypoints</span>
+            </div>
+          </div>
+          
+          {/* Title and Description */}
+          <div className="text-center mb-6">
+            <h1 className="text-2xl md:text-3xl font-bold text-[var(--text-primary)] mb-2">
+              Select Flight Area
+            </h1>
+            <p className="text-[var(--text-secondary)] max-w-2xl mx-auto">
+              Choose a U-space to plan your flight. Your waypoints will be restricted to the selected area.
+              Click on a polygon to select it.
+            </p>
+          </div>
+          
+          {/* U-space Selector Map */}
+          <div className="rounded-lg overflow-hidden shadow-lg border border-[var(--border-primary)]">
+            <UspaceSelector
+              onSelect={handleUspaceSelect}
+              selectedUspaceId={null}
+              className="h-[500px]"
+            />
+          </div>
+          
+          {/* Skip to default service area (fallback) */}
+          <div className="mt-6 text-center">
+            <p className="text-[var(--text-tertiary)] text-sm mb-3">
+              Can&apos;t find your area or want to use the default?
+            </p>
+            <button
+              onClick={() => {
+                // Create a mock U-space for the default FAS service area
+                const defaultUspace: USpace = {
+                  id: 'default-fas',
+                  name: 'FAS Service Area (Valencia)',
+                  boundary: [
+                    { latitude: SERVICE_LIMITS[1], longitude: SERVICE_LIMITS[0] },
+                    { latitude: SERVICE_LIMITS[3], longitude: SERVICE_LIMITS[0] },
+                    { latitude: SERVICE_LIMITS[3], longitude: SERVICE_LIMITS[2] },
+                    { latitude: SERVICE_LIMITS[1], longitude: SERVICE_LIMITS[2] },
+                    { latitude: SERVICE_LIMITS[1], longitude: SERVICE_LIMITS[0] },
+                  ],
+                };
+                handleUspaceSelect(defaultUspace);
+              }}
+              className="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-hover)] transition-colors text-sm font-medium"
+            >
+              Use Default Service Area
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
   return (
     <div className="w-full bg-[var(--bg-primary)] overflow-x-hidden">
       {/* Toast notification */}
@@ -1500,28 +1645,42 @@ export default function PlanGenerator() {
                 </div>
                 )}
                 
-                {/* TASK-153: Service Area Bounds Panel */}
+                {/* TASK-153 & TASK-043: Service Area / U-space Bounds Panel */}
                 <div className="mb-4 p-3 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-3 h-3 border-2 border-orange-400 border-dashed rounded-sm" />
-                    <span className="text-sm font-semibold text-[var(--text-secondary)]">FAS Service Area</span>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 border-2 border-orange-400 border-dashed rounded-sm" />
+                      <span className="text-sm font-semibold text-[var(--text-secondary)]">
+                        {selectedUspace ? selectedUspace.name : 'FAS Service Area'}
+                      </span>
+                    </div>
+                    {selectedUspace && (
+                      <button
+                        onClick={handleChangeUspace}
+                        className="flex items-center gap-1 text-xs text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] transition-colors"
+                        title="Change U-space"
+                      >
+                        <Edit2 className="w-3 h-3" />
+                        Change
+                      </button>
+                    )}
                   </div>
                   <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-[var(--text-tertiary)]">
                     <div className="flex justify-between">
                       <span>Min Lat:</span>
-                      <span className="text-[var(--text-secondary)] font-mono">{SERVICE_LIMITS[1].toFixed(4)}°</span>
+                      <span className="text-[var(--text-secondary)] font-mono">{effectiveServiceLimits[1].toFixed(4)}°</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Max Lat:</span>
-                      <span className="text-[var(--text-secondary)] font-mono">{SERVICE_LIMITS[3].toFixed(4)}°</span>
+                      <span className="text-[var(--text-secondary)] font-mono">{effectiveServiceLimits[3].toFixed(4)}°</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Min Lon:</span>
-                      <span className="text-[var(--text-secondary)] font-mono">{SERVICE_LIMITS[0].toFixed(4)}°</span>
+                      <span className="text-[var(--text-secondary)] font-mono">{effectiveServiceLimits[0].toFixed(4)}°</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Max Lon:</span>
-                      <span className="text-[var(--text-secondary)] font-mono">{SERVICE_LIMITS[2].toFixed(4)}°</span>
+                      <span className="text-[var(--text-secondary)] font-mono">{effectiveServiceLimits[2].toFixed(4)}°</span>
                     </div>
                   </div>
                   <div className="mt-2 pt-2 border-t border-[var(--border-primary)] text-xs text-[var(--text-muted)]">
@@ -1529,9 +1688,9 @@ export default function PlanGenerator() {
                   </div>
                 </div>
                 
-                {/* TASK-154: Boundary Warning */}
+                {/* TASK-154: Boundary Warning - TASK-043: Updated to use effective limits */}
                 {(() => {
-                  const nearBoundary = getWaypointsNearBoundary(waypoints);
+                  const nearBoundary = getWaypointsNearBoundary(waypoints, effectiveServiceLimits);
                   if (nearBoundary.length === 0) return null;
                   return (
                     <div className="mb-4 p-3 bg-yellow-900/30 border border-yellow-600/50 rounded-md">
@@ -1543,7 +1702,7 @@ export default function PlanGenerator() {
                       </div>
                       <div className="text-xs text-yellow-300/80">
                         {nearBoundary.length === 1 ? (
-                          <span>Waypoint {nearBoundary[0].index + 1} is {nearBoundary[0].distance}m from the service area boundary.</span>
+                          <span>Waypoint {nearBoundary[0].index + 1} is {nearBoundary[0].distance}m from the {selectedUspace ? selectedUspace.name : 'service area'} boundary.</span>
                         ) : (
                           <span>
                             {nearBoundary.map((w, i) => (
