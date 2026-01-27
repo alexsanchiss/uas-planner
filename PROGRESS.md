@@ -6,13 +6,13 @@
 
 | Fase | Descripción | Progreso | Estado |
 |------|-------------|----------|--------|
-| 1 | Correcciones Críticas | 3/9 | 🟡 En progreso |
+| 1 | Correcciones Críticas | 4/9 | 🟡 En progreso |
 | 2 | Formulario U-Plan | 0/15 | 🔴 Pendiente |
 | 3 | Generación de Volúmenes | 0/8 | 🔴 Pendiente |
 | 4 | Flujo Autorización FAS | 0/7 | 🔴 Pendiente |
 | 5 | Integración Geoawareness WebSocket | 0/21 | 🔴 Pendiente |
 | 6 | Correcciones de Tema | 0/9 | 🔴 Pendiente |
-| **TOTAL** | | **3/69** | 🟡 4% |
+| **TOTAL** | | **4/69** | 🟡 6% |
 
 ---
 
@@ -30,7 +30,7 @@
 
 | Task ID | Descripción | Estado |
 |---------|-------------|--------|
-| TASK-004 | Fix UplanViewModal map overflow | ⬜ Pendiente |
+| TASK-004 | Fix UplanViewModal map overflow | ✅ Completado |
 | TASK-005 | Add map resize handler in UplanViewModal | ⬜ Pendiente |
 | TASK-006 | Verify MapModal consistency | ⬜ Pendiente |
 
@@ -208,6 +208,7 @@
 
 | Fecha | Task ID | Descripción | Commit |
 |-------|---------|-------------|--------|
+| 2026-01-27 | TASK-004 | Fix UplanViewModal map overflow with responsive dimensions | fix(ui): make UplanViewModal map responsive to prevent overflow |
 | 2026-01-27 | TASK-007, TASK-008, TASK-009 | Fix cascade delete for csvResult (single & bulk) + audit logging | fix(api): correct cascade delete to use actual csvResult IDs |
 
 ---
