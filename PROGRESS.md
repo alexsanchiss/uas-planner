@@ -9,10 +9,10 @@
 | 1 | Correcciones Críticas | 9/9 | ✅ Completado |
 | 2 | Formulario U-Plan | 15/15 | ✅ Completado |
 | 3 | Generación de Volúmenes | 8/8 | ✅ Completado |
-| 4 | Flujo Autorización FAS | 0/7 | 🔴 Pendiente |
+| 4 | Flujo Autorización FAS | 7/7 | ✅ Completado |
 | 5 | Integración Geoawareness WebSocket | 0/21 | 🔴 Pendiente |
 | 6 | Correcciones de Tema | 0/9 | 🔴 Pendiente |
-| **TOTAL** | | **32/69** | 🟡 46% |
+| **TOTAL** | | **39/69** | 🟡 57% |
 
 ---
 
@@ -111,18 +111,18 @@
 
 | Task ID | Descripción | Estado |
 |---------|-------------|--------|
-| TASK-033 | Add FAS processing state detection | ⬜ Pendiente |
-| TASK-034 | Show loading spinner during FAS processing | ⬜ Pendiente |
-| TASK-035 | Disable authorization button during processing | ⬜ Pendiente |
-| TASK-036 | Implement polling for FAS response | ⬜ Pendiente |
+| TASK-033 | Add FAS processing state detection | ✅ Completado |
+| TASK-034 | Show loading spinner during FAS processing | ✅ Completado |
+| TASK-035 | Disable authorization button during processing | ✅ Completado |
+| TASK-036 | Implement polling for FAS response | ✅ Completado |
 
 ### 4.2 Visor de Respuesta FAS
 
 | Task ID | Descripción | Estado |
 |---------|-------------|--------|
-| TASK-037 | Verify FASResponseViewer wiring | ⬜ Pendiente |
-| TASK-038 | Add FASResponseViewer to details panel | ⬜ Pendiente |
-| TASK-039 | Add copy-to-clipboard for FAS response | ⬜ Pendiente |
+| TASK-037 | Verify FASResponseViewer wiring | ✅ Completado |
+| TASK-038 | Add FASResponseViewer to details panel | ✅ Completado |
+| TASK-039 | Add copy-to-clipboard for FAS response | ✅ Completado |
 
 ---
 
@@ -208,6 +208,7 @@
 
 | Fecha | Task ID | Descripción | Commit |
 |-------|---------|-------------|--------|
+| 2026-01-27 | TASK-033 to TASK-039 | Implement FAS authorization flow: processing state detection, animated spinner during FAS processing, disable button during processing, verify FASResponseViewer with copy-to-clipboard | feat(auth): improve FAS authorization flow with processing state feedback |
 | 2026-01-27 | TASK-030 to TASK-032 | Update tray_to_uplan.ts to use C++ parameters and replace generate_bbox with generateOrientedBBox | feat(uplan): integrate oriented volumes in U-Plan generation pipeline |
 | 2026-01-27 | TASK-026 to TASK-029 | Create generate_oriented_volumes.ts with segment type detection, track buffer calculations, and oriented rectangle generation | feat(uplan): add oriented volume generation for trajectory-aligned operation volumes |
 | 2026-01-27 | TASK-025 | Create geodesy-utils.ts with Vincenty functions for oriented volume generation | feat(uplan): add geodesy utilities for volume generation |
