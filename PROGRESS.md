@@ -11,8 +11,8 @@
 | 3 | Generación de Volúmenes | 8/8 | ✅ Completado |
 | 4 | Flujo Autorización FAS | 7/7 | ✅ Completado |
 | 5 | Integración Geoawareness WebSocket | 0/21 | 🔴 Pendiente |
-| 6 | Correcciones de Tema | 4/9 | 🟡 En Progreso |
-| **TOTAL** | | **43/69** | 🟡 62% |
+| 6 | Correcciones de Tema | 9/9 | ✅ Completado |
+| **TOTAL** | | **48/69** | 🟡 70% |
 
 ---
 
@@ -196,11 +196,11 @@
 
 | Task ID | Descripción | Estado |
 |---------|-------------|--------|
-| TASK-065 | Add useTheme hook to Footer | ⬜ Pendiente |
-| TASK-066 | Implement conditional SNA logo | ⬜ Pendiente |
-| TASK-067 | Implement conditional UPV logo | ⬜ Pendiente |
-| TASK-068 | Implement conditional LinkedIn icon | ⬜ Pendiente |
-| TASK-069 | Implement conditional Instagram icon | ⬜ Pendiente |
+| TASK-065 | Add useTheme hook to Footer | ✅ Completado |
+| TASK-066 | Implement conditional SNA logo | ✅ Completado |
+| TASK-067 | Implement conditional UPV logo | ✅ Completado |
+| TASK-068 | Implement conditional LinkedIn icon | ✅ Completado |
+| TASK-069 | Implement conditional Instagram icon | ✅ Completado |
 
 ---
 
@@ -208,6 +208,7 @@
 
 | Fecha | Task ID | Descripción | Commit |
 |-------|---------|-------------|--------|
+| 2026-01-27 | TASK-065 to TASK-069 | Make footer logos theme-aware: SNA, UPV logos and LinkedIn, Instagram icons now adapt to light/dark theme | feat(ui): make footer logos adapt to light/dark theme |
 | 2026-01-27 | TASK-061 to TASK-064 | Fix login page theme: replace hardcoded colors with CSS variables for backgrounds, text, warning box, and loading skeleton | fix(ui): make login page respect theme settings |
 | 2026-01-27 | TASK-033 to TASK-039 | Implement FAS authorization flow: processing state detection, animated spinner during FAS processing, disable button during processing, verify FASResponseViewer with copy-to-clipboard | feat(auth): improve FAS authorization flow with processing state feedback |
 | 2026-01-27 | TASK-030 to TASK-032 | Update tray_to_uplan.ts to use C++ parameters and replace generate_bbox with generateOrientedBBox | feat(uplan): integrate oriented volumes in U-Plan generation pipeline |
