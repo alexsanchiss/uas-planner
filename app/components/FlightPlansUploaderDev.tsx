@@ -1674,7 +1674,7 @@ export function FlightPlansUploaderDev() {
       <a
         href="/how-it-works#trajectory-generator-help"
         target="_self"
-        className="fixed top-24 right-8 z-[2000] bg-blue-700 hover:bg-blue-800 text-white rounded-full p-3 shadow-lg flex items-center gap-2 transition-all duration-200"
+        className="fixed top-24 right-8 z-[9999] bg-blue-700 hover:bg-blue-800 text-white rounded-full p-3 shadow-lg flex items-center gap-2 transition-all duration-200"
         title="Need help with Trajectory Generator?"
       >
         <HelpCircle className="w-6 h-6" />
