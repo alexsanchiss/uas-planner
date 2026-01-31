@@ -29,6 +29,7 @@
 import React, { useState, useRef, useCallback } from "react";
 // Note: react-leaflet imports are used by PlanMap component via dynamic import
 import "leaflet/dist/leaflet.css";
+import { useToast } from "../hooks/useToast";
 
 // Fix for leaflet icons in Next.js
 import L from "leaflet";
@@ -292,7 +293,16 @@ export default function PlanGenerator() {
   const [planInfo, setPlanInfo] = useState<PlanInfo>({ date: "", time: "" });
   const [planName, setPlanName] = useState("");
   const [loading, setLoading] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const toast = useToast();
+  // Create a wrapper for PlanMap to show toast messages
+  const showToast = useCallback((message: string) => {
+    // Determine toast type based on message content
+    if (message.includes('Selected U-space') || message.includes('has been saved') || message.includes('SCAN pattern applied')) {
+      toast.success(message);
+    } else {
+      toast.error(message);
+    }
+  }, [toast]);
   const { user } = useAuth();
   const [flightPlanDetails, setFlightPlanDetails] = useState(
     initialFlightPlanDetails
@@ -391,7 +401,7 @@ export default function PlanGenerator() {
       setWaypoints([]);
       setSelectedIdx(null);
     }
-    setToast(`Selected U-space: ${uspace.name}`);
+    showToast(`Selected U-space: ${uspace.name}`);
   };
   
   // TASK-043: Handler to change U-space (go back to selection)
@@ -415,7 +425,7 @@ export default function PlanGenerator() {
   const handleAddWaypoint = (wp: Waypoint) => {
     // TASK-043: Check within selected U-space bounds or default service limits
     if (!isWithinEffectiveBounds(wp.lat, wp.lng)) {
-      setToast(selectedUspace 
+      showToast(selectedUspace 
         ? `Waypoints must be within the ${selectedUspace.name} area.`
         : "Waypoints must be within the FAS service area.");
       return;
@@ -464,7 +474,7 @@ export default function PlanGenerator() {
         if (field === "altitude") {
           const clamped = clampAltitude(Number(value));
           if (clamped !== Number(value)) {
-            setToast(`Altitude must be between ${ALT_LIMITS[0]} and ${ALT_LIMITS[1]} meters.`);
+            showToast(`Altitude must be between ${ALT_LIMITS[0]} and ${ALT_LIMITS[1]} meters.`);
             return { ...wp, altitude: clamped };
           }
           return { ...wp, altitude: clamped };
@@ -473,7 +483,7 @@ export default function PlanGenerator() {
         if (field === "pauseDuration") {
           const pauseValue = Math.max(0, Math.min(3600, Math.floor(Number(value))));
           if (pauseValue !== Number(value)) {
-            setToast("Pause duration must be between 0 and 3600 seconds (1 hour max).");
+            showToast("Pause duration must be between 0 and 3600 seconds (1 hour max).");
           }
           return { ...wp, pauseDuration: pauseValue };
         }
@@ -482,7 +492,7 @@ export default function PlanGenerator() {
           const newLat = field === "lat" ? Number(value) : wp.lat;
           const newLng = field === "lng" ? Number(value) : wp.lng;
           if (!isWithinEffectiveBounds(newLat, newLng)) {
-            setToast(selectedUspace 
+            showToast(selectedUspace 
               ? `Waypoints must be within the ${selectedUspace.name} area.`
               : "Waypoints must be within the FAS service area.");
             return wp; // revert
@@ -563,7 +573,7 @@ export default function PlanGenerator() {
   const handleMarkerDragEnd = (idx: number, lat: number, lng: number) => {
     // TASK-043: Check within selected U-space bounds
     if (!isWithinEffectiveBounds(lat, lng)) {
-      setToast(selectedUspace 
+      showToast(selectedUspace 
         ? `Waypoints must be within the ${selectedUspace.name} area.`
         : "Waypoints must be within the FAS service area.");
       return;
@@ -604,7 +614,7 @@ export default function PlanGenerator() {
     setGeneratorMode('manual'); // Switch back to manual mode to allow editing
     setScanOverlays(null);
     handleSetScanMapClickHandler(null);
-    setToast(`SCAN pattern applied with ${newWaypoints.length} waypoints. You can now edit them.`);
+    showToast(`SCAN pattern applied with ${newWaypoints.length} waypoints. You can now edit them.`);
   };
 
   // Handle canceling SCAN pattern
@@ -617,32 +627,32 @@ export default function PlanGenerator() {
   // Upload plan
   const handleUploadPlan = async () => {
     if (!user) {
-      setToast("You must be logged in to upload the plan.");
+      showToast("You must be logged in to upload the plan.");
       return;
     }
     if (!planName.trim()) {
-      setToast("Please enter a name for the plan.");
+      showToast("Please enter a name for the plan.");
       return;
     }
     if (waypoints.length === 0) {
-      setToast("The plan must have at least one waypoint.");
+      showToast("The plan must have at least one waypoint.");
       return;
     }
     if (!waypoints.some((wp) => wp.type === "takeoff")) {
-      setToast("The plan must have at least one takeoff waypoint.");
+      showToast("The plan must have at least one takeoff waypoint.");
       return;
     }
     // Only one takeoff and one landing allowed
     if (waypoints.filter((wp) => wp.type === "takeoff").length > 1) {
-      setToast("The plan cannot have more than one takeoff waypoint.");
+      showToast("The plan cannot have more than one takeoff waypoint.");
       return;
     }
     if (waypoints.filter((wp) => wp.type === "landing").length > 1) {
-      setToast("The plan cannot have more than one landing waypoint.");
+      showToast("The plan cannot have more than one landing waypoint.");
       return;
     }
     if (waypoints.length === 10) {
-      setToast("The plan must have at least two waypoints.");
+      showToast("The plan must have at least two waypoints.");
       return;
     }
     setLoading(true);
@@ -689,12 +699,12 @@ export default function PlanGenerator() {
         scheduledAt,
         geoawarenessData,
       }, { headers });
-      setToast(
+      showToast(
         `The plan "${planName}" has been saved in the Plan Generator folder in Trajectory Generator.`
       );
       setPlanName("");
     } catch (err: any) {
-      setToast(
+      showToast(
         "Error uploading the plan: " +
           (err?.response?.data?.error || err.message)
       );
@@ -702,14 +712,6 @@ export default function PlanGenerator() {
       setLoading(false);
     }
   };
-
-  // Toast auto-hide
-  React.useEffect(() => {
-    if (toast) {
-      const t = setTimeout(() => setToast(null), 4000);
-      return () => clearTimeout(t);
-    }
-  }, [toast]);
 
   // Header height: 56px (py-3 on header)
   const HEADER_HEIGHT = 120.67;
@@ -726,24 +728,11 @@ export default function PlanGenerator() {
   if (!selectedUspace) {
     return (
       <div className="w-full bg-[var(--bg-primary)] overflow-x-hidden min-h-screen">
-        {/* Toast notification */}
-        {toast && (
-          <div
-            className={`fixed top-6 left-1/2 transform -translate-x-1/2 z-[2000] px-4 sm:px-6 py-3 rounded shadow-lg text-sm sm:text-base font-semibold animate-fade-in max-w-[90vw] text-center ${
-              toast.includes('Selected U-space')
-                ? 'bg-[var(--status-success)] text-white'
-                : 'bg-[var(--status-error)] text-white'
-            }`}
-          >
-            {toast}
-          </div>
-        )}
-        
         {/* Help Button */}
         <a
           href="/how-it-works#plan-generator-help"
           target="_self"
-          className="fixed top-24 right-4 sm:right-8 z-[2000] bg-blue-700 hover:bg-blue-800 text-white rounded-full p-2 sm:p-3 shadow-lg flex items-center gap-2 transition-all duration-200"
+          className="fixed top-24 right-4 sm:right-8 z-[9999] bg-blue-700 hover:bg-blue-800 text-white rounded-full p-2 sm:p-3 shadow-lg flex items-center gap-2 transition-all duration-200"
           title="Need help with Plan Generator?"
         >
           <HelpCircle className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -820,23 +809,11 @@ export default function PlanGenerator() {
   
   return (
     <div className="w-full bg-[var(--bg-primary)] overflow-x-hidden">
-      {/* Toast notification */}
-      {toast && (
-        <div
-          className={`fixed top-6 left-1/2 transform -translate-x-1/2 z-[2000] px-4 sm:px-6 py-3 rounded shadow-lg text-sm sm:text-base font-semibold animate-fade-in max-w-[90vw] text-center ${
-            toast.includes('has been saved in the Plan Generator folder in Trajectory Generator.')
-              ? 'bg-[var(--status-success)] text-white'
-              : 'bg-[var(--status-error)] text-white'
-          }`}
-        >
-          {toast}
-        </div>
-      )}
       {/* Help Button */}
       <a
         href="/how-it-works#plan-generator-help"
         target="_self"
-        className="fixed top-24 right-4 sm:right-8 z-[2000] bg-blue-700 hover:bg-blue-800 text-white rounded-full p-2 sm:p-3 shadow-lg flex items-center gap-2 transition-all duration-200"
+        className="fixed top-24 right-4 sm:right-8 z-[9999] bg-blue-700 hover:bg-blue-800 text-white rounded-full p-2 sm:p-3 shadow-lg flex items-center gap-2 transition-all duration-200"
         title="Need help with Plan Generator?"
       >
         <HelpCircle className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -845,7 +822,7 @@ export default function PlanGenerator() {
       {/* TASK-181: Mobile sidebar toggle button */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="lg:hidden fixed bottom-4 left-4 z-[2000] bg-blue-700 hover:bg-blue-800 text-white rounded-full p-3 shadow-lg flex items-center justify-center transition-all duration-200"
+        className="lg:hidden fixed bottom-4 left-4 z-[9999] bg-blue-700 hover:bg-blue-800 text-white rounded-full p-3 shadow-lg flex items-center justify-center transition-all duration-200"
         aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
       >
         {sidebarOpen ? (
@@ -2005,7 +1982,7 @@ export default function PlanGenerator() {
             bounds={bounds} 
             polylinePositions={polylinePositions} 
             handleAddWaypoint={handleAddWaypoint} 
-            setToast={setToast} 
+            setToast={showToast} 
             waypoints={waypoints} 
             setSelectedIdx={setSelectedIdx} 
             handleMarkerDragEnd={handleMarkerDragEnd}
