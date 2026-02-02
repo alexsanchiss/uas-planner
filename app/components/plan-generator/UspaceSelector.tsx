@@ -123,10 +123,14 @@ function UspacePolygon({
   uspace,
   isSelected,
   onSelect,
+  area,
+  maxArea,
 }: {
   uspace: USpace;
   isSelected: boolean;
   onSelect: (uspace: USpace) => void;
+  area: number;
+  maxArea: number;
 }) {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -136,12 +140,26 @@ function UspacePolygon({
     [uspace.boundary]
   );
 
+  // Calculate pane (z-index) based on area - smaller areas get higher z-index
+  // Normalize area to 100-1000 range (smaller = higher z-index)
+  const paneZIndex = useMemo(() => {
+    if (maxArea === 0) return 500;
+    const normalized = 1 - (area / maxArea); // 0 = largest, 1 = smallest
+    return Math.floor(400 + (normalized * 600)); // 400-1000 range
+  }, [area, maxArea]);
+
   // Get path options based on state
   const pathOptions = useMemo(() => {
-    if (isSelected) return USPACE_COLORS.selected;
-    if (isHovered) return USPACE_COLORS.hover;
-    return USPACE_COLORS.default;
-  }, [isSelected, isHovered]);
+    const baseOptions = isSelected ? USPACE_COLORS.selected : 
+                        isHovered ? USPACE_COLORS.hover : 
+                        USPACE_COLORS.default;
+    
+    // Add pane name for custom z-index
+    return {
+      ...baseOptions,
+      pane: `uspace-pane-${paneZIndex}`,
+    };
+  }, [isSelected, isHovered, paneZIndex]);
 
   if (positions.length === 0) return null;
 
@@ -178,6 +196,27 @@ function UspacePolygon({
 /**
  * UspaceSelector - Main component for selecting a U-space from a map
  */
+/**
+ * Component to create custom panes for z-index control
+ */
+function CustomPanes() {
+  const map = useMap();
+
+  useEffect(() => {
+    // Create custom panes with specific z-indexes for U-space polygons
+    // Smaller areas will use higher z-index panes
+    for (let i = 400; i <= 1000; i += 50) {
+      const paneName = `uspace-pane-${i}`;
+      if (!map.getPane(paneName)) {
+        const pane = map.createPane(paneName);
+        pane.style.zIndex = String(i);
+      }
+    }
+  }, [map]);
+
+  return null;
+}
+
 export function UspaceSelector({
   onSelect,
   selectedUspaceId,
@@ -185,15 +224,17 @@ export function UspaceSelector({
 }: UspaceSelectorProps) {
   const { uspaces, loading, error, refetch, isRefetching } = useUspaces();
 
-  // Sort U-spaces by area (largest first, smallest last)
-  // This ensures smaller U-spaces render on top and are clickable
-  const sortedUspaces = useMemo(() => {
-    return [...uspaces].sort((a, b) => {
-      const areaA = calculatePolygonArea(a.boundary);
-      const areaB = calculatePolygonArea(b.boundary);
-      return areaB - areaA; // Descending order (largest first)
-    });
+  // Calculate areas and max area for z-index calculation
+  const uspacesWithArea = useMemo(() => {
+    return uspaces.map(uspace => ({
+      uspace,
+      area: calculatePolygonArea(uspace.boundary),
+    }));
   }, [uspaces]);
+
+  const maxArea = useMemo(() => {
+    return Math.max(...uspacesWithArea.map(u => u.area), 0);
+  }, [uspacesWithArea]);
 
   // Default center (Europe) - will be overridden by fitBounds
   const defaultCenter: [number, number] = [39.47, -0.38];
@@ -241,7 +282,7 @@ export function UspaceSelector({
   }
 
   // Empty state
-  if (sortedUspaces.length === 0) {
+  if (uspacesWithArea.length === 0) {
     return (
       <div
         className={`flex flex-col items-center justify-center h-[400px] bg-[var(--bg-secondary)] rounded-lg p-6 ${className}`}
@@ -267,7 +308,7 @@ export function UspaceSelector({
             Select a U-space
           </span>
           <span className="text-xs text-[var(--text-tertiary)]">
-            ({sortedUspaces.length} available)
+            ({uspacesWithArea.length} available)
           </span>
         </div>
       </div>
@@ -317,19 +358,24 @@ export function UspaceSelector({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
+        {/* Create custom panes for z-index control */}
+        <CustomPanes />
+
         {/* Fit bounds to U-spaces */}
         <FitBoundsToUspaces
-          uspaces={sortedUspaces}
+          uspaces={uspaces}
           selectedUspaceId={selectedUspaceId}
         />
 
-        {/* U-space polygons - sorted by area (largest first, smallest on top) */}
-        {sortedUspaces.map((uspace) => (
+        {/* U-space polygons with area-based z-index */}
+        {uspacesWithArea.map(({ uspace, area }) => (
           <UspacePolygon
             key={uspace.id}
             uspace={uspace}
             isSelected={uspace.id === selectedUspaceId}
             onSelect={onSelect}
+            area={area}
+            maxArea={maxArea}
           />
         ))}
       </MapContainer>
