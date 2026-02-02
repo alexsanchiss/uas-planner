@@ -12,7 +12,8 @@
 | 4 | Flujo Autorización FAS | 7/7 | ✅ Completado |
 | 5 | Integración Geoawareness WebSocket | 21/21 | ✅ Completado |
 | 6 | Correcciones de Tema | 9/9 | ✅ Completado |
-| **TOTAL** | | **69/69** | ✅ 100% |
+| 7 | Mejoras Visualización y Geoawareness | 2/12 | 🔄 En progreso |
+| **TOTAL** | | **71/81** | 🔄 88% |
 
 ---
 
@@ -204,10 +205,57 @@
 
 ---
 
+## Fase 7: Mejoras de Visualización y Geoawareness
+
+### 7.1 Información Detallada de Geozonas
+
+| Task ID | Descripción | Estado |
+|---------|-------------|--------|
+| TASK-070 | Enhance GeozoneInfoPopup with expandable sections | ⏳ Pendiente |
+| TASK-071 | Implement collapsible/expandable UI for geozone sections | ⏳ Pendiente |
+
+### 7.2 Fix Waypoint Map Modal
+
+| Task ID | Descripción | Estado |
+|---------|-------------|--------|
+| TASK-072 | Fix MapModal container width for waypoints | ✅ Completado |
+| TASK-073 | Auto-center map on all waypoints in MapModal | ✅ Completado |
+
+### 7.3 Fix Trajectory Viewer CSV Loading
+
+| Task ID | Descripción | Estado |
+|---------|-------------|--------|
+| TASK-074 | Fix csvResult ID retrieval in TrajectoryMapViewer | ⏳ Pendiente |
+
+### 7.4 U-space Identifier Storage
+
+| Task ID | Descripción | Estado |
+|---------|-------------|--------|
+| TASK-075 | Store actual U-space identifier instead of "uspace-default" | ⏳ Pendiente |
+
+### 7.5 Check Geoawareness con Timeline
+
+| Task ID | Descripción | Estado |
+|---------|-------------|--------|
+| TASK-076 | Implement Check Geoawareness with trajectory overlay | ⏳ Pendiente |
+| TASK-077 | Add time slider for trajectory simulation | ⏳ Pendiente |
+
+### 7.6 U-Plan Processing y Vista de Volúmenes 4D
+
+| Task ID | Descripción | Estado |
+|---------|-------------|--------|
+| TASK-078 | Trigger U-Plan regeneration on form data changes | ⏳ Pendiente |
+| TASK-079 | Fix View U-Plan Map button to open waypoint modal | ⏳ Pendiente |
+| TASK-080 | Display 4D volumes in U-Plan Map modal | ⏳ Pendiente |
+| TASK-081 | Add hover tooltip for 4D volume information | ⏳ Pendiente |
+
+---
+
 ## Historial de Cambios
 
 | Fecha | Task ID | Descripción | Commit |
 |-------|---------|-------------|--------|
+| 2026-02-02 | TASK-072, TASK-073 | Fix WaypointMapModal: add maxWidth prop to Modal component for larger map displays, use FitBoundsHelper to auto-center map on all waypoints, prevent map overflow on all screen sizes | fix(ui): prevent map overflow and auto-center on waypoints |
 | 2026-01-27 | TASK-057 to TASK-060 | Refactor GeoawarenessViewer to use WebSocket for real-time geozone data: connect via useGeoawarenessWebSocket hook, render geozones using GeozoneLayer component, add trajectory overlay from plan's CSV data, loading state during connection, error handling with retry button | feat(geoawareness): integrate WebSocket for real-time geozone updates |
 | 2026-01-27 | TASK-054 to TASK-056 | Replace hardcoded FAS Service Area with dynamic U-space bounds: add uspaceName prop to PlanMap, update error messages with dynamic area name, add visual label overlay on map showing selected U-space name | feat(plan-generator): display U-space name on map and in error messages |
 | 2026-01-27 | TASK-052 | Add geozone visibility toggle in PlanGenerator sidebar with count badge, allowing users to show/hide geozones on the map via a switch control in the U-space bounds panel | feat(geoawareness): add toggle to show/hide geozones on map |
