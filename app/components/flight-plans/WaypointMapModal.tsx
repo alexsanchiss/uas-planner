@@ -26,6 +26,16 @@ const Tooltip = dynamic(
   { ssr: false }
 )
 
+/**
+ * Component to auto-fit map bounds to all waypoints
+ * TASK-073: Auto-center map on all waypoints
+ * Dynamically imported to avoid SSR issues with useMap hook
+ */
+const FitBoundsToWaypoints = dynamic(
+  () => import('./FitBoundsHelper').then((mod) => mod.FitBoundsToWaypoints),
+  { ssr: false }
+)
+
 export interface Waypoint {
   lat: number
   lng: number
@@ -44,6 +54,8 @@ export interface WaypointMapModalProps {
 /**
  * WaypointMapModal - Displays waypoints on an interactive street map
  * Shows the flight path with colored waypoint markers (green=takeoff, blue=cruise, red=landing)
+ * TASK-072: Fixed container width to prevent map overflow
+ * TASK-073: Auto-centers on all waypoints using fitBounds
  */
 export function WaypointMapModal({ 
   open, 
@@ -59,7 +71,7 @@ export function WaypointMapModal({
     setIsClient(true)
   }, [])
 
-  // Calculate map center and bounds
+  // Calculate map center and polyline path
   const { center, polylinePath } = useMemo(() => {
     if (waypoints.length === 0) {
       return { 
@@ -102,8 +114,8 @@ export function WaypointMapModal({
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={title}>
-      <div className="w-full min-w-[320px] sm:min-w-[500px] md:min-w-[700px] lg:min-w-[800px] max-w-[95vw]">
+    <Modal open={open} onClose={onClose} title={title} maxWidth="4xl">
+      <div className="w-full">
         {/* Plan name if provided */}
         {planName && (
           <div className="mb-3 text-sm text-[var(--text-secondary)]">
@@ -111,15 +123,18 @@ export function WaypointMapModal({
           </div>
         )}
 
-        {/* Map container */}
+        {/* Map container - TASK-072: Fixed responsive sizing to prevent overflow */}
         {isClient && waypoints.length > 0 ? (
-          <div className="h-[350px] sm:h-[400px] lg:h-[450px] rounded-lg overflow-hidden border border-[var(--border-primary)] relative">
+          <div className="h-[300px] sm:h-[350px] md:h-[400px] lg:h-[450px] rounded-lg overflow-hidden border border-[var(--border-primary)] relative">
             <MapContainer
               center={center}
               zoom={15}
               scrollWheelZoom={true}
               style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}
             >
+              {/* TASK-073: Auto-fit bounds to show all waypoints */}
+              <FitBoundsToWaypoints waypoints={waypoints} />
+              
               {/* Street map tile layer */}
               <TileLayer
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
