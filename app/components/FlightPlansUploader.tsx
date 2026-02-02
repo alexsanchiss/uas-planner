@@ -42,6 +42,7 @@ import {
 import { ConfirmDialog } from './ui/confirm-dialog'
 import { FlightPlansListSkeleton } from './ui/loading-skeleton'
 import { LoadingSpinner } from './ui/loading-spinner'
+import { Modal } from './ui/modal'
 import { useToast } from '../hooks/useToast'
 
 // Dynamic import for UplanViewModal (uses Leaflet, requires SSR disabled)
@@ -49,6 +50,9 @@ const UplanViewModal = dynamic(() => import('./UplanViewModal'), { ssr: false })
 
 // Dynamic import for UplanFormModal (TASK-023: Wire Review U-Plan to form modal)
 const UplanFormModal = dynamic(() => import('./flight-plans/UplanFormModal'), { ssr: false })
+
+// TASK-076: Dynamic import for GeoawarenessViewer modal
+const GeoawarenessViewer = dynamic(() => import('./flight-plans/GeoawarenessViewer'), { ssr: false })
 
 /**
  * Transform API flight plan data to component flight plan format
@@ -197,6 +201,13 @@ export function FlightPlansUploader() {
     uplan: unknown
     name: string
   }>({ open: false, planId: '', uplan: null, name: '' })
+  // TASK-076: Geoawareness viewer modal state
+  const [geoawarenessModal, setGeoawarenessModal] = useState<{
+    open: boolean
+    planId: string
+    planName: string
+    uspaceId: string | null
+  }>({ open: false, planId: '', planName: '', uspaceId: null })
   const [loadingPlanIds, setLoadingPlanIds] = useState<{
     processing: Set<string>
     downloading: Set<string>
@@ -427,6 +438,17 @@ export function FlightPlansUploader() {
       return
     }
 
+    // TASK-076: Extract uspace_identifier for WebSocket connection
+    let uspaceId: string | null = null
+    try {
+      const geoData = plan.geoawarenessData
+      if (geoData && typeof geoData === 'object' && 'uspace_identifier' in geoData) {
+        uspaceId = (geoData as { uspace_identifier: string }).uspace_identifier
+      }
+    } catch {
+      // Ignore parsing errors
+    }
+
     addLoadingPlan('geoawareness', planId)
     try {
       const response = await fetch(`/api/flightPlans/${planId}/geoawareness`, {
@@ -451,6 +473,14 @@ export function FlightPlansUploader() {
       } else {
         toast.warning(`Geoawareness check complete. Found ${featuresCount} zone(s) that may affect the flight.`)
       }
+
+      // TASK-076: Open geoawareness viewer modal with trajectory overlay
+      setGeoawarenessModal({
+        open: true,
+        planId: planId,
+        planName: plan.customName,
+        uspaceId: uspaceId,
+      })
     } catch (error) {
       console.error('Geoawareness error:', error)
       toast.error(error instanceof Error ? error.message : 'Error checking geoawareness.', {
@@ -1261,6 +1291,22 @@ export function FlightPlansUploader() {
           setUplanFormModal({ open: false, planId: '', uplan: null, name: '' })
         }}
       />
+
+      {/* TASK-076: Geoawareness viewer modal - shows trajectory over geozones */}
+      <Modal
+        open={geoawarenessModal.open}
+        onClose={() => setGeoawarenessModal({ open: false, planId: '', planName: '', uspaceId: null })}
+        title={`Geoawareness: ${geoawarenessModal.planName}`}
+        maxWidth="4xl"
+      >
+        <div className="h-[70vh] -mx-6 -mb-6">
+          <GeoawarenessViewer
+            planId={geoawarenessModal.planId}
+            planName={geoawarenessModal.planName}
+            uspaceId={geoawarenessModal.uspaceId}
+          />
+        </div>
+      </Modal>
     </div>
   )
 }
