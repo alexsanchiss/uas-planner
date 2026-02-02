@@ -12,8 +12,8 @@
 | 4 | Flujo Autorización FAS | 7/7 | ✅ Completado |
 | 5 | Integración Geoawareness WebSocket | 21/21 | ✅ Completado |
 | 6 | Correcciones de Tema | 9/9 | ✅ Completado |
-| 7 | Mejoras Visualización y Geoawareness | 11/12 | 🔄 En progreso |
-| **TOTAL** | | **80/81** | 🔄 99% |
+| 7 | Mejoras Visualización y Geoawareness | 12/12 | ✅ Completado |
+| **TOTAL** | | **81/81** | ✅ 100% |
 
 ---
 
@@ -244,7 +244,7 @@
 
 | Task ID | Descripción | Estado |
 |---------|-------------|--------|
-| TASK-078 | Trigger U-Plan regeneration on form data changes | ⏳ Pendiente |
+| TASK-078 | Trigger U-Plan regeneration on form data changes | ✅ Completado |
 | TASK-079 | Fix View U-Plan Map button to open waypoint modal | ✅ Completado |
 | TASK-080 | Display 4D volumes in U-Plan Map modal | ✅ Completado |
 | TASK-081 | Add hover tooltip for 4D volume information | ✅ Completado |
@@ -255,6 +255,7 @@
 
 | Fecha | Task ID | Descripción | Commit |
 |-------|---------|-------------|--------|
+| 2026-02-02 | TASK-078 | Trigger U-Plan regeneration on form data changes: auto-generate operation volumes when waypoints or flight details change, show preview status indicator with volume count, upload pre-generated U-Plan with volumes | feat(uplan): auto-regenerate U-Plan preview on form changes |
 | 2026-02-02 | TASK-076, TASK-077 | Add Check Geoawareness modal with trajectory overlay and time slider for flight simulation: play/pause controls, speed options (1x/2x/4x), drone position marker, and detailed timeline visualization | feat(geoawareness): add trajectory simulation with interactive time slider |
 | 2026-02-02 | TASK-070, TASK-071 | Enhance GeozoneInfoPopup with collapsible/expandable sections: General Information, Restriction Conditions, Limited Applicability, Authority Information, and Schedule with chevron icons and smooth animations | feat(geoawareness): add expandable sections to geozone popup |
 | 2026-02-02 | TASK-075 | Verify U-space identifier storage: default service area correctly uses 'VLCUspace' as identifier instead of 'uspace-default', implementation already present from TASK-045 | chore: mark TASK-075 as complete |
