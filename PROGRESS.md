@@ -12,8 +12,8 @@
 | 4 | Flujo Autorización FAS | 7/7 | ✅ Completado |
 | 5 | Integración Geoawareness WebSocket | 21/21 | ✅ Completado |
 | 6 | Correcciones de Tema | 9/9 | ✅ Completado |
-| 7 | Mejoras Visualización y Geoawareness | 4/12 | 🔄 En progreso |
-| **TOTAL** | | **73/81** | 🔄 90% |
+| 7 | Mejoras Visualización y Geoawareness | 6/12 | 🔄 En progreso |
+| **TOTAL** | | **75/81** | 🔄 93% |
 
 ---
 
@@ -246,8 +246,8 @@
 |---------|-------------|--------|
 | TASK-078 | Trigger U-Plan regeneration on form data changes | ⏳ Pendiente |
 | TASK-079 | Fix View U-Plan Map button to open waypoint modal | ✅ Completado |
-| TASK-080 | Display 4D volumes in U-Plan Map modal | ⏳ Pendiente |
-| TASK-081 | Add hover tooltip for 4D volume information | ⏳ Pendiente |
+| TASK-080 | Display 4D volumes in U-Plan Map modal | ✅ Completado |
+| TASK-081 | Add hover tooltip for 4D volume information | ✅ Completado |
 
 ---
 
@@ -255,6 +255,7 @@
 
 | Fecha | Task ID | Descripción | Commit |
 |-------|---------|-------------|--------|
+| 2026-02-02 | TASK-080, TASK-081 | Add hover tooltips to 4D operation volumes showing time start/end, altitude range, and approximate dimensions | feat(uplan): add hover tooltips with volume details in U-Plan Map modal |
 | 2026-02-02 | TASK-079 | Fix View U-Plan Map button: now shows waypoints extracted from fileContent even without operationVolumes, with toggleable waypoint/volume layers and visual legend | feat(uplan): enable View U-Plan Map button for all plans with waypoints |
 | 2026-02-02 | TASK-074 | Fix CSV result ID retrieval in FlightPlansUploaderDev: use plan.csvResult instead of plan.id when fetching CSV data for download, view single, view selected, and view folder operations | fix(csv): use actual csvResult ID instead of plan ID for CSV fetches |
 | 2026-02-02 | TASK-072, TASK-073 | Fix WaypointMapModal: add maxWidth prop to Modal component for larger map displays, use FitBoundsHelper to auto-center map on all waypoints, prevent map overflow on all screen sizes | fix(ui): prevent map overflow and auto-center on waypoints |
