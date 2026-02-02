@@ -321,7 +321,7 @@ export default function PlanGenerator() {
     reconnect: reconnectWs,
   } = useGeoawarenessWebSocket({
     uspaceId: selectedUspace?.id || null,
-    enabled: !!selectedUspace && selectedUspace.id !== 'default-fas',
+    enabled: !!selectedUspace, // Enable WebSocket for all selected U-spaces
   });
   
   // For future use: expose reconnectWs for manual retry
@@ -783,16 +783,16 @@ export default function PlanGenerator() {
             </p>
             <button
               onClick={() => {
-                // Create a mock U-space for the default FAS service area
+                // Create a U-space for VLCUspace (default area)
                 const defaultUspace: USpace = {
-                  id: 'default-fas',
-                  name: 'FAS Service Area (Valencia)',
+                  id: 'VLCUspace',
+                  name: 'VLCUspace',
                   boundary: [
-                    { latitude: SERVICE_LIMITS[1], longitude: SERVICE_LIMITS[0] },
-                    { latitude: SERVICE_LIMITS[3], longitude: SERVICE_LIMITS[0] },
-                    { latitude: SERVICE_LIMITS[3], longitude: SERVICE_LIMITS[2] },
-                    { latitude: SERVICE_LIMITS[1], longitude: SERVICE_LIMITS[2] },
-                    { latitude: SERVICE_LIMITS[1], longitude: SERVICE_LIMITS[0] },
+                    { latitude: 39.4150, longitude: -0.4257 },
+                    { latitude: 39.4150, longitude: -0.2800 },
+                    { latitude: 39.4988, longitude: -0.2800 },
+                    { latitude: 39.4988, longitude: -0.4257 },
+                    { latitude: 39.4150, longitude: -0.4257 },
                   ],
                 };
                 handleUspaceSelect(defaultUspace);
