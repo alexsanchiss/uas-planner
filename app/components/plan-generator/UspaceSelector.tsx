@@ -25,6 +25,24 @@ import { useUspaces, USpace } from "@/app/hooks/useUspaces";
 import { Loader2, MapPin, RefreshCw, AlertTriangle } from "lucide-react";
 
 /**
+ * Calculate polygon area using Shoelace formula
+ * @param boundary Array of lat/lon points
+ * @returns Approximate area (used for ordering, not precise geodesic area)
+ */
+function calculatePolygonArea(boundary: { latitude: number; longitude: number }[]): number {
+  if (boundary.length < 3) return 0;
+
+  let area = 0;
+  for (let i = 0; i < boundary.length - 1; i++) {
+    const p1 = boundary[i];
+    const p2 = boundary[i + 1];
+    area += (p2.longitude - p1.longitude) * (p2.latitude + p1.latitude);
+  }
+  
+  return Math.abs(area / 2);
+}
+
+/**
  * Colors for U-space polygons
  */
 const USPACE_COLORS = {
@@ -133,7 +151,11 @@ function UspacePolygon({
       pathOptions={pathOptions}
       eventHandlers={{
         click: () => onSelect(uspace),
-        mouseover: () => setIsHovered(true),
+        mouseover: (e) => {
+          setIsHovered(true);
+          // Bring hovered polygon to front for better interactivity
+          e.target.bringToFront();
+        },
         mouseout: () => setIsHovered(false),
       }}
     >
@@ -162,6 +184,16 @@ export function UspaceSelector({
   className = "",
 }: UspaceSelectorProps) {
   const { uspaces, loading, error, refetch, isRefetching } = useUspaces();
+
+  // Sort U-spaces by area (largest first, smallest last)
+  // This ensures smaller U-spaces render on top and are clickable
+  const sortedUspaces = useMemo(() => {
+    return [...uspaces].sort((a, b) => {
+      const areaA = calculatePolygonArea(a.boundary);
+      const areaB = calculatePolygonArea(b.boundary);
+      return areaB - areaA; // Descending order (largest first)
+    });
+  }, [uspaces]);
 
   // Default center (Europe) - will be overridden by fitBounds
   const defaultCenter: [number, number] = [39.47, -0.38];
@@ -209,7 +241,7 @@ export function UspaceSelector({
   }
 
   // Empty state
-  if (uspaces.length === 0) {
+  if (sortedUspaces.length === 0) {
     return (
       <div
         className={`flex flex-col items-center justify-center h-[400px] bg-[var(--bg-secondary)] rounded-lg p-6 ${className}`}
@@ -235,7 +267,7 @@ export function UspaceSelector({
             Select a U-space
           </span>
           <span className="text-xs text-[var(--text-tertiary)]">
-            ({uspaces.length} available)
+            ({sortedUspaces.length} available)
           </span>
         </div>
       </div>
@@ -287,12 +319,12 @@ export function UspaceSelector({
 
         {/* Fit bounds to U-spaces */}
         <FitBoundsToUspaces
-          uspaces={uspaces}
+          uspaces={sortedUspaces}
           selectedUspaceId={selectedUspaceId}
         />
 
-        {/* U-space polygons */}
-        {uspaces.map((uspace) => (
+        {/* U-space polygons - sorted by area (largest first, smallest on top) */}
+        {sortedUspaces.map((uspace) => (
           <UspacePolygon
             key={uspace.id}
             uspace={uspace}
