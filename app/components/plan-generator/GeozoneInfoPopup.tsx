@@ -1,22 +1,24 @@
 /**
  * GeozoneInfoPopup Component
  * TASK-050: Popup component for displaying detailed geozone information
+ * TASK-070: Enhanced with expandable sections for all geozone information
+ * TASK-071: Collapsible/expandable UI with chevron icons and smooth animations
  *
  * Features:
  * - Displays geozone identifier and name prominently
- * - Shows general information (type, country, region)
- * - Shows restrictions with color-coded badges
- * - Shows temporal limits (start/end dates)
- * - Shows authority contact information
+ * - Expandable sections: General Info, Restrictions, Limited Applicability, Authority, Schedule
+ * - Chevron icons with rotation animation for collapse/expand
+ * - Smooth height transitions for section content
  * - Respects theme settings
  * - Styled to match geozones_map.html popup design
  */
 
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useCallback } from "react";
 import { Popup } from "react-leaflet";
 import L from "leaflet";
+import { ChevronDown } from "lucide-react";
 import type { GeozoneData } from "@/app/hooks/useGeozones";
 
 /**
@@ -137,7 +139,59 @@ interface GeozoneInfoPopupProps {
 }
 
 /**
- * Section component for grouping information
+ * TASK-071: Collapsible section component with chevron icon and smooth animation
+ */
+interface CollapsibleSectionProps {
+  title: string;
+  children: React.ReactNode;
+  defaultExpanded?: boolean;
+  /** Icon to show next to title (optional) */
+  icon?: React.ReactNode;
+}
+
+function CollapsibleSection({ title, children, defaultExpanded = false, icon }: CollapsibleSectionProps) {
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+  
+  const toggleExpanded = useCallback(() => {
+    setIsExpanded(prev => !prev);
+  }, []);
+  
+  return (
+    <div className="mb-2 border border-[var(--border-primary)] rounded-md overflow-hidden">
+      {/* Section header - clickable */}
+      <button
+        type="button"
+        onClick={toggleExpanded}
+        className="w-full flex items-center justify-between px-2 py-1.5 bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] transition-colors text-left focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)] focus:ring-inset"
+      >
+        <div className="flex items-center gap-1.5">
+          {icon && <span className="text-[var(--text-secondary)]">{icon}</span>}
+          <span className="text-xs font-semibold text-[var(--text-primary)]">{title}</span>
+        </div>
+        <ChevronDown 
+          className={`w-4 h-4 text-[var(--text-secondary)] transition-transform duration-200 ${
+            isExpanded ? 'rotate-180' : 'rotate-0'
+          }`}
+        />
+      </button>
+      
+      {/* Section content - animated */}
+      <div 
+        className={`overflow-hidden transition-all duration-200 ease-in-out ${
+          isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+        }`}
+      >
+        <div className="px-2 py-2 text-xs text-[var(--text-secondary)] bg-[var(--surface-primary)]">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Simple (non-collapsible) section component for grouping information
+ * Used in compact layouts
  */
 function InfoSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -293,223 +347,270 @@ export function GeozoneInfoPopup({ geozone, position, onClose }: GeozoneInfoPopu
           </div>
         </div>
         
-        {/* Two-column layout */}
-        <div className="grid grid-cols-2 gap-4">
-          {/* Left column: General info & Restrictions */}
-          <div>
-            {/* General Information */}
-            <InfoSection title="General Information">
-              {extendedProps.country && (
-                <InfoRow label="Country" value={extendedProps.country} />
-              )}
-              {extendedProps.region && (
-                <InfoRow label="Region" value={extendedProps.region} />
-              )}
-              {properties?.description && (
-                <InfoRow label="Description" value={properties.description} />
-              )}
-            </InfoSection>
-            
-            {/* Restriction Conditions */}
-            {extendedProps.restrictions && (
-              <InfoSection title="Restrictions">
-                {extendedProps.restrictions.authorized && (
-                  <InfoRow 
-                    label="Authorization" 
-                    value={extendedProps.restrictions.authorized.replace(/_/g, " ")} 
-                  />
-                )}
-                {extendedProps.restrictions.uasOperationMode && (
-                  <InfoRow 
-                    label="Mode" 
-                    value={
-                      Array.isArray(extendedProps.restrictions.uasOperationMode)
-                        ? extendedProps.restrictions.uasOperationMode.join(", ")
-                        : extendedProps.restrictions.uasOperationMode
-                    } 
-                  />
-                )}
-                {extendedProps.restrictions.maxNoise !== undefined && (
-                  <InfoRow 
-                    label="Max Noise" 
-                    value={`${extendedProps.restrictions.maxNoise} dB`} 
-                  />
-                )}
-                {extendedProps.restrictions.photograph && (
-                  <InfoRow 
-                    label="Photography" 
-                    value={extendedProps.restrictions.photograph.replace(/_/g, " ")} 
-                  />
-                )}
-              </InfoSection>
+        {/* TASK-070 & TASK-071: Expandable sections with all geozone information */}
+        <div className="space-y-1">
+          {/* General Information - expanded by default */}
+          <CollapsibleSection 
+            title="General Information" 
+            defaultExpanded={true}
+            icon={<svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+          >
+            <InfoRow label="Name" value={geozoneName} />
+            {extendedProps.country && (
+              <InfoRow label="Country" value={extendedProps.country} />
             )}
-          </div>
+            {extendedProps.region && (
+              <InfoRow label="Region" value={extendedProps.region} />
+            )}
+            {properties?.description && (
+              <InfoRow label="Description" value={properties.description} />
+            )}
+            {geozoneType && (
+              <InfoRow label="Type" value={<TypeBadge type={geozoneType} />} />
+            )}
+          </CollapsibleSection>
           
-          {/* Right column: Temporal & Authority */}
-          <div>
-            {/* Temporal Limits */}
-            {(geozone.temporal_limits || extendedProps.limitedApplicability) && (
-              <InfoSection title="Validity Period">
-                {geozone.temporal_limits?.startDateTime && (
+          {/* Restriction Conditions */}
+          {(extendedProps.restrictions || geozone.restrictions) && (
+            <CollapsibleSection 
+              title="Restriction Conditions"
+              icon={<svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>}
+            >
+              {extendedProps.restrictions?.authorized && (
+                <InfoRow 
+                  label="Authorization" 
+                  value={extendedProps.restrictions.authorized.replace(/_/g, " ")} 
+                />
+              )}
+              {extendedProps.restrictions?.uasOperationMode && (
+                <InfoRow 
+                  label="Operation Mode" 
+                  value={
+                    Array.isArray(extendedProps.restrictions.uasOperationMode)
+                      ? extendedProps.restrictions.uasOperationMode.join(", ")
+                      : extendedProps.restrictions.uasOperationMode
+                  } 
+                />
+              )}
+              {extendedProps.restrictions?.uasCategory && (
+                <InfoRow 
+                  label="UAS Category" 
+                  value={
+                    Array.isArray(extendedProps.restrictions.uasCategory)
+                      ? extendedProps.restrictions.uasCategory.join(", ")
+                      : extendedProps.restrictions.uasCategory
+                  } 
+                />
+              )}
+              {extendedProps.restrictions?.uasClass && extendedProps.restrictions.uasClass.length > 0 && (
+                <InfoRow 
+                  label="UAS Classes" 
+                  value={extendedProps.restrictions.uasClass.join(", ")} 
+                />
+              )}
+              {extendedProps.restrictions?.maxNoise !== undefined && (
+                <InfoRow 
+                  label="Max Noise" 
+                  value={`${extendedProps.restrictions.maxNoise} dB`} 
+                />
+              )}
+              {extendedProps.restrictions?.specialoperation && (
+                <InfoRow 
+                  label="Special Ops" 
+                  value={extendedProps.restrictions.specialoperation.replace(/_/g, " ")} 
+                />
+              )}
+              {extendedProps.restrictions?.photograph && (
+                <InfoRow 
+                  label="Photography" 
+                  value={extendedProps.restrictions.photograph.replace(/_/g, " ")} 
+                />
+              )}
+              {/* Altitude restrictions */}
+              {geozone.restrictions && (
+                <>
                   <InfoRow 
-                    label="Start" 
-                    value={formatDate(geozone.temporal_limits.startDateTime)} 
-                  />
-                )}
-                {geozone.temporal_limits?.endDateTime && (
-                  <InfoRow 
-                    label="End" 
-                    value={formatDate(geozone.temporal_limits.endDateTime)} 
-                  />
-                )}
-                {extendedProps.limitedApplicability?.startDateTime && !geozone.temporal_limits?.startDateTime && (
-                  <InfoRow 
-                    label="Start" 
-                    value={formatDate(extendedProps.limitedApplicability.startDateTime)} 
-                  />
-                )}
-                {extendedProps.limitedApplicability?.endDateTime && !geozone.temporal_limits?.endDateTime && (
-                  <InfoRow 
-                    label="End" 
-                    value={formatDate(extendedProps.limitedApplicability.endDateTime)} 
-                  />
-                )}
-                {geozone.temporal_limits?.permanentStatus && (
-                  <InfoRow 
-                    label="Status" 
-                    value={<span className="text-amber-600 font-medium">Permanent</span>} 
-                  />
-                )}
-              </InfoSection>
-            )}
-            
-            {/* Schedule */}
-            {extendedProps.limitedApplicability?.schedule && 
-             typeof extendedProps.limitedApplicability.schedule === "object" && (
-              <InfoSection title="Schedule">
-                {extendedProps.limitedApplicability.schedule.day && (
-                  <InfoRow 
-                    label="Days" 
-                    value={Array.isArray(extendedProps.limitedApplicability.schedule.day)
-                      ? extendedProps.limitedApplicability.schedule.day.join(", ")
-                      : extendedProps.limitedApplicability.schedule.day
-                    } 
-                  />
-                )}
-                {extendedProps.limitedApplicability.schedule.startTime && 
-                 extendedProps.limitedApplicability.schedule.startTime !== "null" && (
-                  <InfoRow 
-                    label="Start Time" 
-                    value={extendedProps.limitedApplicability.schedule.startTime} 
-                  />
-                )}
-                {extendedProps.limitedApplicability.schedule.endTime && 
-                 extendedProps.limitedApplicability.schedule.endTime !== "null" && (
-                  <InfoRow 
-                    label="End Time" 
-                    value={extendedProps.limitedApplicability.schedule.endTime} 
-                  />
-                )}
-              </InfoSection>
-            )}
-            
-            {/* Zone Authority */}
-            {extendedProps.zoneAuthority && (
-              <InfoSection title="Authority">
-                {extendedProps.zoneAuthority.name && (
-                  <InfoRow 
-                    label="Name" 
-                    value={extendedProps.zoneAuthority.name} 
-                  />
-                )}
-                {extendedProps.zoneAuthority.phone && (
-                  <InfoRow 
-                    label="Phone" 
+                    label="Min Altitude" 
                     value={
-                      <a 
-                        href={`tel:${extendedProps.zoneAuthority.phone.replace(/\s/g, "")}`}
-                        className="text-blue-500 hover:underline"
-                      >
-                        {extendedProps.zoneAuthority.phone}
-                      </a>
+                      geozone.restrictions.minAltitude !== undefined
+                        ? `${geozone.restrictions.minAltitude} ${geozone.restrictions.uomDimensions || "m"}`
+                        : "N/A"
                     } 
                   />
-                )}
-                {extendedProps.zoneAuthority.email && (
                   <InfoRow 
-                    label="Email" 
+                    label="Max Altitude" 
                     value={
-                      <a 
-                        href={`mailto:${extendedProps.zoneAuthority.email}`}
-                        className="text-blue-500 hover:underline"
-                      >
-                        {extendedProps.zoneAuthority.email}
-                      </a>
+                      geozone.restrictions.maxAltitude !== undefined
+                        ? `${geozone.restrictions.maxAltitude} ${geozone.restrictions.uomDimensions || "m"}`
+                        : "N/A"
                     } 
                   />
-                )}
-                {extendedProps.zoneAuthority.siteURL && (
-                  <InfoRow 
-                    label="Website" 
-                    value={
-                      <a 
-                        href={extendedProps.zoneAuthority.siteURL}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-500 hover:underline truncate block"
-                        title={extendedProps.zoneAuthority.siteURL}
-                      >
-                        Visit site →
-                      </a>
-                    } 
-                  />
-                )}
-                {extendedProps.zoneAuthority.purpose && (
-                  <InfoRow 
-                    label="Purpose" 
-                    value={extendedProps.zoneAuthority.purpose} 
-                  />
-                )}
-              </InfoSection>
-            )}
-          </div>
+                </>
+              )}
+            </CollapsibleSection>
+          )}
+          
+          {/* Limited Applicability / Validity Period */}
+          {(geozone.temporal_limits || extendedProps.limitedApplicability) && (
+            <CollapsibleSection 
+              title="Limited Applicability"
+              icon={<svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+            >
+              {geozone.temporal_limits?.startDateTime && (
+                <InfoRow 
+                  label="Start" 
+                  value={formatDate(geozone.temporal_limits.startDateTime)} 
+                />
+              )}
+              {geozone.temporal_limits?.endDateTime && (
+                <InfoRow 
+                  label="End" 
+                  value={formatDate(geozone.temporal_limits.endDateTime)} 
+                />
+              )}
+              {extendedProps.limitedApplicability?.startDateTime && !geozone.temporal_limits?.startDateTime && (
+                <InfoRow 
+                  label="Start" 
+                  value={formatDate(extendedProps.limitedApplicability.startDateTime)} 
+                />
+              )}
+              {extendedProps.limitedApplicability?.endDateTime && !geozone.temporal_limits?.endDateTime && (
+                <InfoRow 
+                  label="End" 
+                  value={formatDate(extendedProps.limitedApplicability.endDateTime)} 
+                />
+              )}
+              {geozone.temporal_limits?.permanentStatus && (
+                <InfoRow 
+                  label="Status" 
+                  value={<span className="text-amber-600 font-medium">Permanent</span>} 
+                />
+              )}
+            </CollapsibleSection>
+          )}
+          
+          {/* Authority Information */}
+          {extendedProps.zoneAuthority && (
+            <CollapsibleSection 
+              title="Authority Information"
+              icon={<svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>}
+            >
+              {extendedProps.zoneAuthority.name && (
+                <InfoRow 
+                  label="Name" 
+                  value={extendedProps.zoneAuthority.name} 
+                />
+              )}
+              {extendedProps.zoneAuthority.service && (
+                <InfoRow 
+                  label="Service" 
+                  value={extendedProps.zoneAuthority.service} 
+                />
+              )}
+              {extendedProps.zoneAuthority.contact?.contactName && (
+                <InfoRow 
+                  label="Contact" 
+                  value={`${extendedProps.zoneAuthority.contact.contactName}${extendedProps.zoneAuthority.contact.contactRole ? ` (${extendedProps.zoneAuthority.contact.contactRole})` : ""}`} 
+                />
+              )}
+              {extendedProps.zoneAuthority.phone && (
+                <InfoRow 
+                  label="Phone" 
+                  value={
+                    <a 
+                      href={`tel:${extendedProps.zoneAuthority.phone.replace(/\s/g, "")}`}
+                      className="text-blue-500 hover:underline"
+                    >
+                      {extendedProps.zoneAuthority.phone}
+                    </a>
+                  } 
+                />
+              )}
+              {extendedProps.zoneAuthority.email && (
+                <InfoRow 
+                  label="Email" 
+                  value={
+                    <a 
+                      href={`mailto:${extendedProps.zoneAuthority.email}`}
+                      className="text-blue-500 hover:underline"
+                    >
+                      {extendedProps.zoneAuthority.email}
+                    </a>
+                  } 
+                />
+              )}
+              {extendedProps.zoneAuthority.siteURL && (
+                <InfoRow 
+                  label="Website" 
+                  value={
+                    <a 
+                      href={extendedProps.zoneAuthority.siteURL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-500 hover:underline truncate block"
+                      title={extendedProps.zoneAuthority.siteURL}
+                    >
+                      Visit site →
+                    </a>
+                  } 
+                />
+              )}
+              {extendedProps.zoneAuthority.purpose && (
+                <InfoRow 
+                  label="Purpose" 
+                  value={extendedProps.zoneAuthority.purpose} 
+                />
+              )}
+            </CollapsibleSection>
+          )}
+          
+          {/* Schedule */}
+          {extendedProps.limitedApplicability?.schedule && 
+           typeof extendedProps.limitedApplicability.schedule === "object" && (
+            <CollapsibleSection 
+              title="Schedule"
+              icon={<svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>}
+            >
+              {extendedProps.limitedApplicability.schedule.day && (
+                <InfoRow 
+                  label="Days" 
+                  value={Array.isArray(extendedProps.limitedApplicability.schedule.day)
+                    ? extendedProps.limitedApplicability.schedule.day.join(", ")
+                    : extendedProps.limitedApplicability.schedule.day
+                  } 
+                />
+              )}
+              {extendedProps.limitedApplicability.schedule.startTime && 
+               extendedProps.limitedApplicability.schedule.startTime !== "null" && (
+                <InfoRow 
+                  label="Start Time" 
+                  value={extendedProps.limitedApplicability.schedule.startTime} 
+                />
+              )}
+              {extendedProps.limitedApplicability.schedule.endTime && 
+               extendedProps.limitedApplicability.schedule.endTime !== "null" && (
+                <InfoRow 
+                  label="End Time" 
+                  value={extendedProps.limitedApplicability.schedule.endTime} 
+                />
+              )}
+              {extendedProps.limitedApplicability.schedule.startEvent && 
+               extendedProps.limitedApplicability.schedule.startEvent !== "null" && (
+                <InfoRow 
+                  label="Start Event" 
+                  value={extendedProps.limitedApplicability.schedule.startEvent} 
+                />
+              )}
+              {extendedProps.limitedApplicability.schedule.endEvent && 
+               extendedProps.limitedApplicability.schedule.endEvent !== "null" && (
+                <InfoRow 
+                  label="End Event" 
+                  value={extendedProps.limitedApplicability.schedule.endEvent} 
+                />
+              )}
+            </CollapsibleSection>
+          )}
         </div>
-        
-        {/* Altitude restrictions if available */}
-        {geozone.restrictions && (
-          <InfoSection title="Altitude Restrictions">
-            <div className="grid grid-cols-2 gap-2">
-              <InfoRow 
-                label="Min Altitude" 
-                value={
-                  geozone.restrictions.minAltitude !== undefined
-                    ? `${geozone.restrictions.minAltitude} ${geozone.restrictions.uomDimensions || "m"}`
-                    : "N/A"
-                } 
-              />
-              <InfoRow 
-                label="Max Altitude" 
-                value={
-                  geozone.restrictions.maxAltitude !== undefined
-                    ? `${geozone.restrictions.maxAltitude} ${geozone.restrictions.uomDimensions || "m"}`
-                    : "N/A"
-                } 
-              />
-            </div>
-          </InfoSection>
-        )}
-        
-        {/* UAS Classes if available in restrictions */}
-        {extendedProps.restrictions?.uasClass && extendedProps.restrictions.uasClass.length > 0 && (
-          <div className="mt-2 pt-2 border-t border-[var(--border-primary)]">
-            <div className="text-xs text-[var(--text-secondary)]">
-              <span className="font-medium">Affected UAS Classes: </span>
-              <span className="text-[var(--text-primary)]">
-                {extendedProps.restrictions.uasClass.join(", ")}
-              </span>
-            </div>
-          </div>
-        )}
       </div>
     </Popup>
   );
