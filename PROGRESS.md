@@ -12,8 +12,8 @@
 | 4 | Flujo Autorización FAS | 7/7 | ✅ Completado |
 | 5 | Integración Geoawareness WebSocket | 21/21 | ✅ Completado |
 | 6 | Correcciones de Tema | 9/9 | ✅ Completado |
-| 7 | Mejoras Visualización y Geoawareness | 6/12 | 🔄 En progreso |
-| **TOTAL** | | **75/81** | 🔄 93% |
+| 7 | Mejoras Visualización y Geoawareness | 7/12 | 🔄 En progreso |
+| **TOTAL** | | **76/81** | 🔄 94% |
 
 ---
 
@@ -231,7 +231,7 @@
 
 | Task ID | Descripción | Estado |
 |---------|-------------|--------|
-| TASK-075 | Store actual U-space identifier instead of "uspace-default" | ⏳ Pendiente |
+| TASK-075 | Store actual U-space identifier instead of "uspace-default" | ✅ Completado |
 
 ### 7.5 Check Geoawareness con Timeline
 
@@ -255,6 +255,7 @@
 
 | Fecha | Task ID | Descripción | Commit |
 |-------|---------|-------------|--------|
+| 2026-02-02 | TASK-075 | Verify U-space identifier storage: default service area correctly uses 'VLCUspace' as identifier instead of 'uspace-default', implementation already present from TASK-045 | chore: mark TASK-075 as complete |
 | 2026-02-02 | TASK-080, TASK-081 | Add hover tooltips to 4D operation volumes showing time start/end, altitude range, and approximate dimensions | feat(uplan): add hover tooltips with volume details in U-Plan Map modal |
 | 2026-02-02 | TASK-079 | Fix View U-Plan Map button: now shows waypoints extracted from fileContent even without operationVolumes, with toggleable waypoint/volume layers and visual legend | feat(uplan): enable View U-Plan Map button for all plans with waypoints |
 | 2026-02-02 | TASK-074 | Fix CSV result ID retrieval in FlightPlansUploaderDev: use plan.csvResult instead of plan.id when fetching CSV data for download, view single, view selected, and view folder operations | fix(csv): use actual csvResult ID instead of plan ID for CSV fetches |
