@@ -183,11 +183,13 @@ export function FlightPlansUploader() {
     status: 'aprobado' | 'denegado' | null
   }>({ open: false, planId: null, planName: '', message: null, status: null })
   // U-Plan review modal state - shows U-Plan before authorization
+  // TASK-079: Include fileContent for waypoint visualization
   const [uplanViewModal, setUplanViewModal] = useState<{
     open: boolean
     uplan: unknown
     name: string
-  }>({ open: false, uplan: null, name: '' })
+    fileContent: string | null
+  }>({ open: false, uplan: null, name: '', fileContent: null })
   // TASK-023: UplanFormModal state for editing U-Plan before authorization
   const [uplanFormModal, setUplanFormModal] = useState<{
     open: boolean
@@ -855,19 +857,17 @@ export function FlightPlansUploader() {
                   Review U-Plan
                 </button>
                 {/* View U-Plan Map button - shows operation volumes on map */}
+                {/* TASK-079: Show waypoints even without uplan, for planning visualization */}
                 <button
                   onClick={() => {
-                    if (selectedPlan.uplan) {
-                      setUplanViewModal({
-                        open: true,
-                        uplan: selectedPlan.uplan,
-                        name: selectedPlan.name,
-                      })
-                    } else {
-                      toast.warning('U-Plan data not yet available.')
-                    }
+                    setUplanViewModal({
+                      open: true,
+                      uplan: selectedPlan.uplan,
+                      name: selectedPlan.name,
+                      fileContent: selectedPlan.fileContent ?? null,
+                    })
                   }}
-                  disabled={!selectedPlan.uplan}
+                  disabled={!selectedPlan.fileContent}
                   className="px-4 py-2 text-sm font-medium text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-md hover:bg-purple-100 dark:hover:bg-purple-900/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors btn-interactive flex items-center gap-2"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1232,11 +1232,13 @@ export function FlightPlansUploader() {
       )}
 
       {/* U-Plan map viewer modal - shows operation volumes on map */}
+      {/* TASK-079: Now also shows waypoints from fileContent */}
       <UplanViewModal
         open={uplanViewModal.open}
-        onClose={() => setUplanViewModal({ open: false, uplan: null, name: '' })}
+        onClose={() => setUplanViewModal({ open: false, uplan: null, name: '', fileContent: null })}
         uplan={uplanViewModal.uplan}
         name={uplanViewModal.name}
+        fileContent={uplanViewModal.fileContent}
       />
 
       {/* U-Plan form modal - TASK-023: editable form for U-Plan data */}
