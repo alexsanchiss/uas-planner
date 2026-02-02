@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useCallback, useEffect, useMemo } from 'react'
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { useGeozones, type GeozoneData } from '@/app/hooks/useGeozones'
 import L from 'leaflet'
@@ -193,8 +193,10 @@ export function GeoawarenessViewer({
   planId,
   planName,
   uspaceId,
-  trajectoryData,
-  geozones = [],
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  trajectoryData: _trajectoryData,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  geozones: _geozones = [],
   violations = [],
   isLoading: externalLoading = false,
   error: externalError = null,
@@ -208,6 +210,13 @@ export function GeoawarenessViewer({
   const [selectedGeozone, setSelectedGeozone] = useState<GeozoneData | null>(null)
   const [popupPosition, setPopupPosition] = useState<L.LatLngExpression | null>(null)
   const [showGeozones, setShowGeozones] = useState(true)
+  
+  // TASK-077: Time slider state for trajectory simulation
+  const [simulationTime, setSimulationTime] = useState(0)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [playbackSpeed, setPlaybackSpeed] = useState(1) // 1x, 2x, 4x
+  const animationRef = useRef<number | null>(null)
+  const lastTimeRef = useRef<number>(0)
 
   // TASK-057: Fetch geozone data via HTTP API
   const {
@@ -317,6 +326,109 @@ export function GeoawarenessViewer({
     trajectory.map(p => [p.lat, p.lng] as [number, number]),
     [trajectory]
   )
+
+  // TASK-077: Calculate total trajectory duration
+  const trajectoryDuration = useMemo(() => {
+    if (trajectory.length < 2) return 0
+    // Check if trajectory has time data
+    const lastPoint = trajectory[trajectory.length - 1]
+    if (lastPoint.time !== undefined) {
+      return lastPoint.time
+    }
+    // Estimate duration based on point count (1 second per point as fallback)
+    return trajectory.length - 1
+  }, [trajectory])
+
+  // TASK-077: Interpolate current position along trajectory based on simulation time
+  const simulatedPosition = useMemo(() => {
+    if (trajectory.length < 2 || trajectoryDuration === 0) return null
+    
+    // Clamp simulation time
+    const t = Math.max(0, Math.min(simulationTime, trajectoryDuration))
+    
+    // Find segment based on time or index
+    for (let i = 0; i < trajectory.length - 1; i++) {
+      const p1 = trajectory[i]
+      const p2 = trajectory[i + 1]
+      
+      const t1 = p1.time !== undefined ? p1.time : i
+      const t2 = p2.time !== undefined ? p2.time : i + 1
+      
+      if (t >= t1 && t <= t2) {
+        // Interpolate between these two points
+        const segmentProgress = t2 !== t1 ? (t - t1) / (t2 - t1) : 0
+        return {
+          lat: p1.lat + (p2.lat - p1.lat) * segmentProgress,
+          lng: p1.lng + (p2.lng - p1.lng) * segmentProgress,
+          alt: p1.alt !== undefined && p2.alt !== undefined
+            ? p1.alt + (p2.alt - p1.alt) * segmentProgress
+            : p1.alt,
+          time: t,
+        }
+      }
+    }
+    
+    // Return last point if beyond range
+    const lastPoint = trajectory[trajectory.length - 1]
+    return {
+      lat: lastPoint.lat,
+      lng: lastPoint.lng,
+      alt: lastPoint.alt,
+      time: trajectoryDuration,
+    }
+  }, [trajectory, trajectoryDuration, simulationTime])
+
+  // TASK-077: Animation loop for playback
+  useEffect(() => {
+    if (!isPlaying || trajectoryDuration === 0) {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current)
+        animationRef.current = null
+      }
+      return
+    }
+
+    lastTimeRef.current = performance.now()
+    
+    const animate = (currentTime: number) => {
+      const delta = (currentTime - lastTimeRef.current) / 1000 // Convert to seconds
+      lastTimeRef.current = currentTime
+      
+      setSimulationTime(prev => {
+        const next = prev + delta * playbackSpeed
+        if (next >= trajectoryDuration) {
+          setIsPlaying(false)
+          return trajectoryDuration
+        }
+        return next
+      })
+      
+      animationRef.current = requestAnimationFrame(animate)
+    }
+    
+    animationRef.current = requestAnimationFrame(animate)
+    
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current)
+        animationRef.current = null
+      }
+    }
+  }, [isPlaying, trajectoryDuration, playbackSpeed])
+
+  // Reset simulation when trajectory changes
+  useEffect(() => {
+    setSimulationTime(0)
+    setIsPlaying(false)
+  }, [trajectory])
+
+  // Toggle playback
+  const togglePlayback = useCallback(() => {
+    if (simulationTime >= trajectoryDuration) {
+      setSimulationTime(0)
+    }
+    setIsPlaying(prev => !prev)
+  }, [simulationTime, trajectoryDuration])
 
   // Handle retry
   const handleRetry = useCallback(() => {
@@ -539,6 +651,34 @@ export function GeoawarenessViewer({
                         </Popup>
                       </CircleMarker>
                     ))}
+
+                    {/* TASK-077: Simulation position marker */}
+                    {simulatedPosition && (
+                      <CircleMarker
+                        center={[simulatedPosition.lat, simulatedPosition.lng]}
+                        radius={10}
+                        pathOptions={{
+                          color: '#fff',
+                          fillColor: '#f97316', // Orange for drone/simulation position
+                          fillOpacity: 1,
+                          weight: 3,
+                        }}
+                      >
+                        <Popup>
+                          <div className="text-sm min-w-[150px]">
+                            <p className="font-bold text-gray-900 mb-1">🛸 Drone Position</p>
+                            <div className="text-xs text-gray-600 space-y-0.5">
+                              <p>Lat: {simulatedPosition.lat.toFixed(6)}</p>
+                              <p>Lng: {simulatedPosition.lng.toFixed(6)}</p>
+                              {simulatedPosition.alt !== undefined && (
+                                <p>Alt: {simulatedPosition.alt.toFixed(1)}m</p>
+                              )}
+                              <p>Time: {simulatedPosition.time.toFixed(1)}s</p>
+                            </div>
+                          </div>
+                        </Popup>
+                      </CircleMarker>
+                    )}
                   </>
                 )}
               </MapContainer>
@@ -602,6 +742,98 @@ export function GeoawarenessViewer({
               </>
             )}
           </div>
+
+          {/* TASK-077: Time slider for trajectory simulation */}
+          {hasTrajectory && trajectoryDuration > 0 && (
+            <div className="border-t border-[var(--border-primary)] bg-[var(--surface-primary)] px-4 py-3">
+              <div className="flex items-center gap-3">
+                {/* Play/Pause button */}
+                <button
+                  onClick={togglePlayback}
+                  className="w-10 h-10 flex items-center justify-center rounded-full bg-blue-600 hover:bg-blue-700 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+                  title={isPlaying ? 'Pause simulation' : 'Play simulation'}
+                >
+                  {isPlaying ? (
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </button>
+
+                {/* Time slider */}
+                <div className="flex-1 flex flex-col gap-1">
+                  <input
+                    type="range"
+                    min={0}
+                    max={trajectoryDuration}
+                    step={0.1}
+                    value={simulationTime}
+                    onChange={(e) => {
+                      setIsPlaying(false)
+                      setSimulationTime(parseFloat(e.target.value))
+                    }}
+                    className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                    style={{
+                      background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${(simulationTime / trajectoryDuration) * 100}%, #e5e7eb ${(simulationTime / trajectoryDuration) * 100}%, #e5e7eb 100%)`,
+                    }}
+                  />
+                  <div className="flex justify-between text-xs text-[var(--text-tertiary)]">
+                    <span>{simulationTime.toFixed(1)}s</span>
+                    <span>{trajectoryDuration.toFixed(1)}s</span>
+                  </div>
+                </div>
+
+                {/* Speed control */}
+                <div className="flex items-center gap-1">
+                  {[1, 2, 4].map((speed) => (
+                    <button
+                      key={speed}
+                      onClick={() => setPlaybackSpeed(speed)}
+                      className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                        playbackSpeed === speed
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-100 dark:bg-gray-800 text-[var(--text-secondary)] hover:bg-gray-200 dark:hover:bg-gray-700'
+                      }`}
+                      title={`${speed}x speed`}
+                    >
+                      {speed}x
+                    </button>
+                  ))}
+                </div>
+
+                {/* Reset button */}
+                <button
+                  onClick={() => {
+                    setIsPlaying(false)
+                    setSimulationTime(0)
+                  }}
+                  className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                  title="Reset to start"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Current simulation info */}
+              {simulatedPosition && (
+                <div className="mt-2 flex items-center justify-center gap-4 text-xs text-[var(--text-secondary)]">
+                  <span className="flex items-center gap-1">
+                    <span className="w-3 h-3 rounded-full bg-orange-500"></span>
+                    Drone: {simulatedPosition.lat.toFixed(5)}, {simulatedPosition.lng.toFixed(5)}
+                  </span>
+                  {simulatedPosition.alt !== undefined && (
+                    <span>Alt: {simulatedPosition.alt.toFixed(1)}m</span>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Violations list */}
           {hasViolations && (
@@ -667,6 +899,11 @@ export function GeoawarenessViewer({
                 <div className="flex items-center gap-2 text-xs">
                   <div className="w-3 h-3 bg-red-500 rounded-full border border-white shadow-sm" />
                   <span className="text-[var(--text-tertiary)]">Landing</span>
+                </div>
+                {/* TASK-077: Simulation marker */}
+                <div className="flex items-center gap-2 text-xs">
+                  <div className="w-3 h-3 bg-orange-500 rounded-full border-2 border-white shadow-sm" />
+                  <span className="text-[var(--text-tertiary)]">Drone Position</span>
                 </div>
 
                 {/* Geozone types */}

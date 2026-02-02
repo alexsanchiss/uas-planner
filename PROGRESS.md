@@ -12,8 +12,8 @@
 | 4 | Flujo Autorización FAS | 7/7 | ✅ Completado |
 | 5 | Integración Geoawareness WebSocket | 21/21 | ✅ Completado |
 | 6 | Correcciones de Tema | 9/9 | ✅ Completado |
-| 7 | Mejoras Visualización y Geoawareness | 9/12 | 🔄 En progreso |
-| **TOTAL** | | **78/81** | 🔄 96% |
+| 7 | Mejoras Visualización y Geoawareness | 11/12 | 🔄 En progreso |
+| **TOTAL** | | **80/81** | 🔄 99% |
 
 ---
 
@@ -237,8 +237,8 @@
 
 | Task ID | Descripción | Estado |
 |---------|-------------|--------|
-| TASK-076 | Implement Check Geoawareness with trajectory overlay | ⏳ Pendiente |
-| TASK-077 | Add time slider for trajectory simulation | ⏳ Pendiente |
+| TASK-076 | Implement Check Geoawareness with trajectory overlay | ✅ Completado |
+| TASK-077 | Add time slider for trajectory simulation | ✅ Completado |
 
 ### 7.6 U-Plan Processing y Vista de Volúmenes 4D
 
@@ -255,6 +255,7 @@
 
 | Fecha | Task ID | Descripción | Commit |
 |-------|---------|-------------|--------|
+| 2026-02-02 | TASK-076, TASK-077 | Add Check Geoawareness modal with trajectory overlay and time slider for flight simulation: play/pause controls, speed options (1x/2x/4x), drone position marker, and detailed timeline visualization | feat(geoawareness): add trajectory simulation with interactive time slider |
 | 2026-02-02 | TASK-070, TASK-071 | Enhance GeozoneInfoPopup with collapsible/expandable sections: General Information, Restriction Conditions, Limited Applicability, Authority Information, and Schedule with chevron icons and smooth animations | feat(geoawareness): add expandable sections to geozone popup |
 | 2026-02-02 | TASK-075 | Verify U-space identifier storage: default service area correctly uses 'VLCUspace' as identifier instead of 'uspace-default', implementation already present from TASK-045 | chore: mark TASK-075 as complete |
 | 2026-02-02 | TASK-080, TASK-081 | Add hover tooltips to 4D operation volumes showing time start/end, altitude range, and approximate dimensions | feat(uplan): add hover tooltips with volume details in U-Plan Map modal |
