@@ -7,7 +7,7 @@ import L from "leaflet";
 import { Point, ScanWaypoint } from "@/lib/scan-generator";
 import { GeozoneLayer } from "./plan-generator/GeozoneLayer";
 import { GeozoneInfoPopup } from "./plan-generator/GeozoneInfoPopup";
-import type { GeozoneData } from "@/app/hooks/useGeoawarenessWebSocket";
+import type { GeozoneData } from "@/app/hooks/useGeozones";
 
 // TASK-152: Large bounds for overlay outside service area (covers the world)
 const WORLD_BOUNDS: [number, number][] = [

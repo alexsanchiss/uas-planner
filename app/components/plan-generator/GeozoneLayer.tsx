@@ -13,7 +13,7 @@
  *   - warning: Purple (#8B5CF6)
  *   - temporary: Gray (#6B7280)
  * - Shows hover effects for better interaction
- * - Designed to work with useGeoawarenessWebSocket data
+ * - Designed to work with useGeozones data
  */
 
 "use client";
@@ -21,7 +21,7 @@
 import React, { useMemo, useState } from "react";
 import { Polygon, Tooltip } from "react-leaflet";
 import L from "leaflet";
-import type { GeozoneData } from "@/app/hooks/useGeoawarenessWebSocket";
+import type { GeozoneData } from "@/app/hooks/useGeozones";
 
 /**
  * Geozone type for styling

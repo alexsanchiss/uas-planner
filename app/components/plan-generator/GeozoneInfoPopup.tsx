@@ -17,7 +17,7 @@
 import React, { useMemo } from "react";
 import { Popup } from "react-leaflet";
 import L from "leaflet";
-import type { GeozoneData } from "@/app/hooks/useGeoawarenessWebSocket";
+import type { GeozoneData } from "@/app/hooks/useGeozones";
 
 /**
  * Color configuration for geozone types
@@ -210,6 +210,20 @@ function TypeBadge({ type }: { type?: string }) {
  * ```
  */
 export function GeozoneInfoPopup({ geozone, position, onClose }: GeozoneInfoPopupProps) {
+  // Style override for leaflet popup background to match theme
+  React.useEffect(() => {
+    const styleId = 'geozone-popup-theme-style';
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement('style');
+      style.id = styleId;
+      style.innerHTML = `
+        .leaflet-popup-content-wrapper {
+          background: var(--surface-primary, #fff) !important;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+  }, []);
   const { properties } = geozone;
   
   // Parse extended properties if they exist (from geozones_map.html format)

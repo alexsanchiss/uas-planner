@@ -26,7 +26,7 @@
 // - Unified transaction management
 // - Better performance through optimized database calls
 
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 // Note: react-leaflet imports are used by PlanMap component via dynamic import
 import "leaflet/dist/leaflet.css";
 import { useToast } from "../hooks/useToast";
@@ -63,8 +63,8 @@ const UspaceSelector = dynamic(() => import('./plan-generator/UspaceSelector'), 
 import ScanPatternGeneratorV2 from './plan-generator/ScanPatternGeneratorV2';
 import { Point, ScanWaypoint } from '@/lib/scan-generator';
 import { useUspaces, USpace } from '@/app/hooks/useUspaces';
-import { useGeoawarenessWebSocket } from '@/app/hooks/useGeoawarenessWebSocket';
-import type { GeozoneData } from '@/app/hooks/useGeoawarenessWebSocket';
+import { useGeozones } from '@/app/hooks/useGeozones';
+import type { GeozoneData } from '@/app/hooks/useGeozones';
 
 // Plan generator modes
 type GeneratorMode = 'manual' | 'scan';
@@ -315,20 +315,23 @@ export default function PlanGenerator() {
   const [selectedUspace, setSelectedUspace] = useState<USpace | null>(null);
   const { getUspaceBounds, getUspaceCenter } = useUspaces();
   
-  // TASK-051: Connect to geoawareness WebSocket when U-space is selected
+  // Fetch geozones via HTTP API when U-space is selected
   const {
-    data: geoawarenessData,
-    reconnect: reconnectWs,
-  } = useGeoawarenessWebSocket({
+    geozones: geozonesData,
+    loading: geozonesLoading,
+    usingFallback: geozonesFallback,
+    refetch: refetchGeozones,
+  } = useGeozones({
     uspaceId: selectedUspace?.id || null,
-    enabled: !!selectedUspace, // Enable WebSocket for all selected U-spaces
+    enabled: !!selectedUspace,
   });
-  
-  // For future use: expose reconnectWs for manual retry
-  void reconnectWs;
-  
-  // TASK-051: Extract geozones from WebSocket data
-  const geozonesData: GeozoneData[] = geoawarenessData?.geozones_data || [];
+
+  // Log geozone status
+  useEffect(() => {
+    if (selectedUspace && !geozonesLoading) {
+      console.log(`[PlanGenerator] Geozones loaded: ${geozonesData.length} zones${geozonesFallback ? ' (fallback data)' : ''}`);
+    }
+  }, [selectedUspace, geozonesData.length, geozonesLoading, geozonesFallback]);
   
   // TASK-052: Geozone visibility toggle state
   const [geozonesVisible, setGeozonesVisible] = useState<boolean>(true);

@@ -716,6 +716,125 @@ export function Footer() {
 
 ---
 
+## Fase 7: Mejoras de Visualización y Geoawareness
+
+### 7.1 Información Detallada de Geozonas (TASK-070, TASK-071)
+
+**Problema:**
+- El popup de información de geozonas no muestra todos los datos disponibles como en geozones_map.html
+- Falta información de: Restriction Conditions, Limited Applicability, Authority Information, Schedule
+
+**Archivos afectados:**
+- `app/components/plan-generator/GeozoneInfoPopup.tsx`
+
+**Solución:**
+1. Añadir secciones desplegables:
+   - General Information (Geozone name, Country, Region)
+   - Restriction Conditions (Type, UAS classes, Max noise, Special ops, Photography)
+   - Limited Applicability (Start/End datetime)
+   - Authority Information (Name, Phone, Email, Website, Purpose)
+   - Schedule (Days, Start/End time, Events)
+2. Implementar UI colapsable con chevron icons y animaciones
+
+---
+
+### 7.2 Fix Waypoint Map Modal (TASK-072, TASK-073)
+
+**Problema:**
+- El modal "Click to view waypoints on map" no contiene el mapa correctamente
+- El mapa se sale de los bordes del contenedor
+- El mapa no se centra automáticamente en los waypoints
+
+**Archivos afectados:**
+- `app/components/MapModal.tsx`
+
+**Solución:**
+1. Ajustar width del contenedor para que el mapa quepa dentro
+2. Calcular bounds de todos los waypoints con `L.latLngBounds()`
+3. Usar `map.fitBounds()` para centrar el mapa en todos los waypoints
+
+---
+
+### 7.3 Fix Trajectory Viewer CSV Loading (TASK-074)
+
+**Problema:**
+- El visualizador hace GET /api/csvResult?id=1 en lugar del ID correcto
+- El ID del csvResult no se está obteniendo del flightPlan correctamente
+
+**Archivos afectados:**
+- `app/components/flight-plans/TrajectoryMapViewer.tsx`
+
+**Solución:**
+1. Verificar que el prop `csvResultId` se pasa correctamente desde el componente padre
+2. Usar el ID real del csvResult almacenado en `flightPlan.csvResult`
+
+---
+
+### 7.4 U-space Identifier Storage (TASK-075)
+
+**Problema:**
+- Al usar "Use Default Service Area", se guarda "uspace-default" en la base de datos
+- Debería guardarse el identificador real del U-space (ej: "VLCUspace")
+
+**Archivos afectados:**
+- `app/components/PlanGenerator.tsx`
+- `app/api/flightPlans/route.ts`
+
+**Solución:**
+1. Cuando `useDefaultArea === true`, usar "VLCUspace" como identificador
+2. Actualizar la lógica de creación para guardar el ID real
+
+---
+
+### 7.5 Check Geoawareness con Timeline (TASK-076, TASK-077)
+
+**Problema:**
+- El botón "Check Geoawareness" debe mostrar la trayectoria sobre geozonas actualizadas
+- El usuario necesita poder simular el tiempo de vuelo
+
+**Archivos afectados:**
+- `app/components/flight-plans/GeoawarenessViewer.tsx`
+
+**Solución:**
+1. Al pulsar "Check Geoawareness":
+   - Obtener el `uspace_identifier` del plan desde la base de datos
+   - Cargar geozonas actualizadas del servicio geoawareness
+   - Mostrar la trayectoria del CSV sobre las geozonas
+2. Añadir barra deslizable de tiempo:
+   ```tsx
+   <input type="range" min={0} max={trajectoryDuration} onChange={setSimulationTime} />
+   ```
+3. Mover punto indicador a lo largo de la trayectoria según el tiempo
+
+---
+
+### 7.6 U-Plan Processing y Vista de Volúmenes 4D (TASK-078 to TASK-081)
+
+**Problema:**
+- El U-Plan no se regenera automáticamente al cambiar datos del formulario
+- El botón "View U-Plan Map" no funciona
+- Los volúmenes 4D generados para el U-Plan no se visualizan
+
+**Archivos afectados:**
+- `app/components/PlanGenerator.tsx`
+- `app/components/UplanViewModal.tsx`
+
+**Solución:**
+1. Detectar cambios en datos del formulario y regenerar U-Plan
+2. "View U-Plan Map" abre el modal con waypoints + volúmenes 4D
+3. Renderizar volúmenes como polígonos:
+   ```tsx
+   {volumes.map(vol => (
+     <Polygon 
+       positions={vol.polygon}
+       onMouseOver={() => setHoveredVolume(vol)}
+     />
+   ))}
+   ```
+4. Tooltip con información del volumen: tiempo inicio/fin, altitud min/max
+
+---
+
 ## Resumen de Archivos a Modificar/Crear
 
 ### Archivos a Modificar:

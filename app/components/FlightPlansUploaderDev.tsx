@@ -1225,10 +1225,10 @@ export function FlightPlansUploaderDev() {
     }
   };
 
-  const downloadCsv = async (planId: number, fileName: string) => {
+  const downloadCsv = async (csvResultId: number, fileName: string) => {
     try {
       // Use the unified CSV API for individual downloads
-      const response = await api.get(`/api/csvResult?id=${planId}`);
+      const response = await api.get(`/api/csvResult?id=${csvResultId}`);
       if (response.status === 200) {
         const csvData = response.data.csvResult;
         const blob = new Blob([csvData], { type: "text/csv" });
@@ -1506,10 +1506,10 @@ export function FlightPlansUploaderDev() {
   };
 
   // Function to fetch and show CSV content in modal
-  const handleViewCsv = async (planId: number, customName: string) => {
+  const handleViewCsv = async (csvResultId: number, customName: string) => {
     try {
       // Use the unified CSV API for individual view
-      const response = await api.get(`/api/csvResult?id=${planId}`);
+      const response = await api.get(`/api/csvResult?id=${csvResultId}`);
       if (response.status === 200) {
         const traj = parseTrajectoryCsv(response.data.csvResult);
         setTrajectoryData([traj]);
@@ -1540,7 +1540,7 @@ export function FlightPlansUploaderDev() {
       if (plan && plan.status === "procesado" && plan.csvResult) {
         try {
           // Use the unified CSV API for individual view
-          const response = await api.get(`/api/csvResult?id=${id}`);
+          const response = await api.get(`/api/csvResult?id=${plan.csvResult}`);
           if (response.status === 200) {
             const traj = parseTrajectoryCsv(response.data.csvResult);
             trajs.push(traj);
@@ -1578,9 +1578,10 @@ export function FlightPlansUploaderDev() {
     const trajs: TrajectoryRow[][] = [];
     const names: string[] = [];
     for (const plan of folderPlans) {
+      if (!plan.csvResult) continue;
       try {
         // Use the unified CSV API for individual view
-        const response = await api.get(`/api/csvResult?id=${plan.id}`);
+        const response = await api.get(`/api/csvResult?id=${plan.csvResult}`);
         if (response.status === 200) {
           const traj = parseTrajectoryCsv(response.data.csvResult);
           trajs.push(traj);
@@ -2152,9 +2153,9 @@ export function FlightPlansUploaderDev() {
                                 <Button
                                   variant="outline"
                                   onClick={() =>
-                                    plan.status === "procesado"
+                                    plan.status === "procesado" && plan.csvResult
                                       ? downloadCsv(
-                                          plan.id,
+                                          plan.csvResult,
                                           `${plan.customName}.csv`
                                         )
                                       : handleProcessTrajectory(plan.id)
@@ -2208,10 +2209,10 @@ export function FlightPlansUploaderDev() {
                                     {plan.status === "procesado" ? "Download" : plan.status === "sin procesar" ? "Process" : plan.status}
                                   </span>
                                 </Button>
-                                {plan.status === "procesado" && (
+                                {plan.status === "procesado" && plan.csvResult && (
                                   <Button
                                     variant="outline"
-                                    onClick={() => handleViewCsv(plan.id, plan.customName)}
+                                    onClick={() => handleViewCsv(plan.csvResult!, plan.customName)}
                                     className="ml-8px min-w-[56px] max-w-[56px] items-center justify-center ml-2 text-blue-400 hover:bg-blue-500/90 hover:text-white border-blue-400/50 hover:border-blue-500 h-12 min-h-[48px]"
                                   >
                                     <EyeIcon className="h-5 w-5" />

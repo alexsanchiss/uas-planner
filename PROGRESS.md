@@ -12,8 +12,8 @@
 | 4 | Flujo Autorización FAS | 7/7 | ✅ Completado |
 | 5 | Integración Geoawareness WebSocket | 21/21 | ✅ Completado |
 | 6 | Correcciones de Tema | 9/9 | ✅ Completado |
-| 7 | Mejoras Visualización y Geoawareness | 2/12 | 🔄 En progreso |
-| **TOTAL** | | **71/81** | 🔄 88% |
+| 7 | Mejoras Visualización y Geoawareness | 3/12 | 🔄 En progreso |
+| **TOTAL** | | **72/81** | 🔄 89% |
 
 ---
 
@@ -225,7 +225,7 @@
 
 | Task ID | Descripción | Estado |
 |---------|-------------|--------|
-| TASK-074 | Fix csvResult ID retrieval in TrajectoryMapViewer | ⏳ Pendiente |
+| TASK-074 | Fix csvResult ID retrieval in FlightPlansUploaderDev | ✅ Completado |
 
 ### 7.4 U-space Identifier Storage
 
@@ -255,6 +255,7 @@
 
 | Fecha | Task ID | Descripción | Commit |
 |-------|---------|-------------|--------|
+| 2026-02-02 | TASK-074 | Fix CSV result ID retrieval in FlightPlansUploaderDev: use plan.csvResult instead of plan.id when fetching CSV data for download, view single, view selected, and view folder operations | fix(csv): use actual csvResult ID instead of plan ID for CSV fetches |
 | 2026-02-02 | TASK-072, TASK-073 | Fix WaypointMapModal: add maxWidth prop to Modal component for larger map displays, use FitBoundsHelper to auto-center map on all waypoints, prevent map overflow on all screen sizes | fix(ui): prevent map overflow and auto-center on waypoints |
 | 2026-01-27 | TASK-057 to TASK-060 | Refactor GeoawarenessViewer to use WebSocket for real-time geozone data: connect via useGeoawarenessWebSocket hook, render geozones using GeozoneLayer component, add trajectory overlay from plan's CSV data, loading state during connection, error handling with retry button | feat(geoawareness): integrate WebSocket for real-time geozone updates |
 | 2026-01-27 | TASK-054 to TASK-056 | Replace hardcoded FAS Service Area with dynamic U-space bounds: add uspaceName prop to PlanMap, update error messages with dynamic area name, add visual label overlay on map showing selected U-space name | feat(plan-generator): display U-space name on map and in error messages |
