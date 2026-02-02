@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react'
 import dynamic from 'next/dynamic'
-import { useGeoawarenessWebSocket, type GeozoneData } from '@/app/hooks/useGeoawarenessWebSocket'
+import { useGeozones, type GeozoneData } from '@/app/hooks/useGeozones'
 import L from 'leaflet'
 
 // Dynamically import Leaflet components to avoid SSR issues
@@ -209,31 +209,29 @@ export function GeoawarenessViewer({
   const [popupPosition, setPopupPosition] = useState<L.LatLngExpression | null>(null)
   const [showGeozones, setShowGeozones] = useState(true)
 
-  // TASK-057: Connect to WebSocket for geozone data
+  // TASK-057: Fetch geozone data via HTTP API
   const {
-    status: wsStatus,
-    data: wsData,
+    geozones: wsGeozones,
+    loading: wsLoading,
     error: wsError,
-    reconnect,
-    isConnected,
-    retryCount,
-  } = useGeoawarenessWebSocket({
+    usingFallback,
+    refetch: reconnect,
+  } = useGeozones({
     uspaceId: uspaceId || null,
     enabled: !!uspaceId && !!planId,
   })
 
-  // Combine WebSocket geozones with any externally provided ones
+  // Combine fetched geozones with any externally provided ones
   const allGeozones = useMemo(() => {
-    const wsGeozones = wsData?.geozones_data || []
     return wsGeozones.length > 0 ? wsGeozones : []
-  }, [wsData])
+  }, [wsGeozones])
 
-  // Loading state combines external + WebSocket + trajectory
-  const isLoading = externalLoading || wsStatus === 'connecting' || trajectoryLoading
+  // Loading state combines external + API + trajectory
+  const isLoading = externalLoading || wsLoading || trajectoryLoading
   
-  // Error state combines external + WebSocket + trajectory
+  // Error state combines external + API + trajectory
   const displayError = externalError || 
-    (wsError?.message && wsStatus === 'error' ? wsError.message : null) ||
+    wsError ||
     trajectoryError
 
   const hasViolations = violations.length > 0
@@ -366,13 +364,13 @@ export function GeoawarenessViewer({
               />
             </svg>
             <span className="text-sm text-[var(--text-secondary)]">
-              {wsStatus === 'connecting' && 'Connecting to geoawareness service...'}
-              {trajectoryLoading && !wsStatus.includes('connecting') && 'Loading trajectory data...'}
+              {wsLoading && 'Loading geoawareness data...'}
+              {trajectoryLoading && !wsLoading && 'Loading trajectory data...'}
               {externalLoading && 'Loading...'}
             </span>
-            {wsStatus === 'connecting' && retryCount > 0 && (
+            {usingFallback && (
               <span className="text-xs text-[var(--text-tertiary)]">
-                Retry attempt {retryCount}/5
+                Using fallback data
               </span>
             )}
           </div>
@@ -564,9 +562,9 @@ export function GeoawarenessViewer({
                       className={`w-3 h-3 rounded-full ${
                         hasViolations
                           ? 'bg-red-500 animate-pulse'
-                          : isConnected
+                          : !wsLoading && !wsError
                           ? 'bg-green-500'
-                          : wsStatus === 'connecting'
+                          : wsLoading
                           ? 'bg-yellow-500 animate-pulse'
                           : 'bg-gray-400'
                       }`}
@@ -574,13 +572,13 @@ export function GeoawarenessViewer({
                     <span className="text-xs font-medium text-[var(--text-secondary)]">
                       {hasViolations
                         ? `${violations.length} Violation${violations.length !== 1 ? 's' : ''}`
-                        : isConnected
-                        ? `${allGeozones.length} Geozones`
-                        : wsStatus === 'connecting'
-                        ? 'Connecting...'
+                        : !wsLoading && !wsError
+                        ? `${allGeozones.length} Geozones${usingFallback ? ' (fallback)' : ''}`
+                        : wsLoading
+                        ? 'Loading...'
                         : !uspaceId
                         ? 'No U-space'
-                        : 'Disconnected'}
+                        : 'Error'}
                     </span>
                   </div>
                 </div>

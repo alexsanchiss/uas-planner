@@ -610,6 +610,87 @@
 
 ---
 
+## Fase 7: Mejoras de Visualización y Geoawareness
+
+### 7.1 Información Detallada de Geozonas
+
+- [ ] 🟠 **TASK-070**: Enhance GeozoneInfoPopup with expandable sections
+  - **Archivo**: `app/components/plan-generator/GeozoneInfoPopup.tsx`
+  - **Descripción**: Añadir secciones desplegables para mostrar toda la información de geozonas como en geozones_map.html:
+    - General Information (Geozone name, Country, Region)
+    - Restriction Conditions (Type, UAS classes, Max noise, Special ops, Photography)
+    - Limited Applicability (Start/End datetime)
+    - Authority Information (Name, Phone, Email, Website, Purpose)
+    - Schedule (Days, Start/End time, Events)
+  - **Test**: Todas las secciones se despliegan correctamente y muestran información
+
+- [ ] 🟡 **TASK-071**: Implement collapsible/expandable UI for geozone sections
+  - **Archivo**: `app/components/plan-generator/GeozoneInfoPopup.tsx`
+  - **Descripción**: Añadir chevron icons y animación de collapse/expand para cada sección
+  - **Test**: Las secciones se pueden expandir/colapsar con animación suave
+
+### 7.2 Fix Waypoint Map Modal
+
+- [ ] 🔴 **TASK-072**: Fix MapModal container width for waypoints
+  - **Archivo**: `app/components/MapModal.tsx`
+  - **Descripción**: El modal que muestra waypoints no contiene el mapa correctamente, se sale de los bordes. Ajustar width del contenedor para que el mapa quepa dentro
+  - **Test**: El mapa no se desborda del modal en ningún tamaño de pantalla
+
+- [ ] 🟠 **TASK-073**: Auto-center map on all waypoints in MapModal
+  - **Archivo**: `app/components/MapModal.tsx`
+  - **Descripción**: Calcular bounds de todos los waypoints y centrar el mapa automáticamente para mostrar el plan completo
+  - **Test**: Al abrir el modal, todos los waypoints son visibles en el viewport inicial
+
+### 7.3 Fix Trajectory Viewer CSV Loading
+
+- [ ] 🔴 **TASK-074**: Fix csvResult ID retrieval in TrajectoryMapViewer
+  - **Archivo**: `app/components/flight-plans/TrajectoryMapViewer.tsx`
+  - **Descripción**: El visualizador usa GET /api/csvResult?id=1 en lugar del ID correcto del plan. Corregir para usar el csvResultId del flightPlan
+  - **Test**: La trayectoria carga correctamente usando el ID real del csvResult
+
+### 7.4 U-space Identifier Storage
+
+- [ ] 🟠 **TASK-075**: Store actual U-space identifier instead of "uspace-default"
+  - **Archivos**: `app/components/PlanGenerator.tsx`, `app/api/flightPlans/route.ts`
+  - **Descripción**: Cuando se usa "Use Default Service Area", guardar el identificador real del U-space (ej: "VLCUspace") en la base de datos en lugar de "uspace-default"
+  - **Test**: Al crear un plan con default service area, geoawarenessData.uspace_identifier === "VLCUspace"
+
+### 7.5 Check Geoawareness con Timeline
+
+- [ ] 🟠 **TASK-076**: Implement Check Geoawareness with trajectory overlay
+  - **Archivo**: `app/components/flight-plans/GeoawarenessViewer.tsx`
+  - **Descripción**: Al pulsar "Check Geoawareness", mostrar la trayectoria sobre las capas de geozonas actualizadas del servicio geoawareness usando el uspace_identifier guardado
+  - **Test**: Se visualiza la trayectoria con las geozonas correspondientes
+
+- [ ] 🟡 **TASK-077**: Add time slider for trajectory simulation
+  - **Archivo**: `app/components/flight-plans/GeoawarenessViewer.tsx`
+  - **Descripción**: Añadir barra deslizable que permita al usuario avanzar/retroceder en el tiempo de simulación de la trayectoria
+  - **Test**: El slider mueve el punto de simulación a lo largo de la trayectoria
+
+### 7.6 U-Plan Processing y Vista de Volúmenes 4D
+
+- [ ] 🟠 **TASK-078**: Trigger U-Plan regeneration on form data changes
+  - **Archivo**: `app/components/PlanGenerator.tsx`
+  - **Descripción**: Regenerar el U-Plan automáticamente cuando el usuario modifica datos del formulario o tras el primer procesamiento
+  - **Test**: El U-Plan se actualiza al cambiar cualquier campo del formulario
+
+- [ ] 🟠 **TASK-079**: Fix View U-Plan Map button to open waypoint modal
+  - **Archivo**: `app/components/PlanGenerator.tsx`
+  - **Descripción**: El botón "View U-Plan Map" actualmente no hace nada. Hacer que abra el modal de plan definido por waypoints
+  - **Test**: El botón abre el modal mostrando los waypoints del plan
+
+- [ ] 🟠 **TASK-080**: Display 4D volumes in U-Plan Map modal
+  - **Archivo**: `app/components/UplanViewModal.tsx`
+  - **Descripción**: Además de los waypoints, mostrar los volúmenes 4D generados para el U-Plan como polígonos sobre el mapa
+  - **Test**: Los volúmenes 4D se visualizan como polígonos sobre el mapa
+
+- [ ] 🟡 **TASK-081**: Add hover tooltip for 4D volume information
+  - **Archivo**: `app/components/UplanViewModal.tsx`
+  - **Descripción**: Al pasar el ratón sobre un volumen 4D, mostrar tooltip con información: tiempo inicio/fin, altitud min/max, dimensiones
+  - **Test**: El hover sobre cada volumen muestra la información correcta
+
+---
+
 ## Dependencias entre Tareas
 
 ```
@@ -642,6 +723,14 @@ FASE 5 (Mayor - Semi-independiente)
 FASE 6 (Independiente - UI Polish)
 ├── TASK-061..064 (Login theme)
 └── TASK-065..069 (Footer logos)
+
+FASE 7 (Mejoras Visualización)
+├── TASK-070..071 (Geozone popup expandable)
+├── TASK-072..073 (Waypoint map modal fix)
+├── TASK-074 (Trajectory CSV ID fix)
+├── TASK-075 (U-space identifier fix)
+├── TASK-076..077 (Geoawareness timeline)
+└── TASK-078..081 (U-Plan volumes 4D)
 ```
 
 ---
@@ -656,7 +745,8 @@ FASE 6 (Independiente - UI Polish)
 | 4 | 7 | 🟠 ALTO | 3-4h |
 | 5 | 21 | 🟠 ALTO | 12-16h |
 | 6 | 9 | 🟡 MEDIO | 2-3h |
-| **TOTAL** | **69** | - | **35-49h** |
+| 7 | 12 | 🟠 ALTO | 10-14h |
+| **TOTAL** | **81** | - | **45-63h** |
 
 ---
 
