@@ -264,14 +264,71 @@ const UplanViewModal = ({ open, onClose, uplan, name, fileContent }: UplanViewMo
             </>
           )}
           
-          {/* Render 4D volumes */}
-          {showVolumes && activeVols.map((v: any, i: number) => (
-            <Polygon
-              key={`vol-${i}`}
-              positions={v.coords}
-              pathOptions={{ color: '#8b5cf6', fillColor: '#a78bfa', fillOpacity: 0.4 }}
-            />
-          ))}
+          {/* Render 4D volumes with hover tooltips - TASK-081 */}
+          {showVolumes && activeVols.map((v: any, i: number) => {
+            const origVol = uplan.operationVolumes?.[v.idx];
+            const timeBegin = origVol?.timeBegin ? new Date(origVol.timeBegin).toISOString().replace('T', ' ').slice(0, 19) + ' UTC' : 'N/A';
+            const timeEnd = origVol?.timeEnd ? new Date(origVol.timeEnd).toISOString().replace('T', ' ').slice(0, 19) + ' UTC' : 'N/A';
+            
+            // Extract altitude info
+            let minAlt: string | number = 'N/A';
+            let maxAlt: string | number = 'N/A';
+            if (origVol?.minAltitude && origVol?.maxAltitude) {
+              minAlt = typeof origVol.minAltitude === 'number' ? `${origVol.minAltitude.toFixed(1)}m` : origVol.minAltitude;
+              maxAlt = typeof origVol.maxAltitude === 'number' ? `${origVol.maxAltitude.toFixed(1)}m` : origVol.maxAltitude;
+            } else if (origVol?.elevation) {
+              minAlt = typeof origVol.elevation.min === 'number' ? `${origVol.elevation.min.toFixed(1)}m` : origVol.elevation.min ?? 'N/A';
+              maxAlt = typeof origVol.elevation.max === 'number' ? `${origVol.elevation.max.toFixed(1)}m` : origVol.elevation.max ?? 'N/A';
+            }
+            
+            // Calculate approximate dimensions from polygon coordinates
+            let dimensions = '';
+            if (v.coords && v.coords.length >= 4) {
+              // Calculate distance between first two corners (width) and between corner 0 and corner 3 (length)
+              const toRad = (deg: number) => deg * Math.PI / 180;
+              const haversine = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+                const R = 6371000; // Earth radius in meters
+                const dLat = toRad(lat2 - lat1);
+                const dLon = toRad(lon2 - lon1);
+                const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                          Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                          Math.sin(dLon/2) * Math.sin(dLon/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                return R * c;
+              };
+              const width = haversine(v.coords[0][0], v.coords[0][1], v.coords[1][0], v.coords[1][1]);
+              const length = haversine(v.coords[1][0], v.coords[1][1], v.coords[2][0], v.coords[2][1]);
+              dimensions = `${width.toFixed(1)}m × ${length.toFixed(1)}m`;
+            }
+            
+            return (
+              <Polygon
+                key={`vol-${i}`}
+                positions={v.coords}
+                pathOptions={{ color: '#8b5cf6', fillColor: '#a78bfa', fillOpacity: 0.4 }}
+              >
+                <Tooltip direction="top" offset={[0, -10]} sticky>
+                  <div className="text-xs min-w-[160px]">
+                    <div className="font-semibold text-purple-600 mb-1">{v.label}</div>
+                    <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
+                      <span className="text-gray-500">Start:</span>
+                      <span>{timeBegin}</span>
+                      <span className="text-gray-500">End:</span>
+                      <span>{timeEnd}</span>
+                      <span className="text-gray-500">Alt:</span>
+                      <span>{minAlt} - {maxAlt}</span>
+                      {dimensions && (
+                        <>
+                          <span className="text-gray-500">Size:</span>
+                          <span>{dimensions}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </Tooltip>
+              </Polygon>
+            );
+          })}
           
           {showLabels && labelLatLon && showVolumes && (
             <Marker
