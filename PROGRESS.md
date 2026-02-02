@@ -12,8 +12,8 @@
 | 4 | Flujo Autorización FAS | 7/7 | ✅ Completado |
 | 5 | Integración Geoawareness WebSocket | 21/21 | ✅ Completado |
 | 6 | Correcciones de Tema | 9/9 | ✅ Completado |
-| 7 | Mejoras Visualización y Geoawareness | 7/12 | 🔄 En progreso |
-| **TOTAL** | | **76/81** | 🔄 94% |
+| 7 | Mejoras Visualización y Geoawareness | 9/12 | 🔄 En progreso |
+| **TOTAL** | | **78/81** | 🔄 96% |
 
 ---
 
@@ -211,8 +211,8 @@
 
 | Task ID | Descripción | Estado |
 |---------|-------------|--------|
-| TASK-070 | Enhance GeozoneInfoPopup with expandable sections | ⏳ Pendiente |
-| TASK-071 | Implement collapsible/expandable UI for geozone sections | ⏳ Pendiente |
+| TASK-070 | Enhance GeozoneInfoPopup with expandable sections | ✅ Completado |
+| TASK-071 | Implement collapsible/expandable UI for geozone sections | ✅ Completado |
 
 ### 7.2 Fix Waypoint Map Modal
 
@@ -255,6 +255,7 @@
 
 | Fecha | Task ID | Descripción | Commit |
 |-------|---------|-------------|--------|
+| 2026-02-02 | TASK-070, TASK-071 | Enhance GeozoneInfoPopup with collapsible/expandable sections: General Information, Restriction Conditions, Limited Applicability, Authority Information, and Schedule with chevron icons and smooth animations | feat(geoawareness): add expandable sections to geozone popup |
 | 2026-02-02 | TASK-075 | Verify U-space identifier storage: default service area correctly uses 'VLCUspace' as identifier instead of 'uspace-default', implementation already present from TASK-045 | chore: mark TASK-075 as complete |
 | 2026-02-02 | TASK-080, TASK-081 | Add hover tooltips to 4D operation volumes showing time start/end, altitude range, and approximate dimensions | feat(uplan): add hover tooltips with volume details in U-Plan Map modal |
 | 2026-02-02 | TASK-079 | Fix View U-Plan Map button: now shows waypoints extracted from fileContent even without operationVolumes, with toggleable waypoint/volume layers and visual legend | feat(uplan): enable View U-Plan Map button for all plans with waypoints |
