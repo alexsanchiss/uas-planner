@@ -25,18 +25,19 @@ import { useUspaces, USpace } from "@/app/hooks/useUspaces";
 import { Loader2, MapPin, RefreshCw, AlertTriangle } from "lucide-react";
 
 /**
- * Calculate polygon area using Shoelace formula
- * @param boundary Array of lat/lon points
- * @returns Approximate area (used for ordering, not precise geodesic area)
+ * Calculate the approximate area of a polygon using the Shoelace formula
+ * Used for sorting polygons so smaller ones are rendered on top
  */
 function calculatePolygonArea(boundary: { latitude: number; longitude: number }[]): number {
   if (boundary.length < 3) return 0;
-
+  
   let area = 0;
-  for (let i = 0; i < boundary.length - 1; i++) {
-    const p1 = boundary[i];
-    const p2 = boundary[i + 1];
-    area += (p2.longitude - p1.longitude) * (p2.latitude + p1.latitude);
+  const n = boundary.length;
+  
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    area += boundary[i].longitude * boundary[j].latitude;
+    area -= boundary[j].longitude * boundary[i].latitude;
   }
   
   return Math.abs(area / 2);
@@ -118,6 +119,7 @@ function FitBoundsToUspaces({
 
 /**
  * Individual U-space polygon with hover and click behavior
+ * Uses bringToFront on hover to ensure the hovered polygon is always clickable
  */
 function UspacePolygon({
   uspace,
@@ -148,20 +150,16 @@ function UspacePolygon({
 
   return (
     <Polygon
-      ref={(ref) => {
-        if (ref) {
-          polygonRef.current = ref as unknown as L.Polygon;
-        }
-      }}
+      ref={polygonRef}
       positions={positions}
       pathOptions={pathOptions}
       eventHandlers={{
         click: () => onSelect(uspace),
-        mouseover: (e) => {
+        mouseover: () => {
           setIsHovered(true);
-          // Bring hovered polygon to front for better interactivity
-          if (e.target && e.target.bringToFront) {
-            e.target.bringToFront();
+          // Bring this polygon to front so it's always clickable on hover
+          if (polygonRef.current) {
+            polygonRef.current.bringToFront();
           }
         },
         mouseout: () => setIsHovered(false),
@@ -192,19 +190,6 @@ export function UspaceSelector({
   className = "",
 }: UspaceSelectorProps) {
   const { uspaces, loading, error, refetch, isRefetching } = useUspaces();
-
-  // Sort U-spaces by area - largest first so smallest render on top
-  const sortedUspaces = useMemo(() => {
-    const uspacesWithArea = uspaces.map(uspace => ({
-      uspace,
-      area: calculatePolygonArea(uspace.boundary),
-    }));
-    
-    // Sort descending by area (largest first)
-    return uspacesWithArea
-      .sort((a, b) => b.area - a.area)
-      .map(item => item.uspace);
-  }, [uspaces]);
 
   // Default center (Europe) - will be overridden by fitBounds
   const defaultCenter: [number, number] = [39.47, -0.38];
@@ -252,7 +237,7 @@ export function UspaceSelector({
   }
 
   // Empty state
-  if (sortedUspaces.length === 0) {
+  if (uspaces.length === 0) {
     return (
       <div
         className={`flex flex-col items-center justify-center h-[400px] bg-[var(--bg-secondary)] rounded-lg p-6 ${className}`}
@@ -278,7 +263,7 @@ export function UspaceSelector({
             Select a U-space
           </span>
           <span className="text-xs text-[var(--text-tertiary)]">
-            ({sortedUspaces.length} available)
+            ({uspaces.length} available)
           </span>
         </div>
       </div>
@@ -330,19 +315,21 @@ export function UspaceSelector({
 
         {/* Fit bounds to U-spaces */}
         <FitBoundsToUspaces
-          uspaces={sortedUspaces}
+          uspaces={uspaces}
           selectedUspaceId={selectedUspaceId}
         />
 
-        {/* U-space polygons - rendered largest first, smallest on top */}
-        {sortedUspaces.map((uspace) => (
-          <UspacePolygon
-            key={uspace.id}
-            uspace={uspace}
-            isSelected={uspace.id === selectedUspaceId}
-            onSelect={onSelect}
-          />
-        ))}
+        {/* U-space polygons - sorted by area (largest first) so smallest render on top */}
+        {[...uspaces]
+          .sort((a, b) => calculatePolygonArea(b.boundary) - calculatePolygonArea(a.boundary))
+          .map((uspace) => (
+            <UspacePolygon
+              key={uspace.id}
+              uspace={uspace}
+              isSelected={uspace.id === selectedUspaceId}
+              onSelect={onSelect}
+            />
+          ))}
       </MapContainer>
     </div>
   );

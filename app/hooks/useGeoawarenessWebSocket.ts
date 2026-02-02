@@ -309,6 +309,8 @@ export function useGeoawarenessWebSocket({
 
     const wsUrl = getWebSocketUrl(uspaceId)
     if (!wsUrl) {
+      console.error('[useGeoawarenessWebSocket] ❌ Cannot connect: NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP not configured')
+      console.error('[useGeoawarenessWebSocket] Add NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP to your .env file')
       const envError = new Error('NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP not configured')
       setError(envError)
       setStatus('error')
@@ -320,6 +322,8 @@ export function useGeoawarenessWebSocket({
     setStatus('connecting')
     setError(null)
 
+    console.log(`[useGeoawarenessWebSocket] Attempting connection to: ${wsUrl}`)
+
     try {
       const ws = new WebSocket(wsUrl)
       wsRef.current = ws
@@ -327,7 +331,8 @@ export function useGeoawarenessWebSocket({
       ws.onopen = () => {
         if (!mountedRef.current) return
 
-        console.log(`[useGeoawarenessWebSocket] Connected to ${uspaceId}`)
+        console.log(`[useGeoawarenessWebSocket] ✅ Connected successfully to ${uspaceId}`)
+        console.log(`[useGeoawarenessWebSocket] WebSocket URL: ${wsUrl}`)
         setStatus('connected')
         setRetryCount(0) // Reset retry count on successful connection
         setError(null)
@@ -339,13 +344,15 @@ export function useGeoawarenessWebSocket({
 
         try {
           const parsedData = JSON.parse(event.data) as GeoawarenessData
+          console.log(`[useGeoawarenessWebSocket] 📨 Received message with ${parsedData.geozones_data?.length || 0} geozones`)
           setData(parsedData)
           setLastMessageTime(Date.now())
           setError(null)
           onMessageRef.current?.(parsedData)
         } catch (parseError) {
           const err = new Error(`Failed to parse WebSocket message: ${parseError}`)
-          console.error('[useGeoawarenessWebSocket] Parse error:', parseError)
+          console.error('[useGeoawarenessWebSocket] ❌ Parse error:', parseError)
+          console.error('[useGeoawarenessWebSocket] Raw message:', event.data)
           setError(err)
           onErrorRef.current?.(err)
         }
@@ -354,7 +361,9 @@ export function useGeoawarenessWebSocket({
       ws.onerror = (event) => {
         if (!mountedRef.current) return
 
-        console.error('[useGeoawarenessWebSocket] WebSocket error:', event)
+        console.error('[useGeoawarenessWebSocket] ❌ WebSocket error occurred')
+        console.error('[useGeoawarenessWebSocket] Connection URL was:', wsUrl)
+        console.error('[useGeoawarenessWebSocket] Error event:', event)
         const err = new Error('WebSocket connection error')
         setError(err)
         setStatus('error')
@@ -364,7 +373,9 @@ export function useGeoawarenessWebSocket({
       ws.onclose = (event) => {
         if (!mountedRef.current) return
 
-        console.log(`[useGeoawarenessWebSocket] Connection closed: code=${event.code}, reason=${event.reason}`)
+        console.log(`[useGeoawarenessWebSocket] 🔌 Connection closed`)
+        console.log(`[useGeoawarenessWebSocket] Close code: ${event.code}, reason: ${event.reason || '(no reason provided)'}`)
+        console.log(`[useGeoawarenessWebSocket] Was clean close: ${event.wasClean}`)
         wsRef.current = null
         setStatus('disconnected')
         onCloseRef.current?.()
@@ -372,7 +383,8 @@ export function useGeoawarenessWebSocket({
         // Auto-reconnect with exponential backoff if not manually disconnected
         if (!manualDisconnectRef.current && enabled && retryCount < maxRetries) {
           const delay = calculateBackoffDelay(retryCount, baseDelay, maxDelay)
-          console.log(`[useGeoawarenessWebSocket] Reconnecting in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})`)
+          console.log(`[useGeoawarenessWebSocket] 🔄 Reconnecting in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})`)
+          console.log(`[useGeoawarenessWebSocket] Target URL: ws://${process.env.NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP}/ws/gas/${uspaceId}`)
           
           setRetryCount(prev => prev + 1)
           
@@ -382,7 +394,8 @@ export function useGeoawarenessWebSocket({
             }
           }, delay)
         } else if (retryCount >= maxRetries) {
-          console.warn(`[useGeoawarenessWebSocket] Max retries (${maxRetries}) reached, stopping reconnection`)
+          console.error(`[useGeoawarenessWebSocket] ❌ Max retries (${maxRetries}) reached, stopping reconnection`)
+          console.error(`[useGeoawarenessWebSocket] Check if the geoawareness service is running at: ${process.env.NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP}`)
           const maxRetryError = new Error(`Connection failed after ${maxRetries} attempts`)
           setError(maxRetryError)
           setStatus('error')
@@ -390,7 +403,8 @@ export function useGeoawarenessWebSocket({
       }
     } catch (err) {
       const connectionError = err instanceof Error ? err : new Error('Failed to create WebSocket')
-      console.error('[useGeoawarenessWebSocket] Connection error:', connectionError)
+      console.error('[useGeoawarenessWebSocket] ❌ Connection error:', connectionError)
+      console.error('[useGeoawarenessWebSocket] Attempted URL:', wsUrl)
       setError(connectionError)
       setStatus('error')
       onErrorRef.current?.(connectionError)
