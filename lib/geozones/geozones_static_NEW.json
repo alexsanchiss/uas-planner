@@ -1,0 +1,202 @@
+# RESPUESTA ESTÁTICA DEL GEO-AWARENESS SERVICE
+
+# Esta respuesta se divide en 3 bloques
+# - BLOQUE 1: 2 campos de control (con el tiempo los cambiaremos y añadiremos campos más representativos) que son el identificador del U-space y el instante en el que se envía el mensaje
+# - BLOQUE 2: Información del U-space donde volará la aeronave (usa solo los campos que creas interesantes, yo te lo envío todo porque ese es el objetivo del GEO-AWARENESS)
+# - BLOQUE 3: Listado de las geozonas asociadas al U-space de operación
+
+{
+    "uspace_identifier": "VLCUspace",
+    "timestamp": "String"
+    "uspace_data":{
+        "type": "Feature",
+        "id": 1,
+        "bbox": "List[float]",
+        "name": "String",
+        "source": "String",
+        "geometry": {
+            "type": "String",
+            "coordinates": "[[[lon1,lat1],[lon2,lat2]]]",
+            "verticalReference": {
+                "upper": "Float",
+                "upperReference": "String",
+                "lower": "Float",
+                "lowerReference": "String",
+                "uom": "String"
+            },
+        "sub_type": "String",
+        "radius": "Float"
+        },
+        "properties": {
+            "identifier": "String",
+            "country": "String",
+            "type": "String",
+            "variant": "String",
+            "region": "String",
+            "reasons": "String",
+            "otherReasonInfo": "String",
+            "regulatoryException": "String",
+            "message": "String",
+            "extendedProperties": "String",
+            "restrictionConditions": {
+                "uasClass": "List[String]",
+                "authorized": "String",
+                "uasCategory": "List[String]",
+                "uasOperationMode": "List[String]",
+                "maxNoise": "Float",
+                "specialOperation": "String",
+                "photograph": "String"
+            },
+            "zoneAuthority": {
+                "name": "String",
+                "service": "String",
+                "SiteURL": "String",
+                "email": "String",
+                "phone": "String",
+                "purpose": "String",
+                "intervalBefore": "String",
+                "contactName": "String"
+            },
+            "limitedApplicability": {
+                "startDatetime": "String - formato ISO",
+                "endDatetime": "String - formato ISO",
+                "schedule": {
+                    "day": "List[String]",
+                    "startTime": "String",
+                    "startEvent": "String",
+                    "endTime": "String",
+                    "endEvent": "String"
+                }
+            }
+        }
+    }
+    "geozones": {
+        "type": "FeatureCollection",
+        "features": [
+            {
+            "type": "Feature",
+            "id": "TBD",
+            "bbox": "TBD",
+            "name": "TBD",
+            "source": "TBD",
+            "status": "TBD",
+            "geometry": {
+                "type": "TBD",
+                "coordinates": "TBD",
+                "verticalReference": {
+                    "upper": "TBD",
+                    "upperReference": "TBD",
+                    "lower": "TBD",
+                    "lowerReference": "TBD",
+                    "uom": "TBD"
+                },
+                "subType": "TBD",
+                "radius": "TBD"
+            },
+            "properties": {
+                "identifier": "TBD",
+                "country": "TBD",
+                "type": "TBD",
+                "variant": "TBD",
+                "region": "TBD",
+                "reasons": "TBD",
+                "otherReasonInfo": "TBD",
+                "regulatoryException": "TBD",
+                "message": "TBD",
+                "extendedProperties": "TBD",
+                "restrictionConditions": {
+                    "uasClass": "TBD",
+                    "authorized": "TBD",
+                    "uasCategory": "TBD",
+                    "uasOperationMode": "TBD",
+                    "maxNoise": "TBD",
+                    "specialOperation": "TBD",
+                    "photograph": "TBD"
+                },
+                "zoneAuthority": {
+                    "name": "TBD",
+                    "service": "TBD",
+                    "SiteURL": "TBD",
+                    "email": "TBD",
+                    "phone": "TBD",
+                    "purpose": "TBD",
+                    "intervalBefore": "TBD",
+                    "contactName": "TBD"
+                },
+                "limitedApplicability": {
+                    "startDatetime": "TBD",
+                    "endDatetime": "TBD",
+                    "schedule": {
+                        "day": "TBD",
+                        "startTime": "TBD",
+                        "startEvent": "TBD",
+                        "endTime": "TBD",
+                        "endEvent": "TBD"
+                    }
+                }
+            }
+        },
+        {
+            "type": "Feature",
+            "id": "TBD",
+            "bbox": "TBD",
+            "name": "TBD",
+            "source": "TBD",
+            "status": "TBD",
+            "geometry": {
+                "type": "TBD",
+                "coordinates": "TBD",
+                "verticalReference": {
+                    "upper": "TBD",
+                    "upperReference": "TBD",
+                    "lower": "TBD",
+                    "lowerReference": "TBD",
+                    "uom": "TBD"
+                },
+                "subType": "TBD",
+                "radius": "TBD"
+            },
+            "properties": {
+                "identifier": "TBD",
+                "country": "TBD",
+                "type": "TBD",
+                "variant": "TBD",
+                "region": "TBD",
+                "reasons": "TBD",
+                "otherReasonInfo": "TBD",
+                "regulatoryException": "TBD",
+                "message": "TBD",
+                "extendedProperties": "TBD",
+                "restrictionConditions": {
+                    "uasClass": "TBD",
+                    "authorized": "TBD",
+                    "uasCategory": "TBD",
+                    "uasOperationMode": "TBD",
+                    "maxNoise": "TBD",
+                    "specialOperation": "TBD",
+                    "photograph": "TBD"
+                },
+                "zoneAuthority": {
+                    "name": "TBD",
+                    "service": "TBD",
+                    "SiteURL": "TBD",
+                    "email": "TBD",
+                    "phone": "TBD",
+                    "purpose": "TBD",
+                    "intervalBefore": "TBD",
+                    "contactName": "TBD"
+                },
+                "limitedApplicability": {
+                    "startDatetime": "TBD",
+                    "endDatetime": "TBD",
+                    "schedule": {
+                        "day": "TBD",
+                        "startTime": "TBD",
+                        "startEvent": "TBD",
+                        "endTime": "TBD",
+                        "endEvent": "TBD"
+                    }
+                }
+            }
+        }
+        ]

@@ -691,6 +691,106 @@
 
 ---
 
+## Fase 8: Refactor Geoawareness WebSocket & U-Plan Verification
+
+### 8.1 WebSocket Protocol Switch (Priority)
+
+- [ ] 🔴 **TASK-082**: Replace HTTP useGeozones with WebSocket in PlanGenerator
+  - **Archivo**: `app/components/PlanGenerator.tsx`
+  - **Descripción**: Reemplazar `useGeozones` (HTTP) con `useGeoawarenessWebSocket` para conexión real-time
+  - **Test**: La conexión WebSocket se establece correctamente al seleccionar U-space
+
+- [ ] 🔴 **TASK-083**: Replace HTTP useGeozones with WebSocket in GeoawarenessViewer
+  - **Archivo**: `app/components/flight-plans/GeoawarenessViewer.tsx`
+  - **Descripción**: Reemplazar `useGeozones` (HTTP) con `useGeoawarenessWebSocket`
+  - **Test**: Las geozonas se actualizan en tiempo real via WebSocket
+
+- [ ] 🔴 **TASK-084**: Update GeozoneData types for new format
+  - **Archivo**: `app/hooks/useGeoawarenessWebSocket.ts`
+  - **Descripción**: Actualizar interfaces para soportar el nuevo formato de geozones_static_NEW.json:
+    - Añadir campos: `uspace_data`, `verticalReference`, `sub_type`, `radius`, `restrictionConditions`, `zoneAuthority`, `limitedApplicability`
+  - **Test**: Los tipos coinciden con el nuevo esquema del servicio
+
+- [ ] 🟠 **TASK-085**: Update WebSocket message parsing for new format
+  - **Archivo**: `app/hooks/useGeoawarenessWebSocket.ts`
+  - **Descripción**: Parsear el nuevo formato con 3 bloques: uspace_identifier, uspace_data, geozones[] (FeatureCollection)
+  - **Test**: Los mensajes WebSocket se parsean correctamente
+
+### 8.2 Hybrid Fallback System
+
+- [ ] 🟠 **TASK-086**: Implement fallback to legacy geojson on WS failure
+  - **Archivo**: `app/hooks/useGeoawarenessWebSocket.ts`
+  - **Descripción**: Si WebSocket falla después de max retries, cargar datos de `geozones_dataFrame.geojson` como fallback
+  - **Test**: Cuando WS no está disponible, se muestran las geozonas legacy
+
+- [ ] 🟡 **TASK-087**: Create unified geozone normalizer function
+  - **Archivo**: `lib/geoawareness/geozone-normalizer.ts` (nuevo)
+  - **Descripción**: Función que normaliza tanto el formato nuevo como el legacy a una estructura común
+  - **Test**: Ambos formatos se normalizan correctamente
+
+### 8.3 UI/UX Improvements for Geozone Display
+
+- [ ] 🟠 **TASK-088**: Update GeozoneInfoPopup for new format fields
+  - **Archivo**: `app/components/plan-generator/GeozoneInfoPopup.tsx`
+  - **Descripción**: Mostrar todos los campos del nuevo formato:
+    - restrictionConditions (uasClass, authorized, uasCategory, maxNoise, etc.)
+    - zoneAuthority (name, service, email, phone, purpose)
+    - limitedApplicability (startDatetime, endDatetime, schedule)
+    - verticalReference (upper, lower, uom)
+  - **Test**: Toda la información de la geozona es visible en el popup
+
+- [ ] 🟡 **TASK-089**: Add WebSocket connection status indicator
+  - **Archivo**: `app/components/PlanMap.tsx`
+  - **Descripción**: Indicador visual del estado de conexión WebSocket (connecting, connected, error)
+  - **Test**: El usuario ve el estado de conexión en el mapa
+
+### 8.4 U-Plan Logic Verification
+
+- [ ] 🟠 **TASK-090**: Verify U-Plan form data persistence
+  - **Archivos**: `app/components/FlightPlansUploader.tsx`, `app/api/flightPlans/[id]/uplan/route.ts`
+  - **Descripción**: Verificar que los datos del formulario U-Plan se guardan y cargan correctamente
+  - **Test**: Los datos persisten al cerrar y reabrir el formulario
+
+- [ ] 🔴 **TASK-091**: Fix U-Plan volume generation timing
+  - **Archivo**: `app/components/PlanGenerator.tsx`
+  - **Descripción**: Los volúmenes 4D solo deben generarse DESPUÉS de procesar la trayectoria (csvResult existe). Eliminar el mensaje "U-Plan ready: X operation volumes" prematuro
+  - **Test**: Los volúmenes solo aparecen después del procesamiento de trayectoria
+
+- [ ] 🟠 **TASK-092**: Verify generateOrientedBBox follows C++ logic
+  - **Archivo**: `lib/uplan/generate_oriented_volumes.ts`
+  - **Descripción**: Comparar la lógica TypeScript con `lib/uplan-new/*.cpp` y corregir discrepancias
+  - **Test**: Los volúmenes generados coinciden con la referencia C++
+
+### 8.5 Documentation Update
+
+- [ ] 🟡 **TASK-093**: Update ICD to version 1.0.0
+  - **Archivo**: `icd.tex`
+  - **Descripción**: Actualizar ICD con:
+    - Versión 1.0.0
+    - Nueva integración WebSocket para Geoawareness (`/ws/gas/{USPACEID}`)
+    - Eliminar información obsoleta sobre HTTP polling
+    - Diagrama de arquitectura actualizado
+  - **Test**: El documento LaTeX compila sin errores
+
+- [ ] 🟡 **TASK-094**: Document new geozone data format in ICD
+  - **Archivo**: `icd.tex`
+  - **Descripción**: Documentar el nuevo esquema de datos de geozonas con todos sus campos
+  - **Test**: La documentación es completa y precisa
+
+### 8.6 Cleanup
+
+- [ ] 🟡 **TASK-095**: Remove deprecated HTTP geozone endpoint
+  - **Archivo**: `app/api/geoawareness/geozones/route.ts`
+  - **Descripción**: Mover a /deprecated o eliminar ya que solo se usará WebSocket
+  - **Test**: El sistema funciona sin el endpoint HTTP
+
+- [ ] 🟢 **TASK-096**: Remove unused useGeozones HTTP hook
+  - **Archivo**: `app/hooks/useGeozones.ts`
+  - **Descripción**: Eliminar el hook HTTP tras migrar a WebSocket (mover a /deprecated si se requiere fallback)
+  - **Test**: No hay referencias a useGeozones en el código
+
+---
+
 ## Dependencias entre Tareas
 
 ```
@@ -731,6 +831,14 @@ FASE 7 (Mejoras Visualización)
 ├── TASK-075 (U-space identifier fix)
 ├── TASK-076..077 (Geoawareness timeline)
 └── TASK-078..081 (U-Plan volumes 4D)
+
+FASE 8 (Geoawareness WebSocket Refactor)
+├── TASK-082..085 (WebSocket protocol switch) ──┐
+├── TASK-086..087 (Hybrid fallback) ←───────────┤
+├── TASK-088..089 (UI improvements) ←───────────┤
+├── TASK-090..092 (U-Plan verification) ────────┤
+├── TASK-093..094 (ICD documentation) ←─────────┤
+└── TASK-095..096 (Cleanup) ←───────────────────┘
 ```
 
 ---
@@ -746,9 +854,8 @@ FASE 7 (Mejoras Visualización)
 | 5 | 21 | 🟠 ALTO | 12-16h |
 | 6 | 9 | 🟡 MEDIO | 2-3h |
 | 7 | 12 | 🟠 ALTO | 10-14h |
-| **TOTAL** | **81** | - | **45-63h** |
-
----
+| 8 | 15 | 🔴 CRÍTICO | 12-16h |
+| **TOTAL** | **96** | - | **57-79h** |
 
 ## Comandos de Verificación
 
