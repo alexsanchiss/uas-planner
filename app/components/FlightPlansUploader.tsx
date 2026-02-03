@@ -385,9 +385,12 @@ export function FlightPlansUploader() {
     
     console.log('[FlightPlansUploader] View Trajectory clicked:', {
       requestedPlanId: planId,
+      requestedPlanIdType: typeof planId,
       foundPlan: plan?.id,
+      foundPlanIdType: typeof plan?.id,
       planName: plan?.customName,
-      csvResultId: plan?.csvResult
+      csvResultFlag: plan?.csvResult,
+      allPlanIds: flightPlans.map(p => ({ id: p.id, type: typeof p.id }))
     })
     
     if (!plan?.csvResult) {
@@ -396,9 +399,12 @@ export function FlightPlansUploader() {
     }
 
     // Open trajectory map viewer with the correct planId
+    const planIdToUse = String(plan.id)
+    console.log('[FlightPlansUploader] Opening trajectory viewer with planId:', planIdToUse)
+    
     setTrajectoryViewer({
       open: true,
-      planId: String(plan.id), // Ensure string type
+      planId: planIdToUse,
       planName: plan.customName,
     })
   }, [flightPlans, toast])
@@ -1173,6 +1179,7 @@ export function FlightPlansUploader() {
       {/* TASK-219: Trajectory map viewer - replaces CSV download */}
       {trajectoryViewer.open && trajectoryViewer.planId && (
         <TrajectoryMapViewer
+          key={trajectoryViewer.planId}
           planId={trajectoryViewer.planId}
           planName={trajectoryViewer.planName}
           onClose={() => setTrajectoryViewer({ open: false, planId: null, planName: '' })}
@@ -1314,6 +1321,7 @@ export function FlightPlansUploader() {
       >
         <div className="h-[70vh] -mx-6 -mb-6">
           <GeoawarenessViewer
+            key={geoawarenessModal.planId}
             planId={geoawarenessModal.planId}
             planName={geoawarenessModal.planName}
             uspaceId={geoawarenessModal.uspaceId}
