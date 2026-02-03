@@ -167,11 +167,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log(`[Geozones API] 📋 Fetching geozones for U-space: ${uspaceId}`);
-    console.log(`[Geozones API] ⚠️  This is a DEPRECATED fallback endpoint`);
-    console.log(`[Geozones API] ℹ️  The geoawareness service ONLY works via WebSocket: ws://{IP}/ws/gas/{uspaceId}`);
-    console.log(`[Geozones API] ℹ️  HTTP protocol (geozones_searcher_by_volumes) is NO LONGER SUPPORTED`);
-    console.log(`[Geozones API] 📋 Returning fallback geozones directly (no HTTP call attempted)`);
+    console.log(`[Geozones API] � Fallback endpoint called for: ${uspaceId}`);
 
     // CRITICAL: DO NOT attempt HTTP connection to the geoawareness service
     // The service ONLY works via WebSocket at ws://{IP}/ws/gas/{uspaceId}

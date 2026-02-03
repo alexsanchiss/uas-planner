@@ -628,11 +628,15 @@ export function useGeoawarenessWebSocket({
   const connect = useCallback(() => {
     // Don't connect if disabled or no uspaceId
     if (!enabled || !uspaceId) {
+      console.log(`[useGeoawarenessWebSocket] ⚙️ Connect skipped - enabled: ${enabled}, uspaceId: ${uspaceId}`)
       return
     }
 
+    console.log(`[useGeoawarenessWebSocket] 🔌 Starting connection process for U-Space: ${uspaceId}`)
+
     // Close existing connection
     if (wsRef.current) {
+      console.log(`[useGeoawarenessWebSocket] 🔄 Closing existing connection before reconnecting`)
       wsRef.current.close()
       wsRef.current = null
     }
@@ -658,7 +662,8 @@ export function useGeoawarenessWebSocket({
     setStatus('connecting')
     setError(null)
 
-    console.log(`[useGeoawarenessWebSocket] Attempting connection to: ${wsUrl}`)
+    console.log(`[useGeoawarenessWebSocket] 🚀 Attempting connection to: ${wsUrl}`)
+    console.log(`[useGeoawarenessWebSocket] 📊 Retry count: ${retryCount}`)
 
     try {
       const ws = new WebSocket(wsUrl)
@@ -804,16 +809,20 @@ export function useGeoawarenessWebSocket({
 
   // Connect when uspaceId changes or enabled state changes
   useEffect(() => {
+    console.log(`[useGeoawarenessWebSocket] 🔧 Effect triggered - enabled: ${enabled}, uspaceId: ${uspaceId}`)
     mountedRef.current = true
 
     if (enabled && uspaceId) {
+      console.log(`[useGeoawarenessWebSocket] ✅ Conditions met, calling connect()`)
       connect()
     } else {
+      console.log(`[useGeoawarenessWebSocket] ⏸️  Not connecting (enabled: ${enabled}, uspaceId: ${uspaceId})`)
       closeConnection()
       setStatus('disconnected')
     }
 
     return () => {
+      console.log(`[useGeoawarenessWebSocket] 🧹 Cleanup - unmounting or deps changed`)
       mountedRef.current = false
       closeConnection()
     }
