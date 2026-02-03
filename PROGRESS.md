@@ -13,8 +13,8 @@
 | 5 | Integración Geoawareness WebSocket | 21/21 | ✅ Completado |
 | 6 | Correcciones de Tema | 9/9 | ✅ Completado |
 | 7 | Mejoras Visualización y Geoawareness | 12/12 | ✅ Completado |
-| 8 | Refactor Geoawareness WS & U-Plan | 5/15 | 🔄 En progreso |
-| **TOTAL** | | **86/96** | 🔄 90% |
+| 8 | Refactor Geoawareness WS & U-Plan | 6/15 | 🔄 En progreso |
+| **TOTAL** | | **87/96** | 🔄 91% |
 
 ---
 
@@ -281,7 +281,7 @@
 
 | Task ID | Descripción | Estado |
 |---------|-------------|--------|
-| TASK-090 | Verify U-Plan form data persistence | ⏳ Pendiente |
+| TASK-090 | Verify U-Plan form data persistence | ✅ Completado |
 | TASK-091 | Fix U-Plan volume generation timing | ✅ Completado |
 | TASK-092 | Verify generateOrientedBBox follows C++ logic | ⏳ Pendiente |
 
@@ -305,6 +305,7 @@
 
 | Fecha | Task ID | Descripción | Commit |
 |-------|---------|-------------|--------|
+| 2026-02-03 | TASK-090 | Fix U-Plan form data persistence: merge form data with existing U-Plan when saving draft or submitting to FAS to preserve auto-generated fields (operationVolumes, takeoffLocation, landingLocation, gcsLocation) | fix(uplan): preserve auto-generated fields when saving form data |
 | 2026-02-03 | TASK-091 | Fix U-Plan volume generation timing: change "U-Plan ready" to "U-Plan preview" with purple styling to clarify volumes are estimated based on waypoint positions, final calculation happens after trajectory processing | fix(uplan): clarify volume preview is estimated before trajectory processing |
 | 2026-02-03 | TASK-085 | Add normalizeGeoawarenessMessage function to parse new 3-block WebSocket format: extracts geozones.features to populate legacy geozones_data array, maintains backward compatibility with existing components | feat(geoawareness): parse new 3-block WebSocket message format |
 | 2026-02-03 | TASK-084 | Update GeozoneData types for new geoawareness format: add VerticalReference, RestrictionConditions, ZoneAuthority, LimitedApplicability interfaces; restructure GeoawarenessData with 3 blocks (control fields, uspace_data, geozones FeatureCollection); maintain legacy compatibility | feat(geoawareness): update types for new WebSocket message format |
