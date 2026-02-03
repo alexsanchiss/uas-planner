@@ -417,7 +417,7 @@ export default function PlanGenerator() {
       const uplanJson = generateJSON(volumeData, uplanWaypoints, uplanDetails);
       
       setUplanPreview(uplanJson);
-      console.log('[PlanGenerator] U-Plan regenerated with', uplanJson.operationVolumes?.length || 0, 'operation volumes');
+      console.log('[PlanGenerator] U-Plan preview generated with', uplanJson.operationVolumes?.length || 0, 'estimated operation volumes (final count after trajectory processing)');
     } catch (error) {
       console.error('[PlanGenerator] Error generating U-Plan preview:', error);
       setUplanPreview(null);
@@ -2046,15 +2046,23 @@ export default function PlanGenerator() {
               {/* Bottom buttons (now scroll with sidebar) */}
               {generatorMode === 'manual' && (
               <div className="bg-[var(--surface-primary)] pt-4 pb-2 flex flex-col gap-2 px-6">
-                {/* TASK-078: U-Plan preview status indicator */}
+                {/* TASK-078 & TASK-091: U-Plan preview status indicator
+                    Shows preliminary operation volumes based on waypoint positions.
+                    Final volumes are calculated after trajectory processing (csvResult). */}
                 {waypoints.length >= 2 && (
-                  <div className={`p-2 rounded-md border text-xs ${
-                    uplanGenerating 
-                      ? 'bg-blue-900/20 border-blue-500/30 text-blue-300' 
-                      : uplanPreview 
-                        ? 'bg-green-900/20 border-green-500/30 text-green-300'
-                        : 'bg-yellow-900/20 border-yellow-500/30 text-yellow-300'
-                  }`}>
+                  <div 
+                    className={`p-2 rounded-md border text-xs ${
+                      uplanGenerating 
+                        ? 'bg-blue-900/20 border-blue-500/30 text-blue-300' 
+                        : uplanPreview 
+                          ? 'bg-purple-900/20 border-purple-500/30 text-purple-300'
+                          : 'bg-yellow-900/20 border-yellow-500/30 text-yellow-300'
+                    }`}
+                    title={uplanPreview 
+                      ? "This is a preliminary preview based on estimated flight times. Final operation volumes will be calculated after trajectory processing." 
+                      : undefined
+                    }
+                  >
                     <div className="flex items-center gap-2">
                       {uplanGenerating ? (
                         <>
@@ -2062,16 +2070,17 @@ export default function PlanGenerator() {
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                           </svg>
-                          <span>Generating U-Plan...</span>
+                          <span>Generating U-Plan preview...</span>
                         </>
                       ) : uplanPreview ? (
                         <>
                           <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                           </svg>
                           <span>
-                            U-Plan ready: {uplanPreview.operationVolumes?.length || 0} operation volumes
+                            U-Plan preview: ~{uplanPreview.operationVolumes?.length || 0} volumes
                           </span>
+                          <span className="text-purple-400/70 text-[10px]">(estimated)</span>
                         </>
                       ) : (
                         <>
