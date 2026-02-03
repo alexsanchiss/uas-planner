@@ -13,8 +13,8 @@
 | 5 | Integración Geoawareness WebSocket | 21/21 | ✅ Completado |
 | 6 | Correcciones de Tema | 9/9 | ✅ Completado |
 | 7 | Mejoras Visualización y Geoawareness | 12/12 | ✅ Completado |
-| 8 | Refactor Geoawareness WS & U-Plan | 7/15 | 🔄 En progreso |
-| **TOTAL** | | **88/96** | 🔄 92% |
+| 8 | Refactor Geoawareness WS & U-Plan | 8/15 | 🔄 En progreso |
+| **TOTAL** | | **89/96** | 🔄 93% |
 
 ---
 
@@ -274,7 +274,7 @@
 
 | Task ID | Descripción | Estado |
 |---------|-------------|--------|
-| TASK-088 | Update GeozoneInfoPopup for new format fields | ⏳ Pendiente |
+| TASK-088 | Update GeozoneInfoPopup for new format fields | ✅ Completado |
 | TASK-089 | Add WebSocket connection status indicator | ✅ Completado |
 
 ### 8.4 U-Plan Logic Verification
@@ -305,6 +305,7 @@
 
 | Fecha | Task ID | Descripción | Commit |
 |-------|---------|-------------|--------|
+| 2026-02-03 | TASK-088 | Update GeozoneInfoPopup for new WebSocket format: handle restrictionConditions, zoneAuthority, limitedApplicability as objects (not JSON strings), add verticalReference altitude limits section, support both new field names (startDatetime, specialOperation, contactName, SiteURL) and legacy names, add intervalBefore field | feat(geoawareness): support new WebSocket format in GeozoneInfoPopup |
 | 2026-02-03 | TASK-089 | Add WebSocket connection status indicator to PlanMap: visual dot (green/yellow/red/gray) with status text (Live/Connecting/Error/Offline), click to reconnect on error/disconnected, tooltip with detailed status | feat(geoawareness): add WebSocket connection status indicator |
 | 2026-02-03 | TASK-090 | Fix U-Plan form data persistence: merge form data with existing U-Plan when saving draft or submitting to FAS to preserve auto-generated fields (operationVolumes, takeoffLocation, landingLocation, gcsLocation) | fix(uplan): preserve auto-generated fields when saving form data |
 | 2026-02-03 | TASK-091 | Fix U-Plan volume generation timing: change "U-Plan ready" to "U-Plan preview" with purple styling to clarify volumes are estimated based on waypoint positions, final calculation happens after trajectory processing | fix(uplan): clarify volume preview is estimated before trajectory processing |
