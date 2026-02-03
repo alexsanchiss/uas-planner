@@ -13,8 +13,8 @@
 | 5 | Integración Geoawareness WebSocket | 21/21 | ✅ Completado |
 | 6 | Correcciones de Tema | 9/9 | ✅ Completado |
 | 7 | Mejoras Visualización y Geoawareness | 12/12 | ✅ Completado |
-| 8 | Refactor Geoawareness WS & U-Plan | 13/15 | 🔄 En progreso |
-| **TOTAL** | | **94/96** | 🔄 98% |
+| 8 | Refactor Geoawareness WS & U-Plan | 15/15 | ✅ Completado |
+| **TOTAL** | | **96/96** | ✅ 100% |
 
 ---
 
@@ -289,8 +289,8 @@
 
 | Task ID | Descripción | Estado |
 |---------|-------------|--------|
-| TASK-093 | Update ICD to version 1.0.0 | ⏳ Pendiente |
-| TASK-094 | Document new geozone data format in ICD | ⏳ Pendiente |
+| TASK-093 | Update ICD to version 1.0.0 | ✅ Completado |
+| TASK-094 | Document new geozone data format in ICD | ✅ Completado |
 
 ### 8.6 Cleanup
 
@@ -305,6 +305,7 @@
 
 | Fecha | Task ID | Descripción | Commit |
 |-------|---------|-------------|--------|
+| 2026-02-03 | TASK-093, TASK-094 | Update ICD to version 1.0.0: document WebSocket integration for Geoawareness (/ws/gas/{USPACEID}), new 3-block message format, geozone data structure with restrictionConditions/zoneAuthority/limitedApplicability, deprecate HTTP polling, add fallback system documentation | docs(icd): update to v1.0.0 with WebSocket geoawareness integration |
 | 2026-02-03 | TASK-096 | Move deprecated useGeozones HTTP hook to app/hooks/deprecated/: add deprecation notice with migration guide, update endpoint path to use /api/deprecated/geoawareness-geozones | refactor(hooks): move deprecated useGeozones HTTP hook to deprecated folder |
 | 2026-02-03 | TASK-095 | Move deprecated HTTP geozone endpoint to /api/deprecated/geoawareness-geozones: update fallback path in useGeoawarenessWebSocket, add deprecation notice, clean up old folder | refactor(api): move deprecated geozone HTTP endpoint to deprecated folder |
 | 2026-02-03 | TASK-092 | Fix compressWaypoints to match C++ logic: skip first waypoint, start from index 1 and step by compressionFactor (matching MATLAB wp(2:compression_factor:end,:)), ensure last waypoint is always included if not already sampled | fix(uplan): align compressWaypoints with C++ reference implementation |
