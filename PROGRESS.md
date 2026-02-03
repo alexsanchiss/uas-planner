@@ -13,8 +13,8 @@
 | 5 | Integración Geoawareness WebSocket | 21/21 | ✅ Completado |
 | 6 | Correcciones de Tema | 9/9 | ✅ Completado |
 | 7 | Mejoras Visualización y Geoawareness | 12/12 | ✅ Completado |
-| 8 | Refactor Geoawareness WS & U-Plan | 12/15 | 🔄 En progreso |
-| **TOTAL** | | **93/96** | 🔄 97% |
+| 8 | Refactor Geoawareness WS & U-Plan | 13/15 | 🔄 En progreso |
+| **TOTAL** | | **94/96** | 🔄 98% |
 
 ---
 
@@ -297,7 +297,7 @@
 | Task ID | Descripción | Estado |
 |---------|-------------|--------|
 | TASK-095 | Remove deprecated HTTP geozone endpoint | ✅ Completado |
-| TASK-096 | Remove unused useGeozones HTTP hook | ⏳ Pendiente |
+| TASK-096 | Remove unused useGeozones HTTP hook | ✅ Completado |
 
 ---
 
@@ -305,6 +305,7 @@
 
 | Fecha | Task ID | Descripción | Commit |
 |-------|---------|-------------|--------|
+| 2026-02-03 | TASK-096 | Move deprecated useGeozones HTTP hook to app/hooks/deprecated/: add deprecation notice with migration guide, update endpoint path to use /api/deprecated/geoawareness-geozones | refactor(hooks): move deprecated useGeozones HTTP hook to deprecated folder |
 | 2026-02-03 | TASK-095 | Move deprecated HTTP geozone endpoint to /api/deprecated/geoawareness-geozones: update fallback path in useGeoawarenessWebSocket, add deprecation notice, clean up old folder | refactor(api): move deprecated geozone HTTP endpoint to deprecated folder |
 | 2026-02-03 | TASK-092 | Fix compressWaypoints to match C++ logic: skip first waypoint, start from index 1 and step by compressionFactor (matching MATLAB wp(2:compression_factor:end,:)), ensure last waypoint is always included if not already sampled | fix(uplan): align compressWaypoints with C++ reference implementation |
 | 2026-02-03 | TASK-086, TASK-087 | Implement hybrid fallback system: create unified geozone normalizer (lib/geoawareness/geozone-normalizer.ts) supporting both WebSocket and legacy formats; add automatic fallback to HTTP API when WebSocket fails after max retries; return usingFallback and loadingFallback states from hook | feat(geoawareness): add fallback to HTTP API when WebSocket fails |

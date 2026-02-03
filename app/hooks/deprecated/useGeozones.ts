@@ -1,4 +1,28 @@
 /**
+ * @deprecated This hook is deprecated as of 2026-02-03
+ * 
+ * DEPRECATION NOTICE:
+ * ==================
+ * This hook has been superseded by useGeoawarenessWebSocket which uses WebSocket
+ * for real-time geozone data streaming. The WebSocket hook also includes built-in
+ * fallback to HTTP API when the WebSocket connection fails.
+ * 
+ * Migration guide:
+ * ----------------
+ * Replace:
+ *   import { useGeozones } from '@/app/hooks/useGeozones'
+ *   const { geozones, loading, error } = useGeozones({ uspaceId })
+ * 
+ * With:
+ *   import { useGeoawarenessWebSocket } from '@/app/hooks/useGeoawarenessWebSocket'
+ *   const { data, status, error, usingFallback } = useGeoawarenessWebSocket({ uspaceId })
+ *   const geozones = data?.geozones_data || []
+ *   const loading = status === 'connecting'
+ * 
+ * This file is kept for reference and potential fallback use only.
+ * 
+ * ==================
+ * Original description:
  * useGeozones Hook - Geozone data fetching via HTTP API
  * 
  * Fetches geozone data for a selected U-space using a regular HTTP API call
@@ -6,7 +30,7 @@
  * is unavailable.
  * 
  * Features:
- * - Fetches geozones from /api/geoawareness/geozones endpoint
+ * - Fetches geozones from /api/deprecated/geoawareness-geozones endpoint (moved from /api/geoawareness/geozones)
  * - Automatic fallback to hardcoded Valencia geozones on error
  * - Loading and error state tracking
  * - Refetch capability
@@ -286,7 +310,7 @@ export function useGeozones({
     console.log(`[useGeozones] Fetching geozones for U-space: ${uspaceId}`);
 
     try {
-      const response = await axios.get('/api/geoawareness/geozones', {
+      const response = await axios.get('/api/deprecated/geoawareness-geozones', {
         params: { uspaceId },
         timeout: 15000,
       });
