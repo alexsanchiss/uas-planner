@@ -337,7 +337,7 @@ export function FlightPlanCard({
         isDragging
           ? 'opacity-50 border-dashed border-blue-400 dark:border-blue-500 bg-blue-50/50 dark:bg-blue-900/30 scale-95'
           : isSelected
-            ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-500 ring-offset-2 ring-offset-white dark:ring-offset-gray-900'
+            ? 'border-blue-500 dark:border-blue-400 bg-[var(--surface-secondary)] ring-2 ring-blue-500 ring-offset-2 ring-offset-[var(--bg-primary)]'
             : 'border-gray-200 dark:border-gray-700 bg-[var(--surface-primary)] hover:shadow-md hover:border-blue-300 dark:hover:border-blue-600'
       } ${draggable && !isEditing ? 'cursor-grab active:cursor-grabbing' : ''}`}
       onClick={handleCardClick}

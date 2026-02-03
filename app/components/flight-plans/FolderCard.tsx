@@ -280,7 +280,7 @@ export function FolderCard({
     <div 
       className={`rounded-lg border bg-[var(--surface-primary)] shadow-sm transition-all ${className} ${
         isDragOver
-          ? 'border-blue-500 dark:border-blue-400 border-2 bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-500/30'
+          ? 'border-blue-500 dark:border-blue-400 border-2 bg-[var(--surface-secondary)] ring-2 ring-blue-500/30'
           : 'border-[var(--border-primary)]'
       }`}
       onDragOver={handleDragOver}
@@ -292,7 +292,7 @@ export function FolderCard({
       <div
         className={`flex items-center gap-2 sm:gap-3 p-3 sm:p-4 cursor-pointer transition-colors ${
           isDragOver
-            ? 'bg-blue-100 dark:bg-blue-800/30'
+            ? 'bg-[var(--surface-tertiary)]'
             : 'hover:bg-[var(--bg-hover)]'
         }`}
         onClick={handleToggle}

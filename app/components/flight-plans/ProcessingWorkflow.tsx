@@ -191,21 +191,21 @@ export function ProcessingWorkflow({
         }
       case 'current':
         return {
-          circle: 'bg-blue-500 text-white border-blue-500 ring-2 ring-blue-300 ring-offset-2 ring-offset-white dark:ring-offset-gray-900',
+          circle: 'bg-blue-500 text-white border-blue-500 ring-2 ring-blue-300 ring-offset-2 ring-offset-[var(--surface-primary)]',
           label: 'text-blue-700 dark:text-blue-400 font-semibold',
           description: 'text-blue-600 dark:text-blue-500',
           connector: 'bg-gray-300 dark:bg-gray-600',
         }
       case 'processing':
         return {
-          circle: 'bg-amber-500 text-white border-amber-500 ring-2 ring-amber-300 ring-offset-2 ring-offset-white dark:ring-offset-gray-900 animate-pulse',
+          circle: 'bg-amber-500 text-white border-amber-500 ring-2 ring-amber-300 ring-offset-2 ring-offset-[var(--surface-primary)] animate-pulse',
           label: 'text-amber-700 dark:text-amber-400 font-semibold',
           description: 'text-amber-600 dark:text-amber-500',
           connector: 'bg-gray-300 dark:bg-gray-600',
         }
       case 'error':
         return {
-          circle: 'bg-red-500 text-white border-red-500 ring-2 ring-red-300 ring-offset-2 ring-offset-white dark:ring-offset-gray-900',
+          circle: 'bg-red-500 text-white border-red-500 ring-2 ring-red-300 ring-offset-2 ring-offset-[var(--surface-primary)]',
           label: 'text-red-700 dark:text-red-400 font-semibold',
           description: 'text-red-600 dark:text-red-500',
           connector: 'bg-gray-300 dark:bg-gray-600',
