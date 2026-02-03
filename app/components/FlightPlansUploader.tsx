@@ -23,6 +23,7 @@ import dynamic from 'next/dynamic'
 import { useAuth } from '../hooks/useAuth'
 import { useFlightPlans, type FlightPlan as FlightPlanData } from '../hooks/useFlightPlans'
 import { useFolders } from '../hooks/useFolders'
+import { useVolumeRegeneration } from '../hooks/useVolumeRegeneration'
 import {
   FolderList,
   FlightPlanCard,
@@ -149,6 +150,9 @@ export function FlightPlansUploader() {
     deleteFolder,
     refresh: refreshFolders,
   } = useFolders()
+
+ // Auto-regenerate missing operation volumes every 30 seconds
+  const volumeRegenStatus = useVolumeRegeneration(!!user)
 
   // UI State
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null)
@@ -376,16 +380,25 @@ export function FlightPlansUploader() {
 
   // TASK-219: Open trajectory map viewer instead of downloading CSV
   const handleDownloadPlan = useCallback((planId: string) => {
-    const plan = flightPlans.find(p => String(p.id) === planId)
+    // Normalize both IDs to strings for comparison
+    const plan = flightPlans.find(p => String(p.id) === String(planId))
+    
+    console.log('[FlightPlansUploader] View Trajectory clicked:', {
+      requestedPlanId: planId,
+      foundPlan: plan?.id,
+      planName: plan?.customName,
+      csvResultId: plan?.csvResult
+    })
+    
     if (!plan?.csvResult) {
       toast.warning('No trajectory available to view.')
       return
     }
 
-    // Open trajectory map viewer
+    // Open trajectory map viewer with the correct planId
     setTrajectoryViewer({
       open: true,
-      planId,
+      planId: String(plan.id), // Ensure string type
       planName: plan.customName,
     })
   }, [flightPlans, toast])

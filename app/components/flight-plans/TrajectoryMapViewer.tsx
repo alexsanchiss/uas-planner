@@ -240,6 +240,8 @@ export function TrajectoryMapViewer({ planId, planName, onClose, className = '' 
       setLoading(true)
       setError(null)
 
+      console.log('[TrajectoryMapViewer] Fetching trajectory for planId:', planId)
+
       try {
         const token = localStorage.getItem('authToken')
         const headers: Record<string, string> = {}
@@ -260,12 +262,21 @@ export function TrajectoryMapViewer({ planId, planName, onClose, className = '' 
         const plan = await planRes.json()
         // csvResult is a number ID, not an object
         const csvResultId = plan.csvResult
+        
+        console.log('[TrajectoryMapViewer] Found plan:', {
+          planId: plan.id,
+          planName: plan.customName,
+          csvResultId,
+          status: plan.status
+        })
+        
         if (!csvResultId) {
           setError(createTrajectoryError('NO_CSV_RESULT'))
           return
         }
 
         // Fetch the CSV content using query param
+        console.log('[TrajectoryMapViewer] Fetching CSV with id:', csvResultId)
         const csvRes = await fetch(`/api/csvResult?id=${csvResultId}`, { headers })
         if (!csvRes.ok) {
           if (csvRes.status === 404) {
