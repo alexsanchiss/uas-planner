@@ -2,10 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * @deprecated This endpoint is deprecated and kept only as a fallback for useGeoawarenessWebSocket.
- * The primary method for fetching geozones is via WebSocket at /ws/gas/{uspaceId}.
- * This endpoint may be removed in a future version.
+ * 
+ * CRITICAL: The geoawareness service ONLY works via WebSocket at ws://{IP}/ws/gas/{uspaceId}
+ * HTTP protocol (geozones_searcher_by_volumes) is NO LONGER SUPPORTED and returns 404.
+ * 
+ * This endpoint now returns fallback geozones directly without attempting any HTTP connection
+ * to the geoawareness service. It provides static test data for Valencia area.
+ * 
+ * The primary connection method is WebSocket via useGeoawarenessWebSocket hook.
+ * This fallback endpoint is only called when WebSocket connection fails after max retries.
  * 
  * TASK-095: Moved from /api/geoawareness/geozones to /api/deprecated/geoawareness-geozones
+ * Updated: Removed HTTP calls to defunct geozones_searcher_by_volumes endpoint
  */
 
 /**
@@ -159,84 +167,24 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log(`[Geozones API] Fetching geozones for U-space: ${uspaceId}`);
+    console.log(`[Geozones API] 📋 Fetching geozones for U-space: ${uspaceId}`);
+    console.log(`[Geozones API] ⚠️  This is a DEPRECATED fallback endpoint`);
+    console.log(`[Geozones API] ℹ️  The geoawareness service ONLY works via WebSocket: ws://{IP}/ws/gas/{uspaceId}`);
+    console.log(`[Geozones API] ℹ️  HTTP protocol (geozones_searcher_by_volumes) is NO LONGER SUPPORTED`);
+    console.log(`[Geozones API] 📋 Returning fallback geozones directly (no HTTP call attempted)`);
 
-    // Use NEXT_PUBLIC_ variable as unified geoawareness service IP
-    const serviceIp = process.env.NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP;
-    const endpoint = process.env.GEOAWARENESS_ENDPOINT || 'geozones_searcher_by_volumes';
-
-    if (!serviceIp) {
-      console.warn('[Geozones API] NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP not configured, using fallback data');
-      return NextResponse.json({
-        success: true,
-        geozones: FALLBACK_GEOZONES,
-        count: FALLBACK_GEOZONES.length,
-        fallback: true,
-        message: 'Using fallback geozones - service not configured',
-      });
-    }
-
-    // Try to fetch from the geoawareness service
-    // The service expects a POST request with the U-space ID
-    const serviceUrl = `http://${serviceIp}/geozones_searcher_by_volumes/${uspaceId}`;
+    // CRITICAL: DO NOT attempt HTTP connection to the geoawareness service
+    // The service ONLY works via WebSocket at ws://{IP}/ws/gas/{uspaceId}
+    // HTTP endpoint geozones_searcher_by_volumes is completely deprecated and non-functional
     
-    console.log(`[Geozones API] Attempting to fetch from: ${serviceUrl}`);
-
-    try {
-      const response = await fetch(serviceUrl, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-        },
-        signal: AbortSignal.timeout(10000),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`[Geozones API] Service error: ${response.status} - ${errorText}`);
-        throw new Error(`Service returned ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log(`[Geozones API] ✅ Received response from service`);
-
-      // The service may return data in different formats, normalize it
-      let geozones: GeozoneData[] = [];
-      
-      if (Array.isArray(data)) {
-        geozones = data;
-      } else if (data.geozones_data && Array.isArray(data.geozones_data)) {
-        geozones = data.geozones_data;
-      } else if (data.features && Array.isArray(data.features)) {
-        // GeoJSON format
-        geozones = data.features.map((feature: { properties?: { identifier?: string }; geometry: GeozoneGeometry }) => ({
-          uas_geozones_identifier: feature.properties?.identifier || `geozone-${Math.random().toString(36).substr(2, 9)}`,
-          geometry: feature.geometry,
-          properties: feature.properties || {},
-        }));
-      }
-
-      console.log(`[Geozones API] ✅ Returning ${geozones.length} geozones`);
-
-      return NextResponse.json({
-        success: true,
-        geozones,
-        count: geozones.length,
-        fallback: false,
-      });
-
-    } catch (fetchError) {
-      console.error('[Geozones API] ❌ Failed to connect to geoawareness service:', fetchError);
-      console.log('[Geozones API] 📋 Returning fallback geozones');
-      
-      return NextResponse.json({
-        success: true,
-        geozones: FALLBACK_GEOZONES,
-        count: FALLBACK_GEOZONES.length,
-        fallback: true,
-        message: 'Using fallback geozones - service unavailable',
-      });
-    }
+    // Return fallback geozones immediately
+    return NextResponse.json({
+      success: true,
+      geozones: FALLBACK_GEOZONES,
+      count: FALLBACK_GEOZONES.length,
+      fallback: true,
+      message: 'Using fallback geozones - geoawareness service only accessible via WebSocket (ws://IP/ws/gas/uspaceId)',
+    });
 
   } catch (error) {
     console.error('[Geozones API] Internal error:', error);
