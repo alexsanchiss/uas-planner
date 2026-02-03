@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -H 0.0.0.0 -p ${PORT:-3000}",
+    "dev": "next dev -H 0.0.0.0",
     "build": "next build",
-    "start": "next start -p ${PORT:-3000}",
+    "start": "next start",
     "lint": "next lint",
     "test": "jest",
     "test:watch": "jest --watch",
