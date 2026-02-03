@@ -313,7 +313,7 @@ export interface UseGeoawarenessWebSocketOptions {
   enabled?: boolean
   /** Whether to fall back to HTTP API when WebSocket fails (default: true) */
   enableFallback?: boolean
-  /** Custom fallback API endpoint (default: '/api/geoawareness/geozones') */
+  /** Custom fallback API endpoint (default: '/api/deprecated/geoawareness-geozones') */
   fallbackEndpoint?: string
 }
 
@@ -516,7 +516,7 @@ export function useGeoawarenessWebSocket({
   maxDelay = 16000,
   enabled = true,
   enableFallback = true,
-  fallbackEndpoint = '/api/geoawareness/geozones',
+  fallbackEndpoint = '/api/deprecated/geoawareness-geozones',
 }: UseGeoawarenessWebSocketOptions): UseGeoawarenessWebSocketReturn {
   const [status, setStatus] = useState<WebSocketStatus>('disconnected')
   const [data, setData] = useState<GeoawarenessData | null>(null)
