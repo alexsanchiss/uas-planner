@@ -326,19 +326,24 @@ export default function PlanGenerator() {
   } = useGeoawarenessWebSocket({
     uspaceId: selectedUspace?.id || null,
     enabled: !!selectedUspace,
+    enableFallback: false, // Disable fallback to not use deprecated endpoint
   });
   
   // Derive legacy-compatible variables from WebSocket data
   const geozonesData = geozonesWsData?.geozones_data || [];
   const geozonesLoading = geozonesStatus === 'connecting';
-  const geozonesFallback = false; // WebSocket does not use fallback
+  const geozonesFallback = false; // Fallback disabled to prevent deprecated usage
 
   // Log geozone status
   useEffect(() => {
-    if (selectedUspace && !geozonesLoading) {
-      console.log(`[PlanGenerator] Geozones loaded: ${geozonesData.length} zones${geozonesFallback ? ' (fallback data)' : ''}`);
+    if (selectedUspace) {
+      if (geozonesError) {
+        console.error(`[PlanGenerator] Geoawareness error for ${selectedUspace.id}:`, geozonesError.message);
+      } else if (!geozonesLoading) {
+        console.log(`[PlanGenerator] Geozones loaded: ${geozonesData.length} zones for ${selectedUspace.id}`);
+      }
     }
-  }, [selectedUspace, geozonesData.length, geozonesLoading, geozonesFallback]);
+  }, [selectedUspace, geozonesData.length, geozonesLoading, geozonesError]);
   
   // TASK-052: Geozone visibility toggle state
   const [geozonesVisible, setGeozonesVisible] = useState<boolean>(true);

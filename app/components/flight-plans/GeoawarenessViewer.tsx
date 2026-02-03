@@ -482,7 +482,7 @@ export function GeoawarenessViewer({
   return (
     <div
       className={`relative bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] overflow-hidden ${className}`}
-      style={{ minHeight: '400px' }}
+      style={{ minHeight: '400px', height: '100%' }}
     >
       {/* Loading overlay (TASK-058) */}
       {isLoading && (

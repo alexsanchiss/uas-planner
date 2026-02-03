@@ -819,7 +819,7 @@ export function FlightPlansUploader() {
 
       {/* Selected plan panel - shows actions for the selected plan */}
       {selectedPlan && (
-        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 p-6 fade-in-up">
+        <div className="bg-[var(--surface-secondary)] rounded-lg border border-[var(--border-primary)] p-6 fade-in-up">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100">
               Selected plan: {selectedPlan.name}

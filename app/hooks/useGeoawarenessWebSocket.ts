@@ -645,11 +645,19 @@ export function useGeoawarenessWebSocket({
 
     const wsUrl = getWebSocketUrl(uspaceId)
     if (!wsUrl) {
-      console.error('[WS] NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP not configured')
-      const envError = new Error('NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP not configured')
+      console.error('[WS] Geoawareness service not configured (NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP missing)')
+      const envError = new Error('Geoawareness service not configured. Please set NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP environment variable')
       setError(envError)
       setStatus('error')
       onErrorRef.current?.(envError)
+      
+      // TASK-086: Only trigger fallback if enabled - but log warning about deprecated usage
+      if (enableFallback && !fallbackLoadedRef.current) {
+        console.warn('[WS] Using deprecated HTTP fallback due to missing WebSocket configuration')
+        fetchFallbackData()
+      } else {
+        console.log('[WS] Fallback disabled - no geoawareness data will be loaded')
+      }
       return
     }
 
