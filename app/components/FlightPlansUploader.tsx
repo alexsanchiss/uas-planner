@@ -446,60 +446,43 @@ export function FlightPlansUploader() {
 
   // Handle geoawareness service call
   const handleGeoawareness = useCallback(async (planId: string) => {
-    const logPrefix = '[Check Geoawareness]';
-    console.log(`${logPrefix} ═══════════════════════════════════════════════════`);
-    console.log(`${logPrefix} 🚀 Starting geoawareness check for plan ID: ${planId}`);
+    const logPrefix = '[Geoawareness]';
     
     const plan = flightPlans.find(p => String(p.id) === planId)
     if (!plan) {
-      console.error(`${logPrefix} ❌ Plan not found in local state`);
+      console.error(`${logPrefix} Plan not found`);
       return
     }
 
-    console.log(`${logPrefix} 📋 Plan: "${plan.customName}"`);
-    console.log(`${logPrefix} 📊 Status: ${plan.status}`);
-    console.log(`${logPrefix} 📦 Has U-Plan: ${!!plan.uplan}`);
-    console.log(`${logPrefix} 🗺️  Has CSV: ${!!plan.csvResult}`);
-
     if (plan.status !== 'procesado') {
-      console.warn(`${logPrefix} ⚠️  Plan status is not 'procesado', cannot check geoawareness`);
       toast.warning('The plan must be processed before checking geoawareness.')
       return
     }
 
     if (!plan.uplan) {
-      console.error(`${logPrefix} ❌ Plan has no U-Plan data`);
       toast.warning('U-Plan data not available. Process the plan first.')
       return
     }
 
-    console.log(`${logPrefix} ✅ Plan validation passed`);
-    console.log(`${logPrefix} 🔍 Extracting U-Space identifier from geoawarenessData...`);
+    console.log(`${logPrefix} Checking plan: ${plan.customName}`);
 
     // TASK-076: Extract uspace_identifier for WebSocket connection
     let uspaceId: string | null = null
     try {
       const geoData = plan.geoawarenessData
-      console.log(`${logPrefix} 📄 GeoawarenessData type: ${typeof geoData}`);
-      console.log(`${logPrefix} 📄 GeoawarenessData content:`, JSON.stringify(geoData, null, 2));
-      
       if (geoData && typeof geoData === 'object' && 'uspace_identifier' in geoData) {
         uspaceId = (geoData as { uspace_identifier: string }).uspace_identifier
-        console.log(`${logPrefix} ✅ Extracted U-Space ID: "${uspaceId}"`);
-      } else {
-        console.warn(`${logPrefix} ⚠️  No uspace_identifier found in geoawarenessData`);
       }
     } catch (error) {
-      console.error(`${logPrefix} ❌ Error parsing geoawarenessData:`, error);
+      console.error(`${logPrefix} Error parsing geoawarenessData:`, error);
     }
 
     if (!uspaceId) {
-      console.error(`${logPrefix} ❌ Cannot proceed without U-Space identifier`);
       toast.error('This plan has no U-Space identifier. Was it created with a U-Space selected?')
       return
     }
 
-    console.log(`${logPrefix} 🔄 Calling validation API endpoint...`);
+    console.log(`${logPrefix} U-Space: ${uspaceId}, calling API...`);
     addLoadingPlan('geoawareness', planId)
     
     try {
@@ -511,34 +494,19 @@ export function FlightPlansUploader() {
         },
       })
 
-      console.log(`${logPrefix} 📡 API Response status: ${response.status} ${response.statusText}`);
-
       if (!response.ok) {
         const error = await response.json()
-        console.error(`${logPrefix} ❌ API returned error:`, error);
         throw new Error(error.error || 'Error calling geoawareness service')
       }
 
       const data = await response.json()
-      console.log(`${logPrefix} ✅ API validation successful:`, data);
-      console.log(`${logPrefix} 🌐 WebSocket URL provided: ${data.wsUrl}`);
-      console.log(`${logPrefix} 📦 Operation volumes: ${data.operationVolumesCount}`);
+      console.log(`${logPrefix} Validated. Opening modal with WS: ${data.wsUrl}`);
       
       await refreshPlans()
       
-      toast.success('Opening geoawareness viewer. Connecting to WebSocket for real-time data...')
+      toast.success('Opening geoawareness viewer...')
 
-      console.log(`${logPrefix} 🎭 Opening GeoawarenessViewer modal...`);
-      console.log(`${logPrefix} ═══════════════════════════════════════════════════`);
-      console.log(`${logPrefix} 📍 Plan ID: ${planId}`);
-      console.log(`${logPrefix} 📍 Plan Name: ${plan.customName}`);
-      console.log(`${logPrefix} 📍 U-Space ID: ${uspaceId}`);
-      console.log(`${logPrefix} 💡 GeoawarenessViewer will connect via WebSocket`);
-      console.log(`${logPrefix} 💡 Watch for [useGeoawarenessWebSocket] logs below`);
-      console.log(`${logPrefix} ═══════════════════════════════════════════════════`);
-
-      // TASK-076: Open geoawareness viewer modal with trajectory overlay
-      // This will trigger the WebSocket connection via useGeoawarenessWebSocket
+      // Open geoawareness viewer modal - this triggers WebSocket connection
       setGeoawarenessModal({
         open: true,
         planId: planId,
@@ -546,8 +514,7 @@ export function FlightPlansUploader() {
         uspaceId: uspaceId,
       })
     } catch (error) {
-      console.error(`${logPrefix} ❌ Error during geoawareness check:`, error)
-      console.error(`${logPrefix} ═══════════════════════════════════════════════════`);
+      console.error(`${logPrefix} Error:`, error)
       toast.error(error instanceof Error ? error.message : 'Error checking geoawareness.', {
         onRetry: () => handleGeoawareness(planId),
       })
