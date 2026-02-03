@@ -25,6 +25,7 @@ export function useVolumeRegeneration(enabled: boolean = true) {
     errors: []
   })
   
+  const [isPaused, setIsPaused] = useState(true) // New state to control pause functionality
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const isCheckingRef = useRef(false)
 
@@ -38,7 +39,10 @@ export function useVolumeRegeneration(enabled: boolean = true) {
     }
 
     async function checkAndRegenerateVolumes() {
-      // Prevent concurrent checks
+      if (isPaused) {
+        return
+      }
+
       if (isCheckingRef.current) {
         console.log('[VolumeRegeneration] Check already in progress, skipping...')
         return
@@ -109,11 +113,11 @@ export function useVolumeRegeneration(enabled: boolean = true) {
       }
     }
 
-    // Run immediately on mount
     checkAndRegenerateVolumes()
 
-    // Then run every 30 seconds
-    intervalRef.current = setInterval(checkAndRegenerateVolumes, 30000)
+    intervalRef.current = setInterval(() => {
+      checkAndRegenerateVolumes()
+    }, 30000)
 
     return () => {
       if (intervalRef.current) {
@@ -121,7 +125,7 @@ export function useVolumeRegeneration(enabled: boolean = true) {
         intervalRef.current = null
       }
     }
-  }, [enabled])
+  }, [enabled, isPaused])
 
-  return status
+  return { status, setIsPaused } // Expose setIsPaused to toggle pause state
 }
