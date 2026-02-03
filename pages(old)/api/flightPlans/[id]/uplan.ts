@@ -91,9 +91,14 @@ export default async function handler(
         .status(400)
         .json({ error: "Faltan datos necesarios (scheduledAt)" });
     }
-    // 2. Obtener el csvResult
+    if (!flightPlan.csvResult) {
+      return res
+        .status(400)
+        .json({ error: "No CSV result associated with this flight plan" });
+    }
+    // 2. Obtener el csvResult usando el ID del campo csvResult
     const csvResult = await prisma.csvResult.findUnique({
-      where: { id: Number(id) },
+      where: { id: flightPlan.csvResult },
     });
     if (!csvResult || !csvResult.csvResult) {
       return res.status(404).json({ error: "CSV no encontrado" });

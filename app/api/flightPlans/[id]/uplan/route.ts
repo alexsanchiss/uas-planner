@@ -118,9 +118,16 @@ export async function POST(
       );
     }
 
-    // 2. Get the CSV result
+    if (!flightPlan.csvResult) {
+      return NextResponse.json(
+        { error: 'No CSV result associated with this flight plan' },
+        { status: 400 }
+      );
+    }
+
+    // 2. Get the CSV result using the csvResult ID from the flight plan
     const csvResult = await prisma.csvResult.findUnique({
-      where: { id },
+      where: { id: flightPlan.csvResult },
     });
 
     if (!csvResult) {
