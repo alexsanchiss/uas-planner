@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
+ * @deprecated This endpoint is deprecated and kept only as a fallback for useGeoawarenessWebSocket.
+ * The primary method for fetching geozones is via WebSocket at /ws/gas/{uspaceId}.
+ * This endpoint may be removed in a future version.
+ * 
+ * TASK-095: Moved from /api/geoawareness/geozones to /api/deprecated/geoawareness-geozones
+ */
+
+/**
  * Geozone geometry structure
  */
 interface GeozoneGeometry {

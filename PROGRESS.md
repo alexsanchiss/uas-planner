@@ -13,8 +13,8 @@
 | 5 | Integración Geoawareness WebSocket | 21/21 | ✅ Completado |
 | 6 | Correcciones de Tema | 9/9 | ✅ Completado |
 | 7 | Mejoras Visualización y Geoawareness | 12/12 | ✅ Completado |
-| 8 | Refactor Geoawareness WS & U-Plan | 11/15 | 🔄 En progreso |
-| **TOTAL** | | **92/96** | 🔄 96% |
+| 8 | Refactor Geoawareness WS & U-Plan | 12/15 | 🔄 En progreso |
+| **TOTAL** | | **93/96** | 🔄 97% |
 
 ---
 
@@ -296,7 +296,7 @@
 
 | Task ID | Descripción | Estado |
 |---------|-------------|--------|
-| TASK-095 | Remove deprecated HTTP geozone endpoint | ⏳ Pendiente |
+| TASK-095 | Remove deprecated HTTP geozone endpoint | ✅ Completado |
 | TASK-096 | Remove unused useGeozones HTTP hook | ⏳ Pendiente |
 
 ---
@@ -305,6 +305,7 @@
 
 | Fecha | Task ID | Descripción | Commit |
 |-------|---------|-------------|--------|
+| 2026-02-03 | TASK-095 | Move deprecated HTTP geozone endpoint to /api/deprecated/geoawareness-geozones: update fallback path in useGeoawarenessWebSocket, add deprecation notice, clean up old folder | refactor(api): move deprecated geozone HTTP endpoint to deprecated folder |
 | 2026-02-03 | TASK-092 | Fix compressWaypoints to match C++ logic: skip first waypoint, start from index 1 and step by compressionFactor (matching MATLAB wp(2:compression_factor:end,:)), ensure last waypoint is always included if not already sampled | fix(uplan): align compressWaypoints with C++ reference implementation |
 | 2026-02-03 | TASK-086, TASK-087 | Implement hybrid fallback system: create unified geozone normalizer (lib/geoawareness/geozone-normalizer.ts) supporting both WebSocket and legacy formats; add automatic fallback to HTTP API when WebSocket fails after max retries; return usingFallback and loadingFallback states from hook | feat(geoawareness): add fallback to HTTP API when WebSocket fails |
 | 2026-02-03 | TASK-088 | Update GeozoneInfoPopup for new WebSocket format: handle restrictionConditions, zoneAuthority, limitedApplicability as objects (not JSON strings), add verticalReference altitude limits section, support both new field names (startDatetime, specialOperation, contactName, SiteURL) and legacy names, add intervalBefore field | feat(geoawareness): support new WebSocket format in GeozoneInfoPopup |
