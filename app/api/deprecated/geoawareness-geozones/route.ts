@@ -178,7 +178,7 @@ export async function GET(request: NextRequest) {
 
     // Try to fetch from the geoawareness service
     // The service expects a POST request with the U-space ID
-    const serviceUrl = `http://${serviceIp}/geozones_by_uspace/${uspaceId}`;
+    const serviceUrl = `http://${serviceIp}/geozones_searcher_by_volumes/${uspaceId}`;
     
     console.log(`[Geozones API] Attempting to fetch from: ${serviceUrl}`);
 
