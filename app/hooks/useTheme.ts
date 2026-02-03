@@ -28,7 +28,8 @@ function getSystemPreference(): Theme {
 }
 
 /**
- * Get the stored theme preference or fall back to system preference
+ * Get the stored theme preference or fall back to dark (default)
+ * NOTE: We default to dark theme, NOT system preference
  */
 function getStoredTheme(): Theme {
   if (typeof window === "undefined") return "dark";
@@ -38,8 +39,8 @@ function getStoredTheme(): Theme {
     return stored;
   }
   
-  // Fall back to system preference
-  return getSystemPreference();
+  // Default to dark theme (NOT system preference)
+  return "dark";
 }
 
 /**
@@ -82,25 +83,8 @@ export function useTheme() {
     setMounted(true);
   }, []);
 
-  // Listen for system preference changes
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: light)");
-    
-    const handleChange = (e: MediaQueryListEvent) => {
-      // Only update if user hasn't explicitly set a preference
-      const stored = localStorage.getItem(THEME_STORAGE_KEY);
-      if (!stored) {
-        const newTheme = e.matches ? "light" : "dark";
-        setThemeState(newTheme);
-        applyTheme(newTheme, true);
-      }
-    };
-    
-    mediaQuery.addEventListener("change", handleChange);
-    return () => mediaQuery.removeEventListener("change", handleChange);
-  }, []);
+  // NOTE: We no longer listen for system preference changes
+  // The theme is controlled by user selection only, defaulting to dark
 
   // Listen for storage changes (cross-tab sync)
   useEffect(() => {

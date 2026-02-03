@@ -11,6 +11,7 @@ import { Modal } from "./components/ui/modal";
 
 /**
  * Initialize theme before React hydration to prevent flash
+ * NOTE: Default is dark theme, NOT system preference
  */
 function initializeTheme() {
   if (typeof window === "undefined") return;
@@ -18,14 +19,9 @@ function initializeTheme() {
   const stored = localStorage.getItem("uas-planner-theme");
   if (stored === "light") {
     document.documentElement.setAttribute("data-theme", "light");
-  } else if (stored === "dark") {
-    document.documentElement.removeAttribute("data-theme");
   } else {
-    // Check system preference
-    const preferLight = window.matchMedia("(prefers-color-scheme: light)").matches;
-    if (preferLight) {
-      document.documentElement.setAttribute("data-theme", "light");
-    }
+    // Default to dark theme (do NOT check system preference)
+    document.documentElement.removeAttribute("data-theme");
   }
 }
 

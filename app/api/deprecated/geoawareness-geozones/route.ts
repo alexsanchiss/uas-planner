@@ -161,11 +161,12 @@ export async function GET(request: NextRequest) {
 
     console.log(`[Geozones API] Fetching geozones for U-space: ${uspaceId}`);
 
-    const serviceIp = process.env.GEOAWARENESS_SERVICE_IP;
+    // Use NEXT_PUBLIC_ variable as unified geoawareness service IP
+    const serviceIp = process.env.NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP;
     const endpoint = process.env.GEOAWARENESS_ENDPOINT || 'geozones_searcher_by_volumes';
 
     if (!serviceIp) {
-      console.warn('[Geozones API] GEOAWARENESS_SERVICE_IP not configured, using fallback data');
+      console.warn('[Geozones API] NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP not configured, using fallback data');
       return NextResponse.json({
         success: true,
         geozones: FALLBACK_GEOZONES,
