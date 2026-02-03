@@ -96,9 +96,11 @@ export default async function handler(
         .status(400)
         .json({ error: "No CSV result associated with this flight plan" });
     }
-    // 2. Obtener el csvResult usando el ID del campo csvResult
+    // 2. Obtener el csvResult (relación 1:1 por mismo ID)
+    // Nota: flightPlan.csvResult es solo un booleano, no un ID
+    // La tabla csvResult usa el mismo ID que flightPlan (flightPlan.id = csvResult.id)
     const csvResult = await prisma.csvResult.findUnique({
-      where: { id: flightPlan.csvResult },
+      where: { id: Number(id) },
     });
     if (!csvResult || !csvResult.csvResult) {
       return res.status(404).json({ error: "CSV no encontrado" });

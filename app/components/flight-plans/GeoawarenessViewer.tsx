@@ -283,24 +283,26 @@ export function GeoawarenessViewer({
         }
         
         const plan = await planRes.json()
-        const csvResultId = plan.csvResult
+        // csvResult is a boolean flag (0 or 1), not an ID
+        // The csvResult table uses the same ID as flightPlan (1:1 relationship)
+        const hasCsvResult = plan.csvResult
         
         console.log('[GeoawarenessViewer] Found plan:', {
           planId: plan.id,
           planName: plan.customName,
-          csvResultId,
+          hasCsvResult,
           status: plan.status
         })
         
-        if (!csvResultId) {
+        if (!hasCsvResult) {
           // No trajectory data yet - not necessarily an error
           setTrajectory([])
           return
         }
 
-        // Fetch the CSV content
-        console.log('[GeoawarenessViewer] Fetching CSV with id:', csvResultId)
-        const csvRes = await fetch(`/api/csvResult?id=${csvResultId}`, { headers })
+        // Fetch the CSV content using the plan's ID (csvResult has same ID)
+        console.log('[GeoawarenessViewer] Fetching CSV with id:', plan.id)
+        const csvRes = await fetch(`/api/csvResult?id=${plan.id}`, { headers })
         if (!csvRes.ok) {
           if (csvRes.status === 404) {
             setTrajectoryError('Trajectory data not found')

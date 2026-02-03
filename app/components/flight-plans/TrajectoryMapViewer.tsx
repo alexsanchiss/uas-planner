@@ -260,24 +260,25 @@ export function TrajectoryMapViewer({ planId, planName, onClose, className = '' 
         }
         
         const plan = await planRes.json()
-        // csvResult is a number ID, not an object
-        const csvResultId = plan.csvResult
+        // csvResult is a boolean flag (0 or 1), not an ID
+        // The csvResult table uses the same ID as flightPlan (1:1 relationship)
+        const hasCsvResult = plan.csvResult
         
         console.log('[TrajectoryMapViewer] Found plan:', {
           planId: plan.id,
           planName: plan.customName,
-          csvResultId,
+          hasCsvResult,
           status: plan.status
         })
         
-        if (!csvResultId) {
+        if (!hasCsvResult) {
           setError(createTrajectoryError('NO_CSV_RESULT'))
           return
         }
 
-        // Fetch the CSV content using query param
-        console.log('[TrajectoryMapViewer] Fetching CSV with id:', csvResultId)
-        const csvRes = await fetch(`/api/csvResult?id=${csvResultId}`, { headers })
+        // Fetch the CSV content using the plan's ID (csvResult has same ID)
+        console.log('[TrajectoryMapViewer] Fetching CSV with id:', plan.id)
+        const csvRes = await fetch(`/api/csvResult?id=${plan.id}`, { headers })
         if (!csvRes.ok) {
           if (csvRes.status === 404) {
             setError(createTrajectoryError('CSV_RECORD_DELETED'))
