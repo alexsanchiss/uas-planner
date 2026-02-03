@@ -228,6 +228,8 @@ export function GeoawarenessViewer({
   } = useGeoawarenessWebSocket({
     uspaceId: uspaceId || null,
     enabled: !!uspaceId && !!planId,
+    enableFallback: false,  // Disable fallback to force WebSocket only
+    maxRetries: 10,  // More retries to debug connection
   })
 
   // Derive legacy-compatible variables from WebSocket data
