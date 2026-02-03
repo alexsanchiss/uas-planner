@@ -65,8 +65,7 @@ const UspaceSelector = dynamic(() => import('./plan-generator/UspaceSelector'), 
 import ScanPatternGeneratorV2 from './plan-generator/ScanPatternGeneratorV2';
 import { Point, ScanWaypoint } from '@/lib/scan-generator';
 import { useUspaces, USpace } from '@/app/hooks/useUspaces';
-import { useGeozones } from '@/app/hooks/useGeozones';
-import type { GeozoneData } from '@/app/hooks/useGeozones';
+import { useGeoawarenessWebSocket, type GeozoneData } from '@/app/hooks/useGeoawarenessWebSocket';
 
 // Plan generator modes
 type GeneratorMode = 'manual' | 'scan';
@@ -317,16 +316,22 @@ export default function PlanGenerator() {
   const [selectedUspace, setSelectedUspace] = useState<USpace | null>(null);
   const { getUspaceBounds, getUspaceCenter } = useUspaces();
   
-  // Fetch geozones via HTTP API when U-space is selected
+  // TASK-082: Connect to geoawareness WebSocket when U-space is selected
   const {
-    geozones: geozonesData,
-    loading: geozonesLoading,
-    usingFallback: geozonesFallback,
-    refetch: refetchGeozones,
-  } = useGeozones({
+    status: geozonesStatus,
+    data: geozonesWsData,
+    error: geozonesError,
+    isConnected: geozonesConnected,
+    reconnect: reconnectGeozones,
+  } = useGeoawarenessWebSocket({
     uspaceId: selectedUspace?.id || null,
     enabled: !!selectedUspace,
   });
+  
+  // Derive legacy-compatible variables from WebSocket data
+  const geozonesData = geozonesWsData?.geozones_data || [];
+  const geozonesLoading = geozonesStatus === 'connecting';
+  const geozonesFallback = false; // WebSocket does not use fallback
 
   // Log geozone status
   useEffect(() => {

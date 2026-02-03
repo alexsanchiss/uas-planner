@@ -13,8 +13,8 @@
 | 5 | Integración Geoawareness WebSocket | 21/21 | ✅ Completado |
 | 6 | Correcciones de Tema | 9/9 | ✅ Completado |
 | 7 | Mejoras Visualización y Geoawareness | 12/12 | ✅ Completado |
-| 8 | Refactor Geoawareness WS & U-Plan | 2/15 | 🔄 En progreso |
-| **TOTAL** | | **83/96** | 🔄 86% |
+| 8 | Refactor Geoawareness WS & U-Plan | 4/15 | 🔄 En progreso |
+| **TOTAL** | | **85/96** | 🔄 89% |
 
 ---
 
@@ -258,8 +258,8 @@
 
 | Task ID | Descripción | Estado |
 |---------|-------------|--------|
-| TASK-082 | Replace HTTP useGeozones with WebSocket in PlanGenerator | ⏳ Pendiente |
-| TASK-083 | Replace HTTP useGeozones with WebSocket in GeoawarenessViewer | ⏳ Pendiente |
+| TASK-082 | Replace HTTP useGeozones with WebSocket in PlanGenerator | ✅ Completado |
+| TASK-083 | Replace HTTP useGeozones with WebSocket in GeoawarenessViewer | ✅ Completado |
 | TASK-084 | Update GeozoneData types for new format | ✅ Completado |
 | TASK-085 | Update WebSocket message parsing for new format | ✅ Completado |
 

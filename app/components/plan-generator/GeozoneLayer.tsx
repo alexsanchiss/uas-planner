@@ -21,7 +21,7 @@
 import React, { useMemo, useState } from "react";
 import { Polygon, Tooltip } from "react-leaflet";
 import L from "leaflet";
-import type { GeozoneData } from "@/app/hooks/useGeozones";
+import type { GeozoneData } from "@/app/hooks/useGeoawarenessWebSocket";
 
 /**
  * Geozone type for styling

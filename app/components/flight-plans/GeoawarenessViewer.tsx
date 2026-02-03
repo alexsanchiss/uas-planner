@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import dynamic from 'next/dynamic'
-import { useGeozones, type GeozoneData } from '@/app/hooks/useGeozones'
+import { useGeoawarenessWebSocket, type GeozoneData } from '@/app/hooks/useGeoawarenessWebSocket'
 import L from 'leaflet'
 
 // Dynamically import Leaflet components to avoid SSR issues
@@ -218,17 +218,22 @@ export function GeoawarenessViewer({
   const animationRef = useRef<number | null>(null)
   const lastTimeRef = useRef<number>(0)
 
-  // TASK-057: Fetch geozone data via HTTP API
+  // TASK-083: Connect to geoawareness WebSocket for geozones
   const {
-    geozones: wsGeozones,
-    loading: wsLoading,
+    status: wsStatus,
+    data: wsData,
     error: wsError,
-    usingFallback,
-    refetch: reconnect,
-  } = useGeozones({
+    isConnected: wsConnected,
+    reconnect,
+  } = useGeoawarenessWebSocket({
     uspaceId: uspaceId || null,
     enabled: !!uspaceId && !!planId,
   })
+
+  // Derive legacy-compatible variables from WebSocket data
+  const wsGeozones = wsData?.geozones_data || []
+  const wsLoading = wsStatus === 'connecting'
+  const usingFallback = false // WebSocket does not use fallback
 
   // Combine fetched geozones with any externally provided ones
   const allGeozones = useMemo(() => {
@@ -240,7 +245,7 @@ export function GeoawarenessViewer({
   
   // Error state combines external + API + trajectory
   const displayError = externalError || 
-    wsError ||
+    (wsError?.message || null) ||
     trajectoryError
 
   const hasViolations = violations.length > 0
