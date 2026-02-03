@@ -327,6 +327,7 @@ export default function UplanFormModal({
   }, []);
 
   // Save draft (partial validation)
+  // TASK-090: Merge form data with existing U-Plan to preserve auto-generated fields
   const handleSaveDraft = async () => {
     setIsSavingDraft(true);
     
@@ -337,6 +338,17 @@ export default function UplanFormModal({
     }
 
     try {
+      // Merge form data with existing U-Plan to preserve auto-generated fields
+      // (operationVolumes, takeoffLocation, landingLocation, gcsLocation, etc.)
+      const existingData = (typeof existingUplan === 'object' && existingUplan !== null) 
+        ? existingUplan as Record<string, unknown>
+        : {};
+      
+      const mergedUplan = {
+        ...existingData, // Preserve auto-generated fields
+        ...formData,     // Overwrite with user edits
+      };
+
       const response = await fetch(`/api/flightPlans/${planId}`, {
         method: 'PUT',
         headers: {
@@ -344,7 +356,7 @@ export default function UplanFormModal({
           'Authorization': `Bearer ${authToken}`,
         },
         body: JSON.stringify({
-          uplan: formData,
+          uplan: mergedUplan,
         }),
       });
 
@@ -363,6 +375,7 @@ export default function UplanFormModal({
   };
 
   // Send to FAS (full validation required)
+  // TASK-090: Merge form data with existing U-Plan to preserve auto-generated fields
   const handleSubmitToFAS = async () => {
     // Clear previous errors
     setValidationErrors(null);
@@ -389,7 +402,18 @@ export default function UplanFormModal({
     setIsSubmitting(true);
 
     try {
-      // First, save the form data
+      // Merge form data with existing U-Plan to preserve auto-generated fields
+      // (operationVolumes, takeoffLocation, landingLocation, gcsLocation, etc.)
+      const existingData = (typeof existingUplan === 'object' && existingUplan !== null) 
+        ? existingUplan as Record<string, unknown>
+        : {};
+      
+      const mergedUplan = {
+        ...existingData, // Preserve auto-generated fields
+        ...formData,     // Overwrite with user edits
+      };
+
+      // First, save the form data (merged with existing)
       const saveResponse = await fetch(`/api/flightPlans/${planId}`, {
         method: 'PUT',
         headers: {
@@ -397,7 +421,7 @@ export default function UplanFormModal({
           'Authorization': `Bearer ${authToken}`,
         },
         body: JSON.stringify({
-          uplan: formData,
+          uplan: mergedUplan,
         }),
       });
 
