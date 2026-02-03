@@ -3,14 +3,21 @@
  * TASK-050: Popup component for displaying detailed geozone information
  * TASK-070: Enhanced with expandable sections for all geozone information
  * TASK-071: Collapsible/expandable UI with chevron icons and smooth animations
+ * TASK-088: Updated for new WebSocket format fields:
+ *   - restrictionConditions: uasClass, authorized, uasCategory, uasOperationMode, maxNoise, specialOperation, photograph
+ *   - zoneAuthority: name, service, SiteURL, email, phone, purpose, intervalBefore, contactName
+ *   - limitedApplicability: startDatetime, endDatetime, schedule (day, startTime, startEvent, endTime, endEvent)
+ *   - geometry.verticalReference: upper, upperReference, lower, lowerReference, uom
+ *   - Handles both object properties (new) and JSON string properties (legacy)
  *
  * Features:
  * - Displays geozone identifier and name prominently
- * - Expandable sections: General Info, Restrictions, Limited Applicability, Authority, Schedule
+ * - Expandable sections: General Info, Altitude Limits, Restrictions, Limited Applicability, Authority, Schedule
  * - Chevron icons with rotation animation for collapse/expand
  * - Smooth height transitions for section content
  * - Respects theme settings
  * - Styled to match geozones_map.html popup design
+ * - Backward compatible with legacy data formats
  */
 
 "use client";
@@ -70,15 +77,28 @@ function getTypeColor(type?: string): string {
 }
 
 /**
- * Parse JSON string safely
+ * Parse JSON string safely, or return the object directly if already parsed
+ * TASK-088: Updated to handle both JSON strings (legacy) and direct objects (new format)
  */
-function safeParseJSON<T>(str: string | undefined | null): T | null {
-  if (!str || str === "null") return null;
-  try {
-    return JSON.parse(str) as T;
-  } catch {
-    return null;
+function safeParseOrReturn<T>(value: unknown): T | null {
+  if (value === null || value === undefined) return null;
+  
+  // If it's already an object, return it directly
+  if (typeof value === 'object') {
+    return value as T;
   }
+  
+  // If it's a string, try to parse it as JSON
+  if (typeof value === 'string') {
+    if (value === '' || value === 'null' || value === 'undefined') return null;
+    try {
+      return JSON.parse(value) as T;
+    } catch {
+      return null;
+    }
+  }
+  
+  return null;
 }
 
 /**
@@ -94,39 +114,70 @@ function formatDate(dateStr: string | undefined | null): string {
   }
 }
 
+/**
+ * TASK-088: Restriction conditions interface (matches new WebSocket format)
+ */
 interface RestrictionConditions {
   maxNoise?: number;
   uasClass?: string[];
   authorized?: string;
   photograph?: string;
   uasCategory?: string | string[];
-  specialoperation?: string;
+  specialOperation?: string; // New format uses camelCase
+  specialoperation?: string; // Legacy format
   uasOperationMode?: string | string[];
 }
 
-interface LimitedApplicability {
-  schedule?: {
-    day?: string[];
-    startTime?: string | null;
-    endTime?: string | null;
-    startEvent?: string | null;
-    endEvent?: string | null;
-  } | string;
-  startDateTime?: string;
-  endDateTime?: string;
+/**
+ * TASK-088: Schedule interface for limited applicability
+ */
+interface ApplicabilitySchedule {
+  day?: string[];
+  startTime?: string | null;
+  startEvent?: string | null;
+  endTime?: string | null;
+  endEvent?: string | null;
 }
 
+/**
+ * TASK-088: Limited applicability interface (matches new WebSocket format)
+ */
+interface LimitedApplicability {
+  schedule?: ApplicabilitySchedule | string;
+  startDateTime?: string;  // Legacy format
+  endDateTime?: string;    // Legacy format
+  startDatetime?: string;  // New format (lowercase 't')
+  endDatetime?: string;    // New format (lowercase 't')
+}
+
+/**
+ * TASK-088: Zone authority interface (matches new WebSocket format)
+ */
 interface ZoneAuthority {
   name?: string;
   email?: string;
   phone?: string;
-  siteURL?: string;
+  siteURL?: string;  // Legacy format
+  SiteURL?: string;  // New format (capital S)
   purpose?: string;
   service?: string;
-  contact?: {
+  intervalBefore?: string; // New field
+  contactName?: string;    // New field (direct, not nested)
+  contact?: {              // Legacy nested format
     contactName?: string;
     contactRole?: string;
   };
+}
+
+/**
+ * TASK-088: Vertical reference interface for altitude limits
+ */
+interface VerticalReference {
+  upper?: number;
+  upperReference?: string;
+  lower?: number;
+  lowerReference?: string;
+  uom?: string;
 }
 
 interface GeozoneInfoPopupProps {
@@ -280,39 +331,62 @@ export function GeozoneInfoPopup({ geozone, position, onClose }: GeozoneInfoPopu
   }, []);
   const { properties } = geozone;
   
-  // Parse extended properties if they exist (from geozones_map.html format)
+  // TASK-088: Parse extended properties supporting both new WebSocket format and legacy JSON strings
   const extendedProps = useMemo(() => {
     // Check if geozone has additional properties (from real data)
     const geo = geozone as GeozoneData & {
       properties: GeozoneData["properties"] & {
-        restrictionConditions?: string;
-        limitedApplicability?: string;
-        zoneAuthority?: string;
+        restrictionConditions?: RestrictionConditions | string;
+        limitedApplicability?: LimitedApplicability | string;
+        zoneAuthority?: ZoneAuthority | string;
         country?: string;
         region?: string;
         identifier?: string;
+        variant?: string;
+        reasons?: string;
+        otherReasonInfo?: string;
+        regulatoryException?: string;
+        message?: string;
+      };
+      geometry: GeozoneData["geometry"] & {
+        verticalReference?: VerticalReference;
+        subType?: string;
+        sub_type?: string;
+        radius?: number;
       };
     };
     
-    const restrictions = safeParseJSON<RestrictionConditions>(
-      geo.properties?.restrictionConditions as string
+    // Use safeParseOrReturn to handle both objects and JSON strings
+    const restrictions = safeParseOrReturn<RestrictionConditions>(
+      geo.properties?.restrictionConditions
     );
     
-    const limitedApplicability = safeParseJSON<LimitedApplicability>(
-      geo.properties?.limitedApplicability as string
+    const limitedApplicability = safeParseOrReturn<LimitedApplicability>(
+      geo.properties?.limitedApplicability
     );
     
-    const zoneAuthority = safeParseJSON<ZoneAuthority>(
-      geo.properties?.zoneAuthority as string
+    const zoneAuthority = safeParseOrReturn<ZoneAuthority>(
+      geo.properties?.zoneAuthority
     );
+    
+    // Extract verticalReference from geometry
+    const verticalReference = geo.geometry?.verticalReference || null;
     
     return {
       restrictions,
       limitedApplicability,
       zoneAuthority,
+      verticalReference,
       country: (geo.properties as Record<string, unknown>)?.country as string,
       region: (geo.properties as Record<string, unknown>)?.region as string,
       identifier: geo.uas_geozones_identifier || (geo.properties as Record<string, unknown>)?.identifier as string,
+      variant: (geo.properties as Record<string, unknown>)?.variant as string,
+      reasons: (geo.properties as Record<string, unknown>)?.reasons as string,
+      otherReasonInfo: (geo.properties as Record<string, unknown>)?.otherReasonInfo as string,
+      regulatoryException: (geo.properties as Record<string, unknown>)?.regulatoryException as string,
+      message: (geo.properties as Record<string, unknown>)?.message as string,
+      subType: geo.geometry?.subType || geo.geometry?.sub_type,
+      radius: geo.geometry?.radius,
     };
   }, [geozone]);
   
@@ -362,15 +436,61 @@ export function GeozoneInfoPopup({ geozone, position, onClose }: GeozoneInfoPopu
             {extendedProps.region && (
               <InfoRow label="Region" value={extendedProps.region} />
             )}
+            {extendedProps.variant && (
+              <InfoRow label="Variant" value={extendedProps.variant} />
+            )}
             {properties?.description && (
               <InfoRow label="Description" value={properties.description} />
+            )}
+            {extendedProps.reasons && (
+              <InfoRow label="Reasons" value={extendedProps.reasons} />
+            )}
+            {extendedProps.otherReasonInfo && (
+              <InfoRow label="Additional Info" value={extendedProps.otherReasonInfo} />
+            )}
+            {extendedProps.regulatoryException && (
+              <InfoRow label="Regulatory Exception" value={extendedProps.regulatoryException} />
+            )}
+            {extendedProps.message && (
+              <InfoRow label="Message" value={extendedProps.message} />
             )}
             {geozoneType && (
               <InfoRow label="Type" value={<TypeBadge type={geozoneType} />} />
             )}
+            {/* Geometry details */}
+            {extendedProps.subType && (
+              <InfoRow label="Sub-type" value={extendedProps.subType} />
+            )}
+            {extendedProps.radius !== undefined && (
+              <InfoRow label="Radius" value={`${extendedProps.radius} m`} />
+            )}
           </CollapsibleSection>
           
-          {/* Restriction Conditions */}
+          {/* TASK-088: Vertical Reference / Altitude Limits */}
+          {extendedProps.verticalReference && (
+            <CollapsibleSection 
+              title="Altitude Limits"
+              icon={<svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>}
+            >
+              {extendedProps.verticalReference.upper !== undefined && (
+                <InfoRow 
+                  label="Upper Limit" 
+                  value={`${extendedProps.verticalReference.upper} ${extendedProps.verticalReference.uom || 'm'} ${extendedProps.verticalReference.upperReference ? `(${extendedProps.verticalReference.upperReference})` : ''}`} 
+                />
+              )}
+              {extendedProps.verticalReference.lower !== undefined && (
+                <InfoRow 
+                  label="Lower Limit" 
+                  value={`${extendedProps.verticalReference.lower} ${extendedProps.verticalReference.uom || 'm'} ${extendedProps.verticalReference.lowerReference ? `(${extendedProps.verticalReference.lowerReference})` : ''}`} 
+                />
+              )}
+              {extendedProps.verticalReference.uom && (
+                <InfoRow label="Unit" value={extendedProps.verticalReference.uom === 'M' ? 'Meters' : extendedProps.verticalReference.uom === 'FT' ? 'Feet' : extendedProps.verticalReference.uom} />
+              )}
+            </CollapsibleSection>
+          )}
+          
+          {/* Restriction Conditions - TASK-088: Updated for new format fields */}
           {(extendedProps.restrictions || geozone.restrictions) && (
             <CollapsibleSection 
               title="Restriction Conditions"
@@ -414,10 +534,11 @@ export function GeozoneInfoPopup({ geozone, position, onClose }: GeozoneInfoPopu
                   value={`${extendedProps.restrictions.maxNoise} dB`} 
                 />
               )}
-              {extendedProps.restrictions?.specialoperation && (
+              {/* TASK-088: Handle both specialOperation (new) and specialoperation (legacy) */}
+              {(extendedProps.restrictions?.specialOperation || extendedProps.restrictions?.specialoperation) && (
                 <InfoRow 
                   label="Special Ops" 
-                  value={extendedProps.restrictions.specialoperation.replace(/_/g, " ")} 
+                  value={(extendedProps.restrictions.specialOperation || extendedProps.restrictions.specialoperation)?.replace(/_/g, " ")} 
                 />
               )}
               {extendedProps.restrictions?.photograph && (
@@ -426,58 +547,56 @@ export function GeozoneInfoPopup({ geozone, position, onClose }: GeozoneInfoPopu
                   value={extendedProps.restrictions.photograph.replace(/_/g, " ")} 
                 />
               )}
-              {/* Altitude restrictions */}
+              {/* Altitude restrictions from legacy restrictions object */}
               {geozone.restrictions && (
                 <>
-                  <InfoRow 
-                    label="Min Altitude" 
-                    value={
-                      geozone.restrictions.minAltitude !== undefined
-                        ? `${geozone.restrictions.minAltitude} ${geozone.restrictions.uomDimensions || "m"}`
-                        : "N/A"
-                    } 
-                  />
-                  <InfoRow 
-                    label="Max Altitude" 
-                    value={
-                      geozone.restrictions.maxAltitude !== undefined
-                        ? `${geozone.restrictions.maxAltitude} ${geozone.restrictions.uomDimensions || "m"}`
-                        : "N/A"
-                    } 
-                  />
+                  {geozone.restrictions.minAltitude !== undefined && (
+                    <InfoRow 
+                      label="Min Altitude" 
+                      value={`${geozone.restrictions.minAltitude} ${geozone.restrictions.uomDimensions || "m"}`} 
+                    />
+                  )}
+                  {geozone.restrictions.maxAltitude !== undefined && (
+                    <InfoRow 
+                      label="Max Altitude" 
+                      value={`${geozone.restrictions.maxAltitude} ${geozone.restrictions.uomDimensions || "m"}`} 
+                    />
+                  )}
                 </>
               )}
             </CollapsibleSection>
           )}
           
-          {/* Limited Applicability / Validity Period */}
+          {/* Limited Applicability / Validity Period - TASK-088: Updated for new format */}
           {(geozone.temporal_limits || extendedProps.limitedApplicability) && (
             <CollapsibleSection 
               title="Limited Applicability"
               icon={<svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
             >
-              {geozone.temporal_limits?.startDateTime && (
+              {/* TASK-088: Handle both startDatetime (new) and startDateTime (legacy) */}
+              {(geozone.temporal_limits?.startDateTime || 
+                extendedProps.limitedApplicability?.startDatetime || 
+                extendedProps.limitedApplicability?.startDateTime) && (
                 <InfoRow 
                   label="Start" 
-                  value={formatDate(geozone.temporal_limits.startDateTime)} 
+                  value={formatDate(
+                    geozone.temporal_limits?.startDateTime || 
+                    extendedProps.limitedApplicability?.startDatetime ||
+                    extendedProps.limitedApplicability?.startDateTime
+                  )} 
                 />
               )}
-              {geozone.temporal_limits?.endDateTime && (
+              {/* TASK-088: Handle both endDatetime (new) and endDateTime (legacy) */}
+              {(geozone.temporal_limits?.endDateTime || 
+                extendedProps.limitedApplicability?.endDatetime || 
+                extendedProps.limitedApplicability?.endDateTime) && (
                 <InfoRow 
                   label="End" 
-                  value={formatDate(geozone.temporal_limits.endDateTime)} 
-                />
-              )}
-              {extendedProps.limitedApplicability?.startDateTime && !geozone.temporal_limits?.startDateTime && (
-                <InfoRow 
-                  label="Start" 
-                  value={formatDate(extendedProps.limitedApplicability.startDateTime)} 
-                />
-              )}
-              {extendedProps.limitedApplicability?.endDateTime && !geozone.temporal_limits?.endDateTime && (
-                <InfoRow 
-                  label="End" 
-                  value={formatDate(extendedProps.limitedApplicability.endDateTime)} 
+                  value={formatDate(
+                    geozone.temporal_limits?.endDateTime || 
+                    extendedProps.limitedApplicability?.endDatetime ||
+                    extendedProps.limitedApplicability?.endDateTime
+                  )} 
                 />
               )}
               {geozone.temporal_limits?.permanentStatus && (
@@ -489,7 +608,7 @@ export function GeozoneInfoPopup({ geozone, position, onClose }: GeozoneInfoPopu
             </CollapsibleSection>
           )}
           
-          {/* Authority Information */}
+          {/* Authority Information - TASK-088: Updated for new format fields */}
           {extendedProps.zoneAuthority && (
             <CollapsibleSection 
               title="Authority Information"
@@ -507,10 +626,15 @@ export function GeozoneInfoPopup({ geozone, position, onClose }: GeozoneInfoPopu
                   value={extendedProps.zoneAuthority.service} 
                 />
               )}
-              {extendedProps.zoneAuthority.contact?.contactName && (
+              {/* TASK-088: Handle both direct contactName (new) and nested contact.contactName (legacy) */}
+              {(extendedProps.zoneAuthority.contactName || extendedProps.zoneAuthority.contact?.contactName) && (
                 <InfoRow 
                   label="Contact" 
-                  value={`${extendedProps.zoneAuthority.contact.contactName}${extendedProps.zoneAuthority.contact.contactRole ? ` (${extendedProps.zoneAuthority.contact.contactRole})` : ""}`} 
+                  value={
+                    extendedProps.zoneAuthority.contactName 
+                      ? extendedProps.zoneAuthority.contactName 
+                      : `${extendedProps.zoneAuthority.contact?.contactName}${extendedProps.zoneAuthority.contact?.contactRole ? ` (${extendedProps.zoneAuthority.contact.contactRole})` : ""}`
+                  } 
                 />
               )}
               {extendedProps.zoneAuthority.phone && (
@@ -539,16 +663,17 @@ export function GeozoneInfoPopup({ geozone, position, onClose }: GeozoneInfoPopu
                   } 
                 />
               )}
-              {extendedProps.zoneAuthority.siteURL && (
+              {/* TASK-088: Handle both SiteURL (new) and siteURL (legacy) */}
+              {(extendedProps.zoneAuthority.SiteURL || extendedProps.zoneAuthority.siteURL) && (
                 <InfoRow 
                   label="Website" 
                   value={
                     <a 
-                      href={extendedProps.zoneAuthority.siteURL}
+                      href={extendedProps.zoneAuthority.SiteURL || extendedProps.zoneAuthority.siteURL}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-blue-500 hover:underline truncate block"
-                      title={extendedProps.zoneAuthority.siteURL}
+                      title={extendedProps.zoneAuthority.SiteURL || extendedProps.zoneAuthority.siteURL}
                     >
                       Visit site →
                     </a>
@@ -559,6 +684,13 @@ export function GeozoneInfoPopup({ geozone, position, onClose }: GeozoneInfoPopu
                 <InfoRow 
                   label="Purpose" 
                   value={extendedProps.zoneAuthority.purpose} 
+                />
+              )}
+              {/* TASK-088: New field - intervalBefore */}
+              {extendedProps.zoneAuthority.intervalBefore && (
+                <InfoRow 
+                  label="Interval Before" 
+                  value={extendedProps.zoneAuthority.intervalBefore} 
                 />
               )}
             </CollapsibleSection>
@@ -623,29 +755,30 @@ export function GeozoneInfoPopup({ geozone, position, onClose }: GeozoneInfoPopu
 export function GeozoneInfoCard({ geozone, onClose }: { geozone: GeozoneData; onClose?: () => void }) {
   const { properties } = geozone;
   
-  // Parse extended properties
+  // TASK-088: Parse extended properties supporting both new WebSocket format and legacy JSON strings
   const extendedProps = useMemo(() => {
     const geo = geozone as GeozoneData & {
       properties: GeozoneData["properties"] & {
-        restrictionConditions?: string;
-        limitedApplicability?: string;
-        zoneAuthority?: string;
+        restrictionConditions?: RestrictionConditions | string;
+        limitedApplicability?: LimitedApplicability | string;
+        zoneAuthority?: ZoneAuthority | string;
         country?: string;
         region?: string;
         identifier?: string;
       };
     };
     
-    const restrictions = safeParseJSON<RestrictionConditions>(
-      geo.properties?.restrictionConditions as string
+    // Use safeParseOrReturn to handle both objects and JSON strings
+    const restrictions = safeParseOrReturn<RestrictionConditions>(
+      geo.properties?.restrictionConditions
     );
     
-    const limitedApplicability = safeParseJSON<LimitedApplicability>(
-      geo.properties?.limitedApplicability as string
+    const limitedApplicability = safeParseOrReturn<LimitedApplicability>(
+      geo.properties?.limitedApplicability
     );
     
-    const zoneAuthority = safeParseJSON<ZoneAuthority>(
-      geo.properties?.zoneAuthority as string
+    const zoneAuthority = safeParseOrReturn<ZoneAuthority>(
+      geo.properties?.zoneAuthority
     );
     
     return {
@@ -718,6 +851,13 @@ export function GeozoneInfoCard({ geozone, onClose }: { geozone: GeozoneData; on
                   value={extendedProps.restrictions.photograph.replace(/_/g, " ")} 
                 />
               )}
+              {/* TASK-088: Handle both specialOperation (new) and specialoperation (legacy) */}
+              {(extendedProps.restrictions?.specialOperation || extendedProps.restrictions?.specialoperation) && (
+                <InfoRow 
+                  label="Special Ops" 
+                  value={(extendedProps.restrictions.specialOperation || extendedProps.restrictions.specialoperation)?.replace(/_/g, " ")} 
+                />
+              )}
             </InfoSection>
           )}
         </div>
@@ -728,6 +868,10 @@ export function GeozoneInfoCard({ geozone, onClose }: { geozone: GeozoneData; on
             <InfoSection title="Contact">
               {extendedProps.zoneAuthority.name && (
                 <InfoRow label="Authority" value={extendedProps.zoneAuthority.name} />
+              )}
+              {/* TASK-088: Handle both direct contactName (new) and nested contact.contactName (legacy) */}
+              {(extendedProps.zoneAuthority.contactName || extendedProps.zoneAuthority.contact?.contactName) && (
+                <InfoRow label="Contact" value={extendedProps.zoneAuthority.contactName || extendedProps.zoneAuthority.contact?.contactName} />
               )}
               {extendedProps.zoneAuthority.phone && (
                 <InfoRow 
@@ -747,20 +891,28 @@ export function GeozoneInfoCard({ geozone, onClose }: { geozone: GeozoneData; on
           
           {(geozone.temporal_limits || extendedProps.limitedApplicability) && (
             <InfoSection title="Valid">
-              {(geozone.temporal_limits?.startDateTime || extendedProps.limitedApplicability?.startDateTime) && (
+              {/* TASK-088: Handle both startDatetime (new) and startDateTime (legacy) */}
+              {(geozone.temporal_limits?.startDateTime || 
+                extendedProps.limitedApplicability?.startDatetime || 
+                extendedProps.limitedApplicability?.startDateTime) && (
                 <InfoRow 
                   label="From" 
                   value={formatDate(
                     geozone.temporal_limits?.startDateTime || 
+                    extendedProps.limitedApplicability?.startDatetime ||
                     extendedProps.limitedApplicability?.startDateTime
                   )} 
                 />
               )}
-              {(geozone.temporal_limits?.endDateTime || extendedProps.limitedApplicability?.endDateTime) && (
+              {/* TASK-088: Handle both endDatetime (new) and endDateTime (legacy) */}
+              {(geozone.temporal_limits?.endDateTime || 
+                extendedProps.limitedApplicability?.endDatetime || 
+                extendedProps.limitedApplicability?.endDateTime) && (
                 <InfoRow 
                   label="Until" 
                   value={formatDate(
                     geozone.temporal_limits?.endDateTime || 
+                    extendedProps.limitedApplicability?.endDatetime ||
                     extendedProps.limitedApplicability?.endDateTime
                   )} 
                 />
