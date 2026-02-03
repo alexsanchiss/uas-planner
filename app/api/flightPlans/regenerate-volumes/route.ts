@@ -28,6 +28,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       where: {
         userId,
         csvResult: { not: null },
+        folderId: 107, // Only check plans in this folder
       },
     })
 
@@ -47,10 +48,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       // 1. No uplan at all
       // 2. uplan has no operationVolumes
       // 3. operationVolumes is empty array
-      return !uplanObj || 
-             !uplanObj.operationVolumes || 
-             !Array.isArray(uplanObj.operationVolumes) ||
-             uplanObj.operationVolumes.length === 0
+      // return !uplanObj || 
+      //       !uplanObj.operationVolumes || 
+      //       !Array.isArray(uplanObj.operationVolumes) ||
+      //       uplanObj.operationVolumes.length === 0
+      return 1
     })
 
     console.log(
@@ -73,14 +75,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         }
 
         if (!plan.csvResult) {
-          console.warn(`[RegenerateVolumes] Plan ${plan.id}: Missing csvResult ID, skipping`)
-          errors.push(`Plan ${plan.id} (${plan.customName}): Missing csvResult ID`)
+          console.warn(`[RegenerateVolumes] Plan ${plan.id}: Missing csvResult flag, skipping`)
+          errors.push(`Plan ${plan.id} (${plan.customName}): No CSV result available`)
           continue
         }
 
-        // Fetch the CSV data separately
+        // Fetch the CSV data (1:1 relationship via same ID)
+        // Note: plan.csvResult is just a boolean flag, not an ID
+        // The csvResult table uses the same ID as flightPlan
         const csvResultRecord = await prisma.csvResult.findUnique({
-          where: { id: plan.csvResult },
+          where: { id: plan.id },
         })
 
         if (!csvResultRecord?.csvResult) {

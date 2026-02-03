@@ -376,6 +376,22 @@ Authorization: Bearer <token>
 
 ### CSV Results (`/api/csvResult`)
 
+> **⚠️ CRITICAL: flightPlan ↔ csvResult Relationship**
+> 
+> The `csvResult` field in `flightPlan` table is a **BOOLEAN FLAG** (0 or 1), **NOT an ID**.
+> 
+> The `csvResult` table has a **1:1 relationship via the SAME ID** as `flightPlan`:
+> - If `flightPlan.id = 5` and `flightPlan.csvResult = 1`, then `csvResult.id = 5`
+> - To fetch CSV data: Use `flightPlan.id`, NOT `flightPlan.csvResult`
+> 
+> ```typescript
+> // ✅ CORRECT
+> GET /api/csvResult?id=${flightPlan.id}
+> 
+> // ❌ WRONG - csvResult is just a boolean flag!
+> GET /api/csvResult?id=${flightPlan.csvResult}
+> ```
+
 #### **GET /api/csvResult** - Get Single CSV Result
 ```typescript
 GET /api/csvResult?id=123

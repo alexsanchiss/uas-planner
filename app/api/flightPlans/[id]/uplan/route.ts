@@ -125,9 +125,11 @@ export async function POST(
       );
     }
 
-    // 2. Get the CSV result using the csvResult ID from the flight plan
+    // 2. Get the CSV result (1:1 relationship via same ID)
+    // Note: flightPlan.csvResult is a boolean flag, not an ID
+    // The csvResult table uses the same ID as flightPlan (flightPlan.id = csvResult.id)
     const csvResult = await prisma.csvResult.findUnique({
-      where: { id: flightPlan.csvResult },
+      where: { id },
     });
 
     if (!csvResult) {

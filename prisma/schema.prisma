@@ -34,7 +34,9 @@ model flightPlan {
   customName          String
   status              String
   fileContent         String
-  csvResult           Int?
+  csvResult           Int?     // IMPORTANT: This is a BOOLEAN FLAG (0 or 1), NOT an ID!
+                               // The csvResult table has a 1:1 relationship via the SAME ID
+                               // Usage: if (flightPlan.csvResult) { fetch csvResult where id = flightPlan.id }
   createdAt           DateTime @default(now())
   machineAssignedId   Int?
   userId              Int
