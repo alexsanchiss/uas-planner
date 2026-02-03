@@ -260,6 +260,8 @@ export function GeoawarenessViewer({
         return
       }
 
+      console.log('[GeoawarenessViewer] Fetching trajectory for planId:', planId)
+
       setTrajectoryLoading(true)
       setTrajectoryError(null)
 
@@ -283,6 +285,13 @@ export function GeoawarenessViewer({
         const plan = await planRes.json()
         const csvResultId = plan.csvResult
         
+        console.log('[GeoawarenessViewer] Found plan:', {
+          planId: plan.id,
+          planName: plan.customName,
+          csvResultId,
+          status: plan.status
+        })
+        
         if (!csvResultId) {
           // No trajectory data yet - not necessarily an error
           setTrajectory([])
@@ -290,6 +299,7 @@ export function GeoawarenessViewer({
         }
 
         // Fetch the CSV content
+        console.log('[GeoawarenessViewer] Fetching CSV with id:', csvResultId)
         const csvRes = await fetch(`/api/csvResult?id=${csvResultId}`, { headers })
         if (!csvRes.ok) {
           if (csvRes.status === 404) {
