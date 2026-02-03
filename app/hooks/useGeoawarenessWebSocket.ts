@@ -3,12 +3,14 @@
  * 
  * TASK-046: Hook for WebSocket connection to the geoawareness service
  * TASK-047: Implements exponential backoff reconnection strategy
+ * TASK-086: Implements fallback to legacy geozones when WebSocket fails
  * 
  * Features:
  * - Connects to ws://${NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP}/ws/gas/${uspaceId}
  * - Status tracking: connecting, connected, disconnected, error
  * - Auto-reconnection with exponential backoff (1s, 2s, 4s, 8s, 16s)
  * - Maximum retry limit (default: 5)
+ * - Fallback to HTTP API when WebSocket fails after max retries
  * - Clean unmount handling
  * - Message parsing with type safety
  */
@@ -299,6 +301,8 @@ export interface UseGeoawarenessWebSocketOptions {
   onConnect?: () => void
   /** Callback when connection is closed */
   onClose?: () => void
+  /** Callback when fallback data is loaded */
+  onFallback?: (data: GeoawarenessData) => void
   /** Maximum number of reconnection attempts (default: 5) */
   maxRetries?: number
   /** Base delay for exponential backoff in ms (default: 1000) */
@@ -307,6 +311,10 @@ export interface UseGeoawarenessWebSocketOptions {
   maxDelay?: number
   /** Whether the WebSocket should be enabled (default: true) */
   enabled?: boolean
+  /** Whether to fall back to HTTP API when WebSocket fails (default: true) */
+  enableFallback?: boolean
+  /** Custom fallback API endpoint (default: '/api/geoawareness/geozones') */
+  fallbackEndpoint?: string
 }
 
 /**
@@ -329,6 +337,10 @@ export interface UseGeoawarenessWebSocketReturn {
   isConnected: boolean
   /** Time since last successful message (ms) */
   lastMessageTime: number | null
+  /** Whether currently using fallback data */
+  usingFallback: boolean
+  /** Whether fallback data is being fetched */
+  loadingFallback: boolean
 }
 
 /**
@@ -479,14 +491,15 @@ function normalizeGeoawarenessMessage(rawData: unknown): GeoawarenessData {
  * 
  * @example
  * ```tsx
- * const { status, data, error, reconnect } = useGeoawarenessWebSocket({
+ * const { status, data, error, reconnect, usingFallback } = useGeoawarenessWebSocket({
  *   uspaceId: 'USP-ESP-BEN-01',
  *   onMessage: (data) => console.log('Received:', data.geozones_data.length, 'geozones'),
  *   onError: (error) => console.error('WebSocket error:', error),
+ *   enableFallback: true,  // Fall back to HTTP API when WS fails
  * })
  * 
  * if (status === 'connecting') return <LoadingSpinner />
- * if (status === 'error') return <ErrorMessage retry={reconnect} />
+ * if (status === 'error' && !usingFallback) return <ErrorMessage retry={reconnect} />
  * 
  * return <GeozoneViewer geozones={data?.geozones_data} />
  * ```
@@ -497,28 +510,35 @@ export function useGeoawarenessWebSocket({
   onError,
   onConnect,
   onClose,
+  onFallback,
   maxRetries = 5,
   baseDelay = 1000,
   maxDelay = 16000,
   enabled = true,
+  enableFallback = true,
+  fallbackEndpoint = '/api/geoawareness/geozones',
 }: UseGeoawarenessWebSocketOptions): UseGeoawarenessWebSocketReturn {
   const [status, setStatus] = useState<WebSocketStatus>('disconnected')
   const [data, setData] = useState<GeoawarenessData | null>(null)
   const [error, setError] = useState<Error | null>(null)
   const [retryCount, setRetryCount] = useState(0)
   const [lastMessageTime, setLastMessageTime] = useState<number | null>(null)
+  const [usingFallback, setUsingFallback] = useState(false)
+  const [loadingFallback, setLoadingFallback] = useState(false)
 
   // Refs for cleanup and reconnection management
   const wsRef = useRef<WebSocket | null>(null)
   const mountedRef = useRef(true)
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const manualDisconnectRef = useRef(false)
+  const fallbackLoadedRef = useRef(false)
 
   // Stable callback refs
   const onMessageRef = useRef(onMessage)
   const onErrorRef = useRef(onError)
   const onConnectRef = useRef(onConnect)
   const onCloseRef = useRef(onClose)
+  const onFallbackRef = useRef(onFallback)
 
   // Update callback refs
   useEffect(() => {
@@ -526,7 +546,64 @@ export function useGeoawarenessWebSocket({
     onErrorRef.current = onError
     onConnectRef.current = onConnect
     onCloseRef.current = onClose
-  }, [onMessage, onError, onConnect, onClose])
+    onFallbackRef.current = onFallback
+  }, [onMessage, onError, onConnect, onClose, onFallback])
+
+  /**
+   * Fetch fallback geozones from HTTP API
+   * TASK-086: Load legacy geozones when WebSocket fails
+   */
+  const fetchFallbackData = useCallback(async () => {
+    if (!uspaceId || fallbackLoadedRef.current || !enableFallback) {
+      return
+    }
+
+    console.log('[useGeoawarenessWebSocket] 🔄 WebSocket failed, loading fallback geozones from HTTP API...')
+    setLoadingFallback(true)
+
+    try {
+      const response = await fetch(`${fallbackEndpoint}?uspaceId=${encodeURIComponent(uspaceId)}`)
+      
+      if (!response.ok) {
+        throw new Error(`Fallback API returned ${response.status}`)
+      }
+
+      const result = await response.json()
+      
+      if (!mountedRef.current) return
+
+      // Convert fallback response to GeoawarenessData format
+      const fallbackData: GeoawarenessData = {
+        uspace_identifier: uspaceId,
+        timestamp: new Date().toISOString(),
+        geozones_data: result.geozones || [],
+        status: 'success',
+        metadata: {
+          source: 'fallback',
+          lastUpdate: new Date().toISOString(),
+        }
+      }
+
+      console.log(`[useGeoawarenessWebSocket] ✅ Fallback loaded successfully: ${fallbackData.geozones_data?.length || 0} geozones`)
+      console.log(`[useGeoawarenessWebSocket] 📋 Fallback source: ${result.fallback ? 'static data' : 'service'}`)
+
+      setData(fallbackData)
+      setUsingFallback(true)
+      setLoadingFallback(false)
+      setLastMessageTime(Date.now())
+      fallbackLoadedRef.current = true
+
+      onFallbackRef.current?.(fallbackData)
+
+    } catch (fetchError) {
+      console.error('[useGeoawarenessWebSocket] ❌ Failed to load fallback geozones:', fetchError)
+      
+      if (!mountedRef.current) return
+
+      setLoadingFallback(false)
+      // Don't update error - keep the original WebSocket error
+    }
+  }, [uspaceId, enableFallback, fallbackEndpoint])
 
   /**
    * Close any existing WebSocket connection
@@ -595,6 +672,9 @@ export function useGeoawarenessWebSocket({
         setStatus('connected')
         setRetryCount(0) // Reset retry count on successful connection
         setError(null)
+        // Reset fallback state on successful WebSocket connection
+        setUsingFallback(false)
+        fallbackLoadedRef.current = false
         onConnectRef.current?.()
       }
 
@@ -668,6 +748,12 @@ export function useGeoawarenessWebSocket({
           const maxRetryError = new Error(`Connection failed after ${maxRetries} attempts`)
           setError(maxRetryError)
           setStatus('error')
+          
+          // TASK-086: Trigger fallback to HTTP API when WebSocket fails
+          if (enableFallback && !fallbackLoadedRef.current) {
+            console.log('[useGeoawarenessWebSocket] 📋 Attempting to load fallback geozones...')
+            fetchFallbackData()
+          }
         }
       }
     } catch (err) {
@@ -678,7 +764,7 @@ export function useGeoawarenessWebSocket({
       setStatus('error')
       onErrorRef.current?.(connectionError)
     }
-  }, [uspaceId, enabled, retryCount, maxRetries, baseDelay, maxDelay])
+  }, [uspaceId, enabled, retryCount, maxRetries, baseDelay, maxDelay, enableFallback, fetchFallbackData])
 
   /**
    * Manually trigger a reconnection attempt
@@ -687,6 +773,9 @@ export function useGeoawarenessWebSocket({
     console.log('[useGeoawarenessWebSocket] Manual reconnect requested')
     setRetryCount(0) // Reset retry count for manual reconnect
     manualDisconnectRef.current = false
+    // Reset fallback state to allow fresh fallback attempt if needed
+    fallbackLoadedRef.current = false
+    setUsingFallback(false)
     closeConnection()
     
     // Wait a tick before reconnecting
@@ -706,6 +795,12 @@ export function useGeoawarenessWebSocket({
     closeConnection()
     setStatus('disconnected')
   }, [closeConnection])
+
+  // Reset fallback state when uspaceId changes
+  useEffect(() => {
+    fallbackLoadedRef.current = false
+    setUsingFallback(false)
+  }, [uspaceId])
 
   // Connect when uspaceId changes or enabled state changes
   useEffect(() => {
@@ -733,6 +828,8 @@ export function useGeoawarenessWebSocket({
     disconnect,
     isConnected: status === 'connected',
     lastMessageTime,
+    usingFallback,
+    loadingFallback,
   }
 }
 

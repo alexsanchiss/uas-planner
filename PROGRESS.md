@@ -13,8 +13,8 @@
 | 5 | Integración Geoawareness WebSocket | 21/21 | ✅ Completado |
 | 6 | Correcciones de Tema | 9/9 | ✅ Completado |
 | 7 | Mejoras Visualización y Geoawareness | 12/12 | ✅ Completado |
-| 8 | Refactor Geoawareness WS & U-Plan | 8/15 | 🔄 En progreso |
-| **TOTAL** | | **89/96** | 🔄 93% |
+| 8 | Refactor Geoawareness WS & U-Plan | 10/15 | 🔄 En progreso |
+| **TOTAL** | | **91/96** | 🔄 95% |
 
 ---
 
@@ -267,8 +267,8 @@
 
 | Task ID | Descripción | Estado |
 |---------|-------------|--------|
-| TASK-086 | Implement fallback to legacy geojson on WS failure | ⏳ Pendiente |
-| TASK-087 | Create unified geozone normalizer function | ⏳ Pendiente |
+| TASK-086 | Implement fallback to legacy geojson on WS failure | ✅ Completado |
+| TASK-087 | Create unified geozone normalizer function | ✅ Completado |
 
 ### 8.3 UI/UX Improvements
 
@@ -305,6 +305,7 @@
 
 | Fecha | Task ID | Descripción | Commit |
 |-------|---------|-------------|--------|
+| 2026-02-03 | TASK-086, TASK-087 | Implement hybrid fallback system: create unified geozone normalizer (lib/geoawareness/geozone-normalizer.ts) supporting both WebSocket and legacy formats; add automatic fallback to HTTP API when WebSocket fails after max retries; return usingFallback and loadingFallback states from hook | feat(geoawareness): add fallback to HTTP API when WebSocket fails |
 | 2026-02-03 | TASK-088 | Update GeozoneInfoPopup for new WebSocket format: handle restrictionConditions, zoneAuthority, limitedApplicability as objects (not JSON strings), add verticalReference altitude limits section, support both new field names (startDatetime, specialOperation, contactName, SiteURL) and legacy names, add intervalBefore field | feat(geoawareness): support new WebSocket format in GeozoneInfoPopup |
 | 2026-02-03 | TASK-089 | Add WebSocket connection status indicator to PlanMap: visual dot (green/yellow/red/gray) with status text (Live/Connecting/Error/Offline), click to reconnect on error/disconnected, tooltip with detailed status | feat(geoawareness): add WebSocket connection status indicator |
 | 2026-02-03 | TASK-090 | Fix U-Plan form data persistence: merge form data with existing U-Plan when saving draft or submitting to FAS to preserve auto-generated fields (operationVolumes, takeoffLocation, landingLocation, gcsLocation) | fix(uplan): preserve auto-generated fields when saving form data |
