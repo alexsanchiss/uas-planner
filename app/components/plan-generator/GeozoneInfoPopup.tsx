@@ -19,7 +19,7 @@ import React, { useMemo, useState, useCallback } from "react";
 import { Popup } from "react-leaflet";
 import L from "leaflet";
 import { ChevronDown } from "lucide-react";
-import type { GeozoneData } from "@/app/hooks/useGeozones";
+import type { GeozoneData } from "@/app/hooks/useGeoawarenessWebSocket";
 
 /**
  * Color configuration for geozone types
