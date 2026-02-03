@@ -7,7 +7,7 @@ import L from "leaflet";
 import { Point, ScanWaypoint } from "@/lib/scan-generator";
 import { GeozoneLayer } from "./plan-generator/GeozoneLayer";
 import { GeozoneInfoPopup } from "./plan-generator/GeozoneInfoPopup";
-import type { GeozoneData } from "@/app/hooks/useGeoawarenessWebSocket";
+import type { GeozoneData, WebSocketStatus } from "@/app/hooks/useGeoawarenessWebSocket";
 
 // TASK-152: Large bounds for overlay outside service area (covers the world)
 const WORLD_BOUNDS: [number, number][] = [
@@ -479,6 +479,9 @@ interface PlanMapProps {
   onGeozoneClick?: (geozone: GeozoneData, event: L.LeafletMouseEvent) => void;
   // TASK-054/056: U-space name for display
   uspaceName?: string;
+  // TASK-089: WebSocket connection status for geoawareness
+  wsStatus?: WebSocketStatus;
+  onReconnect?: () => void;
 }
 
 const PlanMap = (props: PlanMapProps) => {
@@ -606,6 +609,67 @@ const PlanMap = (props: PlanMapProps) => {
           >
             📍 {props.uspaceName}
           </div>
+        </div>
+      )}
+      
+      {/* TASK-089: WebSocket connection status indicator */}
+      {props.wsStatus && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '10px',
+            right: '10px',
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            backgroundColor: 'rgba(0, 0, 0, 0.75)',
+            padding: '6px 10px',
+            borderRadius: '6px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+            cursor: props.wsStatus === 'error' || props.wsStatus === 'disconnected' ? 'pointer' : 'default',
+          }}
+          onClick={() => {
+            if ((props.wsStatus === 'error' || props.wsStatus === 'disconnected') && props.onReconnect) {
+              props.onReconnect();
+            }
+          }}
+          title={
+            props.wsStatus === 'connected' ? 'Geoawareness service connected' :
+            props.wsStatus === 'connecting' ? 'Connecting to geoawareness service...' :
+            props.wsStatus === 'error' ? 'Connection error - Click to retry' :
+            'Disconnected - Click to reconnect'
+          }
+        >
+          <div
+            style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              backgroundColor: 
+                props.wsStatus === 'connected' ? '#22c55e' :
+                props.wsStatus === 'connecting' ? '#eab308' :
+                props.wsStatus === 'error' ? '#ef4444' :
+                '#6b7280',
+              animation: props.wsStatus === 'connecting' ? 'pulse 1.5s infinite' : 'none',
+            }}
+          />
+          <span
+            style={{
+              color: 
+                props.wsStatus === 'connected' ? '#86efac' :
+                props.wsStatus === 'connecting' ? '#fef08a' :
+                props.wsStatus === 'error' ? '#fca5a5' :
+                '#9ca3af',
+              fontSize: '11px',
+              fontWeight: 500,
+            }}
+          >
+            {props.wsStatus === 'connected' ? 'Live' :
+             props.wsStatus === 'connecting' ? 'Connecting...' :
+             props.wsStatus === 'error' ? 'Error ↻' :
+             'Offline ↻'}
+          </span>
         </div>
       )}
       

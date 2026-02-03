@@ -278,6 +278,18 @@ body {
   }
 }
 
+/* TASK-089: Generic pulse animation for status indicators */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.1);
+  }
+}
+
 /* ============================================
    TASK-176: Success Animations
    Visual feedback when operations complete

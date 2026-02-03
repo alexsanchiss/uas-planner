@@ -2137,6 +2137,9 @@ export default function PlanGenerator() {
             geozonesVisible={geozonesVisible}
             // TASK-054/056: Pass U-space name for display and error messages
             uspaceName={selectedUspace?.name}
+            // TASK-089: Pass WebSocket status for connection indicator
+            wsStatus={selectedUspace ? geozonesStatus : undefined}
+            onReconnect={reconnectGeozones}
           />
         </main>
       </div>
