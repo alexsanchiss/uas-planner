@@ -569,6 +569,12 @@ export function generateOrientedBBox(
 /**
  * Compress waypoints by taking every Nth point.
  *
+ * This function matches the C++ implementation: it starts from index 1
+ * (skipping the first waypoint) and takes every compressionFactor-th point.
+ * The last waypoint is always included if not already sampled.
+ *
+ * C++ equivalent: wp_reduced = wp(2:compression_factor:end, :) (MATLAB notation)
+ *
  * @param waypoints - Full array of waypoints
  * @param compressionFactor - Keep every Nth waypoint (default: 20)
  * @returns Compressed waypoint array
@@ -583,18 +589,17 @@ export function compressWaypoints(
 
   const result: Waypoint[] = [];
 
-  // Always include first waypoint
-  result.push(waypoints[0]);
-
-  // Sample every Nth waypoint
-  for (let i = 1; i < waypoints.length - 1; i++) {
-    if (i % compressionFactor === 0) {
-      result.push(waypoints[i]);
-    }
+  // Start from index 1 (skip first waypoint) and step by compressionFactor
+  // This matches C++ logic: for (i = 1; i < size; i += compression_factor)
+  for (let i = 1; i < waypoints.length; i += compressionFactor) {
+    result.push(waypoints[i]);
   }
 
-  // Always include last waypoint
-  result.push(waypoints[waypoints.length - 1]);
+  // Always include last waypoint if not already included
+  const lastWaypoint = waypoints[waypoints.length - 1];
+  if (result.length === 0 || result[result.length - 1].time !== lastWaypoint.time) {
+    result.push(lastWaypoint);
+  }
 
   return result;
 }

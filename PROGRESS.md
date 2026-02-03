@@ -13,8 +13,8 @@
 | 5 | Integración Geoawareness WebSocket | 21/21 | ✅ Completado |
 | 6 | Correcciones de Tema | 9/9 | ✅ Completado |
 | 7 | Mejoras Visualización y Geoawareness | 12/12 | ✅ Completado |
-| 8 | Refactor Geoawareness WS & U-Plan | 10/15 | 🔄 En progreso |
-| **TOTAL** | | **91/96** | 🔄 95% |
+| 8 | Refactor Geoawareness WS & U-Plan | 11/15 | 🔄 En progreso |
+| **TOTAL** | | **92/96** | 🔄 96% |
 
 ---
 
@@ -283,7 +283,7 @@
 |---------|-------------|--------|
 | TASK-090 | Verify U-Plan form data persistence | ✅ Completado |
 | TASK-091 | Fix U-Plan volume generation timing | ✅ Completado |
-| TASK-092 | Verify generateOrientedBBox follows C++ logic | ⏳ Pendiente |
+| TASK-092 | Verify generateOrientedBBox follows C++ logic | ✅ Completado |
 
 ### 8.5 Documentation Update
 
@@ -305,6 +305,7 @@
 
 | Fecha | Task ID | Descripción | Commit |
 |-------|---------|-------------|--------|
+| 2026-02-03 | TASK-092 | Fix compressWaypoints to match C++ logic: skip first waypoint, start from index 1 and step by compressionFactor (matching MATLAB wp(2:compression_factor:end,:)), ensure last waypoint is always included if not already sampled | fix(uplan): align compressWaypoints with C++ reference implementation |
 | 2026-02-03 | TASK-086, TASK-087 | Implement hybrid fallback system: create unified geozone normalizer (lib/geoawareness/geozone-normalizer.ts) supporting both WebSocket and legacy formats; add automatic fallback to HTTP API when WebSocket fails after max retries; return usingFallback and loadingFallback states from hook | feat(geoawareness): add fallback to HTTP API when WebSocket fails |
 | 2026-02-03 | TASK-088 | Update GeozoneInfoPopup for new WebSocket format: handle restrictionConditions, zoneAuthority, limitedApplicability as objects (not JSON strings), add verticalReference altitude limits section, support both new field names (startDatetime, specialOperation, contactName, SiteURL) and legacy names, add intervalBefore field | feat(geoawareness): support new WebSocket format in GeozoneInfoPopup |
 | 2026-02-03 | TASK-089 | Add WebSocket connection status indicator to PlanMap: visual dot (green/yellow/red/gray) with status text (Live/Connecting/Error/Offline), click to reconnect on error/disconnected, tooltip with detailed status | feat(geoawareness): add WebSocket connection status indicator |

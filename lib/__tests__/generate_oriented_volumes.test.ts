@@ -394,7 +394,9 @@ describe("generate_oriented_volumes", () => {
       expect(result).toEqual(waypoints);
     });
 
-    it("should always include first and last waypoints", () => {
+    it("should skip first waypoint and start from index 1 (C++ logic)", () => {
+      // C++ equivalent: wp_reduced = wp(2:compression_factor:end, :) (MATLAB notation)
+      // Starts from index 1 (second point) and steps by compression_factor
       const waypoints: Waypoint[] = Array.from({ length: 100 }, (_, i) => ({
         time: i,
         lat: 40.0 + i * 0.0001,
@@ -403,11 +405,14 @@ describe("generate_oriented_volumes", () => {
       }));
 
       const result = compressWaypoints(waypoints, 20);
-      expect(result[0]).toEqual(waypoints[0]);
+      
+      // Should NOT include first waypoint (index 0)
+      expect(result[0]).toEqual(waypoints[1]); // First sampled is index 1
+      // Should include last waypoint
       expect(result[result.length - 1]).toEqual(waypoints[waypoints.length - 1]);
     });
 
-    it("should keep every Nth waypoint", () => {
+    it("should sample indices 1, 21, 41, 61, 81 + last (C++ logic)", () => {
       const waypoints: Waypoint[] = Array.from({ length: 100 }, (_, i) => ({
         time: i,
         lat: 40.0 + i * 0.0001,
@@ -417,10 +422,17 @@ describe("generate_oriented_volumes", () => {
 
       const result = compressWaypoints(waypoints, 20);
 
-      // Should include: first, 20, 40, 60, 80, last
-      // That's 1 + 4 + 1 = 6 waypoints
-      expect(result.length).toBeLessThan(waypoints.length);
+      // C++ samples: i=1, 21, 41, 61, 81 + last(99) if not already there
+      // So indices: [1, 21, 41, 61, 81, 99] = 6 waypoints
       expect(result.length).toBe(6);
+      
+      // Verify exact indices
+      expect(result[0]).toEqual(waypoints[1]);  // index 1
+      expect(result[1]).toEqual(waypoints[21]); // index 21
+      expect(result[2]).toEqual(waypoints[41]); // index 41
+      expect(result[3]).toEqual(waypoints[61]); // index 61
+      expect(result[4]).toEqual(waypoints[81]); // index 81
+      expect(result[5]).toEqual(waypoints[99]); // last
     });
 
     it("should use default compression factor from config", () => {
@@ -446,6 +458,25 @@ describe("generate_oriented_volumes", () => {
       ];
       const result = compressWaypoints(waypoints);
       expect(result).toEqual(waypoints);
+    });
+
+    it("should not duplicate last waypoint if already sampled", () => {
+      // Create 42 waypoints (index 41 is the last, and 1+40=41 would be sampled)
+      const waypoints: Waypoint[] = Array.from({ length: 42 }, (_, i) => ({
+        time: i * 10,  // Unique times
+        lat: 40.0 + i * 0.0001,
+        lon: -3.0,
+        h: 100,
+      }));
+
+      const result = compressWaypoints(waypoints, 20);
+      
+      // Sampled: i=1, 21, 41 (which is also last)
+      // Should not duplicate 41
+      expect(result.length).toBe(3);
+      expect(result[0]).toEqual(waypoints[1]);
+      expect(result[1]).toEqual(waypoints[21]);
+      expect(result[2]).toEqual(waypoints[41]);
     });
   });
 });
