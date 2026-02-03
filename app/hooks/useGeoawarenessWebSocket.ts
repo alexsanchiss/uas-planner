@@ -371,6 +371,107 @@ function calculateBackoffDelay(retryCount: number, baseDelay: number, maxDelay: 
 }
 
 /**
+ * Normalize geoawareness WebSocket message to unified format
+ * 
+ * TASK-085: Handles both new 3-block format and legacy format
+ * 
+ * New format structure:
+ * - Block 1: uspace_identifier, timestamp (control fields)
+ * - Block 2: uspace_data (Feature with geometry and properties)
+ * - Block 3: geozones (FeatureCollection with features array)
+ * 
+ * This function normalizes the data so that `geozones_data` is always populated
+ * from either `geozones.features` (new format) or directly from `geozones_data` (legacy).
+ * 
+ * @param rawData - Raw data from WebSocket message
+ * @returns Normalized GeoawarenessData with geozones_data populated
+ */
+function normalizeGeoawarenessMessage(rawData: unknown): GeoawarenessData {
+  // Type guard for raw data
+  const data = rawData as Record<string, unknown>
+  
+  // Initialize normalized data with control fields
+  const normalized: GeoawarenessData = {
+    uspace_identifier: (data.uspace_identifier as string) || 'unknown',
+    timestamp: (data.timestamp as string) || new Date().toISOString(),
+  }
+  
+  // Handle Block 2: U-space data
+  if (data.uspace_data && typeof data.uspace_data === 'object') {
+    normalized.uspace_data = data.uspace_data as UspaceData
+  }
+  
+  // Handle Block 3: Geozones (new format with FeatureCollection)
+  if (data.geozones && typeof data.geozones === 'object') {
+    const geozonesObj = data.geozones as Record<string, unknown>
+    
+    // Check if it's a FeatureCollection
+    if (geozonesObj.type === 'FeatureCollection' && Array.isArray(geozonesObj.features)) {
+      // New format: geozones is a FeatureCollection
+      normalized.geozones = geozonesObj as unknown as GeozonesFeatureCollection
+      
+      // Normalize to geozones_data for backward compatibility with existing components
+      normalized.geozones_data = (geozonesObj.features as GeozoneFeature[]).map(feature => ({
+        // Map Feature to GeozoneData for legacy compatibility
+        uas_geozones_identifier: feature.properties?.identifier || feature.id?.toString(),
+        geometry: feature.geometry,
+        properties: feature.properties,
+        type: feature.type,
+        id: feature.id,
+        bbox: feature.bbox,
+        name: feature.name,
+        source: feature.source,
+        status: feature.status,
+        // Map nested restriction/temporal data if present in properties
+        restrictions: feature.properties?.restrictionConditions ? {
+          minAltitude: feature.geometry?.verticalReference?.lower,
+          maxAltitude: feature.geometry?.verticalReference?.upper,
+          uomDimensions: feature.geometry?.verticalReference?.uom,
+        } : undefined,
+        temporal_limits: feature.properties?.limitedApplicability ? {
+          startDateTime: feature.properties.limitedApplicability.startDatetime,
+          endDateTime: feature.properties.limitedApplicability.endDatetime,
+          permanentStatus: !feature.properties.limitedApplicability.startDatetime && 
+                          !feature.properties.limitedApplicability.endDatetime,
+        } : undefined,
+      }))
+    } else if (Array.isArray(geozonesObj)) {
+      // Alternative: geozones is directly an array (fallback)
+      normalized.geozones_data = geozonesObj as GeozoneData[]
+    }
+  }
+  
+  // Handle legacy format: direct geozones_data array
+  if (!normalized.geozones_data && Array.isArray(data.geozones_data)) {
+    normalized.geozones_data = data.geozones_data as GeozoneData[]
+  }
+  
+  // Ensure geozones_data is at least an empty array
+  if (!normalized.geozones_data) {
+    normalized.geozones_data = []
+  }
+  
+  // Copy over other optional fields from the message
+  if (Array.isArray(data.notams_data)) {
+    normalized.notams_data = data.notams_data as NotamData[]
+  }
+  if (Array.isArray(data.manned_aircrafts_data)) {
+    normalized.manned_aircrafts_data = data.manned_aircrafts_data as MannedAircraftData[]
+  }
+  if (data.metadata && typeof data.metadata === 'object') {
+    normalized.metadata = data.metadata as GeoawarenessMetadata
+  }
+  if (typeof data.status === 'string') {
+    normalized.status = data.status as 'success' | 'error'
+  }
+  if (typeof data.error === 'string') {
+    normalized.error = data.error
+  }
+  
+  return normalized
+}
+
+/**
  * Hook for WebSocket connection to geoawareness service
  * 
  * @param options - Configuration options for the WebSocket connection
@@ -501,12 +602,22 @@ export function useGeoawarenessWebSocket({
         if (!mountedRef.current) return
 
         try {
-          const parsedData = JSON.parse(event.data) as GeoawarenessData
-          console.log(`[useGeoawarenessWebSocket] 📨 Received message with ${parsedData.geozones_data?.length || 0} geozones`)
-          setData(parsedData)
+          const rawData = JSON.parse(event.data)
+          
+          // Normalize the data to support both new 3-block format and legacy format
+          const normalizedData = normalizeGeoawarenessMessage(rawData)
+          
+          console.log(`[useGeoawarenessWebSocket] 📨 Received message for U-space: ${normalizedData.uspace_identifier}`)
+          console.log(`[useGeoawarenessWebSocket] 📊 Contains ${normalizedData.geozones_data?.length || 0} geozones`)
+          
+          if (normalizedData.uspace_data) {
+            console.log(`[useGeoawarenessWebSocket] 🗺️ U-space data: ${normalizedData.uspace_data.name || 'unnamed'}`)
+          }
+          
+          setData(normalizedData)
           setLastMessageTime(Date.now())
           setError(null)
-          onMessageRef.current?.(parsedData)
+          onMessageRef.current?.(normalizedData)
         } catch (parseError) {
           const err = new Error(`Failed to parse WebSocket message: ${parseError}`)
           console.error('[useGeoawarenessWebSocket] ❌ Parse error:', parseError)

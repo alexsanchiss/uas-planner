@@ -13,8 +13,8 @@
 | 5 | Integración Geoawareness WebSocket | 21/21 | ✅ Completado |
 | 6 | Correcciones de Tema | 9/9 | ✅ Completado |
 | 7 | Mejoras Visualización y Geoawareness | 12/12 | ✅ Completado |
-| 8 | Refactor Geoawareness WS & U-Plan | 1/15 | 🔄 En progreso |
-| **TOTAL** | | **82/96** | 🔄 85% |
+| 8 | Refactor Geoawareness WS & U-Plan | 2/15 | 🔄 En progreso |
+| **TOTAL** | | **83/96** | 🔄 86% |
 
 ---
 
@@ -261,7 +261,7 @@
 | TASK-082 | Replace HTTP useGeozones with WebSocket in PlanGenerator | ⏳ Pendiente |
 | TASK-083 | Replace HTTP useGeozones with WebSocket in GeoawarenessViewer | ⏳ Pendiente |
 | TASK-084 | Update GeozoneData types for new format | ✅ Completado |
-| TASK-085 | Update WebSocket message parsing for new format | ⏳ Pendiente |
+| TASK-085 | Update WebSocket message parsing for new format | ✅ Completado |
 
 ### 8.2 Hybrid Fallback System
 
@@ -305,6 +305,7 @@
 
 | Fecha | Task ID | Descripción | Commit |
 |-------|---------|-------------|--------|
+| 2026-02-03 | TASK-085 | Add normalizeGeoawarenessMessage function to parse new 3-block WebSocket format: extracts geozones.features to populate legacy geozones_data array, maintains backward compatibility with existing components | feat(geoawareness): parse new 3-block WebSocket message format |
 | 2026-02-03 | TASK-084 | Update GeozoneData types for new geoawareness format: add VerticalReference, RestrictionConditions, ZoneAuthority, LimitedApplicability interfaces; restructure GeoawarenessData with 3 blocks (control fields, uspace_data, geozones FeatureCollection); maintain legacy compatibility | feat(geoawareness): update types for new WebSocket message format |
 | 2026-02-02 | TASK-078 | Trigger U-Plan regeneration on form data changes: auto-generate operation volumes when waypoints or flight details change, show preview status indicator with volume count, upload pre-generated U-Plan with volumes | feat(uplan): auto-regenerate U-Plan preview on form changes |
 | 2026-02-02 | TASK-076, TASK-077 | Add Check Geoawareness modal with trajectory overlay and time slider for flight simulation: play/pause controls, speed options (1x/2x/4x), drone position marker, and detailed timeline visualization | feat(geoawareness): add trajectory simulation with interactive time slider |
