@@ -835,6 +835,151 @@ export function Footer() {
 
 ---
 
+## Fase 8: Refactor Geoawareness WebSocket & U-Plan Verification
+
+### 8.1 Refactor de Protocolo: HTTP → WebSocket (TASK-082 to TASK-085)
+
+**Problema Crítico:**
+El sistema actualmente usa `useGeozones` (HTTP polling via axios) en lugar de `useGeoawarenessWebSocket` para obtener geozonas. Esto viola el requisito de que el servicio geoawareness funciona exclusivamente via WebSocket.
+
+**Estado Actual (Incorrecto):**
+```tsx
+// PlanGenerator.tsx - INCORRECTO
+import { useGeozones } from '@/app/hooks/useGeozones';
+const { geozones, loading } = useGeozones({ uspaceId: selectedUspace?.id });
+```
+
+**Estado Requerido:**
+```tsx
+// PlanGenerator.tsx - CORRECTO
+import { useGeoawarenessWebSocket } from '@/app/hooks/useGeoawarenessWebSocket';
+const { data, status, isConnected } = useGeoawarenessWebSocket({ 
+  uspaceId: selectedUspace?.id,
+  enabled: !!selectedUspace
+});
+const geozones = data?.geozones_data || [];
+```
+
+**Endpoint WebSocket:**
+```
+ws://${GEOAWARENESS_SERVICE_IP}/ws/gas/{USPACEID}
+```
+
+**Nuevo Formato de Datos (geozones_static_NEW.json):**
+```json
+{
+  "uspace_identifier": "VLCUspace",
+  "timestamp": "2026-02-03T10:00:00Z",
+  "uspace_data": {
+    "type": "Feature",
+    "geometry": { "type": "Polygon", "coordinates": [...], "verticalReference": {...} },
+    "properties": {
+      "identifier": "string", "country": "string", "type": "string",
+      "restrictionConditions": { "uasClass": [], "authorized": "", "maxNoise": 0, ... },
+      "zoneAuthority": { "name": "", "email": "", "phone": "", "purpose": "" },
+      "limitedApplicability": { "startDatetime": "", "endDatetime": "", "schedule": {...} }
+    }
+  },
+  "geozones": {
+    "type": "FeatureCollection",
+    "features": [{ "type": "Feature", "geometry": {...}, "properties": {...} }]
+  }
+}
+```
+
+**Archivos a Modificar:**
+- `app/components/PlanGenerator.tsx` - Reemplazar useGeozones con useGeoawarenessWebSocket
+- `app/components/flight-plans/GeoawarenessViewer.tsx` - Reemplazar useGeozones
+- `app/hooks/useGeoawarenessWebSocket.ts` - Actualizar tipos para nuevo formato
+
+---
+
+### 8.2 Sistema de Fallback Híbrido (TASK-086, TASK-087)
+
+**Estrategia de Resiliencia:**
+1. **Fuente Primaria:** WebSocket + Nuevo Formato
+2. **Fallback:** Si WebSocket falla después de max retries, cargar `geozones_dataFrame.geojson`
+
+**Nuevo Archivo: `lib/geoawareness/geozone-normalizer.ts`**
+```typescript
+interface NormalizedGeozone {
+  id: string;
+  name: string;
+  type: string;
+  geometry: GeozoneGeometry;
+  restrictions: GeozoneRestrictions;
+  temporalLimits: GeozoneTemporalLimits;
+  authority: GeozoneAuthority;
+}
+
+// Normaliza tanto formato nuevo como legacy
+function normalizeGeozone(raw: unknown, format: 'new' | 'legacy'): NormalizedGeozone;
+```
+
+---
+
+### 8.3 Mejoras UI para Nuevo Formato (TASK-088, TASK-089)
+
+**GeozoneInfoPopup - Nuevos Campos:**
+- `restrictionConditions`: uasClass[], authorized, uasCategory[], maxNoise, specialOperation, photograph
+- `zoneAuthority`: name, service, SiteURL, email, phone, purpose, intervalBefore
+- `limitedApplicability`: startDatetime, endDatetime, schedule (day[], startTime, endTime)
+- `verticalReference`: upper, upperReference, lower, lowerReference, uom
+
+**Indicador de Estado WebSocket en PlanMap:**
+```tsx
+<div className="absolute top-2 right-2 flex items-center gap-2">
+  <div className={`w-2 h-2 rounded-full ${
+    status === 'connected' ? 'bg-green-500' :
+    status === 'connecting' ? 'bg-yellow-500 animate-pulse' :
+    'bg-red-500'
+  }`} />
+  <span className="text-xs text-gray-400">
+    {status === 'connected' ? 'Live' : status === 'connecting' ? 'Connecting...' : 'Offline'}
+  </span>
+</div>
+```
+
+---
+
+### 8.4 Verificación Lógica U-Plan (TASK-090 to TASK-092)
+
+**Problema con Generación Prematura de Volúmenes:**
+El mensaje "U-Plan ready: X operation volumes" aparece antes de que la trayectoria se procese. Los volúmenes 4D solo deben generarse DESPUÉS de que exista `csvResult`.
+
+**Flujo Correcto:**
+1. Usuario define waypoints → NO generar volúmenes
+2. Usuario envía plan a procesar → Trayectoria se genera (csvResult)
+3. Trayectoria completada → AHORA generar volúmenes 4D
+4. Usuario puede ver volúmenes en "View U-Plan Map"
+
+**Verificación C++ Logic:**
+Comparar `lib/uplan/generate_oriented_volumes.ts` con `lib/uplan-new/main_uplangenerator.cpp`:
+- Cálculos de buffer along-track y cross-track
+- Generación de esquinas orientadas
+- Detección de tipo de segmento (horizontal/vertical/mixto)
+
+---
+
+### 8.5 Actualización ICD v1.0.0 (TASK-093, TASK-094)
+
+**Cambios en icd.tex:**
+1. Versión: 0.0.1 → 1.0.0
+2. Eliminar referencias a HTTP polling para geoawareness
+3. Documentar WebSocket endpoint: `/ws/gas/{USPACEID}`
+4. Esquema de datos nuevo con todos los campos
+5. Diagrama de arquitectura actualizado
+
+---
+
+### 8.6 Limpieza (TASK-095, TASK-096)
+
+**Archivos a Eliminar/Deprecar:**
+- `app/api/geoawareness/geozones/route.ts` → Mover a `/deprecated`
+- `app/hooks/useGeozones.ts` → Eliminar (o mover a `/deprecated` si se necesita fallback)
+
+---
+
 ## Resumen de Archivos a Modificar/Crear
 
 ### Archivos a Modificar:

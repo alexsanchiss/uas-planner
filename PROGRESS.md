@@ -13,7 +13,8 @@
 | 5 | Integración Geoawareness WebSocket | 21/21 | ✅ Completado |
 | 6 | Correcciones de Tema | 9/9 | ✅ Completado |
 | 7 | Mejoras Visualización y Geoawareness | 12/12 | ✅ Completado |
-| **TOTAL** | | **81/81** | ✅ 100% |
+| 8 | Refactor Geoawareness WS & U-Plan | 1/15 | 🔄 En progreso |
+| **TOTAL** | | **82/96** | 🔄 85% |
 
 ---
 
@@ -251,10 +252,60 @@
 
 ---
 
+## Fase 8: Refactor Geoawareness WebSocket & U-Plan Verification
+
+### 8.1 WebSocket Protocol Switch
+
+| Task ID | Descripción | Estado |
+|---------|-------------|--------|
+| TASK-082 | Replace HTTP useGeozones with WebSocket in PlanGenerator | ⏳ Pendiente |
+| TASK-083 | Replace HTTP useGeozones with WebSocket in GeoawarenessViewer | ⏳ Pendiente |
+| TASK-084 | Update GeozoneData types for new format | ✅ Completado |
+| TASK-085 | Update WebSocket message parsing for new format | ⏳ Pendiente |
+
+### 8.2 Hybrid Fallback System
+
+| Task ID | Descripción | Estado |
+|---------|-------------|--------|
+| TASK-086 | Implement fallback to legacy geojson on WS failure | ⏳ Pendiente |
+| TASK-087 | Create unified geozone normalizer function | ⏳ Pendiente |
+
+### 8.3 UI/UX Improvements
+
+| Task ID | Descripción | Estado |
+|---------|-------------|--------|
+| TASK-088 | Update GeozoneInfoPopup for new format fields | ⏳ Pendiente |
+| TASK-089 | Add WebSocket connection status indicator | ⏳ Pendiente |
+
+### 8.4 U-Plan Logic Verification
+
+| Task ID | Descripción | Estado |
+|---------|-------------|--------|
+| TASK-090 | Verify U-Plan form data persistence | ⏳ Pendiente |
+| TASK-091 | Fix U-Plan volume generation timing | ⏳ Pendiente |
+| TASK-092 | Verify generateOrientedBBox follows C++ logic | ⏳ Pendiente |
+
+### 8.5 Documentation Update
+
+| Task ID | Descripción | Estado |
+|---------|-------------|--------|
+| TASK-093 | Update ICD to version 1.0.0 | ⏳ Pendiente |
+| TASK-094 | Document new geozone data format in ICD | ⏳ Pendiente |
+
+### 8.6 Cleanup
+
+| Task ID | Descripción | Estado |
+|---------|-------------|--------|
+| TASK-095 | Remove deprecated HTTP geozone endpoint | ⏳ Pendiente |
+| TASK-096 | Remove unused useGeozones HTTP hook | ⏳ Pendiente |
+
+---
+
 ## Historial de Cambios
 
 | Fecha | Task ID | Descripción | Commit |
 |-------|---------|-------------|--------|
+| 2026-02-03 | TASK-084 | Update GeozoneData types for new geoawareness format: add VerticalReference, RestrictionConditions, ZoneAuthority, LimitedApplicability interfaces; restructure GeoawarenessData with 3 blocks (control fields, uspace_data, geozones FeatureCollection); maintain legacy compatibility | feat(geoawareness): update types for new WebSocket message format |
 | 2026-02-02 | TASK-078 | Trigger U-Plan regeneration on form data changes: auto-generate operation volumes when waypoints or flight details change, show preview status indicator with volume count, upload pre-generated U-Plan with volumes | feat(uplan): auto-regenerate U-Plan preview on form changes |
 | 2026-02-02 | TASK-076, TASK-077 | Add Check Geoawareness modal with trajectory overlay and time slider for flight simulation: play/pause controls, speed options (1x/2x/4x), drone position marker, and detailed timeline visualization | feat(geoawareness): add trajectory simulation with interactive time slider |
 | 2026-02-02 | TASK-070, TASK-071 | Enhance GeozoneInfoPopup with collapsible/expandable sections: General Information, Restriction Conditions, Limited Applicability, Authority Information, and Schedule with chevron icons and smooth animations | feat(geoawareness): add expandable sections to geozone popup |

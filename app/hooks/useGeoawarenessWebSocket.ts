@@ -20,26 +20,149 @@ import { useState, useEffect, useRef, useCallback } from 'react'
  */
 export type WebSocketStatus = 'connecting' | 'connected' | 'disconnected' | 'error'
 
+// ============================================================================
+// BLOCK 1: Control Fields
+// ============================================================================
+
+// uspace_identifier: string - U-space identifier
+// timestamp: string - Message timestamp
+
+// ============================================================================
+// BLOCK 2 & 3: Common Structures (shared by U-space data and Geozones)
+// ============================================================================
+
 /**
- * Geometry types for geozones
+ * Vertical reference for airspace limits
  */
-export interface GeozoneGeometry {
-  type: 'Polygon' | 'MultiPolygon'
-  coordinates: number[][][] | number[][][][]
+export interface VerticalReference {
+  upper?: number
+  upperReference?: string
+  lower?: number
+  lowerReference?: string
+  uom?: string // Unit of measure (e.g., "M" for meters, "FT" for feet)
 }
 
 /**
- * Geozone properties
+ * Geometry types for geozones and U-space
+ * Extended with verticalReference, sub_type, and radius for the new format
+ */
+export interface GeozoneGeometry {
+  type: 'Polygon' | 'MultiPolygon' | 'Point' | 'Circle' | string
+  coordinates: number[][][] | number[][][][] | number[] | string
+  verticalReference?: VerticalReference
+  sub_type?: string // Alternative snake_case version
+  subType?: string  // CamelCase version used in geozones
+  radius?: number
+}
+
+/**
+ * Restriction conditions for a geozone
+ * Defines what UAS operations are allowed/restricted
+ */
+export interface RestrictionConditions {
+  uasClass?: string[]
+  authorized?: string
+  uasCategory?: string[]
+  uasOperationMode?: string[]
+  maxNoise?: number
+  specialOperation?: string
+  photograph?: string
+}
+
+/**
+ * Zone authority contact and service information
+ */
+export interface ZoneAuthority {
+  name?: string
+  service?: string
+  SiteURL?: string
+  email?: string
+  phone?: string
+  purpose?: string
+  intervalBefore?: string
+  contactName?: string
+}
+
+/**
+ * Schedule for limited applicability
+ */
+export interface ApplicabilitySchedule {
+  day?: string[]
+  startTime?: string
+  startEvent?: string
+  endTime?: string
+  endEvent?: string
+}
+
+/**
+ * Limited applicability (temporal restrictions)
+ */
+export interface LimitedApplicability {
+  startDatetime?: string  // ISO format
+  endDatetime?: string    // ISO format
+  schedule?: ApplicabilitySchedule
+}
+
+/**
+ * Geozone properties (new format)
+ * Full property set for geozone features
  */
 export interface GeozoneProperties {
+  identifier?: string
+  country?: string
+  type?: 'prohibited' | 'restricted' | 'controlled' | 'advisory' | 'warning' | 'temporary' | string
+  variant?: string
+  region?: string
+  reasons?: string
+  otherReasonInfo?: string
+  regulatoryException?: string
+  message?: string
+  extendedProperties?: string
+  restrictionConditions?: RestrictionConditions
+  zoneAuthority?: ZoneAuthority
+  limitedApplicability?: LimitedApplicability
+  // Legacy compatibility fields
   name?: string
-  type?: 'prohibited' | 'restricted' | 'controlled' | 'advisory' | 'warning' | 'temporary'
   description?: string
   [key: string]: unknown
 }
 
 /**
- * Geozone restrictions
+ * Single geozone feature (GeoJSON Feature)
+ */
+export interface GeozoneFeature {
+  type: 'Feature'
+  id?: string | number
+  bbox?: number[]
+  name?: string
+  source?: string
+  status?: string
+  geometry: GeozoneGeometry
+  properties: GeozoneProperties
+}
+
+/**
+ * Single geozone data structure (legacy compatibility)
+ * @deprecated Use GeozoneFeature instead for new format
+ */
+export interface GeozoneData {
+  uas_geozones_identifier?: string
+  geometry: GeozoneGeometry
+  properties: GeozoneProperties
+  restrictions?: GeozoneRestrictions
+  temporal_limits?: GeozoneTemporalLimits
+  // New format fields (when using feature directly)
+  type?: 'Feature'
+  id?: string | number
+  bbox?: number[]
+  name?: string
+  source?: string
+  status?: string
+}
+
+/**
+ * Geozone restrictions (legacy format)
+ * @deprecated Use RestrictionConditions instead
  */
 export interface GeozoneRestrictions {
   minAltitude?: number
@@ -49,7 +172,8 @@ export interface GeozoneRestrictions {
 }
 
 /**
- * Geozone temporal limits
+ * Geozone temporal limits (legacy format)
+ * @deprecated Use LimitedApplicability instead
  */
 export interface GeozoneTemporalLimits {
   startDateTime?: string
@@ -59,25 +183,38 @@ export interface GeozoneTemporalLimits {
 }
 
 /**
- * Single geozone data structure
+ * FeatureCollection for geozones (new format BLOCK 3)
  */
-export interface GeozoneData {
-  uas_geozones_identifier: string
-  geometry: GeozoneGeometry
-  properties: GeozoneProperties
-  restrictions?: GeozoneRestrictions
-  temporal_limits?: GeozoneTemporalLimits
+export interface GeozonesFeatureCollection {
+  type: 'FeatureCollection'
+  features: GeozoneFeature[]
 }
 
+// ============================================================================
+// BLOCK 2: U-space Data
+// ============================================================================
+
 /**
- * U-space data structure
+ * U-space data structure (new format)
+ * Complete U-space information as a GeoJSON Feature
  */
 export interface UspaceData {
+  type?: 'Feature'
+  id?: number | string
+  bbox?: number[]
   name?: string
+  source?: string
+  geometry?: GeozoneGeometry
+  properties?: GeozoneProperties
+  // Legacy compatibility fields
   identifier?: string
   boundary?: Array<{ latitude: number; longitude: number }>
   [key: string]: unknown
 }
+
+// ============================================================================
+// Additional Data Types (NOTAMs, Manned Aircraft, etc.)
+// ============================================================================
 
 /**
  * NOTAM data structure
@@ -112,18 +249,39 @@ export interface GeoawarenessMetadata {
   [key: string]: unknown
 }
 
+// ============================================================================
+// Complete WebSocket Message Structure (combines all 3 blocks)
+// ============================================================================
+
 /**
  * Complete geoawareness WebSocket message data
+ * 
+ * New format structure:
+ * - BLOCK 1: uspace_identifier, timestamp (control fields)
+ * - BLOCK 2: uspace_data (U-space Feature with geometry and properties)
+ * - BLOCK 3: geozones (FeatureCollection with geozone features)
  */
 export interface GeoawarenessData {
-  status: 'success' | 'error'
-  timestamp: string
+  // BLOCK 1: Control fields
   uspace_identifier: string
+  timestamp: string
+  
+  // BLOCK 2: U-space data (Feature with full geometry and properties)
   uspace_data?: UspaceData
-  geozones_data: GeozoneData[]
+  
+  // BLOCK 3: Geozones (FeatureCollection)
+  geozones?: GeozonesFeatureCollection
+  
+  // Legacy compatibility: array of geozone data
+  geozones_data?: GeozoneData[]
+  
+  // Additional data types (may be added in future)
   notams_data?: NotamData[]
   manned_aircrafts_data?: MannedAircraftData[]
   metadata?: GeoawarenessMetadata
+  
+  // Status and error
+  status?: 'success' | 'error'
   error?: string
 }
 
