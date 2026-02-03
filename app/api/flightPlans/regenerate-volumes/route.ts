@@ -28,7 +28,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       where: {
         userId,
         csvResult: { not: null },
-        folderId: 107, // Only check plans in this folder
+        folderId: 82, // Only check plans in this folder
       },
     })
 

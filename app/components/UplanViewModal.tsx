@@ -100,7 +100,7 @@ interface UplanViewModalProps {
 const UplanViewModal = ({ open, onClose, uplan, name, fileContent }: UplanViewModalProps) => {
   const [currentTime, setCurrentTime] = useState(0);
   const [playing, setPlaying] = useState(false);
-  const [showLabels, setShowLabels] = useState(true);
+  const [showLabels, setShowLabels] = useState(false);
   const [showWaypoints, setShowWaypoints] = useState(true);
   const [showVolumes, setShowVolumes] = useState(true);
   
@@ -208,7 +208,7 @@ const UplanViewModal = ({ open, onClose, uplan, name, fileContent }: UplanViewMo
   
   return (
     <Modal open={open} onClose={onClose} title={`U-plan: ${name}`} maxWidth="4xl">
-      <div className="w-full max-w-[95vw] md:max-w-[700px] h-[50vh] md:h-[450px] max-h-[70vh] min-h-[200px] mb-4 relative overflow-hidden rounded-lg">
+      <div className="w-full max-w-[95vw] h-[50vh] md:h-[450px] max-h-[70vh] min-h-[200px] mb-4 relative overflow-hidden rounded-lg">
         <MapContainer
           center={center}
           zoom={16}
@@ -270,15 +270,26 @@ const UplanViewModal = ({ open, onClose, uplan, name, fileContent }: UplanViewMo
             const timeBegin = origVol?.timeBegin ? new Date(origVol.timeBegin).toISOString().replace('T', ' ').slice(0, 19) + ' UTC' : 'N/A';
             const timeEnd = origVol?.timeEnd ? new Date(origVol.timeEnd).toISOString().replace('T', ' ').slice(0, 19) + ' UTC' : 'N/A';
             
-            // Extract altitude info
-            let minAlt: string | number = 'N/A';
-            let maxAlt: string | number = 'N/A';
+            // Extract altitude info - handle both number and {value, reference, uom} object format
+            let minAlt: string = 'N/A';
+            let maxAlt: string = 'N/A';
+            
+            const extractAltValue = (alt: any): string => {
+              if (!alt) return 'N/A';
+              if (typeof alt === 'number') return `${alt.toFixed(1)}m`;
+              if (typeof alt === 'object' && alt.value !== undefined) {
+                return `${typeof alt.value === 'number' ? alt.value.toFixed(1) : alt.value}${alt.uom || 'm'}`;
+              }
+              if (typeof alt === 'string') return alt;
+              return 'N/A';
+            };
+            
             if (origVol?.minAltitude && origVol?.maxAltitude) {
-              minAlt = typeof origVol.minAltitude === 'number' ? `${origVol.minAltitude.toFixed(1)}m` : origVol.minAltitude;
-              maxAlt = typeof origVol.maxAltitude === 'number' ? `${origVol.maxAltitude.toFixed(1)}m` : origVol.maxAltitude;
+              minAlt = extractAltValue(origVol.minAltitude);
+              maxAlt = extractAltValue(origVol.maxAltitude);
             } else if (origVol?.elevation) {
-              minAlt = typeof origVol.elevation.min === 'number' ? `${origVol.elevation.min.toFixed(1)}m` : origVol.elevation.min ?? 'N/A';
-              maxAlt = typeof origVol.elevation.max === 'number' ? `${origVol.elevation.max.toFixed(1)}m` : origVol.elevation.max ?? 'N/A';
+              minAlt = extractAltValue(origVol.elevation.min);
+              maxAlt = extractAltValue(origVol.elevation.max);
             }
             
             // Calculate approximate dimensions from polygon coordinates
