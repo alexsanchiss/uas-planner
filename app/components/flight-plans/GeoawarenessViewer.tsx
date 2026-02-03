@@ -228,9 +228,19 @@ export function GeoawarenessViewer({
   } = useGeoawarenessWebSocket({
     uspaceId: uspaceId || null,
     enabled: !!uspaceId && !!planId,
-    enableFallback: false,  // Disable fallback to force WebSocket only
-    maxRetries: 10,  // More retries to debug connection
+    enableFallback: false,
+    maxRetries: 10,
   })
+
+  // Log WebSocket status changes once on mount
+  useEffect(() => {
+    console.log(`[GeoawarenessViewer] Props: planId=${planId}, uspaceId=${uspaceId}`);
+  }, [planId, uspaceId])
+
+  // Log WebSocket status changes
+  useEffect(() => {
+    console.log(`[GeoawarenessViewer] WS: ${wsStatus}${wsError ? `, error: ${wsError.message}` : ''}`);
+  }, [wsStatus, wsError])
 
   // Derive legacy-compatible variables from WebSocket data
   const wsGeozones = wsData?.geozones_data || []
