@@ -100,7 +100,7 @@ export function trayToUplan({
   // Parse CSV
   const { data } = Papa.parse(csv, { header: true, dynamicTyping: true });
   // Filtra y mapea a waypoints válidos
-  const waypoints: Waypoint[] = (data as unknown as {
+  const rawWaypoints: Waypoint[] = (data as unknown as {
     SimTime: string;
     Lat: string;
     Lon: string;
@@ -119,6 +119,15 @@ export function trayToUplan({
       lon: Number(row.Lon),
       h: Number(row.Alt),
     }));
+  
+  // Normalize times to start at 0 - subtract the initial time offset
+  // This ensures volumes start at scheduledAt + 0s instead of scheduledAt + 80s
+  const initialTime = rawWaypoints.length > 0 ? rawWaypoints[0].time : 0;
+  const waypoints: Waypoint[] = rawWaypoints.map(wp => ({
+    ...wp,
+    time: wp.time - initialTime,
+  }));
+  
   // Compresión - keep every Nth waypoint (start from index 0 for new algorithm)
   const wpReduced = waypoints.filter((_, i) => i % compressionFactor === 0);
   
