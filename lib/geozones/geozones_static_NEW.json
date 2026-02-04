@@ -7,196 +7,861 @@
 
 {
     "uspace_identifier": "VLCUspace",
-    "timestamp": "String"
-    "uspace_data":{
+    "timestamp": "2026-02-04T08:37:39.139720",
+    "uspace_data": {
         "type": "Feature",
         "id": 1,
-        "bbox": "List[float]",
-        "name": "String",
-        "source": "String",
+        "bbox": [
+            -0.4257,
+            39.415,
+            -0.28,
+            39.4988
+        ],
+        "name": "U-space Valencia Ciudad",
+        "source": null,
         "geometry": {
-            "type": "String",
-            "coordinates": "[[[lon1,lat1],[lon2,lat2]]]",
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [
+                        -0.4257,
+                        39.415
+                    ],
+                    [
+                        -0.28,
+                        39.415
+                    ],
+                    [
+                        -0.28,
+                        39.4988
+                    ],
+                    [
+                        -0.4257,
+                        39.4988
+                    ],
+                    [
+                        -0.4257,
+                        39.415
+                    ]
+                ]
+            ],
             "verticalReference": {
-                "upper": "Float",
-                "upperReference": "String",
-                "lower": "Float",
-                "lowerReference": "String",
-                "uom": "String"
+                "upper": 1000.0,
+                "upperReference": "AMSL",
+                "lower": null,
+                "lowerReference": "AMSL",
+                "uom": "m"
             },
-        "sub_type": "String",
-        "radius": "Float"
+            "sub_type": null,
+            "radius": null
         },
         "properties": {
-            "identifier": "String",
-            "country": "String",
-            "type": "String",
-            "variant": "String",
-            "region": "String",
-            "reasons": "String",
-            "otherReasonInfo": "String",
-            "regulatoryException": "String",
-            "message": "String",
-            "extendedProperties": "String",
+            "identifier": "VLCUspace",
+            "country": "TBD",
+            "type": "TBD",
+            "variant": "TBD",
+            "region": 9999,
+            "reasons": "TBD",
+            "otherReasonInfo": "TBD",
+            "regulatoryException": "TBD",
+            "message": "TBD",
+            "extendedProperties": "TBD",
             "restrictionConditions": {
-                "uasClass": "List[String]",
-                "authorized": "String",
-                "uasCategory": "List[String]",
-                "uasOperationMode": "List[String]",
-                "maxNoise": "Float",
-                "specialOperation": "String",
-                "photograph": "String"
+                "uasClass": "TBD",
+                "authorized": "TBD",
+                "uasCategory": "TBD",
+                "uasOperationMode": "TBD",
+                "maxNoise": 9.99,
+                "specialOperation": "TBD",
+                "photograph": "TBD"
             },
             "zoneAuthority": {
-                "name": "String",
-                "service": "String",
-                "SiteURL": "String",
-                "email": "String",
-                "phone": "String",
-                "purpose": "String",
-                "intervalBefore": "String",
-                "contactName": "String"
+                "name": "TBD",
+                "service": "TBD",
+                "SiteURL": "TBD",
+                "email": "TBD",
+                "phone": "TBD",
+                "purpose": "TBD",
+                "intervalBefore": "TBD",
+                "contactName": "TBD"
             },
             "limitedApplicability": {
-                "startDatetime": "String - formato ISO",
-                "endDatetime": "String - formato ISO",
+                "startDatetime": "2026-01-01 00:00:00",
+                "endDatetime": "2027-01-01 00:00:00",
                 "schedule": {
-                    "day": "List[String]",
-                    "startTime": "String",
-                    "startEvent": "String",
-                    "endTime": "String",
-                    "endEvent": "String"
+                    "day": [
+                        "MON",
+                        "TUE",
+                        "WED",
+                        "THU",
+                        "FRI",
+                        "SAT",
+                        "SUN"
+                    ],
+                    "startTime": "00:00:00",
+                    "startEvent": null,
+                    "endTime": "23:59:00",
+                    "endEvent": null
                 }
             }
         }
-    }
+    },
     "geozones": {
         "type": "FeatureCollection",
         "features": [
             {
-            "type": "Feature",
-            "id": "TBD",
-            "bbox": "TBD",
-            "name": "TBD",
-            "source": "TBD",
-            "status": "TBD",
-            "geometry": {
-                "type": "TBD",
-                "coordinates": "TBD",
-                "verticalReference": {
-                    "upper": "TBD",
-                    "upperReference": "TBD",
-                    "lower": "TBD",
-                    "lowerReference": "TBD",
-                    "uom": "TBD"
+                "type": "Feature",
+                "id": 1,
+                "bbox": [
+                    -0.41379167,
+                    39.473275,
+                    -0.40548611,
+                    39.48153056
+                ],
+                "name": "Geozona del bioparc valencia",
+                "source": "SNA-UPV",
+                "status": "STATIC",
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [
+                        [
+                            [
+                                -0.40548611,
+                                39.473275
+                            ],
+                            [
+                                -0.41049722,
+                                39.47333889
+                            ],
+                            [
+                                -0.41379167,
+                                39.47871389
+                            ],
+                            [
+                                -0.41031944,
+                                39.48153056
+                            ],
+                            [
+                                -0.40718056,
+                                39.48116667
+                            ],
+                            [
+                                -0.40548611,
+                                39.473275
+                            ]
+                        ]
+                    ],
+                    "verticalReference": {
+                        "upper": 120.0,
+                        "upperReference": "AGL",
+                        "lower": null,
+                        "lowerReference": "AMSL",
+                        "uom": "M"
+                    },
+                    "subType": null,
+                    "radius": null
                 },
-                "subType": "TBD",
-                "radius": "TBD"
+                "properties": {
+                    "identifier": "BIOPARC VALENCIA",
+                    "country": "ESP",
+                    "type": "PROHIBITED",
+                    "variant": "CUSTOMIZED",
+                    "region": null,
+                    "reasons": [
+                        "SENSITIVE",
+                        "PRIVACY",
+                        "NATURE"
+                    ],
+                    "otherReasonInfo": null,
+                    "regulatoryException": null,
+                    "message": null,
+                    "extendedProperties": null,
+                    "restrictionConditions": {
+                        "uasClass": [
+                            "LEGACY",
+                            "C0",
+                            "C1",
+                            "C2",
+                            "C3",
+                            "C4",
+                            "C5",
+                            "C6"
+                        ],
+                        "authorized": "\"PROHIBITED\"",
+                        "uasCategory": [
+                            "OPEN",
+                            "SPECIFIC",
+                            "CERTIFIED"
+                        ],
+                        "uasOperationMode": [
+                            "VLOS",
+                            "BVLOS"
+                        ],
+                        "maxNoise": null,
+                        "specialOperation": "PROHIBITED",
+                        "photograph": "PROHBITED"
+                    },
+                    "zoneAuthority": {
+                        "name": "Asociación Ibérica de Zoos y Acuarios",
+                        "service": null,
+                        "SiteURL": "\"https://bioparcvalencia.es/prepara-tu-visita/\"",
+                        "email": null,
+                        "phone": null,
+                        "purpose": null,
+                        "intervalBefore": null,
+                        "contactName": null
+                    },
+                    "limitedApplicability": {
+                        "startDatetime": "2025-07-02T00:00:00.00",
+                        "endDatetime": "2027-07-06T23:59:59.00",
+                        "schedule": {
+                            "day": [
+                                "MON",
+                                "TUE",
+                                "WED",
+                                "THU",
+                                "FRI",
+                                "SAT",
+                                "SUN"
+                            ],
+                            "startTime": "10:00A",
+                            "startEvent": null,
+                            "endTime": "18:00A",
+                            "endEvent": null
+                        }
+                    }
+                }
             },
-            "properties": {
-                "identifier": "TBD",
-                "country": "TBD",
-                "type": "TBD",
-                "variant": "TBD",
-                "region": "TBD",
-                "reasons": "TBD",
-                "otherReasonInfo": "TBD",
-                "regulatoryException": "TBD",
-                "message": "TBD",
-                "extendedProperties": "TBD",
-                "restrictionConditions": {
-                    "uasClass": "TBD",
-                    "authorized": "TBD",
-                    "uasCategory": "TBD",
-                    "uasOperationMode": "TBD",
-                    "maxNoise": "TBD",
-                    "specialOperation": "TBD",
-                    "photograph": "TBD"
+            {
+                "type": "Feature",
+                "id": 2,
+                "bbox": [
+                    -0.35364167,
+                    39.45322222,
+                    -0.34725556,
+                    39.460825
+                ],
+                "name": "Geozona de la Ciudad de las Artes y las Ciencias",
+                "source": "SNA-UPV",
+                "status": "STATIC",
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [
+                        [
+                            [
+                                -0.35229722,
+                                39.45835556
+                            ],
+                            [
+                                -0.35364167,
+                                39.460825
+                            ],
+                            [
+                                -0.34725556,
+                                39.45618333
+                            ],
+                            [
+                                -0.35210833,
+                                39.45322222
+                            ],
+                            [
+                                -0.35229722,
+                                39.45835556
+                            ]
+                        ]
+                    ],
+                    "verticalReference": {
+                        "upper": 120.0,
+                        "upperReference": "AGL",
+                        "lower": null,
+                        "lowerReference": "AGL",
+                        "uom": "M"
+                    },
+                    "subType": null,
+                    "radius": null
                 },
-                "zoneAuthority": {
-                    "name": "TBD",
-                    "service": "TBD",
-                    "SiteURL": "TBD",
-                    "email": "TBD",
-                    "phone": "TBD",
-                    "purpose": "TBD",
-                    "intervalBefore": "TBD",
-                    "contactName": "TBD"
+                "properties": {
+                    "identifier": "CIUDAD DE LAS ARTES",
+                    "country": "ESP",
+                    "type": "REQ_AUTHORIZATION",
+                    "variant": "COMMON",
+                    "region": null,
+                    "reasons": [
+                        "SENSITIVE",
+                        "POPULATION"
+                    ],
+                    "otherReasonInfo": null,
+                    "regulatoryException": null,
+                    "message": "Geozona definida para tratar de evitar el sobrevuelo no autorizado de UAS sobre el complejo de edificios perteneciente a la Ciudad de las Artes y las Ciencias, así como el sobrevuelo de UAS no permitidios según las condiciones de la restricción",
+                    "extendedProperties": null,
+                    "restrictionConditions": {
+                        "uasClass": [
+                            "C5",
+                            "C6"
+                        ],
+                        "authorized": "REQUIRES_AUTHORIZATION",
+                        "uasCategory": [
+                            "SPECIFIC",
+                            "CERTIFIED"
+                        ],
+                        "uasOperationMode": "VLOS",
+                        "maxNoise": null,
+                        "specialOperation": "REQUIRES_AUTHORIZATION",
+                        "photograph": "PROHIBITED"
+                    },
+                    "zoneAuthority": {
+                        "name": "Ayuntamiento de Valencia",
+                        "service": null,
+                        "SiteURL": "\"https://www.valencia.es/\"",
+                        "email": null,
+                        "phone": "+34 963 52 54 78",
+                        "purpose": null,
+                        "intervalBefore": null,
+                        "contactName": null
+                    },
+                    "limitedApplicability": {
+                        "startDatetime": "2025-07-02T00:00:00.00",
+                        "endDatetime": "2027-07-06T23:59:59.00",
+                        "schedule": {
+                            "day": [
+                                "MON",
+                                "TUE",
+                                "WED",
+                                "THU",
+                                "FRI",
+                                "SAT",
+                                "SUN"
+                            ],
+                            "startTime": "00:00A",
+                            "startEvent": null,
+                            "endTime": "23:59A",
+                            "endEvent": null
+                        }
+                    }
+                }
+            },
+            {
+                "type": "Feature",
+                "id": 3,
+                "bbox": [
+                    -0.3573746243367103,
+                    39.47631787495229,
+                    -0.3573746243367103,
+                    39.47339781546573
+                ],
+                "name": "Campo de Mestalla",
+                "source": "SNA-UPV",
+                "status": "STATIC",
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [
+                        [
+                            39.47339781546573,
+                            -0.3573746243367103
+                        ],
+                        [
+                            39.473839945022554,
+                            -0.3597496401021547
+                        ],
+                        [
+                            39.47631787495229,
+                            -0.35848207550823774
+                        ],
+                        [
+                            39.47571125296248,
+                            -0.3563472298763776
+                        ],
+                        [
+                            39.47339781546573,
+                            -0.3573746243367103
+                        ]
+                    ],
+                    "verticalReference": {
+                        "upper": 73.514,
+                        "upperReference": "AMSL",
+                        "lower": 13.514,
+                        "lowerReference": "AMSL",
+                        "uom": "M"
+                    },
+                    "subType": null,
+                    "radius": null
                 },
-                "limitedApplicability": {
-                    "startDatetime": "TBD",
-                    "endDatetime": "TBD",
-                    "schedule": {
-                        "day": "TBD",
-                        "startTime": "TBD",
-                        "startEvent": "TBD",
-                        "endTime": "TBD",
-                        "endEvent": "TBD"
+                "properties": {
+                    "identifier": "MESTALLA",
+                    "country": "ESP",
+                    "type": "CONDITIONAL",
+                    "variant": "COMMON",
+                    "region": null,
+                    "reasons": [
+                        "SENSITIVE",
+                        "POPULATION"
+                    ],
+                    "otherReasonInfo": null,
+                    "regulatoryException": null,
+                    "message": null,
+                    "extendedProperties": null,
+                    "restrictionConditions": {
+                        "uasClass": [
+                            "LEGACY",
+                            "C0",
+                            "C1",
+                            "C2",
+                            "C3",
+                            "C4",
+                            "C5",
+                            "C6"
+                        ],
+                        "authorized": "\"REQUIRES_AUTHORIZATION\"",
+                        "uasCategory": "CERTIFIED",
+                        "uasOperationMode": "VLOS",
+                        "maxNoise": 55.0,
+                        "specialOperation": "REQUIRES_AUTHORIZATION",
+                        "photograph": "0"
+                    },
+                    "zoneAuthority": {
+                        "name": "Policia Local de Valencia",
+                        "service": null,
+                        "SiteURL": "\"https://www.valencia.es/-/infociudad-central-de-la-polic%C3%8Dalocal-de-valencia\"",
+                        "email": null,
+                        "phone": "+34 962085092",
+                        "purpose": "AUTHORIZATION",
+                        "intervalBefore": "P1DT0H0M",
+                        "contactName": null
+                    },
+                    "limitedApplicability": {
+                        "startDatetime": "2025-07-05T11:00:00.00",
+                        "endDatetime": "2027-07-06T23:59:59.00",
+                        "schedule": {
+                            "day": [
+                                "SAT",
+                                "SUN"
+                            ],
+                            "startTime": null,
+                            "startEvent": "3 hours before the start of the football match / 3 horas antes del comienzo del partido de fútbol",
+                            "endTime": null,
+                            "endEvent": "3 hours after the end of the football match / 3 horas después del final del partido de fútbol"
+                        }
+                    }
+                }
+            },
+            {
+                "type": "Feature",
+                "id": 4,
+                "bbox": [
+                    -0.39326111,
+                    39.48771111,
+                    -0.39868056,
+                    39.49166111
+                ],
+                "name": "Geozona campo fútbol futuro Nou Mestalla",
+                "source": "SNA-UPV",
+                "status": "STATIC",
+                "geometry": {
+                    "type": "NO_RESTRICTION",
+                    "coordinates": [
+                        [
+                            [
+                                -0.39715556,
+                                39.48771111
+                            ],
+                            [
+                                -0.39868056,
+                                39.49025556
+                            ],
+                            [
+                                -0.39563333,
+                                39.49166111
+                            ],
+                            [
+                                -0.39326111,
+                                39.48941389
+                            ],
+                            [
+                                -0.39715556,
+                                39.48771111
+                            ]
+                        ]
+                    ],
+                    "verticalReference": {
+                        "upper": 120.0,
+                        "upperReference": "AGL",
+                        "lower": null,
+                        "lowerReference": "AGL",
+                        "uom": "M"
+                    },
+                    "subType": null,
+                    "radius": null
+                },
+                "properties": {
+                    "identifier": "NOU MESTALLA",
+                    "country": "ESP",
+                    "type": "NO_RESTRICTION",
+                    "variant": "COMMON",
+                    "region": null,
+                    "reasons": [
+                        "SENSITIVE"
+                    ],
+                    "otherReasonInfo": null,
+                    "regulatoryException": null,
+                    "message": null,
+                    "extendedProperties": null,
+                    "restrictionConditions": {
+                        "uasClass": [
+                            "C5",
+                            "C6"
+                        ],
+                        "authorized": "PERMITTED",
+                        "uasCategory": [
+                            "SPECIFIC",
+                            "CERTIFIED"
+                        ],
+                        "uasOperationMode": [
+                            "VLOS",
+                            "BVLOS"
+                        ],
+                        "maxNoise": null,
+                        "specialOperation": "PERMITTED",
+                        "photograph": "PERMITTED"
+                    },
+                    "zoneAuthority": {
+                        "name": "Ayuntamiento de Valencia",
+                        "service": null,
+                        "SiteURL": "\"https://www.valencia.es/\"",
+                        "email": null,
+                        "phone": null,
+                        "purpose": null,
+                        "intervalBefore": null,
+                        "contactName": null
+                    },
+                    "limitedApplicability": {
+                        "startDatetime": "2025-07-02T00:00:00.00",
+                        "endDatetime": "2027-07-06T23:59:59.00",
+                        "schedule": {
+                            "day": [
+                                "MON",
+                                "TUE",
+                                "WED",
+                                "THU",
+                                "FRI"
+                            ],
+                            "startTime": "07:00A",
+                            "startEvent": null,
+                            "endTime": "20:00A",
+                            "endEvent": null
+                        }
+                    }
+                }
+            },
+            {
+                "type": "Feature",
+                "id": 5,
+                "bbox": [
+                    -0.3253462617487129,
+                    39.50113763348168,
+                    -0.3253462617487129,
+                    39.50113763348168
+                ],
+                "name": "Playa de Valencia",
+                "source": "SNA-UPV",
+                "status": "STATIC",
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [
+                        [
+                            [
+                                39.50113763348168,
+                                -0.3253462617487129
+                            ],
+                            [
+                                39.49848638970218,
+                                -0.32504697960199075
+                            ],
+                            [
+                                39.48419098531339,
+                                -0.3260944671155182
+                            ],
+                            [
+                                39.48411589664305,
+                                -0.3253317003834329
+                            ],
+                            [
+                                39.462812038814995,
+                                -0.32446202774420774
+                            ],
+                            [
+                                39.463209624621264,
+                                -0.32016324201741664
+                            ],
+                            [
+                                39.50070500516351,
+                                -0.32308641631163465
+                            ],
+                            [
+                                39.50113763348168,
+                                -0.3253462617487129
+                            ]
+                        ]
+                    ],
+                    "verticalReference": {
+                        "upper": 129.22202,
+                        "upperReference": "AMSL",
+                        "lower": 9.22202,
+                        "lowerReference": "AMSL",
+                        "uom": "M"
+                    },
+                    "subType": null,
+                    "radius": null
+                },
+                "properties": {
+                    "identifier": "PLAYAVLC",
+                    "country": "ESP",
+                    "type": "CONDITIONAL",
+                    "variant": "CUSTOMIZED",
+                    "region": null,
+                    "reasons": [
+                        "SENSITIVE",
+                        "PRIVACY",
+                        "POPULATION"
+                    ],
+                    "otherReasonInfo": null,
+                    "regulatoryException": null,
+                    "message": null,
+                    "extendedProperties": null,
+                    "restrictionConditions": {
+                        "uasClass": [
+                            "LEGACY",
+                            "C0",
+                            "C1",
+                            "C2",
+                            "C3",
+                            "C4",
+                            "C5",
+                            "C6"
+                        ],
+                        "authorized": "REQUIRES_AUTHORIZATION",
+                        "uasCategory": "CERTIFIED",
+                        "uasOperationMode": [
+                            "VLOS",
+                            "BVLOS"
+                        ],
+                        "maxNoise": 55.0,
+                        "specialOperation": "REQUIRES_AUTHORIZATION",
+                        "photograph": "'REQUIRES_AUTHORIZATION'"
+                    },
+                    "zoneAuthority": {
+                        "name": "Polica Local de Valncia",
+                        "service": null,
+                        "SiteURL": null,
+                        "email": null,
+                        "phone": "+34 962085092",
+                        "purpose": "AUTHORIZATION",
+                        "intervalBefore": "P1DT12H0M",
+                        "contactName": null
+                    },
+                    "limitedApplicability": {
+                        "startDatetime": "2025-07-05T11:00:00.00",
+                        "endDatetime": "2027-07-06T23:59:59.00",
+                        "schedule": {
+                            "day": [
+                                "MON",
+                                "TUE",
+                                "WED",
+                                "THU",
+                                "FRI",
+                                "SAT",
+                                "SUN"
+                            ],
+                            "startTime": null,
+                            "startEvent": "SR",
+                            "endTime": null,
+                            "endEvent": "SS"
+                        }
+                    }
+                }
+            },
+            {
+                "type": "Feature",
+                "id": 6,
+                "bbox": [
+                    -0.3178864800022792,
+                    39.462786471496045,
+                    -0.3178864800022792,
+                    39.41991545354906
+                ],
+                "name": "Puerto de Valencia",
+                "source": "SNA-UPV",
+                "status": "STATIC",
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [
+                        [
+                            [
+                                39.41991545354905,
+                                -0.3178864800022792
+                            ],
+                            [
+                                39.42323458591381,
+                                -0.31254964157412274
+                            ],
+                            [
+                                39.4297396268423,
+                                -0.3091052009757005
+                            ],
+                            [
+                                39.43332377667555,
+                                -0.3027367451094476
+                            ],
+                            [
+                                39.44354423214789,
+                                -0.2915466001815186
+                            ],
+                            [
+                                39.454559406201646,
+                                -0.2860376051166768
+                            ],
+                            [
+                                39.46265378460984,
+                                -0.3087620785091479
+                            ],
+                            [
+                                39.462786471496045,
+                                -0.31995235294221075
+                            ],
+                            [
+                                39.461592280413456,
+                                -0.3299374054852133
+                            ],
+                            [
+                                39.46026537740122,
+                                -0.3330362148951059
+                            ],
+                            [
+                                39.4554883170655,
+                                -0.3302817164186853
+                            ],
+                            [
+                                39.454559406201646,
+                                -0.32821584470193693
+                            ],
+                            [
+                                39.45097634803571,
+                                -0.3287323129369198
+                            ],
+                            [
+                                39.44964924266055,
+                                -0.32632212784033304
+                            ],
+                            [
+                                39.44407512387348,
+                                -0.3258056960535018
+                            ],
+                            [
+                                39.442216985126954,
+                                -0.3275272203886264
+                            ],
+                            [
+                                39.441818806088655,
+                                -0.3313146541118343
+                            ],
+                            [
+                                39.43863329183362,
+                                -0.33406915136507637
+                            ],
+                            [
+                                39.4383678257363,
+                                -0.3387305332326711
+                            ],
+                            [
+                                39.42894312384309,
+                                -0.3418161748891969
+                            ],
+                            [
+                                39.41991545354905,
+                                -0.3178864800022792
+                            ]
+                        ]
+                    ],
+                    "verticalReference": {
+                        "upper": 216.24891,
+                        "upperReference": "AMSL",
+                        "lower": 16.24891,
+                        "lowerReference": "AMSL",
+                        "uom": "M"
+                    },
+                    "subType": null,
+                    "radius": null
+                },
+                "properties": {
+                    "identifier": "PUERTOVLC",
+                    "country": "ESP",
+                    "type": "CONDITIONAL",
+                    "variant": "COMMON",
+                    "region": null,
+                    "reasons": [
+                        "SENSITIVE",
+                        "PRIVACY",
+                        "EMERGENCY"
+                    ],
+                    "otherReasonInfo": null,
+                    "regulatoryException": null,
+                    "message": null,
+                    "extendedProperties": null,
+                    "restrictionConditions": {
+                        "uasClass": [
+                            "LEGACY",
+                            "C0",
+                            "C1",
+                            "C2",
+                            "C3",
+                            "C4",
+                            "C5",
+                            "C6"
+                        ],
+                        "authorized": "\"REQUIRES_AUTHORIZATION\"",
+                        "uasCategory": [
+                            "OPEN",
+                            "SPECIFIC",
+                            "CERTIFIED"
+                        ],
+                        "uasOperationMode": [
+                            "VLOS",
+                            "BVLOS"
+                        ],
+                        "maxNoise": 65.0,
+                        "specialOperation": "REQUIRES_AUTHORIZATION",
+                        "photograph": "\"PROHIBITED\""
+                    },
+                    "zoneAuthority": {
+                        "name": "Autoridad Portuaria de Valencia",
+                        "service": "Servicio de Atención (SAC)",
+                        "SiteURL": "\"https://www.valenciaport.com/servicio-de-atencion-sac/\"",
+                        "email": null,
+                        "phone": "+34 963939555",
+                        "purpose": "AUTHORIZATION",
+                        "intervalBefore": "P1DT0H0M",
+                        "contactName": null
+                    },
+                    "limitedApplicability": {
+                        "startDatetime": "2025-07-02T00:00:00.00",
+                        "endDatetime": "2027-07-06T23:59:59.00",
+                        "schedule": {
+                            "day": [
+                                "MON",
+                                "TUE",
+                                "WED",
+                                "THU",
+                                "FRI",
+                                "SAT",
+                                "SUN"
+                            ],
+                            "startTime": "00:00A",
+                            "startEvent": null,
+                            "endTime": "23:59A",
+                            "endEvent": null
+                        }
                     }
                 }
             }
-        },
-        {
-            "type": "Feature",
-            "id": "TBD",
-            "bbox": "TBD",
-            "name": "TBD",
-            "source": "TBD",
-            "status": "TBD",
-            "geometry": {
-                "type": "TBD",
-                "coordinates": "TBD",
-                "verticalReference": {
-                    "upper": "TBD",
-                    "upperReference": "TBD",
-                    "lower": "TBD",
-                    "lowerReference": "TBD",
-                    "uom": "TBD"
-                },
-                "subType": "TBD",
-                "radius": "TBD"
-            },
-            "properties": {
-                "identifier": "TBD",
-                "country": "TBD",
-                "type": "TBD",
-                "variant": "TBD",
-                "region": "TBD",
-                "reasons": "TBD",
-                "otherReasonInfo": "TBD",
-                "regulatoryException": "TBD",
-                "message": "TBD",
-                "extendedProperties": "TBD",
-                "restrictionConditions": {
-                    "uasClass": "TBD",
-                    "authorized": "TBD",
-                    "uasCategory": "TBD",
-                    "uasOperationMode": "TBD",
-                    "maxNoise": "TBD",
-                    "specialOperation": "TBD",
-                    "photograph": "TBD"
-                },
-                "zoneAuthority": {
-                    "name": "TBD",
-                    "service": "TBD",
-                    "SiteURL": "TBD",
-                    "email": "TBD",
-                    "phone": "TBD",
-                    "purpose": "TBD",
-                    "intervalBefore": "TBD",
-                    "contactName": "TBD"
-                },
-                "limitedApplicability": {
-                    "startDatetime": "TBD",
-                    "endDatetime": "TBD",
-                    "schedule": {
-                        "day": "TBD",
-                        "startTime": "TBD",
-                        "startEvent": "TBD",
-                        "endTime": "TBD",
-                        "endEvent": "TBD"
-                    }
-                }
-            }
-        }
         ]
+    }
+}
