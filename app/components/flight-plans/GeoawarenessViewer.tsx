@@ -3,6 +3,7 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { useGeoawarenessWebSocket, type GeozoneData } from '@/app/hooks/useGeoawarenessWebSocket'
+import { useMap } from 'react-leaflet'
 import L from 'leaflet'
 
 // Dynamically import Leaflet components to avoid SSR issues
@@ -36,6 +37,19 @@ const GeozoneInfoPopup = dynamic(
   () => import('@/app/components/plan-generator/GeozoneInfoPopup').then((mod) => mod.GeozoneInfoPopup),
   { ssr: false }
 )
+
+// Helper component to update map bounds when they change
+function MapBoundsUpdater({ bounds }: { bounds: L.LatLngBoundsExpression | null }) {
+  const map = useMap()
+  
+  useEffect(() => {
+    if (bounds) {
+      map.fitBounds(bounds, { padding: [50, 50] })
+    }
+  }, [map, bounds])
+  
+  return null
+}
 
 // Geozone types for the legend and visualization
 export type GeozoneType = 
@@ -617,6 +631,9 @@ export function GeoawarenessViewer({
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                 />
+
+                {/* Update map view when bounds change */}
+                <MapBoundsUpdater bounds={bounds} />
 
                 {/* Geozone layer from WebSocket (TASK-057) */}
                 {hasGeozones && showGeozones && (
