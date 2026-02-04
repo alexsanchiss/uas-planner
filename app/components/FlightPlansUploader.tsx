@@ -821,12 +821,12 @@ export function FlightPlansUploader() {
       {selectedPlan && (
         <div className="bg-[var(--surface-secondary)] rounded-lg border border-[var(--border-primary)] p-6 fade-in-up">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100">
+            <h3 className="text-lg font-semibold text-[var(--text-primary)]">
               Selected plan: {selectedPlan.name}
             </h3>
             <button
               onClick={() => setSelectedPlanId(null)}
-              className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 btn-interactive-subtle"
+              className="text-sm text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] btn-interactive-subtle"
             >
               Deselect
             </button>
@@ -855,7 +855,7 @@ export function FlightPlansUploader() {
 
           {/* DateTime picker for selected plan - shown when at datetime step or to show current value */}
           {(currentStep === 'datetime' || selectedPlan.scheduledAt) && (
-            <div className="mt-4 p-4 bg-[var(--surface-primary)] rounded-lg border border-blue-100 dark:border-blue-900 fade-in">
+            <div className="mt-4 p-4 bg-[var(--surface-primary)] rounded-lg border border-[var(--border-primary)] fade-in">
               <DateTimePicker
                 value={selectedPlan.scheduledAt || ''}
                 onChange={handleDateTimeChange}
@@ -880,7 +880,7 @@ export function FlightPlansUploader() {
 
           {/* Process action prompt */}
           {currentStep === 'process' && (
-            <div className="mt-4 p-4 bg-[var(--surface-primary)] rounded-lg border border-blue-100 dark:border-blue-900 fade-in">
+            <div className="mt-4 p-4 bg-[var(--surface-primary)] rounded-lg border border-[var(--border-primary)] fade-in">
               <p className="text-sm text-[var(--text-secondary)] mb-3">
                 The plan is ready to be processed. This will generate the trajectory and U-Plan.
               </p>
@@ -896,7 +896,7 @@ export function FlightPlansUploader() {
 
           {/* Geoawareness step prompt */}
           {currentStep === 'geoawareness' && selectedPlan.status === 'procesado' && (
-            <div className="mt-4 p-4 bg-[var(--surface-primary)] rounded-lg border border-purple-100 dark:border-purple-900 fade-in">
+            <div className="mt-4 p-4 bg-[var(--surface-primary)] rounded-lg border border-[var(--border-primary)] fade-in">
               <p className="text-sm text-[var(--text-secondary)] mb-3">
                 The plan has been processed. Review the U-Plan information and check geoawareness data before requesting authorization.
               </p>
@@ -911,7 +911,7 @@ export function FlightPlansUploader() {
                       name: selectedPlan.name,
                     })
                   }}
-                  className="px-4 py-2 text-sm font-medium text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-md hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors btn-interactive flex items-center gap-2"
+                  className="px-4 py-2 text-sm font-medium text-[var(--text-primary)] bg-[var(--surface-tertiary)] border border-[var(--border-primary)] rounded-md hover:bg-[var(--bg-hover)] transition-colors btn-interactive flex items-center gap-2"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -930,7 +930,7 @@ export function FlightPlansUploader() {
                     })
                   }}
                   disabled={!selectedPlan.fileContent}
-                  className="px-4 py-2 text-sm font-medium text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-md hover:bg-purple-100 dark:hover:bg-purple-900/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors btn-interactive flex items-center gap-2"
+                  className="px-4 py-2 text-sm font-medium text-[var(--text-primary)] bg-[var(--surface-tertiary)] border border-[var(--border-primary)] rounded-md hover:bg-[var(--bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors btn-interactive flex items-center gap-2"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
@@ -942,7 +942,7 @@ export function FlightPlansUploader() {
                   onClick={() => handleDownloadPlan(selectedPlan.id)}
                   disabled={selectedPlan.status !== 'procesado' || !selectedPlan.csvResult}
                   title={selectedPlan.status !== 'procesado' ? 'Plan must be processed first' : !selectedPlan.csvResult ? 'Trajectory data not available' : undefined}
-                  className="px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors btn-interactive flex items-center gap-2"
+                  className="px-4 py-2 text-sm font-medium text-[var(--text-primary)] bg-[var(--surface-tertiary)] border border-[var(--border-primary)] rounded-md hover:bg-[var(--bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors btn-interactive flex items-center gap-2"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
@@ -953,7 +953,7 @@ export function FlightPlansUploader() {
                 <button
                   onClick={() => handleGeoawareness(selectedPlan.id)}
                   disabled={loadingPlanIds.geoawareness.has(selectedPlan.id)}
-                  className="px-4 py-2 text-sm font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700 rounded-md hover:bg-emerald-100 dark:hover:bg-emerald-900/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors btn-interactive flex items-center gap-2"
+                  className="px-4 py-2 text-sm font-medium text-[var(--text-primary)] bg-[var(--surface-tertiary)] border border-[var(--border-primary)] rounded-md hover:bg-[var(--bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors btn-interactive flex items-center gap-2"
                 >
                   {loadingPlanIds.geoawareness.has(selectedPlan.id) ? (
                     <>
@@ -976,8 +976,8 @@ export function FlightPlansUploader() {
 
               {/* Geoawareness status indicator */}
               {selectedPlan.geoawarenessData ? (
-                <div className="mb-3 p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200 dark:border-emerald-700">
-                  <div className="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-300">
+                <div className="mb-3 p-3 bg-[var(--surface-tertiary)] rounded-lg border border-[var(--border-primary)]">
+                  <div className="flex items-center gap-2 text-sm text-[var(--text-primary)]">
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                     </svg>

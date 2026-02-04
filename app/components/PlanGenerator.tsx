@@ -351,85 +351,7 @@ export default function PlanGenerator() {
   // Generator mode: manual waypoint placement vs SCAN pattern generation
   const [generatorMode, setGeneratorMode] = useState<GeneratorMode>('manual');
   
-  // TASK-078: U-Plan preview state - regenerated automatically when form data changes
-  const [uplanPreview, setUplanPreview] = useState<any>(null);
-  const [uplanGenerating, setUplanGenerating] = useState<boolean>(false);
-  
-  // TASK-078: Regenerate U-Plan preview when waypoints or flight details change
-  // Uses useMemo to memoize the conversion and useEffect for the async generation
-  const uplanWaypoints = useMemo((): UplanWaypoint[] => {
-    if (waypoints.length < 2) return [];
-    
-    // Estimate time based on speed and distance between waypoints
-    let cumulativeTime = 0;
-    return waypoints.map((wp, idx) => {
-      if (idx > 0) {
-        const prev = waypoints[idx - 1];
-        // Haversine approximation for distance in meters
-        const R = 6371000; // Earth radius in meters
-        const dLat = ((wp.lat - prev.lat) * Math.PI) / 180;
-        const dLon = ((wp.lng - prev.lng) * Math.PI) / 180;
-        const a = Math.sin(dLat / 2) ** 2 +
-          Math.cos((prev.lat * Math.PI) / 180) *
-          Math.cos((wp.lat * Math.PI) / 180) *
-          Math.sin(dLon / 2) ** 2;
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        const distance = R * c;
-        
-        // Time = distance / speed (use average speed between waypoints)
-        const avgSpeed = (prev.speed + wp.speed) / 2 || 5; // Default 5 m/s
-        const segmentTime = distance / avgSpeed;
-        
-        // Add pause duration from previous waypoint
-        cumulativeTime += prev.pauseDuration || 0;
-        cumulativeTime += segmentTime;
-      }
-      
-      return {
-        time: cumulativeTime,
-        lat: wp.lat,
-        lon: wp.lng,
-        h: wp.altitude,
-      };
-    });
-  }, [waypoints]);
-  
-  // TASK-078: Effect to regenerate U-Plan when dependencies change
-  useEffect(() => {
-    // Skip if less than 2 waypoints
-    if (uplanWaypoints.length < 2) {
-      setUplanPreview(null);
-      return;
-    }
-    
-    // Generate U-Plan preview
-    setUplanGenerating(true);
-    
-    try {
-      // Get scheduled time or use current time
-      const scheduledAt = flightPlanDetails.datetime 
-        ? Math.floor(new Date(flightPlanDetails.datetime).getTime() / 1000)
-        : Math.floor(Date.now() / 1000);
-      
-      // Generate oriented volumes
-      const volumeData = generateOrientedBBox(scheduledAt, uplanWaypoints, DEFAULT_UPLAN_CONFIG);
-      
-      // Prepare uplan details (omit datetime for the JSON structure)
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { datetime: _datetime, ...uplanDetails } = flightPlanDetails;
-      
-      // Generate full U-Plan JSON
-      const uplanJson = generateJSON(volumeData, uplanWaypoints, uplanDetails);
-      
-      setUplanPreview(uplanJson);
-      console.log('[PlanGenerator] U-Plan preview generated with', uplanJson.operationVolumes?.length || 0, 'estimated operation volumes (final count after trajectory processing)');
-    } catch (error) {
-      console.error('[PlanGenerator] Error generating U-Plan preview:', error);
-      setUplanPreview(null);
-    } finally {
-      setUplanGenerating(false);
-    }
-  }, [uplanWaypoints, flightPlanDetails]);
+
   
   // SCAN pattern generator V2 state - overlays for the map
   const [scanOverlays, setScanOverlays] = useState<{
@@ -784,17 +706,13 @@ export default function PlanGenerator() {
         uspace_name: selectedUspace.name,
       } : null;
       
-      // TASK-078: Use pre-generated U-Plan preview with operation volumes if available
-      // This includes the automatically regenerated operation volumes from form data changes
-      const uplanToUpload = uplanPreview || uplanDetails;
-      
       // Use the new unified API
       const createRes = await axios.post("/api/flightPlans", {
         customName: planName,
         status: "sin procesar",
         fileContent: JSON.stringify(qgcPlan),
         folderId,
-        uplan: JSON.stringify(uplanToUpload),
+        uplan: JSON.stringify(uplanDetails),
         scheduledAt,
         geoawarenessData,
       }, { headers });
@@ -2051,58 +1969,11 @@ export default function PlanGenerator() {
               {/* Bottom buttons (now scroll with sidebar) */}
               {generatorMode === 'manual' && (
               <div className="bg-[var(--surface-primary)] pt-4 pb-2 flex flex-col gap-2 px-6">
-                {/* TASK-078 & TASK-091: U-Plan preview status indicator
-                    Shows preliminary operation volumes based on waypoint positions.
-                    Final volumes are calculated after trajectory processing (csvResult). */}
-                {waypoints.length >= 2 && (
-                  <div 
-                    className={`p-2 rounded-md border text-xs ${
-                      uplanGenerating 
-                        ? 'bg-blue-900/20 border-blue-500/30 text-blue-300' 
-                        : uplanPreview 
-                          ? 'bg-purple-900/20 border-purple-500/30 text-purple-300'
-                          : 'bg-yellow-900/20 border-yellow-500/30 text-yellow-300'
-                    }`}
-                    title={uplanPreview 
-                      ? "This is a preliminary preview based on estimated flight times. Final operation volumes will be calculated after trajectory processing." 
-                      : undefined
-                    }
-                  >
-                    <div className="flex items-center gap-2">
-                      {uplanGenerating ? (
-                        <>
-                          <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                          </svg>
-                          <span>Generating U-Plan preview...</span>
-                        </>
-                      ) : uplanPreview ? (
-                        <>
-                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                          </svg>
-                          <span>
-                            U-Plan preview: ~{uplanPreview.operationVolumes?.length || 0} volumes
-                          </span>
-                          <span className="text-purple-400/70 text-[10px]">(estimated)</span>
-                        </>
-                      ) : (
-                        <>
-                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                          </svg>
-                          <span>U-Plan will be generated</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                )}
                 <button
                   className="btn btn-primary w-full py-2 font-semibold disabled:opacity-60"
                   onClick={handleUploadPlan}
                   type="button"
-                  disabled={loading || uplanGenerating}
+                  disabled={loading}
                 >
                   {loading ? "Uploading..." : "Upload to Trajectory Generator"}
                 </button>

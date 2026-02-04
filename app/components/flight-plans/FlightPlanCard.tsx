@@ -422,7 +422,7 @@ export function FlightPlanCard({
           <div className="flex items-center gap-2 flex-wrap">
             {/* TASK-221: Larger plan name (increased from text-sm to text-lg) with edit button */}
             <h3 
-              className={`text-lg font-semibold text-gray-900 dark:text-gray-100 truncate ${
+              className={`text-lg font-semibold text-[var(--text-primary)] truncate ${
                 onRename ? 'cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 group' : ''
               }`}
               title={plan.name}
