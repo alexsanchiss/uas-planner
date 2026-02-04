@@ -504,13 +504,13 @@ export function GeoawarenessViewer({
                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
               />
             </svg>
-            <span className="text-sm text-[var(--text-secondary)]">
+            <span className="text-sm text-[var(--text-secondary)] bg-black/40 dark:bg-white/10 px-3 py-1.5 rounded-md backdrop-blur-sm">
               {wsLoading && 'Loading geoawareness data...'}
               {trajectoryLoading && !wsLoading && 'Loading trajectory data...'}
               {externalLoading && 'Loading...'}
             </span>
             {usingFallback && (
-              <span className="text-xs text-[var(--text-tertiary)]">
+              <span className="text-xs text-[var(--text-tertiary)] bg-black/40 dark:bg-white/10 px-3 py-1 rounded-md backdrop-blur-sm">
                 Using fallback data
               </span>
             )}
