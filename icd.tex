@@ -21,7 +21,7 @@
 % Used inside tables to avoid overflow when showing endpoints.
 \newcommand{\icdendpoint}[1]{\begingroup\small\path{#1}\endgroup}
 
-\title{ SPIRIT \\ \small{ICD - V\_{1.0.0}}}
+\title{ SPIRIT \\ \small{ICD - V\_{2.0.0}}}
 \author{U-Plan Preparation Service (UPPS) \\ Álex Sanchis}
 \date{\today}
 
@@ -29,15 +29,32 @@
 \maketitle
 
 \section*{Resumen}
-Este documento describe la(s) interfaz(es) del sistema \textbf{UAS Planner} (parte de \textbf{U-Plan Preparation Service, UPPS}) dentro del contexto del proyecto \textbf{SPIRIT}. En particular, especifica:
+Este documento describe la(s) interfaz(ces) del sistema \textbf{UAS Planner} (parte de \textbf{U-Plan Preparation Service, UPPS}) dentro del contexto del proyecto \textbf{SPIRIT}. En particular, especifica:
 \begin{itemize}
     \item La interfaz entre el \textbf{cliente web} (operador UAS) y el \textbf{backend UPPS} (API HTTP de Next.js).
     \item La integración del backend con servicios externos: \textbf{FAS} (\textit{Flight Authorization Service}) y \textbf{Geoawareness Service}.
     \item La integración \textbf{WebSocket} con el \textbf{Geoawareness Service} para obtención de geozonas y datos de U-space en tiempo real.
     \item La coordinación del procesamiento distribuido de trayectorias mediante un \textbf{daemon de asignación} (\texttt{traj-assigner.js}) y \textbf{máquinas de proceso} (workers) que ejecutan el proyecto externo \texttt{traj-runner}.
+    \item El sistema de \textbf{regeneración automática de volúmenes de operación} para planes procesados.
+    \item El \textbf{workflow guiado de 5 pasos} para preparación, procesamiento y autorización de planes de vuelo.
+    \item Sistema de \textbf{visualización interactiva} con mapas Leaflet para trayectorias, waypoints y geozonas.
 \end{itemize}
 
-El objetivo de la interfaz es permitir que un usuario cargue planes de vuelo (típicamente exportados desde QGroundControl), que dichos planes se procesen para generar trayectorias (CSV) y, finalmente, que esas trayectorias puedan convertirse a \textbf{U-Plan} para su evaluación de geoawareness y envío al servicio de autorización.
+El objetivo de la interfaz es permitir que un usuario cargue planes de vuelo (típicamente exportados desde QGroundControl o generados directamente en la aplicación), que dichos planes se procesen para generar trayectorias (CSV) y, finalmente, que esas trayectorias puedan convertirse a \textbf{U-Plan} para su evaluación de geoawareness y envío al servicio de autorización (FAS).
+
+\subsection*{Novedades en V2.0.0 SPIRIT}
+\begin{itemize}
+    \item \textbf{Mejora general UI/UX}: Nuevo esquema visual, mejora de experiencia de usuario, optimización para escritorio y móvil.
+    \item \textbf{Sistema de temas dinámico}: Soporte completo para temas claro/oscuro con cambio instantáneo y persistencia en localStorage.
+    \item \textbf{Normalización de tiempos}: Las trayectorias CSV se normalizan automáticamente para iniciar en t=0s, independientemente del tiempo inicial de simulación.
+    \item \textbf{Regeneración automática de volúmenes}: Sistema que verifica cada 30 segundos planes procesados sin volúmenes y los regenera automáticamente.
+    \item \textbf{Viewer de trayectorias}: Visualización interactiva de trayectorias con mapas Leaflet, sustituyendo la descarga directa de CSV.
+    \item \textbf{Geoawareness mejorado}: Auto-centrado de mapas en trayectorias, visualización con marcadores reducidos y overlays optimizados.
+    \item \textbf{Gestión avanzada de folders}: Drag-and-drop para organización de planes, sección de planes huérfanos.
+    \item \textbf{Timestamps dinámicos en U-Plan}: Los campos \texttt{creationTime} y \texttt{updateTime} se actualizan automáticamente al momento del envío a FAS.
+    \item \textbf{Workflow optimizado}: Interfaz guiada de 5 pasos con indicadores de progreso, bloqueo de edición post-procesamiento y validaciones mejoradas.
+    \item \textbf{Arquitectura modular mejorada}: Componentes reutilizables organizados por funcionalidad con hooks especializados.
+\end{itemize}
 
 \section{Alcance de la Interfaz}
 \begin{itemize}
@@ -246,7 +263,20 @@ El U-Plan se genera a partir del CSV y \texttt{scheduledAt} y contiene una lista
 \begin{itemize}
     \item \textbf{Asignación de planes a máquinas}: el proceso \texttt{traj-assigner.js} ejecuta asignación cada \textbf{10 ms} (\texttt{setInterval(assignNextPlan, 10)}).
     \item \textbf{Limpieza automática de CSV pequeños}: el mismo proceso ejecuta limpieza periódica cada \textbf{5 minutos} (\texttt{setInterval(cleanSmallCsvResults, 60 * 5000)}).
-    \item \textbf{Geoawareness}: timeout configurado de \textbf{10 s} en la llamada al servicio geoawareness.
+    \item \textbf{Regeneración automática de volúmenes}: el hook \texttt{useVolumeRegeneration} ejecuta verificación cada \textbf{30 segundos} para planes procesados sin volúmenes de operación.
+    \item \textbf{Polling de estado de planes}: el hook \texttt{useFlightPlans} actualiza automáticamente el estado cada \textbf{5 segundos} cuando está habilitado.
+    \item \textbf{Geoawareness WebSocket}:
+    \begin{itemize}
+        \item Reconexión con backoff exponencial: 1s, 2s, 4s, 8s, 16s (máximo 5 intentos).
+        \item Fallback a HTTP después de agotar intentos.
+    \end{itemize}
+    \item \textbf{Normalización de tiempos de trayectoria}: 
+    \begin{itemize}
+        \item Parser CSV normaliza todos los tiempos para iniciar en \texttt{t=0s}.
+        \item Se aplica en: \texttt{parseCSVToTrajectory} (GeoawarenessViewer, TrajectoryMapViewer).
+        \item Se aplica en: \texttt{trayToUplan} para generación de volúmenes con tiempos correctos.
+    \end{itemize}
+    \item \textbf{Actualización de timestamps U-Plan}: \texttt{creationTime} y \texttt{updateTime} se actualizan al momento exacto del envío a FAS (ISO-8601 UTC).
     \item \textbf{JWT}: expiración del token de \textbf{1 día}.
     \item \textbf{Límites operacionales de la API (bulk)}:
     \begin{itemize}
@@ -286,9 +316,28 @@ El U-Plan se genera a partir del CSV y \texttt{scheduledAt} y contiene una lista
 
 \section{Versionado y Control de Cambios}
 \begin{itemize}
-    \item \textbf{Versión del ICD}: \texttt{V\_1.0.0}.
-    \item \textbf{Versión de la aplicación}: \texttt{v1.0.0} (primera versión de producción) y documentación de optimizaciones en \texttt{API\_DOCUMENTATION.md} (etiquetadas como v1.1.0 en el README).
-    \item \textbf{Cambios en v1.0.0}:
+    \item \textbf{Versión del ICD}: \texttt{V\_2.0.0}.
+    \item \textbf{Versión de la aplicación}: \texttt{v2.0.0 SPIRIT} (versión de producción con mejoras significativas de UX y arquitectura).
+    \item \textbf{Cambios en v2.0.0 SPIRIT}:
+    \begin{itemize}
+        \item \textbf{UI/UX Mejorado}: Sistema de temas dinámico (claro/oscuro) con CSS variables y persistencia.
+        \item \textbf{Normalización de tiempos}: Trayectorias CSV normalizadas para iniciar en t=0s, eliminando offsets temporales.
+        \item \textbf{Auto-regeneración de volúmenes}: Hook \texttt{useVolumeRegeneration} activo por defecto, verifica cada 30s planes procesados sin volúmenes.
+        \item \textbf{Viewer de trayectorias mejorado}: Componente \texttt{TrajectoryMapViewer} con mapas Leaflet interactivos y análisis detallado.
+        \item \textbf{Geoawareness avanzado}: Auto-centrado de mapa en trayectoria, marcadores reducidos (5/3px), overlays oscuros consistentes.
+        \item \textbf{WebSocket optimizado}: Manejo de errores mejorado, no muestra errores durante conexión inicial, fallback híbrido.
+        \item \textbf{Gestión de folders}: Drag-and-drop completo, sección de planes huérfanos, operaciones de renombrado y movimiento.
+        \item \textbf{Timestamps dinámicos}: \texttt{creationTime} y \texttt{updateTime} del U-Plan se actualizan al momento del envío a FAS.
+        \item \textbf{Workflow de 5 pasos}: Select → DateTime → Process → Geoawareness → Authorize con indicadores visuales.
+        \item \textbf{Arquitectura modular}: Componentes organizados en \texttt{app/components/flight-plans/} con hooks especializados.
+        \item \textbf{Endpoints optimizados}:
+        \begin{itemize}
+            \item \texttt{POST /api/flightPlans/regenerate-volumes}: Regeneración automática de volúmenes.
+            \item \texttt{POST /api/flightPlans/[id]/reset}: Reset completo de plan a estado inicial.
+            \item Mejoras en filtrado de planes procesados (\texttt{status='procesado'}, \texttt{csvResult=1}).
+        \end{itemize}
+    \end{itemize}
+    \item \textbf{Cambios en v1.0.0} (referencia histórica):
     \begin{itemize}
         \item Migración de Geoawareness de HTTP polling a WebSocket para obtención de geozonas en tiempo real.
         \item Nuevo endpoint WebSocket: \texttt{ws://<IP>/ws/gas/\{USPACE\_ID\}}.
@@ -302,6 +351,7 @@ El U-Plan se genera a partir del CSV y \texttt{scheduledAt} y contiene una lista
         \item El endpoint \icdendpoint{/api/flightPlans/[id]} se declara \textit{deprecated} (placeholder) y no debe usarse para nuevas integraciones.
         \item Para compatibilidad hacia atrás, se recomienda mantener campos opcionales (p.ej. \texttt{geoawarenessData}, \texttt{authorizationMessage}) sin romper respuestas existentes.
         \item El endpoint HTTP de geoawareness está movido a \icdendpoint{/api/deprecated/geoawareness-geozones} y solo debe usarse como fallback.
+        \item Nuevo sistema de regeneración automática opera de forma transparente sin intervención del usuario.
     \end{itemize}
 \end{itemize}
 
@@ -594,12 +644,14 @@ Si la conexión WebSocket falla después de 5 intentos de reconexión, el sistem
     \item \texttt{POST }\icdendpoint{/api/flightPlans} (individual o bulk \texttt{items})
     \item \texttt{PUT }\icdendpoint{/api/flightPlans} (\texttt{\{id,data\}} o bulk \texttt{\{ids,data\}} / \texttt{\{items\}})
     \item \texttt{DELETE }\icdendpoint{/api/flightPlans} (\texttt{\{id\}} o bulk \texttt{\{ids\}}; elimina también CSV asociado)
+    \item \texttt{POST }\icdendpoint{/api/flightPlans/regenerate-volumes} (v2.0: regeneración automática de volúmenes)
+    \item \texttt{POST }\icdendpoint{/api/flightPlans/<id>/reset} (v2.0: reset completo de plan a estado inicial)
     \item \texttt{GET }\icdendpoint{/api/csvResult?id=<id>}
     \item \texttt{POST }\icdendpoint{/api/csvResult} (bulk \texttt{\{ids\}})
     \item \texttt{DELETE }\icdendpoint{/api/csvResult} (\texttt{\{id\}} o bulk \texttt{\{ids\}})
-    \item \texttt{POST }\icdendpoint{/api/flightPlans/<id>/geoawareness}
-    \item \texttt{POST }\icdendpoint{/api/flightPlans/<id>/uplan}
-    \item \texttt{PUT }\icdendpoint{/api/fas/<externalResponseNumber>}
+    \item \texttt{POST }\icdendpoint{/api/flightPlans/<id>/geoawareness} (verifica plan contra geozonas)
+    \item \texttt{POST }\icdendpoint{/api/flightPlans/<id>/uplan} (genera y envía U-Plan a FAS)
+    \item \texttt{PUT }\icdendpoint{/api/fas/<externalResponseNumber>} (callback de FAS)
     \item \texttt{GET/POST }\icdendpoint{/api/folders?userId=<id>}
     \item \texttt{GET/PUT/DELETE }\icdendpoint{/api/folders/<id>}
     \item \texttt{POST }\icdendpoint{/api/machines} y \texttt{GET }\icdendpoint{/api/machines?name=<name>}
@@ -620,12 +672,68 @@ Si la conexión WebSocket falla después de 5 intentos de reconexión, el sistem
     \item El cliente web conecta via WebSocket a \texttt{ws://.../ws/gas/\{USPACE\_ID\}} para recibir geozonas en tiempo real.
     \item El usuario define waypoints sobre el mapa, visualizando las geozonas como referencia.
     \item El usuario sube planes: \texttt{POST }\icdendpoint{/api/flightPlans} con \texttt{fileContent} y \texttt{status="sin procesar"}.
-    \item La UI marca planes a procesar como \texttt{"en cola"} mediante \texttt{PUT }\icdendpoint{/api/flightPlans}.
+    \item \textbf{Workflow de 5 pasos} (Trajectory Generator):
+    \begin{enumerate}
+        \item \textbf{Select}: Usuario selecciona un plan de vuelo de la lista.
+        \item \textbf{DateTime}: Usuario establece fecha/hora programada (\texttt{scheduledAt}).
+        \item \textbf{Process}: Usuario procesa el plan (marca como \texttt{"en cola"} mediante \texttt{PUT }\icdendpoint{/api/flightPlans}).
+        \item \textbf{Geoawareness}:
+        \begin{itemize}
+            \item Sistema regenera volúmenes automáticamente si faltan (cada 30s).
+            \item Usuario revisa U-Plan generado y verifica contra geozonas via WebSocket.
+            \item Usuario visualiza trayectoria procesada en mapa interactivo.
+        \end{itemize}
+        \item \textbf{Authorize}: Usuario envía U-Plan a FAS para autorización.
+    \end{enumerate}
     \item \texttt{traj-assigner.js} asigna planes \texttt{"en cola"} a máquinas \texttt{"Disponible"} y marca el plan \texttt{"procesando"}.
-    \item Los workers externos generan el CSV y actualizan BD (\texttt{csvResult} y estado del plan).
-    \item Check Geoawareness: El usuario puede verificar la trayectoria contra geozonas actualizadas via WebSocket.
-    \item Envío a autorización: \texttt{POST }\icdendpoint{/api/flightPlans/<id>/uplan} y callback FAS a \texttt{PUT }\icdendpoint{/api/fas/<externalResponseNumber>}.
+    \item Los workers externos generan el CSV con normalización de tiempos y actualizan BD (\texttt{csvResult} y estado del plan).
+    \item Check Geoawareness: El usuario visualiza la trayectoria contra geozonas actualizadas via WebSocket en tiempo real.
+    \item Envío a autorización: \texttt{POST }\icdendpoint{/api/flightPlans/<id>/uplan} (con timestamps actualizados) y callback FAS a \texttt{PUT }\icdendpoint{/api/fas/<externalResponseNumber>}.
+    \item Sistema regenera volúmenes automáticamente si el plan se resetea o pierde sus volúmenes.
 \end{enumerate}
+
+\subsection*{E. Arquitectura de Componentes (v2.0)}
+La aplicación se estructura en componentes modulares organizados por funcionalidad:
+
+\subsubsection*{Componentes principales}
+\begin{itemize}
+    \item \texttt{FlightPlansUploader}: Interfaz principal del Trajectory Generator con workflow guiado.
+    \item \texttt{PlanGenerator}: Generador de planes de vuelo con mapa interactivo y waypoints.
+    \item \texttt{ProcessingWorkflow}: Indicador visual del workflow de 5 pasos.
+    \item \texttt{FolderList}: Gestión de carpetas con drag-and-drop.
+    \item \texttt{FlightPlanCard}: Tarjeta de plan con operaciones individuales.
+    \item \texttt{DateTimePicker}: Selector de fecha/hora con soporte UTC.
+\end{itemize}
+
+\subsubsection*{Componentes de visualización}
+\begin{itemize}
+    \item \texttt{TrajectoryMapViewer}: Visualizador de trayectorias con Leaflet (sustituye descarga CSV).
+    \item \texttt{GeoawarenessViewer}: Visualizador de trayectoria sobre geozonas con WebSocket en tiempo real.
+    \item \texttt{WaypointMapModal}: Modal para preview de waypoints en plan.
+    \item \texttt{UplanViewModal}: Visualizador de volúmenes de operación en mapa.
+    \item \texttt{UplanFormModal}: Formulario de edición de campos U-Plan.
+    \item \texttt{GeozoneLayer}: Capa de geozonas con colores por tipo y opacidad configurable.
+\end{itemize}
+
+\subsubsection*{Hooks especializados}
+\begin{itemize}
+    \item \texttt{useFlightPlans}: Gestión de planes con polling opcional (5s).
+    \item \texttt{useFolders}: Gestión de carpetas.
+    \item \texttt{useGeoawarenessWebSocket}: Conexión WebSocket con reconexión automática.
+    \item \texttt{useVolumeRegeneration}: Regeneración automática de volúmenes (30s).
+    \item \texttt{usePolling}: Polling genérico con control de errores.
+    \item \texttt{useTheme}: Gestión del tema claro/oscuro con persistencia.
+    \item \texttt{useToast}: Notificaciones toast con estados y retry.
+\end{itemize}
+
+\subsubsection*{Sistema de temas (v2.0)}
+\begin{itemize}
+    \item CSS variables dinámicas: \texttt{--bg-primary}, \texttt{--surface-primary}, \texttt{--text-primary}, etc.
+    \item Cambio instantáneo sin recarga de página.
+    \item Persistencia en \texttt{localStorage}.
+    \item Soporte para \texttt{MutationObserver} en componentes dinámicos (header, footer).
+    \item Variables de estado: \texttt{--status-success-bg}, \texttt{--status-error-bg}, etc.
+\end{itemize}
 
 \end{document}
 
