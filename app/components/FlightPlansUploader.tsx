@@ -20,6 +20,7 @@
 
 import React, { useState, useCallback, useMemo, DragEvent } from 'react'
 import dynamic from 'next/dynamic'
+import { HelpCircle } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useFlightPlans, type FlightPlan as FlightPlanData } from '../hooks/useFlightPlans'
 import { useFolders } from '../hooks/useFolders'
@@ -772,6 +773,16 @@ export function FlightPlansUploader() {
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
+      {/* Help Button */}
+      <a
+        href="/how-it-works#trajectory-generator-help"
+        target="_self"
+        className="fixed top-24 right-4 sm:right-8 z-[9999] bg-blue-700 hover:bg-blue-800 text-white rounded-full p-2 sm:p-3 shadow-lg flex items-center gap-2 transition-all duration-200"
+        title="Need help with Trajectory Generator?"
+      >
+        <HelpCircle className="w-5 h-5 sm:w-6 sm:h-6" />
+      </a>
+      
       {/* Polling error banner - TASK-100 */}
       {pollingErrorCount >= 3 && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center justify-between">
@@ -974,25 +985,6 @@ export function FlightPlansUploader() {
                 </button>
               </div>
 
-              {/* Geoawareness status indicator */}
-              {selectedPlan.geoawarenessData ? (
-                <div className="mb-3 p-3 bg-[var(--surface-tertiary)] rounded-lg border border-[var(--border-primary)]">
-                  <div className="flex items-center gap-2 text-sm text-[var(--text-primary)]">
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                    <span>Geoawareness check completed</span>
-                    {typeof selectedPlan.geoawarenessData === 'object' && 
-                     selectedPlan.geoawarenessData !== null &&
-                     'features' in selectedPlan.geoawarenessData &&
-                     Array.isArray((selectedPlan.geoawarenessData as { features: unknown[] }).features) ? (
-                      <span className="text-xs">
-                        ({(selectedPlan.geoawarenessData as { features: unknown[] }).features.length} zone(s) found)
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-              ) : null}
 
               <p className="text-xs text-[var(--text-muted)] mb-3">
                 Review the U-Plan, check geoawareness for conflicting zones, and view the trajectory before continuing to authorization.
