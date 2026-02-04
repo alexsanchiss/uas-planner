@@ -1,27 +1,63 @@
 "use client";
 
 import Link from "next/link";
-import { useTheme } from "../hooks/useTheme";
+import { useState, useEffect } from "react";
+
+/**
+ * Theme-aware image component for footer
+ * Uses MutationObserver to watch for data-theme changes, same logic as header
+ */
+function ThemedImage({ 
+  darkSrc, 
+  lightSrc, 
+  alt, 
+  width, 
+  height, 
+  className 
+}: { 
+  darkSrc: string; 
+  lightSrc: string; 
+  alt: string; 
+  width: number; 
+  height: number; 
+  className?: string;
+}) {
+  const [isLightTheme, setIsLightTheme] = useState(false);
+  
+  useEffect(() => {
+    // Check initial theme
+    const checkTheme = () => {
+      setIsLightTheme(document.documentElement.getAttribute('data-theme') === 'light');
+    };
+    
+    checkTheme();
+    
+    // Watch for theme changes using MutationObserver
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === 'data-theme') {
+          checkTheme();
+        }
+      });
+    });
+    
+    observer.observe(document.documentElement, { attributes: true });
+    
+    return () => observer.disconnect();
+  }, []);
+  
+  return (
+    <img
+      src={isLightTheme ? lightSrc : darkSrc}
+      alt={alt}
+      width={width}
+      height={height}
+      className={className}
+    />
+  );
+}
 
 export function Footer() {
-  const { isDark, mounted } = useTheme();
-
-  // Don't render images until mounted to prevent hydration mismatch
-  // After mounted, use the actual theme value for dynamic updates
-  if (!mounted) {
-    // Return a placeholder during SSR/hydration
-    return (
-      <footer className="bg-[var(--bg-primary)] text-[var(--text-secondary)] border-t border-[var(--border-primary)]">
-        <div className="container mx-auto px-4 py-6 grid grid-cols-1 md:grid-cols-4 gap-8 items-center text-center min-h-[200px]" />
-      </footer>
-    );
-  }
-
-  const snaLogo = isDark ? "/images/SNA_WHITE.png" : "/images/SNA_DEEPBLUE.png";
-  const upvLogo = isDark ? "/images/marca_UPV_principal_blanco150.png" : "/images/marca_UPV_principal_negro150.png";
-  const linkedInIcon = isDark ? "/images/LinkedIN_white.svg" : "/images/LinkedIN_dark.svg";
-  const instagramIcon = isDark ? "/images/Instagram_white.svg" : "/images/Instagram_dark.svg";
-
   return (
     <footer className="bg-[var(--bg-primary)] text-[var(--text-secondary)] border-t border-[var(--border-primary)]">
       <div className="container mx-auto px-4 py-6 grid grid-cols-1 md:grid-cols-4 gap-8 items-center text-center">
@@ -32,9 +68,9 @@ export function Footer() {
             target="_blank"
             rel="noopener noreferrer"
           >
-            {/* Use regular img instead of Next.js Image for immediate theme updates */}
-            <img
-              src={snaLogo}
+            <ThemedImage
+              darkSrc="/images/SNA_WHITE.png"
+              lightSrc="/images/SNA_DEEPBLUE.png"
               alt="SNA Logo"
               width={120}
               height={100}
@@ -46,8 +82,9 @@ export function Footer() {
             target="_blank"
             rel="noopener noreferrer"
           >
-            <img
-              src={upvLogo}
+            <ThemedImage
+              darkSrc="/images/marca_UPV_principal_blanco150.png"
+              lightSrc="/images/marca_UPV_principal_negro150.png"
               alt="UPV Logo"
               width={160}
               height={90}
@@ -64,8 +101,9 @@ export function Footer() {
             aria-label="LinkedIn"
             className="hover:opacity-80"
           >
-            <img
-              src={linkedInIcon}
+            <ThemedImage
+              darkSrc="/images/LinkedIN_white.svg"
+              lightSrc="/images/LinkedIN_dark.svg"
               alt="LinkedIn"
               width={48}
               height={48}
@@ -78,8 +116,9 @@ export function Footer() {
             aria-label="Instagram"
             className="hover:opacity-80"
           >
-            <img
-              src={instagramIcon}
+            <ThemedImage
+              darkSrc="/images/Instagram_white.svg"
+              lightSrc="/images/Instagram_dark.svg"
               alt="Instagram"
               width={48}
               height={48}
