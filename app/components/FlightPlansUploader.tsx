@@ -804,7 +804,7 @@ export function FlightPlansUploader() {
       )}
 
       {/* Workflow guide - shows current step in the flight plan lifecycle */}
-      <div className="bg-[var(--surface-primary)] rounded-lg border border-[var(--border-primary)] p-6 shadow-sm fade-in-up">
+      <div className="relative z-10 bg-[var(--surface-primary)] rounded-lg border border-[var(--border-primary)] p-6 shadow-sm fade-in-up">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-[var(--text-primary)]">Workflow</h2>
           {/* TASK-097: Refresh indicator */}
