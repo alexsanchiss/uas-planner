@@ -532,6 +532,8 @@ export function useGeoawarenessWebSocket({
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const manualDisconnectRef = useRef(false)
   const fallbackLoadedRef = useRef(false)
+  // Use ref for retryCount inside callbacks to avoid dependency loops
+  const retryCountRef = useRef(0)
 
   // Stable callback refs
   const onMessageRef = useRef(onMessage)
@@ -676,7 +678,9 @@ export function useGeoawarenessWebSocket({
 
         console.log(`[WS] Connected to ${uspaceId}`)
         setStatus('connected')
-        setRetryCount(0) // Reset retry count on successful connection
+        // Reset retry count on successful connection
+        retryCountRef.current = 0
+        setRetryCount(0)
         setError(null)
         // Reset fallback state on successful WebSocket connection
         setUsingFallback(false)
@@ -726,18 +730,20 @@ export function useGeoawarenessWebSocket({
         onCloseRef.current?.()
 
         // Auto-reconnect with exponential backoff if not manually disconnected
-        if (!manualDisconnectRef.current && enabled && retryCount < maxRetries) {
-          const delay = calculateBackoffDelay(retryCount, baseDelay, maxDelay)
-          console.log(`[WS] Reconnecting in ${delay}ms (${retryCount + 1}/${maxRetries})`)
+        const currentRetryCount = retryCountRef.current
+        if (!manualDisconnectRef.current && enabled && currentRetryCount < maxRetries) {
+          const delay = calculateBackoffDelay(currentRetryCount, baseDelay, maxDelay)
+          console.log(`[WS] Reconnecting in ${delay}ms (${currentRetryCount + 1}/${maxRetries})`)
           
-          setRetryCount(prev => prev + 1)
+          retryCountRef.current = currentRetryCount + 1
+          setRetryCount(currentRetryCount + 1)
           
           reconnectTimeoutRef.current = setTimeout(() => {
             if (mountedRef.current) {
               connect()
             }
           }, delay)
-        } else if (retryCount >= maxRetries) {
+        } else if (currentRetryCount >= maxRetries) {
           console.error(`[WS] Max retries reached. Service: ${process.env.NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP}`)
           const maxRetryError = new Error(`Connection failed after ${maxRetries} attempts`)
           setError(maxRetryError)
@@ -757,14 +763,18 @@ export function useGeoawarenessWebSocket({
       setStatus('error')
       onErrorRef.current?.(connectionError)
     }
-  }, [uspaceId, enabled, retryCount, maxRetries, baseDelay, maxDelay, enableFallback, fetchFallbackData])
+  // Remove retryCount from dependencies to prevent infinite loops
+  // Use retryCountRef inside the callback instead
+  }, [uspaceId, enabled, maxRetries, baseDelay, maxDelay, enableFallback, fetchFallbackData])
 
   /**
    * Manually trigger a reconnection attempt
    */
   const reconnect = useCallback(() => {
     console.log('[WS] Manual reconnect')
-    setRetryCount(0) // Reset retry count for manual reconnect
+    // Reset retry count for manual reconnect
+    retryCountRef.current = 0
+    setRetryCount(0)
     manualDisconnectRef.current = false
     // Reset fallback state to allow fresh fallback attempt if needed
     fallbackLoadedRef.current = false

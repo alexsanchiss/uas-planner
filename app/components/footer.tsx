@@ -6,11 +6,21 @@ import { useTheme } from "../hooks/useTheme";
 export function Footer() {
   const { isDark, mounted } = useTheme();
 
-  // Use dark theme logos as default during SSR to prevent hydration mismatch
-  const snaLogo = !mounted || isDark ? "/images/SNA_WHITE.png" : "/images/SNA_DEEPBLUE.png";
-  const upvLogo = !mounted || isDark ? "/images/marca_UPV_principal_blanco150.png" : "/images/marca_UPV_principal_negro150.png";
-  const linkedInIcon = !mounted || isDark ? "/images/LinkedIN_white.svg" : "/images/LinkedIN_dark.svg";
-  const instagramIcon = !mounted || isDark ? "/images/Instagram_white.svg" : "/images/Instagram_dark.svg";
+  // Don't render images until mounted to prevent hydration mismatch
+  // After mounted, use the actual theme value for dynamic updates
+  if (!mounted) {
+    // Return a placeholder during SSR/hydration
+    return (
+      <footer className="bg-[var(--bg-primary)] text-[var(--text-secondary)] border-t border-[var(--border-primary)]">
+        <div className="container mx-auto px-4 py-6 grid grid-cols-1 md:grid-cols-4 gap-8 items-center text-center min-h-[200px]" />
+      </footer>
+    );
+  }
+
+  const snaLogo = isDark ? "/images/SNA_WHITE.png" : "/images/SNA_DEEPBLUE.png";
+  const upvLogo = isDark ? "/images/marca_UPV_principal_blanco150.png" : "/images/marca_UPV_principal_negro150.png";
+  const linkedInIcon = isDark ? "/images/LinkedIN_white.svg" : "/images/LinkedIN_dark.svg";
+  const instagramIcon = isDark ? "/images/Instagram_white.svg" : "/images/Instagram_dark.svg";
 
   return (
     <footer className="bg-[var(--bg-primary)] text-[var(--text-secondary)] border-t border-[var(--border-primary)]">
