@@ -149,7 +149,7 @@ export function Tooltip({
           id={tooltipId}
           role="tooltip"
           className={`
-            absolute z-50 px-2.5 py-1.5 text-sm font-medium text-white
+            absolute z-[9999] px-2.5 py-1.5 text-sm font-medium text-white
             bg-gray-900 dark:bg-gray-800 rounded-md shadow-lg
             whitespace-normal break-words
             animate-fade-in

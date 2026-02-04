@@ -63,26 +63,30 @@ const variantIcons: Record<ToastVariant, React.FC> = {
   info: InfoIcon,
 }
 
-const variantStyles: Record<ToastVariant, { container: string; icon: string; title: string }> = {
+const variantStyles: Record<ToastVariant, { container: string; icon: string; title: string; message: string }> = {
   success: {
-    container: 'bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-800',
-    icon: 'text-green-500 dark:text-green-400',
-    title: 'text-green-800 dark:text-green-200',
+    container: 'bg-[var(--status-success-bg)] border-[var(--status-success-border)]',
+    icon: 'text-[var(--status-success)]',
+    title: 'text-[var(--status-success-text)]',
+    message: 'text-[var(--text-secondary)]',
   },
   error: {
-    container: 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800',
-    icon: 'text-red-500 dark:text-red-400',
-    title: 'text-red-800 dark:text-red-200',
+    container: 'bg-[var(--status-error-bg)] border-[var(--status-error-border)]',
+    icon: 'text-[var(--status-error)]',
+    title: 'text-[var(--status-error-text)]',
+    message: 'text-[var(--text-secondary)]',
   },
   warning: {
-    container: 'bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800',
-    icon: 'text-amber-500 dark:text-amber-400',
-    title: 'text-amber-800 dark:text-amber-200',
+    container: 'bg-[var(--status-warning-bg)] border-[var(--status-warning-border)]',
+    icon: 'text-[var(--status-warning)]',
+    title: 'text-[var(--status-warning-text)]',
+    message: 'text-[var(--text-secondary)]',
   },
   info: {
-    container: 'bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800',
-    icon: 'text-blue-500 dark:text-blue-400',
-    title: 'text-blue-800 dark:text-blue-200',
+    container: 'bg-[var(--status-info-bg)] border-[var(--status-info-border)]',
+    icon: 'text-[var(--status-info)]',
+    title: 'text-[var(--status-info-text)]',
+    message: 'text-[var(--text-secondary)]',
   },
 }
 
@@ -170,7 +174,7 @@ export function Toast({
           </p>
           
           {/* Message */}
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+          <p className={`mt-1 text-sm ${styles.message}`}>
             {message}
           </p>
 
@@ -178,7 +182,7 @@ export function Toast({
           {variant === 'error' && onRetry && (
             <button
               onClick={handleRetry}
-              className="mt-2 text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 underline focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 rounded"
+              className="mt-2 text-sm font-medium text-[var(--status-error)] hover:text-[var(--status-error-hover)] underline focus:outline-none focus:ring-2 focus:ring-[var(--status-error)] focus:ring-offset-2 rounded"
             >
               Reintentar
             </button>
@@ -199,13 +203,13 @@ export function Toast({
 
       {/* Progress bar (TASK-196) */}
       {duration > 0 && (
-        <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-200 dark:bg-gray-700">
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-[var(--bg-tertiary)]">
           <div
             className={`h-full transition-all duration-100 ease-linear ${
-              variant === 'success' ? 'bg-green-500' :
-              variant === 'error' ? 'bg-red-500' :
-              variant === 'warning' ? 'bg-amber-500' :
-              'bg-blue-500'
+              variant === 'success' ? 'bg-[var(--status-success)]' :
+              variant === 'error' ? 'bg-[var(--status-error)]' :
+              variant === 'warning' ? 'bg-[var(--status-warning)]' :
+              'bg-[var(--status-info)]'
             }`}
             style={{ width: `${progress}%` }}
           />
