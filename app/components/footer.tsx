@@ -24,6 +24,7 @@ export function Footer() {
             rel="noopener noreferrer"
           >
             <Image
+              key={`sna-${isDark ? 'dark' : 'light'}`}
               src={snaLogo}
               alt="SNA Logo"
               width={120}
@@ -37,6 +38,7 @@ export function Footer() {
             rel="noopener noreferrer"
           >
             <Image
+              key={`upv-${isDark ? 'dark' : 'light'}`}
               src={upvLogo}
               alt="UPV Logo"
               width={160}
@@ -55,6 +57,7 @@ export function Footer() {
             className="hover:opacity-80"
           >
             <Image
+              key={`linkedin-${isDark ? 'dark' : 'light'}`}
               src={linkedInIcon}
               alt="LinkedIn"
               width={48}
@@ -69,6 +72,7 @@ export function Footer() {
             className="hover:opacity-80"
           >
             <Image
+              key={`instagram-${isDark ? 'dark' : 'light'}`}
               src={instagramIcon}
               alt="Instagram"
               width={48}
