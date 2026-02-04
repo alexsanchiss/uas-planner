@@ -93,6 +93,7 @@ type ParseResult = {
 }
 
 // Parse CSV content to trajectory points with detailed error handling
+// Times are normalized so the trajectory starts at t=0
 function parseCSVToTrajectory(csvContent: string): ParseResult {
   // Check for empty content
   if (!csvContent || csvContent.trim().length === 0) {
@@ -132,7 +133,8 @@ function parseCSVToTrajectory(csvContent: string): ParseResult {
     return { success: false, error: createTrajectoryError('CSV_NO_DATA_ROWS') }
   }
 
-  const points: TrajectoryPoint[] = []
+  // First pass: collect raw data
+  const rawPoints: { lat: number; lng: number; alt?: number; time?: number; speed?: number; heading?: number }[] = []
   let invalidRowCount = 0
 
   for (let idx = 0; idx < dataLines.length; idx++) {
@@ -152,19 +154,18 @@ function parseCSVToTrajectory(csvContent: string): ParseResult {
       continue
     }
 
-    points.push({
+    rawPoints.push({
       lat,
       lng,
       alt: altIdx !== -1 ? parseFloat(values[altIdx]) || undefined : undefined,
       time: timeIdx !== -1 ? parseFloat(values[timeIdx]) || undefined : undefined,
       speed: speedIdx !== -1 ? parseFloat(values[speedIdx]) || undefined : undefined,
       heading: headingIdx !== -1 ? parseFloat(values[headingIdx]) || undefined : undefined,
-      type: idx === 0 ? 'takeoff' : idx === dataLines.length - 1 ? 'landing' : 'waypoint',
     })
   }
 
   // Check if any valid points were found
-  if (points.length === 0) {
+  if (rawPoints.length === 0) {
     return { 
       success: false, 
       error: createTrajectoryError(
@@ -173,6 +174,20 @@ function parseCSVToTrajectory(csvContent: string): ParseResult {
       )
     }
   }
+
+  // Find the initial time offset to normalize times to start at 0
+  const firstTime = rawPoints.find(p => p.time !== undefined)?.time ?? 0
+  
+  // Second pass: normalize times and build final points
+  const points: TrajectoryPoint[] = rawPoints.map((raw, idx) => ({
+    lat: raw.lat,
+    lng: raw.lng,
+    alt: raw.alt,
+    time: raw.time !== undefined ? raw.time - firstTime : undefined,
+    speed: raw.speed,
+    heading: raw.heading,
+    type: idx === 0 ? 'takeoff' : idx === rawPoints.length - 1 ? 'landing' : 'waypoint',
+  }))
 
   return { success: true, points }
 }

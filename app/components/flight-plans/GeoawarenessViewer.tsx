@@ -120,6 +120,7 @@ const SEVERITY_COLORS = {
 }
 
 // Parse CSV content to trajectory points
+// Times are normalized so the trajectory starts at t=0
 function parseCSVToTrajectory(csvContent: string): TrajectoryPoint[] {
   if (!csvContent || csvContent.trim().length === 0) return []
 
@@ -137,6 +138,9 @@ function parseCSVToTrajectory(csvContent: string): TrajectoryPoint[] {
   const points: TrajectoryPoint[] = []
   const dataLines = lines.slice(1).filter(line => line.trim().length > 0)
 
+  // First pass: collect all raw data including times
+  const rawPoints: { lat: number; lng: number; alt?: number; time?: number; type: string }[] = []
+  
   for (let idx = 0; idx < dataLines.length; idx++) {
     const values = dataLines[idx].split(',').map(v => v.trim())
     const lat = parseFloat(values[latIdx])
@@ -145,12 +149,27 @@ function parseCSVToTrajectory(csvContent: string): TrajectoryPoint[] {
     if (isNaN(lat) || isNaN(lng)) continue
     if (lat < -90 || lat > 90 || lng < -180 || lng > 180) continue
 
-    points.push({
+    rawPoints.push({
       lat,
       lng,
       alt: altIdx !== -1 ? parseFloat(values[altIdx]) || undefined : undefined,
       time: timeIdx !== -1 ? parseFloat(values[timeIdx]) || undefined : undefined,
       type: idx === 0 ? 'takeoff' : idx === dataLines.length - 1 ? 'landing' : 'waypoint',
+    })
+  }
+
+  // Find the initial time offset to normalize times to start at 0
+  const firstTime = rawPoints.find(p => p.time !== undefined)?.time ?? 0
+  
+  // Second pass: normalize times and build final points
+  for (let idx = 0; idx < rawPoints.length; idx++) {
+    const raw = rawPoints[idx]
+    points.push({
+      lat: raw.lat,
+      lng: raw.lng,
+      alt: raw.alt,
+      time: raw.time !== undefined ? raw.time - firstTime : undefined,
+      type: idx === 0 ? 'takeoff' : idx === rawPoints.length - 1 ? 'landing' : 'waypoint',
     })
   }
 
@@ -270,9 +289,9 @@ export function GeoawarenessViewer({
   const isLoading = externalLoading || wsLoading || trajectoryLoading
   
   // Error state combines external + API + trajectory
-  const displayError = externalError || 
-    (wsError?.message || null) ||
-    trajectoryError
+  // Only show WS errors after connection failed (not during initial connection attempts)
+  const wsErrorToShow = wsError && wsStatus !== 'connecting' && wsStatus !== 'disconnected' ? wsError.message : null
+  const displayError = externalError || wsErrorToShow || trajectoryError
 
   const hasViolations = violations.length > 0
   const hasTrajectory = trajectory.length > 0
@@ -674,12 +693,12 @@ export function GeoawarenessViewer({
                       <CircleMarker
                         key={idx}
                         center={[point.lat, point.lng]}
-                        radius={idx === 0 || idx === trajectory.length - 1 ? 8 : 5}
+                        radius={idx === 0 || idx === trajectory.length - 1 ? 5 : 3}
                         pathOptions={{
                           color: '#000',
                           fillColor: getPointColor(point.type),
                           fillOpacity: 1,
-                          weight: 2,
+                          weight: 1,
                         }}
                       >
                         <Popup>
@@ -702,12 +721,12 @@ export function GeoawarenessViewer({
                     {simulatedPosition && (
                       <CircleMarker
                         center={[simulatedPosition.lat, simulatedPosition.lng]}
-                        radius={10}
+                        radius={6}
                         pathOptions={{
                           color: '#000',
                           fillColor: '#f97316', // Orange for drone/simulation position
                           fillOpacity: 1,
-                          weight: 3,
+                          weight: 2,
                         }}
                       >
                         <Popup>
