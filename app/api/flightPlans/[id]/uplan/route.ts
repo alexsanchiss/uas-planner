@@ -169,6 +169,11 @@ export async function POST(
       ...(uplanDetails ? { uplan: uplanDetails } : {}),
     });
 
+    // Update creationTime and updateTime to current UTC time before sending to FAS
+    const currentTime = new Date().toISOString();
+    uplan.creationTime = currentTime;
+    uplan.updateTime = currentTime;
+
     console.log('Plan procesado');
 
     // 4. Send U-Plan to external FAS API
