@@ -24,11 +24,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   try {
     // Find all processed plans for this user that have csvResult
+    // csvResult is a boolean flag (0/1) indicating if CSV data exists
     const plans = await prisma.flightPlan.findMany({
       where: {
         userId,
-        csvResult: { not: null },
-        folderId: 82, // Only check plans in this folder
+        status: 'procesado', // Only check processed plans
+        csvResult: 1, // Has CSV result data (boolean flag)
       },
     })
 
@@ -48,11 +49,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       // 1. No uplan at all
       // 2. uplan has no operationVolumes
       // 3. operationVolumes is empty array
-      // return !uplanObj || 
-      //       !uplanObj.operationVolumes || 
-      //       !Array.isArray(uplanObj.operationVolumes) ||
-      //       uplanObj.operationVolumes.length === 0
-      return 1
+       return !uplanObj || 
+             !uplanObj.operationVolumes || 
+             !Array.isArray(uplanObj.operationVolumes) ||
+             uplanObj.operationVolumes.length === 0
     })
 
     console.log(

@@ -25,7 +25,7 @@ export function useVolumeRegeneration(enabled: boolean = true) {
     errors: []
   })
   
-  const [isPaused, setIsPaused] = useState(true) // New state to control pause functionality
+  const [isPaused, setIsPaused] = useState(false) // Active by default - auto-regenerates volumes
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const isCheckingRef = useRef(false)
 

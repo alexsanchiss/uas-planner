@@ -470,12 +470,12 @@ export function TrajectoryMapViewer({ planId, planName, onClose, className = '' 
                 <CircleMarker
                   key={idx}
                   center={[point.lat, point.lng]}
-                  radius={idx === 0 || idx === trajectory.length - 1 ? 10 : 6}
+                  radius={idx === 0 || idx === trajectory.length - 1 ? 5 : 3}
                   pathOptions={{
-                    color: getPointColor(point.type),
+                    color: '#000',
                     fillColor: getPointColor(point.type),
-                    fillOpacity: 0.8,
-                    weight: 2,
+                    fillOpacity: 1,
+                    weight: 1,
                   }}
                   eventHandlers={{
                     click: () => setSelectedPoint(point),
