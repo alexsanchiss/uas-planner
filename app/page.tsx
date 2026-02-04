@@ -41,7 +41,7 @@ export default function MainPage() {
   };
 
   return (
-    <div className="bg-[var(--bg-primary)] min-h-screen">
+    <div className="bg-[var(--bg-primary)]">
       {/* Help Button */}
       <a
         href="/how-it-works"

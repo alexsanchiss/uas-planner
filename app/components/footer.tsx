@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useTheme } from "../hooks/useTheme";
 
@@ -23,8 +22,8 @@ export function Footer() {
             target="_blank"
             rel="noopener noreferrer"
           >
-            <Image
-              key={`sna-${isDark ? 'dark' : 'light'}`}
+            {/* Use regular img instead of Next.js Image for immediate theme updates */}
+            <img
               src={snaLogo}
               alt="SNA Logo"
               width={120}
@@ -37,8 +36,7 @@ export function Footer() {
             target="_blank"
             rel="noopener noreferrer"
           >
-            <Image
-              key={`upv-${isDark ? 'dark' : 'light'}`}
+            <img
               src={upvLogo}
               alt="UPV Logo"
               width={160}
@@ -56,8 +54,7 @@ export function Footer() {
             aria-label="LinkedIn"
             className="hover:opacity-80"
           >
-            <Image
-              key={`linkedin-${isDark ? 'dark' : 'light'}`}
+            <img
               src={linkedInIcon}
               alt="LinkedIn"
               width={48}
@@ -71,8 +68,7 @@ export function Footer() {
             aria-label="Instagram"
             className="hover:opacity-80"
           >
-            <Image
-              key={`instagram-${isDark ? 'dark' : 'light'}`}
+            <img
               src={instagramIcon}
               alt="Instagram"
               width={48}
