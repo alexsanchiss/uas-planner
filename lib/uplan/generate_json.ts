@@ -1,4 +1,11 @@
 import { BBox, Waypoint } from "./generate_bbox";
+import { OrientedBBox } from "./generate_oriented_volumes";
+
+/**
+ * Union type for volume data - supports both old BBox and new OrientedBBox
+ * Both have the same structure: N[], alt{}, bbox{}, time{}
+ */
+export type VolumeData = BBox | OrientedBBox;
 
 // Función para formatear fechas como 'YYYY-MM-DDTHH:mm:ss'
 function formatDate(date: Date | number | string) {
@@ -10,7 +17,18 @@ function formatDate(date: Date | number | string) {
   return d.toISOString().replace(/\..*Z$/, "");
 }
 
-export function generateJSON(bbox: BBox, waypoints: Waypoint[], uplan: unknown) {
+/**
+ * Generate a complete U-Plan JSON from volume data and waypoints.
+ *
+ * Supports both the old BBox format (axis-aligned squares) and the new
+ * OrientedBBox format (trajectory-aligned rectangles).
+ *
+ * @param bbox - Volume data from generate_bbox or generateOrientedBBox
+ * @param waypoints - Array of flight waypoints
+ * @param uplan - User-provided U-Plan details
+ * @returns Complete U-Plan JSON object
+ */
+export function generateJSON(bbox: VolumeData, waypoints: Waypoint[], uplan: unknown) {
   if (!waypoints || waypoints.length === 0) {
     throw new Error("Waypoints array is empty or undefined.");
   }

@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import prisma from '@/lib/prisma'
 import { hashPassword } from  '../../../../lib/auth'
-
-const prisma = new PrismaClient()
 
 export async function POST(request: Request) {
   const { email, password } = await request.json()
@@ -25,8 +23,6 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Signup error:', error)
     return NextResponse.json({ error: 'An error occurred during signup' }, { status: 500 })
-  } finally {
-    await prisma.$disconnect()
   }
 }
 

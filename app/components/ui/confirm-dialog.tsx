@@ -1,0 +1,152 @@
+import React from 'react'
+
+export interface ConfirmDialogProps {
+  open: boolean
+  onClose: () => void
+  onConfirm: () => void
+  title?: string
+  message: string
+  confirmLabel?: string
+  cancelLabel?: string
+  variant?: 'danger' | 'warning' | 'info'
+  loading?: boolean
+}
+
+/**
+ * ConfirmDialog - A reusable confirmation dialog component
+ * 
+ * Used for confirming destructive or important actions like:
+ * - Deleting folders/files
+ * - Resetting data
+ * - Canceling in-progress operations
+ */
+export function ConfirmDialog({
+  open,
+  onClose,
+  onConfirm,
+  title = 'Confirm action',
+  message,
+  confirmLabel = 'Confirm',
+  cancelLabel = 'Cancel',
+  variant = 'danger',
+  loading = false,
+}: ConfirmDialogProps) {
+  if (!open) return null
+
+  // Handle backdrop click
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget && !loading) {
+      onClose()
+    }
+  }
+
+  // Handle escape key
+  React.useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !loading) {
+        onClose()
+      }
+    }
+    
+    if (open) {
+      document.addEventListener('keydown', handleEscape)
+    }
+    
+    return () => document.removeEventListener('keydown', handleEscape)
+  }, [open, loading, onClose])
+
+  // Variant-specific styles
+  const variantStyles = {
+    danger: {
+      icon: (
+        <svg className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+      ),
+      iconBg: 'bg-red-100',
+      confirmButton: 'bg-red-600 hover:bg-red-700 focus:ring-red-500',
+    },
+    warning: {
+      icon: (
+        <svg className="w-6 h-6 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+      ),
+      iconBg: 'bg-amber-100',
+      confirmButton: 'bg-amber-600 hover:bg-amber-700 focus:ring-amber-500',
+    },
+    info: {
+      icon: (
+        <svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      ),
+      iconBg: 'bg-blue-100',
+      confirmButton: 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500',
+    },
+  }
+
+  const styles = variantStyles[variant]
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
+      onClick={handleBackdropClick}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirm-dialog-title"
+    >
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div className="p-6">
+          <div className="flex items-start gap-4">
+            {/* Icon */}
+            <div className={`flex-shrink-0 w-10 h-10 rounded-full ${styles.iconBg} flex items-center justify-center`}>
+              {styles.icon}
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 min-w-0">
+              <h3
+                id="confirm-dialog-title"
+                className="text-lg font-semibold text-gray-900"
+              >
+                {title}
+              </h3>
+              <p className="mt-2 text-sm text-gray-600">
+                {message}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={loading}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {cancelLabel}
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={loading}
+            className={`px-4 py-2 text-sm font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 ${styles.confirmButton}`}
+          >
+            {loading && (
+              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+            )}
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default ConfirmDialog

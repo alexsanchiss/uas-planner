@@ -30,7 +30,7 @@ export function PasswordReset() {
           className="cursor-pointer hover:text-white transition-colors"
           onClick={() => setIsResetting(true)}
         >
-          ¿Olvidaste la contraseña?
+                    Forgot your password?
         </span>
       </p>
     )
@@ -47,14 +47,14 @@ export function PasswordReset() {
         required
       />
       <Button type="submit" className="w-full">
-        Restablecer contraseña
+        Reset password
       </Button>
       <p className="text-sm text-gray-400 text-center">
         <span
           className="cursor-pointer hover:text-white transition-colors"
           onClick={() => setIsResetting(false)}
         >
-          Volver al inicio de sesión
+          Back to sign in
         </span>
       </p>
     </form>

@@ -1,2553 +1,1347 @@
-// app/components/FlightPlansUploader.tsx
-//
-// FLIGHT PLANS UPLOADER COMPONENT - Unified API Integration
-// =========================================================
-//
-// This component demonstrates comprehensive usage of the unified APIs:
-// - /api/flightPlans: For all flight plan CRUD operations
-// - /api/csvResult: For all CSV result operations
-//
-// UNIFIED FLIGHT PLANS API USAGE:
-// ===============================
-//
-// 1. BULK UPLOAD (POST):
-//    POST /api/flightPlans
-//    Body: { items: [{ customName, status, fileContent, userId, folderId? }] }
-//
-// 2. BULK STATUS UPDATE (PUT):
-//    PUT /api/flightPlans
-//    Body: { ids: [123, 456, 789], data: { status: "en cola" } }
-//
-// 3. BULK SCHEDULED TIME UPDATE (PUT):
-//    PUT /api/flightPlans
-//    Body: { items: [{ id: 123, data: { scheduledAt: "2024-01-01T10:00:00Z" } }] }
-//
-// 4. BULK DELETE (DELETE):
-//    DELETE /api/flightPlans
-//    Body: { ids: [123, 456, 789] }
-//
-// UNIFIED CSV API USAGE:
-// =====================
-//
-// 1. BULK CSV FETCH (POST):
-//    POST /api/csvResult
-//    Body: { ids: [123, 456, 789] }
-//    Response: { items: [{ id, customName, csvResult }] }
-//
-// 2. INDIVIDUAL CSV FETCH (GET):
-//    GET /api/csvResult?id=123
-//    Response: { csvResult: "csv_content" }
-//
-// PERFORMANCE OPTIMIZATIONS:
-// - Batch processing: Large operations split into chunks (500 IDs per API call)
-// - Concurrency control: Limited to 5 simultaneous uploads
-// - Memory management: Large downloads split into multiple zip files (1000 files per zip)
-// - Parallel processing: CSV content and plan metadata fetched simultaneously
-//
-// USER EXPERIENCE FEATURES:
-// - Progress indicators for bulk operations
-// - Automatic file naming with conflict resolution
-// - Batch size optimization for different operation types
-// - Graceful error handling with user feedback
-//
-// COMPATIBILITY:
-// - Works seamlessly with both individual and bulk operations
-// - Maintains backward compatibility
-// - Unified error handling across all operations
-// - Consistent transaction safety
+'use client'
 
-"use client";
+/**
+ * FlightPlansUploader - Production Version
+ * 
+ * TASK-075: Create new FlightPlansUploader.tsx using modular components
+ * TASK-076: Implement individual plan operations only (no bulk)
+ * TASK-077: Remove folder status counters display
+ * TASK-078: Remove global status summary box
+ * TASK-079: Integrate all modular components into cohesive UI
+ * TASK-084: Define workflow state machine (unprocessed → processing → processed → authorizing → authorized/denied)
+ * TASK-085: Create workflow progress indicator
+ * TASK-086: Implement step highlighting: Process → Geoawareness → Authorize
+ * TASK-087: Lock scheduledAt editing after processing starts
+ * TASK-088: Add processing confirmation dialog
+ * 
+ * A clean, guided workflow UI for managing flight plans.
+ * Uses modular components from flight-plans/ directory.
+ */
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import axios from "axios";
-import { useAuth } from "../hooks/useAuth";
-import JSZip from "jszip";
-import { saveAs } from "file-saver";
-import Papa from 'papaparse';
-import { MapContainer, TileLayer, Polyline, Marker, Tooltip, CircleMarker, useMap, Polygon } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
-import dynamic from 'next/dynamic';
-const MapModal = dynamic(() => import('./MapModal'), { ssr: false });
-const UplanViewModal = dynamic(() => import('./UplanViewModal'), { ssr: false });
-const BulkUplanViewModal = dynamic(() => import('./BulkUplanViewModal'), { ssr: false });
-const GeoawarenessModal = dynamic(() => import('./GeoawarenessModal'), { ssr: false });
-
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Checkbox } from "./ui/checkbox";
-import { Badge } from "./ui/badge";
+import React, { useState, useCallback, useMemo, DragEvent } from 'react'
+import dynamic from 'next/dynamic'
+import { HelpCircle } from 'lucide-react'
+import { useAuth } from '../hooks/useAuth'
+import { useFlightPlans, type FlightPlan as FlightPlanData } from '../hooks/useFlightPlans'
+import { useFolders } from '../hooks/useFolders'
+import { useVolumeRegeneration } from '../hooks/useVolumeRegeneration'
 import {
-  UploadIcon,
-  Loader2Icon,
-  ClockIcon,
-  CheckCircleIcon,
-  PlayIcon,
-  DownloadIcon,
-  Trash2Icon,
-  RotateCwIcon,
-  FolderPlusIcon,
-  XIcon,
-  EyeIcon, // Add EyeIcon for view button
-  HelpCircle,
-} from "lucide-react";
-import { Modal } from "./ui/modal";
+  FolderList,
+  FlightPlanCard,
+  ProcessingWorkflow,
+  DateTimePicker,
+  TrajectoryMapViewer,
+  WaypointMapModal,
+  FLIGHT_PLAN_DRAG_TYPE,
+  getWorkflowState,
+  hasProcessingStarted,
+  type Folder,
+  type FlightPlan,
+  type WorkflowStep,
+  type FlightPlanDragData,
+  type Waypoint,
+} from './flight-plans'
+import { ConfirmDialog } from './ui/confirm-dialog'
+import { FlightPlansListSkeleton } from './ui/loading-skeleton'
+import { LoadingSpinner } from './ui/loading-spinner'
+import { Modal } from './ui/modal'
+import { useToast } from '../hooks/useToast'
 
-interface Folder {
-  id: number;
-  name: string;
-  userId: number;
-  flightPlans: FlightPlan[];
-  minScheduledAt?: string | null;
-  maxScheduledAt?: string | null;
-}
+// Dynamic import for UplanViewModal (uses Leaflet, requires SSR disabled)
+const UplanViewModal = dynamic(() => import('./UplanViewModal'), { ssr: false })
 
-interface FlightPlan {
-  id: number;
-  fileContent: File;
-  customName: string;
-  status: "sin procesar" | "en cola" | "procesando" | "procesado" | "error";
-  csvResult?: number;
-  folderId?: number | null;
-  authorizationStatus?:
-    | "sin autorización"
-    | "procesando autorización"
-    | "aprobado"
-    | "denegado";
-  uplan?: any;
-  authorizationMessage?: any;
-  scheduledAt?: string | null;
-  geoawarenessData?: any;
-}
+// Dynamic import for UplanFormModal (TASK-023: Wire Review U-Plan to form modal)
+const UplanFormModal = dynamic(() => import('./flight-plans/UplanFormModal'), { ssr: false })
 
-const PLANS_PER_FOLDER_PAGE = 25;
+// TASK-076: Dynamic import for GeoawarenessViewer modal
+const GeoawarenessViewer = dynamic(() => import('./flight-plans/GeoawarenessViewer'), { ssr: false })
 
-type TrajectoryRow = {
-  SimTime: string;
-  Lat: number;
-  Lon: number;
-  Alt: number;
-  qw: string;
-  qx: string;
-  qy: string;
-  qz: string;
-  Vx: string;
-  Vy: string;
-  Vz: string;
-};
-
-function parseTrajectoryCsv(csv: string): TrajectoryRow[] {
-  const parsed = Papa.parse(csv, { header: true, skipEmptyLines: true });
-  return (parsed.data as any[]).map((row: any) => ({
-    SimTime: row.SimTime,
-    Lat: parseFloat(row.Lat),
-    Lon: parseFloat(row.Lon),
-    Alt: parseFloat(row.Alt),
-    qw: row.qw, qx: row.qx, qy: row.qy, qz: row.qz,
-    Vx: row.Vx, Vy: row.Vy, Vz: row.Vz
-  })).filter((row: any) => !isNaN(row.Lat) && !isNaN(row.Lon));
-}
-
-// Helper to fit bounds only when trajectory set changes
-function FitBoundsHandler({ bounds, names }: { bounds: [[number, number], [number, number]], names: string[] }) {
-  const map = useMap();
-  const lastNamesRef = useRef<string[]>([]);
-  useEffect(() => {
-    const namesStr = names.join(',');
-    if (namesStr !== lastNamesRef.current.join(',')) {
-      if (bounds && bounds[0] && bounds[1]) {
-        map.fitBounds(bounds, { padding: [30, 30] });
-      }
-      lastNamesRef.current = names;
-    }
-    // eslint-disable-next-line
-  }, [bounds, names, map]);
-  return null;
-}
-
-// Uplan Error Modal
-function UplanErrorModal({ open, onClose, message }: { open: boolean, onClose: () => void, message: any }) {
-  if (!open) return null;
-  let displayMsg = '';
-  let isObject = false;
-  if (typeof message === 'string') displayMsg = message;
-  else if (typeof message === 'object') {
-    displayMsg = JSON.stringify(message, null, 2);
-    isObject = true;
-  } else displayMsg = String(message);
-  return (
-    <Modal open={open} onClose={onClose} title="U-plan Denied">
-      <pre className={
-        `whitespace-pre-wrap text-xs max-h-[60vh] overflow-auto rounded-lg border p-4 text-left ` +
-        (isObject
-          ? 'bg-gray-900 border-gray-700 text-gray-100'
-          : 'bg-red-950 border-red-700 text-red-200 font-semibold text-center')
-      }>
-        {displayMsg}
-      </pre>
-    </Modal>
-  );
-}
-
-function BulkErrorViewModal({ open, onClose, errors, idx, setIdx }: { open: boolean, onClose: () => void, errors: {name: string, message: any}[], idx: number, setIdx: (i: number) => void }) {
-  if (!open || !errors || errors.length === 0) return null;
-  const error = errors[idx];
-  let displayMsg = '';
-  let isObject = false;
-  if (typeof error.message === 'string') displayMsg = error.message;
-  else if (typeof error.message === 'object') {
-    displayMsg = JSON.stringify(error.message, null, 2);
-    isObject = true;
-  } else displayMsg = String(error.message);
-  return (
-    <Modal open={open} onClose={onClose} title={`Error for: ${error.name} (${idx + 1}/${errors.length})`}>
-      <div className="flex flex-col gap-4 items-center">
-        <pre className={
-          `whitespace-pre-wrap text-xs max-h-[60vh] overflow-auto rounded-lg border p-4 text-left ` +
-          (isObject
-            ? 'bg-gray-900 border-gray-700 text-gray-100'
-            : 'bg-red-950 border-red-700 text-red-200 font-semibold text-center')
-        }>
-          {displayMsg}
-        </pre>
-        <div className="flex gap-4 items-center">
-          <button
-            className="px-3 py-1 rounded bg-gray-700 text-white border border-gray-500 disabled:opacity-50"
-            onClick={() => setIdx(idx - 1)}
-            disabled={idx === 0}
-          >
-            Previous
-          </button>
-          <button
-            className="px-3 py-1 rounded bg-gray-700 text-white border border-gray-500 disabled:opacity-50"
-            onClick={() => setIdx(idx + 1)}
-            disabled={idx === errors.length - 1}
-          >
-            Next
-          </button>
-        </div>
-      </div>
-    </Modal>
-  );
-}
-
-// Uplan Edit Modal (reusable for both PlanGenerator and FlightPlansUploader)
-function UplanEditModal({ open, onClose, uplan, onSave, readOnly = false }: {
-  open: boolean;
-  onClose: () => void;
-  uplan: any;
-  onSave: (newUplan: any) => void;
-  readOnly?: boolean;
-}) {
-  // Default structure as in PlanGenerator
-  const defaultUplan = {
-    datetime: "",
-    dataOwnerIdentifier: { sac: "", sic: "" },
-    dataSourceIdentifier: { sac: "", sic: "" },
-    contactDetails: { firstName: "", lastName: "", phones: [""], emails: [""] },
-    flightDetails: {
-      mode: "",
-      category: "",
-      specialOperation: "",
-      privateFlight: false,
-    },
-    uas: {
-      registrationNumber: "",
-      serialNumber: "",
-      flightCharacteristics: {
-        uasMTOM: "",
-        uasMaxSpeed: "",
-        connectivity: "",
-        idTechnology: "",
-        maxFlightTime: "",
-      },
-      generalCharacteristics: {
-        brand: "",
-        model: "",
-        typeCertificate: "",
-        uasType: "",
-        uasClass: "",
-        uasDimension: "",
-      },
-    },
-    operatorId: "",
-  };
-
-  // Deep merge function
-  function deepMerge(target: any, source: any) {
-    if (typeof target !== "object" || typeof source !== "object" || !target || !source) return source;
-    const result = { ...target };
-    for (const key in source) {
-      if (source[key] && typeof source[key] === "object" && !Array.isArray(source[key])) {
-        result[key] = deepMerge(target[key] || {}, source[key]);
-      } else {
-        result[key] = source[key];
-      }
-    }
-    return result;
+/**
+ * Transform API flight plan data to component flight plan format
+ * TASK-220: Include fileContent for waypoint preview extraction
+ */
+function transformFlightPlan(plan: FlightPlanData): FlightPlan {
+  return {
+    id: String(plan.id),
+    name: plan.customName,
+    status: plan.status === 'en cola' || plan.status === 'procesando' ? 'en proceso' : 
+            plan.status === 'procesado' ? 'procesado' :
+            plan.status === 'error' ? 'error' : 'sin procesar',
+    authorizationStatus: plan.authorizationStatus === 'pendiente' ? 'pendiente' :
+                         plan.authorizationStatus === 'aprobado' ? 'aprobado' :
+                         plan.authorizationStatus === 'denegado' ? 'denegado' : 'sin autorización',
+    authorizationMessage: plan.authorizationMessage,
+    // Parse uplan from string to object for U-Plan review
+    uplan: plan.uplan ? (typeof plan.uplan === 'string' ? JSON.parse(plan.uplan) : plan.uplan) : null,
+    // Include geoawareness response if available
+    geoawarenessData: plan.geoawarenessData,
+    scheduledAt: plan.scheduledAt,
+    createdAt: plan.createdAt,
+    updatedAt: plan.updatedAt,
+    csvResult: plan.csvResult ? { id: String(plan.csvResult) } : null,
+    // TASK-220: Pass fileContent for waypoint preview visualization
+    fileContent: plan.fileContent,
   }
+}
 
-  // Defensive: parse uplan if it's a string (shouldn't be needed, but extra safe)
-  let safeUplan = uplan;
-  for (let i = 0; i < 2; i++) {
-    if (typeof safeUplan === "string") {
-      try {
-        safeUplan = JSON.parse(safeUplan);
-      } catch {
-        break;
-      }
-    }
+/**
+ * Determine current workflow step based on selected plan state
+ * Updated for 5-step workflow: Select → DateTime → Process → Geoawareness → Authorize
+ */
+function getCurrentStep(plan: FlightPlan | null): WorkflowStep {
+  if (!plan) return 'select'
+  if (!plan.scheduledAt) return 'datetime'
+  if (plan.status === 'sin procesar') return 'process'
+  if (plan.status === 'en proceso') return 'process' // Still in process step while processing
+  if (plan.status === 'procesado' && plan.authorizationStatus === 'sin autorización') return 'geoawareness'
+  if (plan.authorizationStatus === 'pendiente') return 'authorize'
+  return 'select' // Workflow complete (authorized/denied)
+}
+
+/**
+ * Get completed workflow steps based on plan state
+ * Updated for 5-step workflow
+ */
+function getCompletedSteps(plan: FlightPlan | null): WorkflowStep[] {
+  if (!plan) return []
+  
+  const completed: WorkflowStep[] = ['select']
+  
+  if (plan.scheduledAt) {
+    completed.push('datetime')
   }
-
-  const [editUplan, setEditUplan] = useState<any>(deepMerge(defaultUplan, safeUplan || {}));
-  useEffect(() => {
-    setEditUplan(deepMerge(defaultUplan, safeUplan || {}));
-    // eslint-disable-next-line
-  }, [uplan, open]);
-
-  if (!open) return null;
-
-  // Option lists (copy from PlanGenerator)
-  const FLIGHT_MODES = ["VLOS", "BVLOS"];
-  const FLIGHT_CATEGORIES = [
-    "OPENA1",
-    "OPENA2",
-    "OPENA3",
-    "LUC",
-    "LIMITEDOPEN",
-    "CERTIFIED",
-    "SPECIFIC",
-    "STS",
-  ];
-  const SPECIAL_OPERATIONS = [
-    "POLICE_AND_CUSTOMS",
-    "TRAFFIC_SURVEILLANCE_AND_PURSUIT",
-    "ENVIRONMENTAL_CONTROL",
-    "SEARCH_AND_RESCUE",
-    "MEDICAL",
-    "EVACUATIONS",
-    "FIREFIGHTING",
-    "STATE_OFFICIALS",
-  ];
-  const CONNECTIVITY = ["RF", "LTE", "SAT", "5G"];
-  const ID_TECHNOLOGY = ["NRID", "ADSB", "OTHER"];
-  const UAS_TYPE = ["NONE_NOT_DECLARED", "MULTIROTOR", "FIXED_WING"];
-  const UAS_CLASS = ["NONE", "C0", "C1", "C2", "C3", "C4", "C5", "C6"];
-  const UAS_DIMENSION = ["LT_1", "LT_3", "LT_8", "GTE_8"];
-
-  // Helper for updating nested fields
-  function updateNested(path: string[], value: any) {
-    setEditUplan((prev: any) => {
-      let obj = { ...prev };
-      let cur = obj;
-      for (let i = 0; i < path.length - 1; i++) {
-        if (!cur[path[i]]) cur[path[i]] = {};
-        cur[path[i]] = { ...cur[path[i]] };
-        cur = cur[path[i]];
-      }
-      cur[path[path.length - 1]] = value;
-      return obj;
-    });
+  
+  if (plan.status === 'procesado' || plan.status === 'en proceso') {
+    completed.push('process')
   }
-
-  return (
-    <Modal open={open} onClose={onClose} title={readOnly ? "View U-plan Info" : "Edit U-plan Info"}>
-      <div className="flex flex-col gap-4 max-h-[70vh] overflow-y-auto">
-        {/* Data Owner Identifier */}
-        <div>
-          <div className="font-semibold text-zinc-300 mb-1">Data Owner Identifier</div>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              maxLength={3}
-              placeholder="SAC"
-              value={editUplan.dataOwnerIdentifier?.sac || ""}
-              onChange={e => updateNested(["dataOwnerIdentifier", "sac"], e.target.value.toUpperCase())}
-              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-20 text-xs focus:outline-none"
-              disabled={readOnly}
-            />
-            <input
-              type="text"
-              maxLength={3}
-              placeholder="SIC"
-              value={editUplan.dataSourceIdentifier?.sic || ""}
-              onChange={e => updateNested(["dataSourceIdentifier", "sic"], e.target.value.toUpperCase())}
-              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-20 text-xs focus:outline-none"
-              disabled={readOnly}
-            />
-          </div>
-        </div>
-        {/* Data Source Identifier */}
-        <div>
-          <div className="font-semibold text-zinc-300 mb-1">Data Source Identifier</div>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              maxLength={3}
-              placeholder="SAC"
-              value={editUplan.dataSourceIdentifier?.sac || ""}
-              onChange={e => updateNested(["dataSourceIdentifier", "sac"], e.target.value.toUpperCase())}
-              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-20 text-xs focus:outline-none"
-              disabled={readOnly}
-            />
-            <input
-              type="text"
-              maxLength={3}
-              placeholder="SIC"
-              value={editUplan.dataSourceIdentifier?.sic || ""}
-              onChange={e => updateNested(["dataSourceIdentifier", "sic"], e.target.value.toUpperCase())}
-              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-20 text-xs focus:outline-none"
-              disabled={readOnly}
-            />
-          </div>
-        </div>
-        {/* Contact Details */}
-        <div>
-          <div className="font-semibold text-zinc-300 mb-1">Contact Details</div>
-          <div className="flex gap-2 mb-2">
-            <input
-              type="text"
-              placeholder="First Name"
-              value={editUplan.contactDetails?.firstName || ""}
-              onChange={e => updateNested(["contactDetails", "firstName"], e.target.value)}
-              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-32 text-xs focus:outline-none"
-              disabled={readOnly}
-            />
-            <input
-              type="text"
-              placeholder="Last Name"
-              value={editUplan.contactDetails?.lastName || ""}
-              onChange={e => updateNested(["contactDetails", "lastName"], e.target.value)}
-              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-32 text-xs focus:outline-none"
-              disabled={readOnly}
-            />
-          </div>
-          <div className="mb-2">
-            <div className="text-xs text-zinc-400 mb-1">Phones</div>
-            {(editUplan.contactDetails?.phones || [""]).map((phone: string, i: number) => (
-              <div key={i} className="flex gap-2 mb-1">
-                <input
-                  type="text"
-                  placeholder="Phone"
-                  value={phone}
-                  onChange={e => {
-                    const phones = [...(editUplan.contactDetails?.phones || [""])]
-                    phones[i] = e.target.value;
-                    updateNested(["contactDetails", "phones"], phones);
-                  }}
-                  className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-40 text-xs focus:outline-none"
-                  disabled={readOnly}
-                />
-                {!readOnly && (
-                  <button
-                    type="button"
-                    className="text-red-400 hover:text-red-600 text-xs font-bold"
-                    onClick={() => {
-                      const phones = (editUplan.contactDetails?.phones || [""]).filter((_: any, idx: number) => idx !== i);
-                      updateNested(["contactDetails", "phones"], phones.length ? phones : [""]);
-                    }}
-                  >×</button>
-                )}
-              </div>
-            ))}
-            {!readOnly && (
-              <button
-                type="button"
-                className="text-blue-400 hover:underline text-xs"
-                onClick={() => {
-                  const phones = [...(editUplan.contactDetails?.phones || [""]), ""];
-                  updateNested(["contactDetails", "phones"], phones);
-                }}
-              >Add phone</button>
-            )}
-          </div>
-          <div>
-            <div className="text-xs text-zinc-400 mb-1">Emails</div>
-            {(editUplan.contactDetails?.emails || [""]).map((email: string, i: number) => (
-              <div key={i} className="flex gap-2 mb-1">
-                <input
-                  type="email"
-                  placeholder="Email"
-                  value={email}
-                  onChange={e => {
-                    const emails = [...(editUplan.contactDetails?.emails || [""])]
-                    emails[i] = e.target.value;
-                    updateNested(["contactDetails", "emails"], emails);
-                  }}
-                  className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-40 text-xs focus:outline-none"
-                  disabled={readOnly}
-                />
-                {!readOnly && (
-                  <button
-                    type="button"
-                    className="text-red-400 hover:text-red-600 text-xs font-bold"
-                    onClick={() => {
-                      const emails = (editUplan.contactDetails?.emails || [""]).filter((_: any, idx: number) => idx !== i);
-                      updateNested(["contactDetails", "emails"], emails.length ? emails : [""]);
-                    }}
-                  >×</button>
-                )}
-              </div>
-            ))}
-            {!readOnly && (
-              <button
-                type="button"
-                className="text-blue-400 hover:underline text-xs"
-                onClick={() => {
-                  const emails = [...(editUplan.contactDetails?.emails || [""]), ""];
-                  updateNested(["contactDetails", "emails"], emails);
-                }}
-              >Add email</button>
-            )}
-          </div>
-        </div>
-        {/* Flight Details */}
-        <div>
-          <div className="font-semibold text-zinc-300 mb-1">Flight Details</div>
-          <div className="flex gap-2 mb-2 flex-wrap">
-            <select
-              value={editUplan.flightDetails?.mode || ""}
-              onChange={e => updateNested(["flightDetails", "mode"], e.target.value)}
-              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 text-xs focus:outline-none"
-              disabled={readOnly}
-            >
-              <option value="">Select mode</option>
-              {FLIGHT_MODES.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-            </select>
-            <select
-              value={editUplan.flightDetails?.category || ""}
-              onChange={e => updateNested(["flightDetails", "category"], e.target.value)}
-              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 text-xs focus:outline-none"
-              disabled={readOnly}
-            >
-              <option value="">Select category</option>
-              {FLIGHT_CATEGORIES.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-            </select>
-            <label className="flex items-center gap-1 text-xs text-zinc-400">
-              <input
-                type="checkbox"
-                checked={!!editUplan.flightDetails?.privateFlight}
-                onChange={e => updateNested(["flightDetails", "privateFlight"], e.target.checked)}
-                disabled={readOnly}
-              />
-              Private flight
-            </label>
-          </div>
-          <div className="mb-2">
-            <select
-              value={editUplan.flightDetails?.specialOperation || ""}
-              onChange={e => updateNested(["flightDetails", "specialOperation"], e.target.value)}
-              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 text-xs focus:outline-none w-full"
-              disabled={readOnly}
-            >
-              <option value="">Special operation?</option>
-              {SPECIAL_OPERATIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-            </select>
-          </div>
-        </div>
-        {/* UAS */}
-        <div>
-          <div className="font-semibold text-zinc-300 mb-1">UAS</div>
-          <div className="flex gap-2 mb-2">
-            <input
-              type="text"
-              placeholder="Registration number"
-              value={editUplan.uas?.registrationNumber || ""}
-              onChange={e => updateNested(["uas", "registrationNumber"], e.target.value)}
-              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-32 text-xs focus:outline-none"
-              disabled={readOnly}
-            />
-            <input
-              type="text"
-              maxLength={20}
-              placeholder="Serial number"
-              value={editUplan.uas?.serialNumber || ""}
-              onChange={e => updateNested(["uas", "serialNumber"], e.target.value)}
-              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-32 text-xs focus:outline-none"
-              disabled={readOnly}
-            />
-          </div>
-          <div className="font-semibold text-zinc-400 mb-1 mt-2">Flight Characteristics</div>
-          <div className="flex gap-2 mb-2 flex-wrap">
-            <input
-              type="number"
-              placeholder="MTOM (kg)"
-              value={editUplan.uas?.flightCharacteristics?.uasMTOM || ""}
-              onChange={e => updateNested(["uas", "flightCharacteristics", "uasMTOM"], e.target.value)}
-              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-24 text-xs focus:outline-none"
-              disabled={readOnly}
-            />
-            <input
-              type="number"
-              placeholder="Max speed (m/s)"
-              value={editUplan.uas?.flightCharacteristics?.uasMaxSpeed || ""}
-              onChange={e => updateNested(["uas", "flightCharacteristics", "uasMaxSpeed"], e.target.value)}
-              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-28 text-xs focus:outline-none"
-              disabled={readOnly}
-            />
-            <select
-              value={editUplan.uas?.flightCharacteristics?.connectivity || ""}
-              onChange={e => updateNested(["uas", "flightCharacteristics", "connectivity"], e.target.value)}
-              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 text-xs focus:outline-none"
-              disabled={readOnly}
-            >
-              <option value="">Connectivity</option>
-              {CONNECTIVITY.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-            </select>
-            <select
-              value={editUplan.uas?.flightCharacteristics?.idTechnology || ""}
-              onChange={e => updateNested(["uas", "flightCharacteristics", "idTechnology"], e.target.value)}
-              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 text-xs focus:outline-none"
-              disabled={readOnly}
-            >
-              <option value="">ID Technology</option>
-              {ID_TECHNOLOGY.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-            </select>
-            <input
-              type="number"
-              placeholder="Max flight time (min)"
-              value={editUplan.uas?.flightCharacteristics?.maxFlightTime || ""}
-              onChange={e => updateNested(["uas", "flightCharacteristics", "maxFlightTime"], e.target.value)}
-              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-40 text-xs focus:outline-none"
-              disabled={readOnly}
-            />
-          </div>
-          <div className="font-semibold text-zinc-400 mb-1 mt-2">General Characteristics</div>
-          <div className="flex gap-2 flex-wrap">
-            <input
-              type="text"
-              placeholder="Brand"
-              value={editUplan.uas?.generalCharacteristics?.brand || ""}
-              onChange={e => updateNested(["uas", "generalCharacteristics", "brand"], e.target.value)}
-              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-24 text-xs focus:outline-none"
-              disabled={readOnly}
-            />
-            <input
-              type="text"
-              placeholder="Model"
-              value={editUplan.uas?.generalCharacteristics?.model || ""}
-              onChange={e => updateNested(["uas", "generalCharacteristics", "model"], e.target.value)}
-              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-24 text-xs focus:outline-none"
-              disabled={readOnly}
-            />
-            <input
-              type="text"
-              placeholder="Type certificate"
-              value={editUplan.uas?.generalCharacteristics?.typeCertificate || ""}
-              onChange={e => updateNested(["uas", "generalCharacteristics", "typeCertificate"], e.target.value)}
-              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-28 text-xs focus:outline-none"
-              disabled={readOnly}
-            />
-            <select
-              value={editUplan.uas?.generalCharacteristics?.uasType || ""}
-              onChange={e => updateNested(["uas", "generalCharacteristics", "uasType"], e.target.value)}
-              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 text-xs focus:outline-none"
-              disabled={readOnly}
-            >
-              <option value="">UAS Type</option>
-              {UAS_TYPE.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-            </select>
-            <select
-              value={editUplan.uas?.generalCharacteristics?.uasClass || ""}
-              onChange={e => updateNested(["uas", "generalCharacteristics", "uasClass"], e.target.value)}
-              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 text-xs focus:outline-none"
-              disabled={readOnly}
-            >
-              <option value="">UAS Class</option>
-              {UAS_CLASS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-            </select>
-            <select
-              value={editUplan.uas?.generalCharacteristics?.uasDimension || ""}
-              onChange={e => updateNested(["uas", "generalCharacteristics", "uasDimension"], e.target.value)}
-              className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 text-xs focus:outline-none"
-              disabled={readOnly}
-            >
-              <option value="">UAS Dimension</option>
-              {UAS_DIMENSION.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-            </select>
-          </div>
-        </div>
-        {/* Operator ID */}
-        <div>
-          <label className="block mb-1 font-medium text-zinc-200">Operator ID</label>
-          <input
-            type="text"
-            value={editUplan.operatorId || ""}
-            onChange={e => updateNested(["operatorId"], e.target.value)}
-            className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-            disabled={readOnly}
-            placeholder="Operator registration number"
-          />
-        </div>
-        <div className="flex gap-2 justify-end mt-4">
-          <button
-            className="px-4 py-2 rounded bg-gray-700 text-white hover:bg-gray-600"
-            onClick={onClose}
-            type="button"
-          >
-            Cancel
-          </button>
-          {!readOnly && (
-            <button
-              className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
-              onClick={() => onSave(editUplan)}
-              type="button"
-            >
-              Save
-            </button>
-          )}
-        </div>
-      </div>
-    </Modal>
-  );
+  
+  // Geoawareness is considered complete when we've moved to authorization
+  if (plan.status === 'procesado' && plan.authorizationStatus !== 'sin autorización') {
+    completed.push('geoawareness')
+  }
+  
+  if (plan.authorizationStatus === 'aprobado' || plan.authorizationStatus === 'denegado') {
+    completed.push('authorize')
+  }
+  
+  return completed
 }
 
 export function FlightPlansUploader() {
-  const [flightPlans, setFlightPlans] = useState<FlightPlan[]>([]);
-  const [folders, setFolders] = useState<Folder[]>([]);
-  const [selectedPlans, setSelectedPlans] = useState<number[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [newFolderName, setNewFolderName] = useState("");
-  const [expandedFolders, setExpandedFolders] = useState<number[]>([]);
-  const { user } = useAuth();
-  const [isInitialLoading, setIsInitialLoading] = useState<boolean>(false);
-  const [folderFilters, setFolderFilters] = useState<{ [key: number]: string }>(
-    {}
-  );
-  const [isDragging, setIsDragging] = useState(false);
-  const [authorizationLoading, setAuthorizationLoading] = useState<{
-    [planId: number]: boolean;
-  }>({});
-  const [folderSelectStatus, setFolderSelectStatus] = useState<{
-    [key: number]: string;
-  }>({});
-  const [folderPages, setFolderPages] = useState<{
-    [folderId: number]: number;
-  }>({});
-  const [folderPageInputs, setFolderPageInputs] = useState<{ [folderId: number]: string }>({});
-  const [viewModalOpen, setViewModalOpen] = useState(false);
-  const [viewModalContent, setViewModalContent] = useState<string>("");
-  const [viewModalTitle, setViewModalTitle] = useState<string>("");
-  const [trajectoryModalOpen, setTrajectoryModalOpen] = useState(false);
-  const [trajectoryModalTitle, setTrajectoryModalTitle] = useState('');
-  const [trajectoryData, setTrajectoryData] = useState<TrajectoryRow[][]>([]);
-  const [trajectoryIdxs, setTrajectoryIdxs] = useState<number[]>([]);
-  const [trajectoryNames, setTrajectoryNames] = useState<string[]>([]);
-  // Add state for U-plan modals
-  const [uplanErrorModal, setUplanErrorModal] = useState<{ open: boolean, message: string }>({ open: false, message: '' });
-  const [uplanViewModal, setUplanViewModal] = useState<{ open: boolean, uplan: any, name: string, geoawarenessData: any }>({ open: false, uplan: null, name: '', geoawarenessData: null });
-  const [bulkUplanViewModal, setBulkUplanViewModal] = useState<{ open: boolean, uplans: any[], names: string[] }>({ open: false, uplans: [], names: [] });
-  const [bulkErrorViewModal, setBulkErrorViewModal] = useState<{ open: boolean, errors: {name: string, message: any}[], idx: number }>({ open: false, errors: [], idx: 0 });
-  const [bulkErrorIdx, setBulkErrorIdx] = useState(0);
-  // Uplan edit modal state
-  const [uplanEditModal, setUplanEditModal] = useState<{ open: boolean, uplan: any, planId: number | null }>({ open: false, uplan: null, planId: null });
+  const { user } = useAuth()
+  const toast = useToast()
+  const {
+    flightPlans,
+    loading: plansLoading,
+    error: plansError,
+    updateFlightPlan,
+    deleteFlightPlan,
+    refresh: refreshPlans,
+    isRefreshing,
+    errorCount: pollingErrorCount,
+    resetErrors: resetPollingErrors,
+  } = useFlightPlans({ pollingEnabled: true, pollingInterval: 5000 })
   
-  // Geoawareness modal state
+  const {
+    folders,
+    loading: foldersLoading,
+    error: foldersError,
+    createFolder,
+    updateFolder,
+    deleteFolder,
+    refresh: refreshFolders,
+  } = useFolders()
+
+ // Auto-regenerate missing operation volumes every 30 seconds
+  const volumeRegenStatus = useVolumeRegeneration(!!user)
+
+  // UI State
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null)
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false)
+  // TASK-088: Processing confirmation dialog state
+  const [processingConfirmDialog, setProcessingConfirmDialog] = useState<{
+    open: boolean
+    planId: string | null
+    planName: string
+  }>({ open: false, planId: null, planName: '' })
+  // TASK-109: Reset confirmation dialog state
+  const [resetConfirmDialog, setResetConfirmDialog] = useState<{
+    open: boolean
+    planId: string | null
+    planName: string
+  }>({ open: false, planId: null, planName: '' })
+  // TASK-219: Trajectory map viewer state (replaces CSV download)
+  const [trajectoryViewer, setTrajectoryViewer] = useState<{
+    open: boolean
+    planId: string | null
+    planName: string
+  }>({ open: false, planId: null, planName: '' })
+  // Waypoint map modal state - opens when clicking on a plan card
+  const [waypointMapModal, setWaypointMapModal] = useState<{
+    open: boolean
+    planId: string | null
+    planName: string
+    waypoints: { lat: number; lng: number; alt: number; type?: 'takeoff' | 'cruise' | 'landing' }[]
+  }>({ open: false, planId: null, planName: '', waypoints: [] })
+  // Authorization message modal state - shows authorization response
+  const [authorizationMessageModal, setAuthorizationMessageModal] = useState<{
+    open: boolean
+    planId: string | null
+    planName: string
+    message: unknown
+    status: 'aprobado' | 'denegado' | null
+  }>({ open: false, planId: null, planName: '', message: null, status: null })
+  // U-Plan review modal state - shows U-Plan before authorization
+  // TASK-079: Include fileContent for waypoint visualization
+  const [uplanViewModal, setUplanViewModal] = useState<{
+    open: boolean
+    uplan: unknown
+    name: string
+    fileContent: string | null
+  }>({ open: false, uplan: null, name: '', fileContent: null })
+  // TASK-023: UplanFormModal state for editing U-Plan before authorization
+  const [uplanFormModal, setUplanFormModal] = useState<{
+    open: boolean
+    planId: string
+    uplan: unknown
+    name: string
+  }>({ open: false, planId: '', uplan: null, name: '' })
+  // TASK-076: Geoawareness viewer modal state
   const [geoawarenessModal, setGeoawarenessModal] = useState<{
-    open: boolean;
-    planId: number | null;
-    geozones: any;
-    trajectory: [number, number][];
-    planName: string;
-    hasConflicts: boolean;
-    loading: boolean;
+    open: boolean
+    planId: string
+    planName: string
+    uspaceId: string | null
+  }>({ open: false, planId: '', planName: '', uspaceId: null })
+  const [loadingPlanIds, setLoadingPlanIds] = useState<{
+    processing: Set<string>
+    downloading: Set<string>
+    authorizing: Set<string>
+    resetting: Set<string>
+    deleting: Set<string>
+    renaming: Set<string>
+    moving: Set<string>
+    geoawareness: Set<string>
   }>({
-    open: false,
-    planId: null,
-    geozones: { features: [] },
-    trajectory: [],
-    planName: '',
-    hasConflicts: false,
-    loading: false
-  });
-  const [geoawarenessLoading, setGeoawarenessLoading] = useState<{ [planId: number]: boolean }>({});
+    processing: new Set(),
+    downloading: new Set(),
+    authorizing: new Set(),
+    resetting: new Set(),
+    deleting: new Set(),
+    renaming: new Set(),
+    moving: new Set(),
+    geoawareness: new Set(),
+  })
+  const [loadingFolderIds, setLoadingFolderIds] = useState<{
+    renaming: Set<string>
+    deleting: Set<string>
+  }>({
+    renaming: new Set(),
+    deleting: new Set(),
+  })
+  
+  // TASK-222: Drag state for orphan plans drop zone
+  const [isDraggingOverOrphans, setIsDraggingOverOrphans] = useState(false)
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (!user) return;
-    let isMounted = true;
-    (async () => {
-      try {
-        if (isMounted) setIsInitialLoading(true);
-        await fetchData();
-      } finally {
-        if (isMounted) setIsInitialLoading(false);
+  // Transform folders with their flight plans
+  const transformedFolders = useMemo(() => {
+    return folders.map((folder): Folder => {
+      const folderPlans = flightPlans.filter(p => p.folderId === folder.id)
+      return {
+        id: String(folder.id),
+        name: folder.name,
+        createdAt: folder.createdAt,
+        updatedAt: folder.updatedAt,
+        flightPlans: folderPlans.map(transformFlightPlan),
       }
-    })();
-    return () => {
-      isMounted = false;
-    };
-  }, [user]);
+    })
+  }, [folders, flightPlans])
 
-  const fetchData = async () => {
-    try {
-      const [plansResponse, foldersResponse] = await Promise.all([
-        axios.get(`/api/flightPlans?userId=${user?.id}`),
-        axios.get(`/api/folders?userId=${user?.id}`),
-      ]);
-      // geoawarenessData is a JSON field in Prisma, so it should be an object already
-      setFlightPlans(plansResponse.data);
-      setFolders(foldersResponse.data);
-    } catch (error) {
-      console.error("Error fetching data:", error);
-    }
-  };
+  // Get selected plan
+  const selectedPlan = useMemo(() => {
+    if (!selectedPlanId) return null
+    const plan = flightPlans.find(p => String(p.id) === selectedPlanId)
+    return plan ? transformFlightPlan(plan) : null
+  }, [selectedPlanId, flightPlans])
 
-  // Limit concurrency to avoid request floods
-  async function withConcurrency<T>(items: T[], limit: number, worker: (item: T, idx: number) => Promise<void>) {
-    let i = 0;
-    const running: Promise<void>[] = [];
-    const launch = () => {
-      if (i >= items.length) return;
-      const idx = i++;
-      const p = worker(items[idx], idx).finally(() => {
-        const pos = running.indexOf(p);
-        if (pos >= 0) running.splice(pos, 1);
-      });
-      running.push(p);
-      if (running.length < limit) launch();
-    };
-    const parallel = Math.min(limit, items.length);
-    for (let k = 0; k < parallel; k++) launch();
-    await Promise.all(running);
-  }
+  // TASK-033: Detect FAS processing state
+  // FAS is processing when authorizationMessage is 'FAS procesando...' OR status is 'pendiente'
+  const isFasProcessing = useMemo(() => {
+    if (!selectedPlan) return false
+    const message = selectedPlan.authorizationMessage
+    const messageStr = typeof message === 'string' ? message : ''
+    return messageStr === 'FAS procesando...' || selectedPlan.authorizationStatus === 'pendiente'
+  }, [selectedPlan])
 
-  // Expand input FileList into a list of virtual files (supporting .zip)
-  type VirtualFile = { name: string; getText: () => Promise<string> };
-  const expandInputFiles = async (files: FileList | File[]): Promise<VirtualFile[]> => {
-    const list: File[] = Array.from(files as unknown as File[]);
-    const out: VirtualFile[] = [];
-    for (const f of list) {
-      const isZip = f.name.toLowerCase().endsWith('.zip') || f.type === 'application/zip';
-      if (!isZip) {
-        out.push({ name: f.name, getText: () => f.text() });
-        continue;
-      }
-      try {
-        const zip = await JSZip.loadAsync(await f.arrayBuffer());
-        const entries = Object.values(zip.files).filter((e: any) => !e.dir) as unknown as JSZip.JSZipObject[];
-        for (const entry of entries) {
-          // Read as text; skip binary
-          out.push({
-            name: entry.name.split('/').pop() || entry.name,
-            getText: () => entry.async('text'),
-          });
-        }
-      } catch (e) {
-        // If zip parsing fails, skip this file
-        // eslint-disable-next-line no-console
-        console.error('Failed to parse zip:', f.name, e);
-      }
-    }
-    return out;
-  };
+  // TASK-087: Check if scheduledAt editing should be locked
+  const isScheduledAtLocked = useMemo(() => {
+    if (!selectedPlan) return false
+    return hasProcessingStarted(
+      getWorkflowState(selectedPlan.status, selectedPlan.authorizationStatus)
+    )
+  }, [selectedPlan])
 
-  const handleFileUpload = async (
-    e: React.ChangeEvent<HTMLInputElement>,
-    folderId: number
-  ) => {
-    const files = e.target.files;
-    if (files) {
-      const virtualFiles = await expandInputFiles(files);
-      // If extremely large selection, prefer bulk endpoint in chunks
-      const BULK_THRESHOLD = 100; // switch to bulk after this many files
-      const BULK_BATCH = 500; // client-side chunk size to keep payloads manageable
-      if (virtualFiles.length >= BULK_THRESHOLD) {
-        const chunks: VirtualFile[][] = [];
-        for (let i = 0; i < virtualFiles.length; i += BULK_BATCH) {
-          chunks.push(virtualFiles.slice(i, i + BULK_BATCH));
-        }
-        const createdItems: any[] = [];
-        for (const chunk of chunks) {
-          const plansPayload = await Promise.all(
-            chunk.map(async (vf) => ({
-              customName: vf.name.replace(/\.[^/.]+$/, ""),
-              status: "sin procesar",
-              fileContent: await vf.getText(),
-              userId: user?.id,
-              folderId: folderId,
-            }))
-          );
-          // Use the new unified API with items array
-          const res = await axios.post("/api/flightPlans", { items: plansPayload });
-          if (res?.data?.items) createdItems.push(...res.data.items);
-        }
-        setFlightPlans([...flightPlans, ...createdItems]);
-      } else {
-        // Fallback to per-file uploads with limited concurrency
-        const created: any[] = [];
-        await withConcurrency(virtualFiles, 5, async (vf) => {
-          const response = await axios.post("/api/flightPlans", {
-            customName: vf.name.replace(/\.[^/.]+$/, ""),
-            status: "sin procesar",
-            fileContent: await vf.getText(),
-            userId: user?.id,
-            folderId: folderId,
-          });
-          created.push({ ...response.data });
-        });
-        setFlightPlans([...flightPlans, ...created]);
-      }
-    }
-  };
+  // Workflow state
+  const currentStep = getCurrentStep(selectedPlan)
+  const completedSteps = getCompletedSteps(selectedPlan)
 
-  const handleFileInputChange = (
-    e: React.ChangeEvent<HTMLInputElement>,
-    folderId: number
-  ) => {
-    handleFileUpload(e, folderId);
-  };
-
-  const createFileInput = (folderId: number) => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.multiple = true;
-    input.onchange = (e) => {
-      const event = e as unknown as React.ChangeEvent<HTMLInputElement>;
-      handleFileInputChange(event, folderId);
-    };
-    return input;
-  };
-
-  const handleFolderExpand = (folderId: number) => {
-    setExpandedFolders((prev) =>
-      prev.includes(folderId)
-        ? prev.filter((id) => id !== folderId)
-        : [...prev, folderId]
-    );
-  };
-
-  const handleSelectPlan = (planId: number) => {
-    setSelectedPlans((prev) =>
-      prev.includes(planId)
-        ? prev.filter((id) => id !== planId)
-        : [...prev, planId]
-    );
-  };
-
-  const handleDeselectFolderPlans = (folderId: number) => {
-    const folderPlans = flightPlans.filter(
-      (plan) => plan.folderId === folderId
-    );
-    const folderPlanIds = folderPlans.map((plan) => plan.id);
-    setSelectedPlans((prev) =>
-      prev.filter((id) => !folderPlanIds.includes(id))
-    );
-  };
-
-  const handleProcessFolder = async (folderId: number) => {
-    const folderPlans = flightPlans.filter(
-      (plan) => plan.folderId === folderId
-    );
-    const ids = folderPlans.map(p => p.id);
-    // Actualizar estado local inmediatamente para todos los planes de la carpeta
-    setFlightPlans(
-      flightPlans.map((plan) =>
-        plan.folderId === folderId ? { ...plan, status: "en cola" } : plan
-      )
-    );
-    // Procesar todos en una sola llamada usando la API unificada
-    try {
-      await axios.put(`/api/flightPlans`, { ids, data: { status: "en cola" } });
-      fetchData();
-    } catch (error) {
-      console.error("Error bulk processing folder:", error);
-      setFlightPlans(
-        flightPlans.map((p) =>
-          ids.includes(p.id) ? { ...p, status: "error" } : p
-        )
-      );
-    }
-  };
-
-  const handleDownloadFolder = async (folderId: number) => {
-    const folder = folders.find((f) => f.id === folderId);
-    const folderPlans = flightPlans.filter(
-      (p) => p.folderId === folderId && p.status === "procesado"
-    );
-
-    if (folderPlans.length === 0) {
-      alert("No plans processed in this folder to download.");
-      return;
-    }
-
-    // Use bulk API and split into multiple zips if large
-    const ids = folderPlans.map(p => p.id);
-    const BATCH = 500; // API batch size
-    const ZIP_MAX_FILES = 1000; // files per zip for memory limits
-    const usedNames = new Map<string, boolean>();
-
-    for (let i = 0; i < ids.length; i += BATCH) {
-      const batchIds = ids.slice(i, i + BATCH);
-      try {
-        // Use the unified CSV API
-        const res = await axios.post(`/api/csvResult`, { ids: batchIds });
-        const items: { id: number, customName: string, csvResult: string }[] = res.data.items || [];
-        // Partition into zips of at most ZIP_MAX_FILES
-        for (let j = 0; j < items.length; j += ZIP_MAX_FILES) {
-          const chunk = items.slice(j, j + ZIP_MAX_FILES);
-          const zip = new JSZip();
-          chunk.forEach((it) => {
-            let baseName = `${it.customName}`;
-            let fileName = `${baseName}.csv`;
-            let count = 1;
-            while (usedNames.has(fileName)) {
-              fileName = `${baseName} (${count}).csv`;
-              count++;
-            }
-            usedNames.set(fileName, true);
-            zip.file(fileName, it.csvResult);
-          });
-          const content = await zip.generateAsync({ type: "blob" });
-          const zipName = `${folder?.name || "folder"}${ids.length > ZIP_MAX_FILES ? `_${i + j + 1}-${i + j + chunk.length}` : ""}.zip`;
-          saveAs(content, zipName);
-        }
-      } catch (error) {
-        console.error("Error bulk downloading CSVs:", error);
-      }
-    }
-  };
-
-  const handleDeleteFolder = async (folderId: number) => {
-    if (
-      typeof window !== 'undefined' && window.confirm(
-        "Are you sure you want to delete this folder and all its plans?"
-      )
-    ) {
-      try {
-        // Obtener todos los planes de la carpeta
-        const folderPlans = flightPlans.filter((p) => p.folderId === folderId);
-        const ids = folderPlans.map(p => p.id);
-        if (ids.length > 0) {
-          // Use the unified index route for bulk deletion
-          await axios.delete(`/api/flightPlans`, { data: { ids } });
-        }
-        // Eliminar la carpeta usando la API optimizada
-        await axios.delete(`/api/folders/${folderId}`);
-        // Actualizar estado local después de que todo se haya eliminado correctamente
-        setFolders((prevFolders) =>
-          prevFolders.filter((f) => f.id !== folderId)
-        );
-        setFlightPlans((prevPlans) =>
-          prevPlans.filter((p) => p.folderId !== folderId)
-        );
-      } catch (error) {
-        console.error("Error deleting folder:", error);
-        // Recargar los datos en caso de error
-        fetchData();
-      }
-    }
-  };
-
-  const handleCreateFolder = async () => {
-    if (newFolderName.trim() && user?.id) {
-      const tempId = Date.now();
-      try {
-        // Actualizar estado local inmediatamente con una carpeta temporal
-        const tempFolder: Folder = {
-          id: tempId,
-          name: newFolderName,
-          userId: user.id,
-          flightPlans: [],
-        };
-        // Añadir la carpeta temporal al estado
-        setFolders((prevFolders) => [...prevFolders, tempFolder]);
-        setNewFolderName("");
-
-        // Realizar la petición al servidor
-        const response = await axios.post("/api/folders", {
-          name: newFolderName,
-          userId: user.id,
-        });
-
-        // Actualizar la carpeta temporal con los datos reales del servidor
-        setFolders((prevFolders) =>
-          prevFolders.map((f) => (f.id === tempId ? response.data : f))
-        );
-      } catch (error) {
-        console.error("Error creating folder:", error);
-        // Eliminar la carpeta temporal en caso de error
-        setFolders((prevFolders) => prevFolders.filter((f) => f.id !== tempId));
-      }
-    }
-  };
-
-  const handleCustomNameChange = async (planId: number, newName: string) => {
-    try {
-      setFlightPlans(
-        flightPlans.map((plan) =>
-          plan.id === planId ? { ...plan, customName: newName } : plan
-        )
-      );
-      await axios.put(`/api/flightPlans`, { id: planId, data: { customName: newName } });
-    } catch (error) {
-      console.error("Error updating plan name:", error);
-      fetchData();
-    }
-  };
-
-  // Utilidad para guardar correctamente en UTC
-  const toUTCISOString = (value: string) => (value ? value + ":00Z" : null);
-
-  const handleScheduledAtChange = async (planId: number, value: string) => {
-    try {
-      setFlightPlans(
-        flightPlans.map((plan) =>
-          plan.id === planId
-            ? {
-                ...plan,
-                scheduledAt: value ? new Date(value).toISOString() : null,
-              }
-            : plan
-        )
-      );
-      await axios.put(`/api/flightPlans`, { id: planId, data: { scheduledAt: value ? new Date(value).toISOString() : null } });
-    } catch (error) {
-      console.error("Error updating scheduledAt:", error);
-      fetchData();
-    }
-  };
-
-  const handleProcessTrajectory = async (planId: number) => {
-    try {
-      setFlightPlans(
-        flightPlans.map((plan) =>
-          plan.id === planId ? { ...plan, status: "en cola" } : plan
-        )
-      );
-      const response = await axios.put(`/api/flightPlans`, { id: planId, data: { status: "en cola" } });
-      setFlightPlans(
-        flightPlans.map((plan) =>
-          plan.id === planId ? { ...plan, ...response.data } : plan
-        )
-      );
-    } catch (error) {
-      console.error("Error processing plan:", error);
-      setFlightPlans(
-        flightPlans.map((plan) =>
-          plan.id === planId ? { ...plan, status: "error" } : plan
-        )
-      );
-    }
-  };
-
-  const handleDeletePlan = async (planId: number) => {
-    try {
-      setFlightPlans(flightPlans.filter((p) => p.id !== planId));
-      setSelectedPlans(selectedPlans.filter((id) => id !== planId));
-      await axios.delete(`/api/flightPlans`, { data: { id: planId } });
-    } catch (error) {
-      console.error("Error deleting plan:", error);
-      fetchData();
-    }
-  };
-
-  const handleProcessSelectedPlans = async () => {
-    // Actualizar estado local inmediatamente para todos los planes seleccionados
-    setFlightPlans(
-      flightPlans.map((plan) =>
-        selectedPlans.includes(plan.id) ? { ...plan, status: "en cola" } : plan
-      )
-    );
-    try {
-      await axios.put(`/api/flightPlans`, { ids: selectedPlans, data: { status: "en cola" } });
-      fetchData();
-    } catch (error) {
-      console.error("Error bulk processing selected plans:", error);
-      setFlightPlans(
-        flightPlans.map((p) =>
-          selectedPlans.includes(p.id) ? { ...p, status: "error" } : p
-        )
-      );
-    }
-  };
-
-  const handleDownloadSelectedPlans = async () => {
-    if (selectedPlans.length === 0) {
-      alert("No plans selected to download.");
-      return;
-    }
-
-    const processedIds = selectedPlans.filter((id) => {
-      const p = flightPlans.find(fp => fp.id === id);
-      return p?.status === "procesado" && p.csvResult;
-    });
-    if (processedIds.length === 0) {
-      alert("No processed plans selected to download.");
-      return;
-    }
-    const BATCH = 500;
-    const ZIP_MAX_FILES = 1000;
-    const usedNames = new Map<string, boolean>();
-    for (let i = 0; i < processedIds.length; i += BATCH) {
-      const batchIds = processedIds.slice(i, i + BATCH);
-      try {
-        // Use the unified CSV API
-        const res = await axios.post(`/api/csvResult`, { ids: batchIds });
-        const items: { id: number, customName: string, csvResult: string }[] = res.data.items || [];
-        for (let j = 0; j < items.length; j += ZIP_MAX_FILES) {
-          const chunk = items.slice(j, j + ZIP_MAX_FILES);
-          const zip = new JSZip();
-          chunk.forEach((it) => {
-            let baseName = `${it.customName}`;
-            let fileName = `${baseName}.csv`;
-            let count = 1;
-            while (usedNames.has(fileName)) {
-              fileName = `${baseName} (${count}).csv`;
-              count++;
-            }
-            usedNames.set(fileName, true);
-            zip.file(fileName, it.csvResult);
-          });
-          const content = await zip.generateAsync({ type: "blob" });
-          const zipName = processedIds.length > ZIP_MAX_FILES ? `selected_${i + j + 1}-${i + j + chunk.length}.zip` : `selected_plans.zip`;
-          saveAs(content, zipName);
-        }
-      } catch (error) {
-        console.error("Error bulk downloading selected CSVs:", error);
-      }
-    }
-  };
-
-  const handleDeleteSelectedPlans = async () => {
-    if (typeof window !== 'undefined' && window.confirm("Are you sure you want to delete the selected plans?")) {
-      try {
-        const ids = [...selectedPlans];
-        if (ids.length > 0) {
-          // Use the unified index route for bulk deletion
-          await axios.delete(`/api/flightPlans`, { data: { ids } });
-        }
-        setFlightPlans(flightPlans.filter((p) => !ids.includes(p.id)));
-        setSelectedPlans([]);
-      } catch (error) {
-        console.error("Error deleting selected plans:", error);
-        fetchData();
-      }
-    }
-  };
-
-  const downloadCsv = async (planId: number, fileName: string) => {
-    try {
-      // Use the unified CSV API for individual downloads
-      const response = await axios.get(`/api/csvResult?id=${planId}`);
-      if (response.status === 200) {
-        const csvData = response.data.csvResult;
-        const blob = new Blob([csvData], { type: "text/csv" });
-        if (typeof window !== 'undefined') {
-          const url = window.URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.setAttribute("hidden", "");
-          a.setAttribute("href", url);
-          a.setAttribute("download", fileName);
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-        }
-      }
-    } catch (error) {
-      console.error("Error in CSV download:", error);
-    }
-  };
-
-  const countByStatus = (status: string) =>
-    flightPlans.filter((plan) => plan.status === status).length;
-
-  const getFolderStatusCounts = (folderId: number) => {
-    const folderPlans = flightPlans.filter(
-      (plan) => plan.folderId === folderId
-    );
-    return {
-      sinProcesar: folderPlans.filter((plan) => plan.status === "sin procesar")
-        .length,
-      enCola: folderPlans.filter((plan) => plan.status === "en cola").length,
-      procesando: folderPlans.filter((plan) => plan.status === "procesando")
-        .length,
-      procesado: folderPlans.filter((plan) => plan.status === "procesado")
-        .length,
-      error: folderPlans.filter((plan) => plan.status === "error").length,
-    };
-  };
-
-  const handleFolderFilterChange = (folderId: number, value: string) => {
-    setFolderFilters((prev) => ({
+  // Loading state helpers
+  const addLoadingPlan = useCallback((type: keyof typeof loadingPlanIds, planId: string) => {
+    setLoadingPlanIds(prev => ({
       ...prev,
-      [folderId]: value,
-    }));
-  };
+      [type]: new Set(prev[type]).add(planId),
+    }))
+  }, [])
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
+  const removeLoadingPlan = useCallback((type: keyof typeof loadingPlanIds, planId: string) => {
+    setLoadingPlanIds(prev => {
+      const next = new Set(prev[type])
+      next.delete(planId)
+      return { ...prev, [type]: next }
+    })
+  }, [])
 
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-  };
+  const addLoadingFolder = useCallback((type: keyof typeof loadingFolderIds, folderId: string) => {
+    setLoadingFolderIds(prev => ({
+      ...prev,
+      [type]: new Set(prev[type]).add(folderId),
+    }))
+  }, [])
 
-  const handleDrop = async (e: React.DragEvent, folderId?: number) => {
-    e.preventDefault();
-    setIsDragging(false);
+  const removeLoadingFolder = useCallback((type: keyof typeof loadingFolderIds, folderId: string) => {
+    setLoadingFolderIds(prev => {
+      const next = new Set(prev[type])
+      next.delete(folderId)
+      return { ...prev, [type]: next }
+    })
+  }, [])
 
-    const files = e.dataTransfer.files;
-    if (files) {
-      const virtualFiles = await expandInputFiles(files);
-      const BULK_THRESHOLD = 100;
-      const BULK_BATCH = 500;
-      if (virtualFiles.length >= BULK_THRESHOLD) {
-        const chunks: VirtualFile[][] = [];
-        for (let i = 0; i < virtualFiles.length; i += BULK_BATCH) {
-          chunks.push(virtualFiles.slice(i, i + BULK_BATCH));
-        }
-        const createdItems: any[] = [];
-        for (const chunk of chunks) {
-          const plansPayload = await Promise.all(
-            chunk.map(async (vf) => ({
-              customName: vf.name.replace(/\.[^/.]+$/, ""),
-              status: "sin procesar",
-              fileContent: await vf.getText(),
-              userId: user?.id,
-              folderId: folderId,
-            }))
-          );
-          // Use the new unified API with items array
-          const res = await axios.post("/api/flightPlans", { items: plansPayload });
-          if (res?.data?.items) createdItems.push(...res.data.items);
-        }
-        setFlightPlans([...flightPlans, ...createdItems]);
-      } else {
-        // Fallback to per-file uploads with limited concurrency
-        const created: any[] = [];
-        await withConcurrency(virtualFiles, 5, async (vf) => {
-          const response = await axios.post("/api/flightPlans", {
-            customName: vf.name.replace(/\.[^/.]+$/, ""),
-            status: "sin procesar",
-            fileContent: await vf.getText(),
-            userId: user?.id,
-            folderId: folderId,
-          });
-          created.push({ ...response.data });
-        });
-        setFlightPlans([...flightPlans, ...created]);
-      }
+  // Folder operations
+  const handleCreateFolder = useCallback(async (name: string) => {
+    setIsCreatingFolder(true)
+    try {
+      await createFolder({ name })
+    } finally {
+      setIsCreatingFolder(false)
     }
-  };
+  }, [createFolder])
 
-  // Step 1: Check geoawareness before authorization
-  const handleRequestAuthorization = async (planId: number) => {
-    const plan = flightPlans.find(p => p.id === planId);
-    setGeoawarenessLoading((prev) => ({ ...prev, [planId]: true }));
+  const handleRenameFolder = useCallback(async (folderId: string, newName: string) => {
+    addLoadingFolder('renaming', folderId)
+    try {
+      await updateFolder(Number(folderId), { name: newName })
+    } finally {
+      removeLoadingFolder('renaming', folderId)
+    }
+  }, [updateFolder, addLoadingFolder, removeLoadingFolder])
+
+  const handleDeleteFolder = useCallback(async (folderId: string) => {
+    if (!confirm('Are you sure you want to delete this folder and all its flight plans?')) {
+      return
+    }
+    addLoadingFolder('deleting', folderId)
+    try {
+      await deleteFolder(Number(folderId))
+    } finally {
+      removeLoadingFolder('deleting', folderId)
+    }
+  }, [deleteFolder, addLoadingFolder, removeLoadingFolder])
+
+  // Plan operations (individual only - no bulk)
+  // TASK-088: Show confirmation dialog before processing
+  const handleProcessPlan = useCallback((planId: string) => {
+    const plan = flightPlans.find(p => String(p.id) === planId)
+    if (!plan || !plan.scheduledAt) {
+      toast.warning('Please select a date and time before processing.')
+      return
+    }
+
+    // Show confirmation dialog
+    setProcessingConfirmDialog({
+      open: true,
+      planId,
+      planName: plan.customName,
+    })
+  }, [flightPlans, toast])
+
+  // Actual processing after confirmation
+  const confirmProcessPlan = useCallback(async () => {
+    const planId = processingConfirmDialog.planId
+    if (!planId) return
+
+    setProcessingConfirmDialog(prev => ({ ...prev, open: false }))
+    
+    addLoadingPlan('processing', planId)
+    try {
+      await updateFlightPlan(Number(planId), { status: 'en cola' })
+    } finally {
+      removeLoadingPlan('processing', planId)
+    }
+  }, [processingConfirmDialog.planId, updateFlightPlan, addLoadingPlan, removeLoadingPlan])
+
+  // TASK-219: Open trajectory map viewer instead of downloading CSV
+  const handleDownloadPlan = useCallback((planId: string) => {
+    // Normalize both IDs to strings for comparison
+    const plan = flightPlans.find(p => String(p.id) === String(planId))
+    
+    console.log('[FlightPlansUploader] View Trajectory clicked:', {
+      requestedPlanId: planId,
+      requestedPlanIdType: typeof planId,
+      foundPlan: plan?.id,
+      foundPlanIdType: typeof plan?.id,
+      planName: plan?.customName,
+      csvResultFlag: plan?.csvResult,
+      allPlanIds: flightPlans.map(p => ({ id: p.id, type: typeof p.id }))
+    })
+    
+    if (!plan?.csvResult) {
+      toast.warning('No trajectory available to view.')
+      return
+    }
+
+    // Open trajectory map viewer with the correct planId
+    const planIdToUse = String(plan.id)
+    console.log('[FlightPlansUploader] Opening trajectory viewer with planId:', planIdToUse)
+    
+    setTrajectoryViewer({
+      open: true,
+      planId: planIdToUse,
+      planName: plan.customName,
+    })
+  }, [flightPlans, toast])
+
+  const handleAuthorizePlan = useCallback(async (planId: string) => {
+    const plan = flightPlans.find(p => String(p.id) === planId)
+    if (!plan || plan.status !== 'procesado') {
+      toast.warning('The plan must be processed before requesting authorization.')
+      return
+    }
+
+    addLoadingPlan('authorizing', planId)
+    try {
+      // Submit U-Plan to FAS
+      const response = await fetch(`/api/flightPlans/${planId}/uplan`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('authToken')}`,
+        },
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Error submitting to FAS')
+      }
+
+      await refreshPlans()
+      toast.success('Authorization request sent successfully.')
+    } catch (error) {
+      console.error('Authorization error:', error)
+      toast.error('Error requesting authorization.', {
+        onRetry: () => handleAuthorizePlan(planId),
+      })
+    } finally {
+      removeLoadingPlan('authorizing', planId)
+    }
+  }, [flightPlans, refreshPlans, addLoadingPlan, removeLoadingPlan, toast])
+
+  // Handle geoawareness service call
+  const handleGeoawareness = useCallback(async (planId: string) => {
+    const logPrefix = '[Geoawareness]';
+    
+    const plan = flightPlans.find(p => String(p.id) === planId)
+    if (!plan) {
+      console.error(`${logPrefix} Plan not found`);
+      return
+    }
+
+    if (plan.status !== 'procesado') {
+      toast.warning('The plan must be processed before checking geoawareness.')
+      return
+    }
+
+    if (!plan.uplan) {
+      toast.warning('U-Plan data not available. Process the plan first.')
+      return
+    }
+
+    console.log(`${logPrefix} Checking plan: ${plan.customName}`);
+
+    // TASK-076: Extract uspace_identifier for WebSocket connection
+    let uspaceId: string | null = null
+    try {
+      const geoData = plan.geoawarenessData
+      if (geoData && typeof geoData === 'object' && 'uspace_identifier' in geoData) {
+        uspaceId = (geoData as { uspace_identifier: string }).uspace_identifier
+      }
+    } catch (error) {
+      console.error(`${logPrefix} Error parsing geoawarenessData:`, error);
+    }
+
+    if (!uspaceId) {
+      toast.error('This plan has no U-Space identifier. Was it created with a U-Space selected?')
+      return
+    }
+
+    console.log(`${logPrefix} U-Space: ${uspaceId}, calling API...`);
+    addLoadingPlan('geoawareness', planId)
     
     try {
-      // First, call geoawareness check endpoint
-      const geoResponse = await axios.post(`/api/flightPlans/${planId}/geoawareness`);
-      const { geozones, trajectory, hasConflicts, planName } = geoResponse.data;
+      const response = await fetch(`/api/flightPlans/${planId}/geoawareness`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('authToken')}`,
+        },
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Error calling geoawareness service')
+      }
+
+      const data = await response.json()
+      console.log(`${logPrefix} Validated. Opening modal with WS: ${data.wsUrl}`);
       
-      // Save geoawareness data to database
-      const geoawarenessData = { geozones, trajectory, hasConflicts, checkedAt: new Date().toISOString() };
-      console.log('Saving geoawarenessData:', geoawarenessData);
+      await refreshPlans()
       
-      const updateResponse = await axios.put(`/api/flightPlans`, { 
-        id: planId, 
-        data: { geoawarenessData } // Send as object, not stringified
-      });
-      console.log('Update response:', updateResponse.data);
-      
-      // Update local state with geoawareness data from the response
-      const savedData = updateResponse.data.geoawarenessData || geoawarenessData;
-      setFlightPlans((prev) =>
-        prev.map((p) =>
-          p.id === planId
-            ? { ...p, geoawarenessData: savedData }
-            : p
-        )
-      );
-      
-      // Show geoawareness modal with results
+      toast.success('Opening geoawareness viewer...')
+
+      // Open geoawareness viewer modal - this triggers WebSocket connection
       setGeoawarenessModal({
         open: true,
-        planId,
-        geozones,
-        trajectory,
-        planName: planName || plan?.customName || `Plan ${planId}`,
-        hasConflicts,
-        loading: false
-      });
-    } catch (error: any) {
-      const errorMsg = error?.response?.data?.error || error?.message || "Unknown error";
-      console.error("Error checking geoawareness:", errorMsg);
-      // If geoawareness check fails, show error but allow to proceed
-      setUplanErrorModal({ open: true, message: `Error al verificar geozonas: ${errorMsg}. Puede intentar solicitar autorización de todas formas.` });
-    } finally {
-      setGeoawarenessLoading((prev) => ({ ...prev, [planId]: false }));
-    }
-  };
-
-  // Step 2: Actually send the authorization request to FAS
-  const handleProceedWithAuthorization = async () => {
-    const planId = geoawarenessModal.planId;
-    if (!planId) return;
-
-    setGeoawarenessModal(prev => ({ ...prev, loading: true }));
-    setAuthorizationLoading((prev) => ({ ...prev, [planId]: true }));
-    setFlightPlans((prev) =>
-      prev.map((plan) =>
-        plan.id === planId
-          ? { ...plan, authorizationStatus: "procesando autorización" }
-          : plan
-      )
-    );
-
-    try {
-      await axios.put(`/api/flightPlans`, { id: planId, data: { authorizationStatus: "procesando autorización" } });
-      await axios.post(`/api/flightPlans/${planId}/uplan`);
-      // Close modal and refresh data
-      setGeoawarenessModal(prev => ({ ...prev, open: false, loading: false }));
-      fetchData();
-    } catch (error: any) {
-      const errorMsg = error?.response?.data?.error || error?.message || "Unknown error";
-      console.error("Error requesting authorization:", errorMsg);
-      setGeoawarenessModal(prev => ({ ...prev, loading: false }));
-    } finally {
-      setAuthorizationLoading((prev) => ({ ...prev, [planId]: false }));
-    }
-  };
-
-  // Close geoawareness modal
-  const handleCloseGeoawarenessModal = () => {
-    setGeoawarenessModal(prev => ({ 
-      ...prev, 
-      open: false, 
-      planId: null,
-      loading: false 
-    }));
-  };
-
-  const handleFolderScheduledAtChange = async (
-    folderId: number,
-    field: "minScheduledAt" | "maxScheduledAt",
-    value: string
-  ) => {
-    try {
-      setFolders(
-        folders.map((folder) =>
-          folder.id === folderId
-            ? {
-                ...folder,
-                [field]: value ? new Date(value).toISOString() : null,
-              }
-            : folder
-        )
-      );
-      await axios.put(`/api/folders/${folderId}`, {
-        [field]: value ? new Date(value).toISOString() : null,
-      });
-    } catch (error) {
-      console.error(`Error updating ${field} for folder:`, error);
-      fetchData();
-    }
-  };
-
-  const handleRandomizeScheduledAt = async (folderId: number) => {
-    const folder = folders.find((f) => f.id === folderId);
-    if (!folder || !folder.minScheduledAt || !folder.maxScheduledAt) return;
-    const min = new Date(folder.minScheduledAt).getTime();
-    const max = new Date(folder.maxScheduledAt).getTime();
-    if (isNaN(min) || isNaN(max) || min >= max) return;
-    const folderPlans = flightPlans.filter(
-      (plan) => plan.folderId === folderId
-    );
-    try {
-      const items = folderPlans.map((plan) => {
-        const randomTime = new Date(min + Math.random() * (max - min));
-        const iso = randomTime.toISOString();
-        return { id: plan.id, data: { scheduledAt: iso } };
-      });
-      await axios.put(`/api/flightPlans`, { items });
-      setFlightPlans((prevPlans) =>
-        prevPlans.map((plan) => {
-          const it = items.find((i) => i.id === plan.id);
-          return it ? { ...plan, scheduledAt: (it.data as any).scheduledAt } : plan;
-        })
-      );
-    } catch (error) {
-      console.error("Error randomizing times:", error);
-      fetchData();
-    }
-  };
-
-  const handleSelectFolderPlansByStatus = (
-    folderId: number,
-    status: string
-  ) => {
-    const folderPlans = flightPlans.filter((plan) => {
-      if (status === "Todos") return plan.folderId === folderId;
-      if (
-        [
-          "sin procesar",
-          "en cola",
-          "procesando",
-          "procesado",
-          "error",
-        ].includes(status)
-      ) {
-        return plan.folderId === folderId && plan.status === status;
-      }
-      if (["sin autorización", "aprobado", "denegado"].includes(status)) {
-        return (
-          plan.folderId === folderId && plan.authorizationStatus === status
-        );
-      }
-      return false;
-    });
-    const folderPlanIds = folderPlans.map((plan) => plan.id);
-    setSelectedPlans((prev) => [
-      ...prev,
-      ...folderPlanIds.filter((id) => !prev.includes(id)),
-    ]);
-  };
-
-  const handleFolderPageChange = (
-    folderId: number,
-    newPage: number,
-    total: number
-  ) => {
-    setFolderPages((prev) => ({
-      ...prev,
-      [folderId]: Math.max(1, Math.min(newPage, total)),
-    }));
-  };
-
-  const handleRequestAuthorizationSelected = async () => {
-    for (const planId of selectedPlans) {
-      const plan = flightPlans.find((p) => p.id === planId);
-      if (
-        plan &&
-        plan.status === "procesado" &&
-        (!plan.authorizationStatus ||
-          plan.authorizationStatus === "sin autorización")
-      ) {
-        await handleRequestAuthorization(planId);
-      }
-    }
-  };
-  // 1. Cambiar los handlers para recibir folderId y descargar todos los autorizados/denegados de la carpeta
-  const handleDownloadUplansFolder = async (folderId: number) => {
-    const plans = flightPlans.filter(
-      (p) =>
-        p.folderId === folderId &&
-        p.authorizationStatus === "aprobado" &&
-        p.uplan
-    );
-    if (plans.length === 0) {
-      alert("No authorized U-Plans in this folder.");
-      return;
-    }
-    const zip = new JSZip();
-    plans.forEach((plan) => {
-      zip.file(
-        `${plan.customName}_uplan.json`,
-        JSON.stringify(plan.uplan, null, 2)
-      );
-    });
-    const content = await zip.generateAsync({ type: "blob" });
-    saveAs(content, `uplans_authorized_${folderId}.zip`);
-  };
-  const handleDownloadDenegationMessagesFolder = async (folderId: number) => {
-    const plans = flightPlans.filter(
-      (p) =>
-        p.folderId === folderId &&
-        p.authorizationStatus === "denegado" &&
-        p.authorizationMessage
-    );
-    if (plans.length === 0) {
-      alert("No denial messages in this folder.");
-      return;
-    }
-    const zip = new JSZip();
-    plans.forEach((plan) => {
-      zip.file(
-        `${plan.customName}_authorization_error.json`,
-        typeof plan.authorizationMessage === "string"
-          ? plan.authorizationMessage
-          : JSON.stringify(plan.authorizationMessage, null, 2)
-      );
-    });
-    const content = await zip.generateAsync({ type: "blob" });
-    saveAs(content, `denial_messages_${folderId}.zip`);
-  };
-
-  // Function to fetch and show CSV content in modal
-  const handleViewCsv = async (planId: number, customName: string) => {
-    try {
-      // Use the unified CSV API for individual view
-      const response = await axios.get(`/api/csvResult?id=${planId}`);
-      if (response.status === 200) {
-        const traj = parseTrajectoryCsv(response.data.csvResult);
-        setTrajectoryData([traj]);
-        setTrajectoryIdxs([0]);
-        setTrajectoryNames([customName]);
-        setTrajectoryModalTitle(`${customName} Trajectory`);
-        setTrajectoryModalOpen(true);
-      }
-    } catch (error) {
-      setTrajectoryData([]);
-      setTrajectoryIdxs([]);
-      setTrajectoryNames([]);
-      setTrajectoryModalTitle('Error loading trajectory');
-      setTrajectoryModalOpen(true);
-    }
-  };
-
-  // Function to view all selected plans as CSV (concatenated)
-  const handleViewSelectedPlans = async () => {
-    if (selectedPlans.length === 0) {
-      alert("No plans selected to view.");
-      return;
-    }
-    const trajs: TrajectoryRow[][] = [];
-    const names: string[] = [];
-    for (const id of selectedPlans) {
-      const plan = flightPlans.find((p) => p.id === id);
-      if (plan && plan.status === "procesado" && plan.csvResult) {
-        try {
-          // Use the unified CSV API for individual view
-          const response = await axios.get(`/api/csvResult?id=${id}`);
-          if (response.status === 200) {
-            const traj = parseTrajectoryCsv(response.data.csvResult);
-            trajs.push(traj);
-            names.push(plan.customName);
-          }
-        } catch (error) {
-          // skip
-        }
-      }
-    }
-    if (trajs.length === 0) {
-      setTrajectoryData([]);
-      setTrajectoryIdxs([]);
-      setTrajectoryNames([]);
-      setTrajectoryModalTitle('No processed plans selected.');
-      setTrajectoryModalOpen(true);
-      return;
-    }
-    setTrajectoryData(trajs);
-    setTrajectoryIdxs(trajs.map(() => 0));
-    setTrajectoryNames(names);
-    setTrajectoryModalTitle('Selected Trajectories');
-    setTrajectoryModalOpen(true);
-  };
-
-  const handleViewFolderProcessedPlans = async (folderId: number) => {
-    const folder = folders.find(f => f.id === folderId);
-    const folderPlans = flightPlans.filter(
-      (p) => p.folderId === folderId && p.status === "procesado"
-    );
-    if (folderPlans.length === 0) {
-      alert("No processed plans in this folder to view.");
-      return;
-    }
-    const trajs: TrajectoryRow[][] = [];
-    const names: string[] = [];
-    for (const plan of folderPlans) {
-      try {
-        // Use the unified CSV API for individual view
-        const response = await axios.get(`/api/csvResult?id=${plan.id}`);
-        if (response.status === 200) {
-          const traj = parseTrajectoryCsv(response.data.csvResult);
-          trajs.push(traj);
-          names.push(plan.customName);
-        }
-      } catch (error) {
-        // skip
-      }
-    }
-    if (trajs.length === 0) {
-      setTrajectoryData([]);
-      setTrajectoryIdxs([]);
-      setTrajectoryNames([]);
-      setTrajectoryModalTitle('No processed plans in this folder.');
-      setTrajectoryModalOpen(true);
-      return;
-    }
-    setTrajectoryData(trajs);
-    setTrajectoryIdxs(trajs.map(() => 0));
-    setTrajectoryNames(names);
-    setTrajectoryModalTitle(`Folder ${folder?.name || ''} trajectories`);
-    setTrajectoryModalOpen(true);
-  };
-
-  const handleViewSelectedErrors = () => {
-    const errors = selectedPlans
-      .map(id => {
-        const plan = flightPlans.find(p => p.id === id);
-        if (plan && plan.authorizationStatus === 'denegado' && plan.authorizationMessage) {
-          return { name: plan.customName, message: plan.authorizationMessage };
-        }
-        return null;
+        planId: planId,
+        planName: plan.customName,
+        uspaceId: uspaceId,
       })
-      .filter(Boolean) as { name: string, message: any }[];
-    if (errors.length === 0) {
-      alert('No selected errors to view.');
-      return;
+    } catch (error) {
+      console.error(`${logPrefix} Error:`, error)
+      toast.error(error instanceof Error ? error.message : 'Error checking geoawareness.', {
+        onRetry: () => handleGeoawareness(planId),
+      })
+    } finally {
+      removeLoadingPlan('geoawareness', planId)
     }
-    setBulkErrorViewModal({ open: true, errors, idx: 0 });
-  };
+  }, [flightPlans, refreshPlans, addLoadingPlan, removeLoadingPlan, toast])
 
-  // Function to view only selected authorized U-Plans
-  const handleViewSelectedAuthorizedUplans = () => {
-    const plans = selectedPlans
-      .map(id => flightPlans.find(p => p.id === id))
-      .filter(p => p && p.authorizationStatus === "aprobado" && p.uplan);
-    if (plans.length === 0) {
-      alert("No selected authorized U-Plans to view.");
-      return;
-    }
-    setBulkUplanViewModal({
+  // TASK-109: Show reset confirmation dialog
+  const handleResetPlan = useCallback((planId: string) => {
+    const plan = flightPlans.find(p => String(p.id) === planId)
+    if (!plan) return
+
+    // Show confirmation dialog with warning
+    setResetConfirmDialog({
       open: true,
-      uplans: plans.map(p => p?.uplan ?? {}),
-      names: plans.map(p => p?.customName ?? "")
-    });
-  };
+      planId,
+      planName: plan.customName,
+    })
+  }, [flightPlans])
 
-  // Handler to open uplan edit modal
-  const handleOpenUplanEdit = useCallback((plan: FlightPlan) => {
-    let uplanObj = plan.uplan;
-    // Defensive: parse up to two times if needed (for double-encoded JSON)
-    for (let i = 0; i < 2; i++) {
-      if (typeof uplanObj === "string") {
-        try {
-          uplanObj = JSON.parse(uplanObj);
-        } catch {
-          break;
-        }
+  // Actual reset after confirmation
+  const confirmResetPlan = useCallback(async () => {
+    const planId = resetConfirmDialog.planId
+    if (!planId) return
+
+    setResetConfirmDialog(prev => ({ ...prev, open: false }))
+
+    addLoadingPlan('resetting', planId)
+    try {
+      const response = await fetch(`/api/flightPlans/${planId}/reset`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('authToken')}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('Error resetting plan')
+      }
+
+      await refreshPlans()
+      toast.success('Plan reset successfully.')
+    } catch (error) {
+      console.error('Reset error:', error)
+      toast.error('Error resetting plan.', {
+        onRetry: confirmResetPlan,
+      })
+    } finally {
+      removeLoadingPlan('resetting', planId)
+    }
+  }, [resetConfirmDialog.planId, refreshPlans, addLoadingPlan, removeLoadingPlan, toast])
+
+  const handleDeletePlan = useCallback(async (planId: string) => {
+    if (!confirm('Are you sure you want to delete this flight plan?')) {
+      return
+    }
+
+    addLoadingPlan('deleting', planId)
+    try {
+      await deleteFlightPlan(Number(planId))
+      if (selectedPlanId === planId) {
+        setSelectedPlanId(null)
+      }
+    } finally {
+      removeLoadingPlan('deleting', planId)
+    }
+  }, [deleteFlightPlan, selectedPlanId, addLoadingPlan, removeLoadingPlan])
+
+  // TASK-221: Rename plan handler
+  const handleRenamePlan = useCallback(async (planId: string, newName: string) => {
+    addLoadingPlan('renaming', planId)
+    try {
+      await updateFlightPlan(Number(planId), { customName: newName })
+      toast.success('Plan name updated.')
+    } catch (error) {
+      console.error('Rename error:', error)
+      toast.error('Error renaming plan.')
+    } finally {
+      removeLoadingPlan('renaming', planId)
+    }
+  }, [updateFlightPlan, addLoadingPlan, removeLoadingPlan, toast])
+
+  // TASK-222: Move plan to a different folder (drag-and-drop)
+  const handleMovePlan = useCallback(async (planId: string, targetFolderId: string | null) => {
+    addLoadingPlan('moving', planId)
+    try {
+      await updateFlightPlan(Number(planId), {
+        folderId: targetFolderId ? Number(targetFolderId) : null,
+      })
+      toast.success('Plan moved successfully.')
+    } catch (error) {
+      console.error('Move error:', error)
+      toast.error('Error moving plan.')
+    } finally {
+      removeLoadingPlan('moving', planId)
+    }
+  }, [updateFlightPlan, addLoadingPlan, removeLoadingPlan, toast])
+  
+  // TASK-222: Handle drag start
+  const handleDragStart = useCallback((_e: DragEvent<HTMLDivElement>, _data: FlightPlanDragData) => {
+    // Optional: Could add visual feedback during drag
+  }, [])
+  
+  // TASK-222: Handle drag end
+  const handleDragEnd = useCallback((_e: DragEvent<HTMLDivElement>) => {
+    setIsDraggingOverOrphans(false)
+  }, [])
+  
+  // TASK-222: Handle drag over orphan section
+  const handleOrphanDragOver = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    
+    if (!e.dataTransfer.types.includes(FLIGHT_PLAN_DRAG_TYPE)) {
+      return
+    }
+    
+    e.dataTransfer.dropEffect = 'move'
+    setIsDraggingOverOrphans(true)
+  }, [])
+  
+  // TASK-222: Handle drag leave orphan section
+  const handleOrphanDragLeave = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    
+    // Only set false if we're leaving the container entirely
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = e.clientX
+    const y = e.clientY
+    
+    if (x < rect.left || x >= rect.right || y < rect.top || y >= rect.bottom) {
+      setIsDraggingOverOrphans(false)
+    }
+  }, [])
+  
+  // TASK-222: Handle drop on orphan section (remove from folder)
+  const handleOrphanDrop = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    setIsDraggingOverOrphans(false)
+    
+    const dragDataStr = e.dataTransfer.getData(FLIGHT_PLAN_DRAG_TYPE)
+    if (!dragDataStr) return
+    
+    try {
+      const dragData: FlightPlanDragData = JSON.parse(dragDataStr)
+      
+      // Don't do anything if already not in a folder
+      if (dragData.sourceFolderId === null) {
+        return
+      }
+      
+      // Move to no folder (orphan)
+      handleMovePlan(dragData.planId, null)
+    } catch (err) {
+      console.error('Error parsing drag data:', err)
+    }
+  }, [handleMovePlan])
+
+  // DateTime change handler for selected plan
+  // The DateTimePicker component returns UTC ISO string ready for storage
+  const handleDateTimeChange = useCallback(async (utcIsoString: string) => {
+    if (!selectedPlanId) return
+
+    try {
+      await updateFlightPlan(Number(selectedPlanId), {
+        scheduledAt: utcIsoString || null,
+      })
+      toast.success('Date and time updated.')
+    } catch (error) {
+      console.error('DateTime update error:', error)
+      toast.error('Error updating date.', {
+        onRetry: () => handleDateTimeChange(utcIsoString),
+      })
+    }
+  }, [selectedPlanId, updateFlightPlan, toast])
+
+  // Handle plan click/selection - toggles selection only, does NOT open map
+  const handlePlanClick = useCallback((planId: string) => {
+    // Toggle selection for workflow UI
+    setSelectedPlanId(prev => {
+      const newValue = prev === planId ? null : planId
+      // Scroll to top when selecting a plan to show the workflow section
+      if (newValue !== null) {
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      }
+      return newValue
+    })
+  }, [])
+
+  // Handle waypoint preview click - opens waypoint map modal
+  const handleWaypointPreviewClick = useCallback((planId: string, waypoints: Waypoint[]) => {
+    const plan = flightPlans.find(p => String(p.id) === planId)
+    if (plan) {
+      if (waypoints.length > 0) {
+        setWaypointMapModal({
+          open: true,
+          planId,
+          planName: plan.customName,
+          waypoints,
+        })
+      } else {
+        toast.warning('No waypoints found in this flight plan.')
       }
     }
-    setUplanEditModal({ open: true, uplan: uplanObj || {}, planId: plan.id });
-  }, []);
+  }, [flightPlans, toast])
 
-  // Handler to save uplan changes
-  const handleSaveUplanEdit = async (newUplan: any) => {
-    if (!uplanEditModal.planId) return;
-    try {
-      await axios.put(`/api/flightPlans`, { id: uplanEditModal.planId, data: { uplan: JSON.stringify(newUplan) } });
-      setFlightPlans(flightPlans.map(plan =>
-        plan.id === uplanEditModal.planId ? { ...plan, uplan: newUplan } : plan
-      ));
-      setUplanEditModal({ open: false, uplan: null, planId: null });
-    } catch (error) {
-      alert("Error saving U-plan info");
+  // Handle viewing authorization message - opens modal with FAS response
+  const handleViewAuthorizationMessage = useCallback((planId: string, message: unknown) => {
+    const plan = flightPlans.find(p => String(p.id) === planId)
+    if (plan) {
+      setAuthorizationMessageModal({
+        open: true,
+        planId,
+        planName: plan.customName,
+        message,
+        status: plan.authorizationStatus === 'aprobado' ? 'aprobado' : 
+                plan.authorizationStatus === 'denegado' ? 'denegado' : null,
+      })
     }
-  };
+  }, [flightPlans])
+
+  // Loading state
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px] fade-in">
+        <p className="text-[var(--text-secondary)]">Please log in to view your flight plans.</p>
+      </div>
+    )
+  }
+
+  // TASK-169: Show loading skeleton while fetching
+  if (plansLoading && foldersLoading) {
+    return (
+      <div className="p-6 fade-in">
+        <FlightPlansListSkeleton folderCount={2} plansPerFolder={2} />
+      </div>
+    )
+  }
+
+  // Error state
+  if (plansError || foldersError) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px] fade-in">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <svg className="w-12 h-12 text-red-500 error-shake" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <p className="text-red-600 dark:text-red-400">Error loading data</p>
+          <button
+            onClick={() => {
+              refreshPlans()
+              refreshFolders()
+            }}
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 btn-interactive"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="bg-gray-900 p-6 pt-8 pb-2">
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
       {/* Help Button */}
       <a
         href="/how-it-works#trajectory-generator-help"
         target="_self"
-        className="fixed top-24 right-8 z-[2000] bg-blue-700 hover:bg-blue-800 text-white rounded-full p-3 shadow-lg flex items-center gap-2 transition-all duration-200"
+        className="fixed top-24 right-4 sm:right-8 z-[9999] bg-blue-700 hover:bg-blue-800 text-white rounded-full p-2 sm:p-3 shadow-lg flex items-center gap-2 transition-all duration-200"
         title="Need help with Trajectory Generator?"
       >
-        <HelpCircle className="w-6 h-6" />
+        <HelpCircle className="w-5 h-5 sm:w-6 sm:h-6" />
       </a>
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold text-white mb-6">
-          Flight Plan Manager
-        </h1>
+      
+      {/* Polling error banner - TASK-100 */}
+      {pollingErrorCount >= 3 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <svg className="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <p className="text-sm text-amber-800">
+              Automatic sync has been paused due to connection errors.
+            </p>
+          </div>
+          <button
+            onClick={resetPollingErrors}
+            className="px-3 py-1.5 text-sm font-medium text-amber-700 bg-amber-100 rounded-md hover:bg-amber-200 transition-colors btn-interactive"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
-        <div className="bg-gray-800 rounded-lg p-4 mb-6">
-          <div className="grid grid-cols-5 gap-4 text-center">
-            <div className="bg-gray-700 rounded-lg p-3">
-              <span className="text-gray-300">Unprocessed</span>
-              <div className="text-2xl font-bold text-white">
-                {countByStatus("sin procesar")}
-              </div>
+      {/* Workflow guide - shows current step in the flight plan lifecycle */}
+      <div className="relative z-10 bg-[var(--surface-primary)] rounded-lg border border-[var(--border-primary)] p-6 shadow-sm fade-in-up">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-[var(--text-primary)]">Workflow</h2>
+          {/* TASK-097: Refresh indicator */}
+          {isRefreshing && (
+            <div className="flex items-center gap-2 text-[var(--text-secondary)] text-sm fade-in">
+              <LoadingSpinner size="xs" variant="gray" />
+              <span>Syncing...</span>
             </div>
-            <div className="bg-gray-700 rounded-lg p-3">
-              <span className="text-gray-300">Queued</span>
-              <div className="text-2xl font-bold text-white">
-                {countByStatus("en cola")}
-              </div>
+          )}
+        </div>
+        <ProcessingWorkflow
+          currentStep={currentStep}
+          completedSteps={completedSteps}
+          planStatus={selectedPlan?.status}
+          authorizationStatus={selectedPlan?.authorizationStatus}
+        />
+        {!selectedPlan && (
+          <p className="mt-4 text-sm text-[var(--text-secondary)] text-center">
+            Select a flight plan from the list to begin
+          </p>
+        )}
+      </div>
+
+      {/* Selected plan panel - shows actions for the selected plan */}
+      {selectedPlan && (
+        <div className="bg-[var(--surface-secondary)] rounded-lg border border-[var(--border-primary)] p-6 fade-in-up">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-[var(--text-primary)]">
+              Selected plan: {selectedPlan.name}
+            </h3>
+            <button
+              onClick={() => setSelectedPlanId(null)}
+              className="text-sm text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] btn-interactive-subtle"
+            >
+              Deselect
+            </button>
+          </div>
+
+          {/* Selected plan card */}
+          <FlightPlanCard
+            plan={selectedPlan}
+            onProcess={handleProcessPlan}
+            onDownload={handleDownloadPlan}
+            onAuthorize={handleAuthorizePlan}
+            onReset={handleResetPlan}
+            onDelete={handleDeletePlan}
+            onRename={handleRenamePlan}
+            onViewAuthorizationMessage={handleViewAuthorizationMessage}
+            loadingStates={{
+              processing: loadingPlanIds.processing.has(selectedPlan.id),
+              downloading: loadingPlanIds.downloading.has(selectedPlan.id),
+              authorizing: loadingPlanIds.authorizing.has(selectedPlan.id),
+              resetting: loadingPlanIds.resetting.has(selectedPlan.id),
+              deleting: loadingPlanIds.deleting.has(selectedPlan.id),
+              renaming: loadingPlanIds.renaming.has(selectedPlan.id),
+            }}
+            className="mb-4"
+          />
+
+          {/* DateTime picker for selected plan - shown when at datetime step or to show current value */}
+          {(currentStep === 'datetime' || selectedPlan.scheduledAt) && (
+            <div className="mt-4 p-4 bg-[var(--surface-primary)] rounded-lg border border-[var(--border-primary)] fade-in">
+              <DateTimePicker
+                value={selectedPlan.scheduledAt || ''}
+                onChange={handleDateTimeChange}
+                label="Scheduled date and time"
+                disabled={isScheduledAtLocked}
+                className="max-w-xs"
+              />
+              {isScheduledAtLocked ? (
+                <p className="mt-2 text-sm text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  The date cannot be modified after processing starts.
+                </p>
+              ) : (
+                <p className="mt-2 text-sm text-[var(--text-secondary)]">
+                  Select the date and time to process the plan.
+                </p>
+              )}
             </div>
-            <div className="bg-gray-700 rounded-lg p-3">
-              <span className="text-gray-300">Processing</span>
-              <div className="text-2xl font-bold text-white">
-                {countByStatus("procesando")}
-              </div>
+          )}
+
+          {/* Process action prompt */}
+          {currentStep === 'process' && (
+            <div className="mt-4 p-4 bg-[var(--surface-primary)] rounded-lg border border-[var(--border-primary)] fade-in">
+              <p className="text-sm text-[var(--text-secondary)] mb-3">
+                The plan is ready to be processed. This will generate the trajectory and U-Plan.
+              </p>
+              <button
+                onClick={() => handleProcessPlan(selectedPlan.id)}
+                disabled={loadingPlanIds.processing.has(selectedPlan.id)}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-blue-400 transition-colors btn-interactive disabled-transition"
+              >
+                {loadingPlanIds.processing.has(selectedPlan.id) ? 'Processing...' : 'Process plan'}
+              </button>
             </div>
-            <div className="bg-gray-700 rounded-lg p-3">
-              <span className="text-gray-300">Processed</span>
-              <div className="text-2xl font-bold text-white">
-                {countByStatus("procesado")}
+          )}
+
+          {/* Geoawareness step prompt */}
+          {currentStep === 'geoawareness' && selectedPlan.status === 'procesado' && (
+            <div className="mt-4 p-4 bg-[var(--surface-primary)] rounded-lg border border-[var(--border-primary)] fade-in">
+              <p className="text-sm text-[var(--text-secondary)] mb-3">
+                The plan has been processed. Review the U-Plan information and check geoawareness data before requesting authorization.
+              </p>
+              <div className="flex flex-wrap items-center gap-3 mb-3">
+                {/* Review U-Plan button - TASK-023: Opens UplanFormModal for editing */}
+                <button
+                  onClick={() => {
+                    setUplanFormModal({
+                      open: true,
+                      planId: selectedPlan.id,
+                      uplan: selectedPlan.uplan,
+                      name: selectedPlan.name,
+                    })
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-[var(--text-primary)] bg-[var(--surface-tertiary)] border border-[var(--border-primary)] rounded-md hover:bg-[var(--bg-hover)] transition-colors btn-interactive flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  Review U-Plan
+                </button>
+                {/* View U-Plan Map button - shows operation volumes on map */}
+                {/* TASK-079: Show waypoints even without uplan, for planning visualization */}
+                <button
+                  onClick={() => {
+                    setUplanViewModal({
+                      open: true,
+                      uplan: selectedPlan.uplan,
+                      name: selectedPlan.name,
+                      fileContent: selectedPlan.fileContent ?? null,
+                    })
+                  }}
+                  disabled={!selectedPlan.fileContent}
+                  className="px-4 py-2 text-sm font-medium text-[var(--text-primary)] bg-[var(--surface-tertiary)] border border-[var(--border-primary)] rounded-md hover:bg-[var(--bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors btn-interactive flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                  </svg>
+                  View U-Plan Map
+                </button>
+                {/* View trajectory button - TASK-001: Require status=procesado AND csvResult */}
+                <button
+                  onClick={() => handleDownloadPlan(selectedPlan.id)}
+                  disabled={selectedPlan.status !== 'procesado' || !selectedPlan.csvResult}
+                  title={selectedPlan.status !== 'procesado' ? 'Plan must be processed first' : !selectedPlan.csvResult ? 'Trajectory data not available' : undefined}
+                  className="px-4 py-2 text-sm font-medium text-[var(--text-primary)] bg-[var(--surface-tertiary)] border border-[var(--border-primary)] rounded-md hover:bg-[var(--bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors btn-interactive flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                  </svg>
+                  View Trajectory
+                </button>
+                {/* Check Geoawareness button */}
+                <button
+                  onClick={() => handleGeoawareness(selectedPlan.id)}
+                  disabled={loadingPlanIds.geoawareness.has(selectedPlan.id)}
+                  className="px-4 py-2 text-sm font-medium text-[var(--text-primary)] bg-[var(--surface-tertiary)] border border-[var(--border-primary)] rounded-md hover:bg-[var(--bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors btn-interactive flex items-center gap-2"
+                >
+                  {loadingPlanIds.geoawareness.has(selectedPlan.id) ? (
+                    <>
+                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Checking...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Check Geoawareness
+                    </>
+                  )}
+                </button>
               </div>
+
+
+              <p className="text-xs text-[var(--text-muted)] mb-3">
+                Review the U-Plan, check geoawareness for conflicting zones, and view the trajectory before continuing to authorization.
+              </p>
+              {/* TASK-035: Disable authorization button during FAS processing */}
+              <button
+                onClick={() => handleAuthorizePlan(selectedPlan.id)}
+                disabled={loadingPlanIds.authorizing.has(selectedPlan.id) || isFasProcessing}
+                className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 disabled:bg-purple-400 transition-colors btn-interactive disabled-transition flex items-center gap-2"
+              >
+                {loadingPlanIds.authorizing.has(selectedPlan.id) ? (
+                  <>
+                    <LoadingSpinner size="xs" variant="white" />
+                    Requesting...
+                  </>
+                ) : isFasProcessing ? (
+                  <>
+                    <LoadingSpinner size="xs" variant="white" />
+                    FAS Processing...
+                  </>
+                ) : (
+                  'Continue to authorization'
+                )}
+              </button>
             </div>
-            <div className="bg-gray-700 rounded-lg p-3">
-              <span className="text-gray-300">Error</span>
-              <div className="text-2xl font-bold text-white">
-                {countByStatus("error")}
+          )}
+
+          {/* TASK-034: Authorize action prompt with enhanced UI when FAS is processing */}
+          {(currentStep === 'authorize' || isFasProcessing) && selectedPlan.authorizationStatus === 'pendiente' && (
+            <div className="mt-4 p-4 bg-[var(--surface-primary)] rounded-lg border border-amber-100 dark:border-amber-900 fade-in">
+              {/* TASK-034: Animated FAS processing indicator */}
+              <div className="flex items-center gap-3 mb-3">
+                <div className="relative">
+                  <LoadingSpinner size="md" variant="primary" />
+                  <div className="absolute inset-0 animate-ping opacity-30">
+                    <LoadingSpinner size="md" variant="primary" />
+                  </div>
+                </div>
+                <div>
+                  <span className="font-semibold text-amber-700 dark:text-amber-400">FAS Processing...</span>
+                  <p className="text-xs text-[var(--text-muted)]">
+                    Authorization request submitted
+                  </p>
+                </div>
               </div>
+              {/* Animated progress bar */}
+              <div className="w-full h-1.5 bg-amber-100 dark:bg-amber-900/30 rounded-full overflow-hidden mb-3">
+                <div className="h-full bg-amber-500 dark:bg-amber-400 rounded-full animate-pulse" style={{ width: '60%' }} />
+              </div>
+              <p className="text-sm text-[var(--text-secondary)]">
+                The authorization request has been sent to FAS. Status will update automatically.
+              </p>
+              {/* TASK-035: Disabled authorization button during processing */}
+              <button
+                disabled={true}
+                className="mt-3 px-4 py-2 text-sm font-medium text-white bg-amber-400 dark:bg-amber-600 rounded-md cursor-not-allowed opacity-70 flex items-center gap-2"
+              >
+                <LoadingSpinner size="xs" variant="white" />
+                Awaiting FAS Response
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Main content: Folder list with flight plans */}
+      <div className="bg-[var(--surface-primary)] rounded-lg border border-[var(--border-primary)] p-6 shadow-sm fade-in-up">
+        <FolderList
+          folders={transformedFolders}
+          onCreateFolder={handleCreateFolder}
+          onRenameFolder={handleRenameFolder}
+          onDeleteFolder={handleDeleteFolder}
+          onProcessPlan={handleProcessPlan}
+          onDownloadPlan={handleDownloadPlan}
+          onAuthorizePlan={handleAuthorizePlan}
+          onResetPlan={handleResetPlan}
+          onDeletePlan={handleDeletePlan}
+          onSelectPlan={handlePlanClick}
+          selectedPlanId={selectedPlanId}
+          onRenamePlan={handleRenamePlan}
+          draggable={true}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          onDropPlan={handleMovePlan}
+          onWaypointPreviewClick={handleWaypointPreviewClick}
+          onViewAuthorizationMessage={handleViewAuthorizationMessage}
+          loadingPlanIds={loadingPlanIds}
+          loadingFolderIds={loadingFolderIds}
+          isCreating={isCreatingFolder}
+        />
+      </div>
+
+      {/* Orphan plans section - plans without a folder */}
+      {(() => {
+        const orphanPlans = flightPlans.filter(p => !p.folderId)
+        
+        // Show drop zone even if no orphan plans, when dragging
+        const showDropZone = orphanPlans.length > 0 || isDraggingOverOrphans
+
+        if (!showDropZone) return null
+
+        return (
+          <div 
+            className={`bg-[var(--surface-primary)] rounded-lg border p-6 shadow-sm fade-in-up transition-all ${
+              isDraggingOverOrphans
+                ? 'border-blue-500 dark:border-blue-400 border-2 bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-500/30'
+                : 'border-[var(--border-primary)]'
+            }`}
+            onDragOver={handleOrphanDragOver}
+            onDragEnter={(e) => {
+              e.preventDefault()
+              if (e.dataTransfer.types.includes(FLIGHT_PLAN_DRAG_TYPE)) {
+                setIsDraggingOverOrphans(true)
+              }
+            }}
+            onDragLeave={handleOrphanDragLeave}
+            onDrop={handleOrphanDrop}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-[var(--text-primary)]">
+                Plans without folder ({orphanPlans.length})
+              </h2>
+              {isDraggingOverOrphans && (
+                <span className="text-sm font-medium text-blue-600 dark:text-blue-400 animate-pulse">
+                  Drop here to remove from folder
+                </span>
+              )}
+            </div>
+            {orphanPlans.length > 0 ? (
+              <div className="flex flex-col gap-3 stagger-children">
+                {orphanPlans.map(plan => {
+                  const transformed = transformFlightPlan(plan)
+                  
+                  return (
+                    <FlightPlanCard
+                      key={plan.id}
+                      plan={transformed}
+                      folderId={null}
+                      onProcess={handleProcessPlan}
+                      onDownload={handleDownloadPlan}
+                      onAuthorize={handleAuthorizePlan}
+                      onReset={handleResetPlan}
+                      onDelete={handleDeletePlan}
+                      onSelect={handlePlanClick}
+                      isSelected={selectedPlanId === transformed.id}
+                      onRename={handleRenamePlan}
+                      onViewAuthorizationMessage={handleViewAuthorizationMessage}
+                      onWaypointPreviewClick={handleWaypointPreviewClick}
+                      draggable={true}
+                      onDragStart={handleDragStart}
+                      onDragEnd={handleDragEnd}
+                      loadingStates={{
+                        processing: loadingPlanIds.processing.has(transformed.id),
+                        downloading: loadingPlanIds.downloading.has(transformed.id),
+                        authorizing: loadingPlanIds.authorizing.has(transformed.id),
+                        resetting: loadingPlanIds.resetting.has(transformed.id),
+                        deleting: loadingPlanIds.deleting.has(transformed.id),
+                        renaming: loadingPlanIds.renaming.has(transformed.id),
+                      }}
+                    />
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-4 text-[var(--text-secondary)] text-sm">
+                Drop a plan here to remove it from its folder
+              </div>
+            )}
+          </div>
+        )
+      })()}
+
+      {/* TASK-088: Processing confirmation dialog */}
+      <ConfirmDialog
+        open={processingConfirmDialog.open}
+        onClose={() => setProcessingConfirmDialog(prev => ({ ...prev, open: false }))}
+        onConfirm={confirmProcessPlan}
+        title="Confirm processing"
+        message={`Are you sure you want to process the plan "${processingConfirmDialog.planName}"? Once processing starts, you will not be able to modify the scheduled date and time, or the plan information without resetting the entire process.`}
+        confirmLabel="Process"
+        cancelLabel="Cancel"
+        variant="warning"
+      />
+
+      {/* TASK-109: Reset confirmation dialog */}
+      <ConfirmDialog
+        open={resetConfirmDialog.open}
+        onClose={() => setResetConfirmDialog(prev => ({ ...prev, open: false }))}
+        onConfirm={confirmResetPlan}
+        title="Reset flight plan"
+        message={`Are you sure you want to reset the plan "${resetConfirmDialog.planName}"? This action will delete the processed trajectory, authorization status, and all associated data. The plan will return to "unprocessed" status.`}
+        confirmLabel="Reset"
+        cancelLabel="Cancel"
+        variant="warning"
+      />
+
+      {/* TASK-219: Trajectory map viewer - replaces CSV download */}
+      {trajectoryViewer.open && trajectoryViewer.planId && (
+        <TrajectoryMapViewer
+          key={trajectoryViewer.planId}
+          planId={trajectoryViewer.planId}
+          planName={trajectoryViewer.planName}
+          onClose={() => setTrajectoryViewer({ open: false, planId: null, planName: '' })}
+        />
+      )}
+
+      {/* Waypoint map modal - shows flight plan waypoints on interactive map */}
+      {waypointMapModal.open && (
+        <WaypointMapModal
+          open={waypointMapModal.open}
+          onClose={() => setWaypointMapModal({ open: false, planId: null, planName: '', waypoints: [] })}
+          title="Flight Plan Waypoints"
+          planName={waypointMapModal.planName}
+          waypoints={waypointMapModal.waypoints}
+        />
+      )}
+
+      {/* Authorization message modal - shows FAS authorization response */}
+      {authorizationMessageModal.open && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          onClick={() => setAuthorizationMessageModal({ open: false, planId: null, planName: '', message: null, status: null })}
+        >
+          <div
+            className="bg-[var(--surface-primary)] rounded-xl shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className={`px-6 py-4 border-b border-[var(--border-primary)] flex items-center justify-between ${
+              authorizationMessageModal.status === 'aprobado' 
+                ? 'bg-green-50 dark:bg-green-900/20' 
+                : authorizationMessageModal.status === 'denegado'
+                  ? 'bg-red-50 dark:bg-red-900/20'
+                  : ''
+            }`}>
+              <div className="flex items-center gap-3">
+                {authorizationMessageModal.status === 'aprobado' ? (
+                  <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="currentColor" viewBox="0 0 24 24">
+                    <path fillRule="evenodd" d="M12 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016A11.955 11.955 0 0112 2.944zm3.707 7.763a1 1 0 00-1.414-1.414L11 12.586l-1.293-1.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                ) : authorizationMessageModal.status === 'denegado' ? (
+                  <svg className="w-6 h-6 text-red-600 dark:text-red-400" fill="currentColor" viewBox="0 0 24 24">
+                    <path fillRule="evenodd" d="M12 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016A11.955 11.955 0 0112 2.944zM9.707 9.707a1 1 0 00-1.414 1.414L10.586 12l-2.293 2.879a1 1 0 101.414 1.414L12 14.414l2.293 1.879a1 1 0 001.414-1.414L13.414 12l2.293-2.879a1 1 0 00-1.414-1.414L12 9.586l-2.293-1.879z" clipRule="evenodd" />
+                  </svg>
+                ) : null}
+                <div>
+                  <h2 className={`text-lg font-semibold ${
+                    authorizationMessageModal.status === 'aprobado' 
+                      ? 'text-green-800 dark:text-green-200' 
+                      : authorizationMessageModal.status === 'denegado'
+                        ? 'text-red-800 dark:text-red-200'
+                        : 'text-[var(--text-primary)]'
+                  }`}>
+                    {authorizationMessageModal.status === 'aprobado' ? 'Authorization Approved' : 
+                     authorizationMessageModal.status === 'denegado' ? 'Authorization Denied' : 
+                     'Authorization Response'}
+                  </h2>
+                  <p className="text-sm text-[var(--text-secondary)]">{authorizationMessageModal.planName}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setAuthorizationMessageModal({ open: false, planId: null, planName: '', message: null, status: null })}
+                className="p-2 rounded-lg text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors"
+                aria-label="Close"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            {/* Content */}
+            <div className="p-6 overflow-auto flex-1">
+              {authorizationMessageModal.message ? (
+                <pre className="text-sm text-[var(--text-secondary)] whitespace-pre-wrap font-mono bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] overflow-x-auto">
+                  {typeof authorizationMessageModal.message === 'string' 
+                    ? authorizationMessageModal.message 
+                    : JSON.stringify(authorizationMessageModal.message, null, 2)}
+                </pre>
+              ) : (
+                <div className="text-center py-8 text-[var(--text-muted)]">
+                  <svg className="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                  </svg>
+                  <p className="text-sm">No authorization message available.</p>
+                  <p className="text-xs mt-1">The FAS response was not stored or is empty.</p>
+                </div>
+              )}
+            </div>
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-[var(--border-primary)] flex justify-end">
+              <button
+                onClick={() => setAuthorizationMessageModal({ open: false, planId: null, planName: '', message: null, status: null })}
+                className="px-4 py-2 text-sm font-medium text-[var(--text-secondary)] bg-[var(--bg-tertiary)] rounded-md hover:bg-[var(--bg-hover)] transition-colors"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
+      )}
 
-        {user ? (
-          isInitialLoading ? (
-            <div className="flex items-center justify-center py-24">
-              <div className="flex items-center gap-3 text-gray-300">
-                <Loader2Icon className="h-6 w-6 animate-spin" />
-                <span className="text-lg">Loading flight plans…</span>
-              </div>
-            </div>
-          ) : (
-          <>
-            <div className="mb-6 flex gap-4">
-              <Input
-                placeholder="New folder"
-                value={newFolderName}
-                onChange={(e) => setNewFolderName(e.target.value)}
-                className="flex-1 bg-gray-700 text-white text-base"
-              />
-              <Button
-                variant="outline"
-                onClick={handleCreateFolder}
-                className="text-blue-400/80 hover:bg-blue-500/80 hover:text-white border-blue-400/30 hover:border-blue-500 transition-all duration-200 text-base h-[60px] px-6 whitespace-normal"
-              >
-                <div className="flex items-center">
-                  <FolderPlusIcon className="h-4 w-4 mr-2" />
-                  Create Folder
-                </div>
-              </Button>
-            </div>
-
-            {/* Render folders */}
-            {folders.map((folder) => {
-              const folderPlans = flightPlans.filter(
-                (p) => p.folderId === folder.id
-              );
-              const isExpanded = expandedFolders.includes(folder.id);
-              const statusCounts = getFolderStatusCounts(folder.id);
-              const filteredPlans = folderPlans.filter((plan) =>
-                plan.customName
-                  .toLowerCase()
-                  .includes((folderFilters[folder.id] || "").toLowerCase())
-              );
-
-              const page = folderPages[folder.id] || 1;
-              const plansPerPage = PLANS_PER_FOLDER_PAGE;
-              const totalFolderPages = Math.max(
-                1,
-                Math.ceil(filteredPlans.length / plansPerPage)
-              );
-              const paginatedPlans = filteredPlans.slice(
-                (page - 1) * plansPerPage,
-                page * plansPerPage
-              );
-
-              return (
-                <div
-                  key={folder.id}
-                  className="mb-6 border border-gray-700 rounded-lg overflow-hidden shadow-lg"
-                >
-                  <div
-                    className="flex items-center justify-between p-4 bg-gray-800 cursor-pointer hover:bg-gray-750 transition-colors"
-                    onClick={() => handleFolderExpand(folder.id)}
-                  >
-                    <div className="flex items-center gap-4">
-                      <h2 className="text-xl font-semibold text-white">
-                        {folder.name}
-                      </h2>
-                      <div className="flex gap-2">
-                        <Badge className="bg-gray-700/90 text-white">
-                          Unprocessed: {statusCounts.sinProcesar}
-                        </Badge>
-                        <Badge className="bg-yellow-500/90 text-white">
-                          Queued: {statusCounts.enCola}
-                        </Badge>
-                        <Badge className="bg-violet-500/90 text-white">
-                          Processing: {statusCounts.procesando}
-                        </Badge>
-                        <Badge className="bg-green-500/90 text-white">
-                          Processed: {statusCounts.procesado}
-                        </Badge>
-                        <Badge className="bg-red-500/90 text-white">
-                          Error: {statusCounts.error}
-                        </Badge>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleProcessFolder(folder.id);
-                        }}
-                        className="text-violet-400 hover:bg-violet-500/90 hover:text-white border-violet-400/50 hover:border-violet-500 transition-all duration-200"
-                      >
-                        <div className="flex items-center">
-                          <RotateCwIcon className="h-4 w-4 mr-2" />
-                          Process
-                        </div>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleViewFolderProcessedPlans(folder.id);
-                        }}
-                        className="text-blue-400 hover:bg-blue-500/90 hover:text-white border-blue-400/50 hover:border-blue-500 transition-all duration-200"
-                      >
-                        <div className="flex items-center">
-                          <EyeIcon className="h-5 w-5 mr-2" />
-                          View
-                        </div>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDownloadFolder(folder.id);
-                        }}
-                        className="text-green-400 hover:bg-green-500/80 hover:text-white border-green-400/50 hover:border-green-500 transition-all duration-200"
-                      >
-                        <div className="flex items-center">
-                          <DownloadIcon className="h-4 w-4 mr-2" />
-                          Download
-                        </div>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteFolder(folder.id);
-                        }}
-                        className="text-rose-400 hover:bg-rose-500/90 hover:text-white border-rose-400/50 hover:border-rose-500 transition-all duration-200"
-                      >
-                        <div className="flex items-center">
-                          <Trash2Icon className="h-4 w-4 mr-2" />
-                          Delete
-                        </div>
-                      </Button>
-                    </div>
-                  </div>
-
-                  {isExpanded && (
-                    <div className="p-4 bg-gray-900">
-                      <div className="mb-4">
-                        <div
-                          className={`border-2 border-dashed rounded-lg p-4 transition-colors cursor-pointer ${
-                            isDragging
-                              ? "border-blue-500 bg-blue-900/20"
-                              : "border-gray-700 hover:border-blue-500 hover:bg-blue-900/10"
-                          }`}
-                          onDragOver={handleDragOver}
-                          onDragLeave={handleDragLeave}
-                          onDrop={(e) => handleDrop(e, folder.id)}
-                          onClick={() => {
-                            const input = createFileInput(folder.id);
-                            input.click();
-                          }}
-                        >
-                          <div className="flex flex-col items-center justify-center text-center">
-                            <UploadIcon className="h-8 w-8 text-gray-400 mb-2" />
-                            <p className="text-gray-400">
-                              Drag and drop files here or click to select
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="mb-4 flex flex-col gap-4">
-                        <div className="flex justify-between">
-                          <div className="flex-1 flex gap-2 pr-16">
-                            {folderPlans.some((plan) =>
-                              selectedPlans.includes(plan.id)
-                            ) && (
-                              <>
-                                <Button
-                                  variant="outline"
-                                  onClick={() => handleProcessSelectedPlans()}
-                                  className="text-violet-400/80 hover:bg-violet-500/80 hover:text-white border-violet-400/30 hover:border-violet-500 transition-all duration-200 text-sm h-[36px] px-3 whitespace-normal flex items-center justify-center"
-                                >
-                                  <RotateCwIcon className="h-3.5 w-3.5 mr-1.5" />
-                                  Process selected
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  onClick={() => handleViewSelectedPlans()}
-                                  className="text-blue-400/80 hover:bg-blue-500/80 hover:text-white border-blue-400/30 hover:border-blue-500 transition-all duration-200 text-sm h-[36px] px-3 whitespace-normal flex items-center justify-center"
-                                >
-                                  <EyeIcon className="h-4 w-4 mr-1.5" />
-                                  View selected
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  onClick={() => handleDownloadSelectedPlans()}
-                                  className="text-green-500 hover:bg-green-500/80 hover:text-white border-green-300/30 hover:border-green-500 transition-all duration-200 text-sm h-[36px] px-3 whitespace-normal flex items-center justify-center"
-                                >
-                                  <DownloadIcon className="h-3.5 w-3.5 mr-1.5" />
-                                  Download selected
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  onClick={() => handleDeleteSelectedPlans()}
-                                  className="text-rose-400/80 hover:bg-rose-500/80 hover:text-white border-rose-400/30 hover:border-rose-500 transition-all duration-200 text-sm h-[36px] px-3 whitespace-normal flex items-center justify-center"
-                                >
-                                  <Trash2Icon className="h-3.5 w-3.5 mr-1.5" />
-                                  Delete selected
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                          <div className="flex-none flex gap-2 pl-16 items-center">
-                            <a className="mr-2">Select:</a>
-                            <select
-                              value={folderSelectStatus[folder.id] || "Todos"}
-                              onChange={(e) => {
-                                setFolderSelectStatus((prev) => ({
-                                  ...prev,
-                                  [folder.id]: e.target.value,
-                                }));
-                                handleSelectFolderPlansByStatus(
-                                  folder.id,
-                                  e.target.value
-                                );
-                              }}
-                              className="bg-gray-700 text-white border border-gray-500 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                              <option value="Todos">All</option>
-                              <option value="sin procesar">Unprocessed</option>
-                              <option value="en cola">Queued</option>
-                              <option value="procesando">Processing</option>
-                              <option value="procesado">Processed</option>
-                              <option value="error">Error</option>
-                              <option value="sin autorización">
-                                No authorization
-                              </option>
-                              <option value="aprobado">Authorized</option>
-                              <option value="denegado">Denied</option>
-                            </select>
-                            <Button
-                              variant="outline"
-                              onClick={() =>
-                                handleDeselectFolderPlans(folder.id)
-                              }
-                              className="text-gray-400/80 hover:bg-gray-500/80 hover:text-white border-gray-400/30 hover:border-gray-500 transition-all duration-200 text-sm h-[36px] px-3 whitespace-normal"
-                            >
-                              <div className="flex items-center">
-                                <XIcon className="h-3.5 w-3.5 mr-1.5" />
-                                Deselect
-                              </div>
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="mb-4 flex flex-col gap-4">
-                        <div className="flex justify-between items-center w-full py-2 border-b border-gray-700 mb-2">
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              className="text-violet-400/80 hover:bg-violet-500/80 hover:text-white border-violet-400/30 hover:border-violet-500 transition-all duration-200 text-sm h-[60px] min-h-[60px] px-3 whitespace-normal flex items-center justify-center"
-                              onClick={handleRequestAuthorizationSelected}
-                              disabled={selectedPlans.length === 0}
-                            >
-                              Request Auth for selected
-                            </Button>
-                            <Button
-                              variant="outline"
-                              className="text-green-400/80 hover:bg-green-500/80 hover:text-white border-green-400/30 hover:border-green-500 transition-all duration-200 text-sm h-[60px] min-h-[60px] px-3 whitespace-normal flex items-center justify-center"
-                              onClick={handleViewSelectedAuthorizedUplans}
-                              disabled={
-                                !selectedPlans.some(
-                                  id => {
-                                    const plan = flightPlans.find(p => p.id === id);
-                                    return plan && plan.authorizationStatus === "aprobado" && plan.uplan;
-                                  }
-                                )
-                              }
-                            >
-                              View selected U-Plans
-                            </Button>
-                            <Button
-                              variant="outline"
-                              className="text-rose-400/80 hover:bg-rose-500/80 hover:text-white border-rose-400/50 hover:border-rose-500 transition-all duration-200 text-sm h-[60px] min-h-[60px] px-3 whitespace-normal flex items-center justify-center"
-                              onClick={handleViewSelectedErrors}
-                              disabled={
-                                !selectedPlans.some(
-                                  id => {
-                                    const plan = flightPlans.find(p => p.id === id);
-                                    return plan && plan.authorizationStatus === "denegado" && plan.authorizationMessage;
-                                  }
-                                )
-                              }
-                            >
-                              View selected errors
-                            </Button>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <label className="text-gray-300 text-sm">
-                              Min:
-                            </label>
-                            <input
-                              type="datetime-local"
-                              value={
-                                folder.minScheduledAt
-                                  ? new Date(folder.minScheduledAt)
-                                      .toISOString()
-                                      .slice(0, 16)
-                                  : ""
-                              }
-                              onChange={(e) =>
-                                handleFolderScheduledAtChange(
-                                  folder.id,
-                                  "minScheduledAt",
-                                  e.target.value
-                                )
-                              }
-                              className="bg-gray-700/50 border border-gray-600 rounded-md px-2 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-gray-400 hover:border-gray-500 w-[180px]"
-                              placeholder="Minimum time"
-                            />
-                            <label className="text-gray-300 text-sm">
-                              Max:
-                            </label>
-                            <input
-                              type="datetime-local"
-                              value={
-                                folder.maxScheduledAt
-                                  ? new Date(folder.maxScheduledAt)
-                                      .toISOString()
-                                      .slice(0, 16)
-                                  : ""
-                              }
-                              onChange={(e) =>
-                                handleFolderScheduledAtChange(
-                                  folder.id,
-                                  "maxScheduledAt",
-                                  e.target.value
-                                )
-                              }
-                              className="bg-gray-700/50 border border-gray-600 rounded-md px-2 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-gray-400 hover:border-gray-500 w-[180px]"
-                              placeholder="Maximum time"
-                            />
-                            <Button
-                              variant="outline"
-                              className="text-blue-400/80 min-h-[60px] hover:bg-blue-500/80 hover:text-white border-blue-400/30 hover:border-blue-500 transition-all duration-200 text-sm h-[48px] px-3 whitespace-normal"
-                              onClick={() =>
-                                handleRandomizeScheduledAt(folder.id)
-                              }
-                              disabled={
-                                !folder.minScheduledAt || !folder.maxScheduledAt
-                              }
-                            >
-                              Randomize times
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-
-                      {filteredPlans.length === 0 ? (
-                        <p className="text-gray-400 text-center py-4">
-                          This folder is empty
-                        </p>
-                      ) : (
-                        <>
-                          {paginatedPlans.map((plan) => (
-                            <div
-                              key={plan.id}
-                              className="bg-gray-800/80 backdrop-blur-sm rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 p-4 border border-gray-700/50 hover:border-gray-600/50"
-                            >
-                              <div className="flex items-center gap-4 h-12 min-h-[48px]">
-                                <Checkbox
-                                  checked={selectedPlans.includes(plan.id)}
-                                  onCheckedChange={(checked) =>
-                                    handleSelectPlan(plan.id)
-                                  }
-                                  className="border-gray-600 data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500 shrink-0 hover:border-gray-400 transition-colors h-5 w-5 min-w-[8px] min-h-[8px]"
-                                />
-                                <input
-                                  type="text"
-                                  value={plan.customName}
-                                  onChange={(e) =>
-                                    handleCustomNameChange(
-                                      plan.id,
-                                      e.target.value
-                                    )
-                                  }
-                                  className="flex-1 bg-gray-700/50 border border-gray-600 rounded-md px-4 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-gray-400 hover:border-gray-500 h-12 min-h-[48px]"
-                                  placeholder="Plan name"
-                                />
-                                <input
-                                  type="datetime-local"
-                                  value={plan.scheduledAt ? new Date(plan.scheduledAt).toISOString().slice(0, 16) : ""}
-                                  onChange={(e) => handleScheduledAtChange(plan.id, e.target.value)}
-                                  className="ml-2 bg-gray-700/50 border border-gray-600 rounded-md px-2 py-2 text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-gray-400 hover:border-gray-500 w-[210px] h-12 min-h-[48px]"
-                                  placeholder="Flight date and time"
-                                />
-                                {/* Uplan edit button */}
-                                <Button
-                                  variant="outline"
-                                  onClick={() => {
-                                    if (
-                                      plan.authorizationStatus === undefined ||
-                                      plan.authorizationStatus === null ||
-                                      plan.authorizationStatus === "sin autorización"
-                                    ) {
-                                      handleOpenUplanEdit(plan);
-                                    }
-                                  }}
-                                  disabled={
-                                    !(
-                                      plan.authorizationStatus === undefined ||
-                                      plan.authorizationStatus === null ||
-                                      plan.authorizationStatus === "sin autorización"
-                                    )
-                                  }
-                                  className={`text-yellow-400 hover:bg-yellow-500/90 hover:text-white border-yellow-400/50 hover:border-yellow-500 ml-2 min-w-[120px] h-12 min-h-[48px] flex items-center justify-center ${
-                                    plan.authorizationStatus !== undefined &&
-                                    plan.authorizationStatus !== null &&
-                                    plan.authorizationStatus !== "sin autorización"
-                                      ? "opacity-60 cursor-not-allowed"
-                                      : ""
-                                  }`}
-                                  title={
-                                    plan.authorizationStatus !== undefined &&
-                                    plan.authorizationStatus !== null &&
-                                    plan.authorizationStatus !== "sin autorización"
-                                      ? "U-plan can only be edited before authorization."
-                                      : undefined
-                                  }
-                                >
-                                  Edit U-plan
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  onClick={() =>
-                                    plan.status === "procesado"
-                                      ? downloadCsv(
-                                          plan.id,
-                                          `${plan.customName}.csv`
-                                        )
-                                      : handleProcessTrajectory(plan.id)
-                                  }
-                                  disabled={plan.status === "en cola" || plan.status === "procesando"}
-                                  className={`
-                                    ${plan.status === "procesado" ? "min-w-[56px] max-w-[56px] h-12 min-h-[48px]" : "min-w-[140px] max-w-[140px] h-12 min-h-[48px]"} items-center justify-center transition-all duration-200"
-                                    ${
-                                      plan.status === "sin procesar"
-                                        ? "text-blue-400 hover:bg-blue-500/90 hover:text-white border-blue-400/50 hover:border-blue-500"
-                                        : ""
-                                    }
-                                    ${
-                                      plan.status === "en cola"
-                                        ? "text-amber-500 border-amber-500 hover:text-yellow-400 hover:border-yellow-400"
-                                        : ""
-                                    }
-                                    ${
-                                      plan.status === "procesando"
-                                        ? "text-violet-400 hover:bg-violet-500/90 hover:text-white border-violet-400/50 hover:border-violet-500"
-                                        : ""
-                                    }
-                                    ${
-                                      plan.status === "procesado"
-                                        ? "ml-[4px] text-green-400 hover:bg-green-500/80 hover:text-white border-green-400/50 hover:border-green-500 transition-all duration-200"
-                                        : ""
-                                    }
-                                    disabled:opacity-75 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-current
-                                  `}
-                                >
-                                  {plan.status === "en cola" && (
-                                    <div className="flex items-center text-amber-400">
-                                      <ClockIcon className="h-4 w-4 mr-2 text-amber-400" />
-                                      Queued
-                                    </div>
-                                  )}
-                                  {plan.status === "procesando" && (
-                                    <div className="flex items-center">
-                                      <Loader2Icon className="h-4 w-4 mr-2 animate-spin" />
-                                      Processing
-                                    </div>
-                                  )}
-                                  {plan.status === "procesado" && <DownloadIcon className="h-5 w-5" />}
-                                  {plan.status === "sin procesar" && (
-                                    <div className="flex items-center">
-                                      <PlayIcon className="h-4 w-4 mr-2" />
-                                      Process
-                                    </div>
-                                  )}
-                                  <span className="sr-only">
-                                    {plan.status === "procesado" ? "Download" : plan.status === "sin procesar" ? "Process" : plan.status}
-                                  </span>
-                                </Button>
-                                {plan.status === "procesado" && (
-                                  <Button
-                                    variant="outline"
-                                    onClick={() => handleViewCsv(plan.id, plan.customName)}
-                                    className="ml-8px min-w-[56px] max-w-[56px] items-center justify-center ml-2 text-blue-400 hover:bg-blue-500/90 hover:text-white border-blue-400/50 hover:border-blue-500 h-12 min-h-[48px]"
-                                  >
-                                    <EyeIcon className="h-5 w-5" />
-                                    <span className="sr-only">View</span>
-                                  </Button>
-                                )}
-                                <div>
-                                  {(
-                                    plan.authorizationStatus === undefined ||
-                                    plan.authorizationStatus === null ||
-                                    plan.authorizationStatus === "sin autorización"
-                                  ) ? (
-                                    <Button
-                                      variant="outline"
-                                      onClick={() => handleRequestAuthorization(plan.id)}
-                                      disabled={authorizationLoading[plan.id] || geoawarenessLoading[plan.id] || plan.status !== "procesado" || !plan.scheduledAt}
-                                      className={`text-blue-400 hover:bg-blue-500/90 hover:text-white border-blue-400/50 hover:border-blue-500 min-w-[153px] ml-2 flex items-center justify-center h-12 min-h-[48px]${
-                                        (authorizationLoading[plan.id] || geoawarenessLoading[plan.id] || plan.status !== "procesado" || !plan.scheduledAt)
-                                          ? " opacity-60 cursor-not-allowed"
-                                          : ""
-                                      }`}
-                                      title={
-                                        !plan.scheduledAt
-                                          ? "You must select a date and hour to send your U-Plan to the Authorization Services."
-                                          : geoawarenessLoading[plan.id]
-                                          ? "Checking geoawareness..."
-                                          : (authorizationLoading[plan.id] || plan.status !== "procesado")
-                                          ? undefined
-                                          : undefined
-                                      }
-                                    >
-                                      <div className="flex items-center justify-center">
-                                        {(authorizationLoading[plan.id] || geoawarenessLoading[plan.id]) ? (
-                                          <Loader2Icon className="h-4 w-4 mr-2 animate-spin" />
-                                        ) : (
-                                          <PlayIcon className="h-4 w-4 mr-2" />
-                                        )}
-                                        {geoawarenessLoading[plan.id] ? 'Checking...' : 'Request Auth'}
-                                      </div>
-                                    </Button>
-                                  ) : plan.authorizationStatus === "procesando autorización" ? (
-                                    <Button
-                                      variant="outline"
-                                      disabled
-                                      className="text-violet-400 border-violet-400/50 min-w-[153px] ml-2 flex items-center justify-center h-12 min-h-[48px]"
-                                    >
-                                      <div className="flex items-center justify-center">
-                                        <Loader2Icon className="h-4 w-4 mr-2 animate-spin" />
-                                        Request Auth
-                                      </div>
-                                    </Button>
-                                  ) : plan.authorizationStatus === "denegado" ? (
-                                    <Button
-                                      variant="outline"
-                                      onClick={() => setUplanErrorModal({ open: true, message: plan.authorizationMessage || 'No message' })}
-                                      className="text-rose-400 hover:bg-rose-500/90 hover:text-white border-rose-400/50 hover:border-rose-500 min-w-[153px] ml-2 flex items-center justify-center h-12 min-h-[48px]"
-                                    >
-                                      <div className="flex items-center justify-center">
-                                        <XIcon className="h-4 w-4 mr-2" />
-                                        View error
-                                      </div>
-                                    </Button>
-                                  ) : plan.authorizationStatus === "aprobado" ? (
-                                    <Button
-                                      variant="outline"
-                                      onClick={() => {
-                                        // Pass geoawarenessData directly - Prisma JSON field returns object
-                                        setUplanViewModal({ 
-                                          open: true, 
-                                          uplan: plan.uplan, 
-                                          name: plan.customName, 
-                                          geoawarenessData: plan.geoawarenessData 
-                                        });
-                                      }}
-                                      className="text-green-400 hover:bg-green-500/90 hover:text-white border-green-400/50 hover:border-green-500 min-w-[153px] ml-2 flex items-center justify-center h-12 min-h-[48px]"
-                                    >
-                                      <div className="flex items-center justify-center">
-                                        <CheckCircleIcon className="h-4 w-4 mr-2" />
-                                        View U-plan
-                                      </div>
-                                    </Button>
-                                  ) : null}
-                                </div>
-                                <Button
-                                  variant="outline"
-                                  onClick={() => handleDeletePlan(plan.id)}
-                                  className="text-rose-400 hover:bg-rose-500/90 hover:text-white border-rose-400/50 hover:border-rose-500 transition-all duration-200 p-2 shrink-0 h-10 min-h-[48px] flex items-center justify-center ml-2"
-                                >
-                                  <Trash2Icon className="h-5 w-5" />
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
-                          {totalFolderPages > 1 && (
-                            <div className="flex justify-center items-center mt-4 gap-4">
-                              <Button
-                                onClick={() =>
-                                  handleFolderPageChange(
-                                    folder.id,
-                                    page - 1,
-                                    totalFolderPages
-                                  )
-                                }
-                                disabled={page === 1}
-                                className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-800"
-                              >
-                                Anterior
-                              </Button>
-                              <div className="flex items-center gap-2 text-white text-sm">
-                                <span>Página</span>
-                                <Input
-                                  type="number"
-                                  value={folderPageInputs[folder.id] ?? page}
-                                  onChange={(e) => {
-                                    setFolderPageInputs(prev => ({
-                                      ...prev,
-                                      [folder.id]: e.target.value,
-                                    }));
-                                  }}
-                                  onBlur={() => {
-                                    const inputValue = folderPageInputs[folder.id];
-                                    if (inputValue !== undefined) {
-                                      const parsed = parseInt(inputValue, 10);
-                                      handleFolderPageChange(
-                                        folder.id,
-                                        isNaN(parsed) ? 1 : parsed,
-                                        totalFolderPages
-                                      );
-                                      setFolderPageInputs(prev => {
-                                        const newState = { ...prev };
-                                        delete newState[folder.id];
-                                        return newState;
-                                      });
-                                    }
-                                  }}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                      (e.target as HTMLInputElement).blur();
-                                    }
-                                  }}
-                                  className="w-20 h-9 text-center bg-gray-700 border-gray-600"
-                                  min="1"
-                                  max={totalFolderPages}
-                                />
-                                <span>de {totalFolderPages}</span>
-                              </div>
-                              <Button
-                                onClick={() =>
-                                  handleFolderPageChange(
-                                    folder.id,
-                                    page + 1,
-                                    totalFolderPages
-                                  )
-                                }
-                                disabled={page === totalFolderPages}
-                                className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-800"
-                              >
-                                Siguiente
-                              </Button>
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-
-            <div className="flex justify-between mt-4">
-              <Button
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-800"
-              >
-                Anterior
-              </Button>
-              <span className="text-white">
-                Page {currentPage} of {totalPages}
-              </span>
-              <Button
-                onClick={() =>
-                  setCurrentPage((p) => Math.min(totalPages, p + 1))
-                }
-                disabled={currentPage === totalPages}
-                className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-800"
-              >
-                Siguiente
-              </Button>
-            </div>
-          </>
-          )
-        ) : (
-          <p className="text-center text-red-500">You must be logged in</p>
-        )}
-      </div>
-      <Modal open={viewModalOpen} onClose={() => setViewModalOpen(false)} title={viewModalTitle}>
-        <pre className="whitespace-pre-wrap text-xs max-h-[60vh] overflow-auto bg-gray-800 p-4 rounded-lg border border-gray-700 text-gray-100">{viewModalContent}</pre>
-      </Modal>
-      <MapModal
-        open={trajectoryModalOpen}
-        onClose={() => setTrajectoryModalOpen(false)}
-        title={trajectoryModalTitle}
-        trajectories={trajectoryData}
-        currentIdxs={trajectoryIdxs}
-        setCurrentIdxs={setTrajectoryIdxs}
-        names={trajectoryNames}
-      />
-      <UplanErrorModal
-        open={uplanErrorModal.open}
-        onClose={() => setUplanErrorModal({ open: false, message: '' })}
-        message={uplanErrorModal.message}
-      />
+      {/* U-Plan map viewer modal - shows operation volumes on map */}
+      {/* TASK-079: Now also shows waypoints from fileContent */}
       <UplanViewModal
         open={uplanViewModal.open}
-        onClose={() => setUplanViewModal({ open: false, uplan: null, name: '', geoawarenessData: null })}
+        onClose={() => setUplanViewModal({ open: false, uplan: null, name: '', fileContent: null })}
         uplan={uplanViewModal.uplan}
         name={uplanViewModal.name}
-        geoawarenessData={uplanViewModal.geoawarenessData}
+        fileContent={uplanViewModal.fileContent}
       />
-      {/* Bulk Uplan Modal placeholder */}
-      <Modal open={bulkUplanViewModal.open} onClose={() => setBulkUplanViewModal({ open: false, uplans: [], names: [] })} title="Bulk U-Plan Viewer">
-        <div className="p-4 text-white">Bulk U-Plan visualization coming soon.</div>
-        <Button onClick={() => setBulkUplanViewModal({ open: false, uplans: [], names: [] })} className="mt-4">Close</Button>
-      </Modal>
-      {/* Bulk Error Modal placeholder */}
-      <Modal open={bulkErrorViewModal.open} onClose={() => setBulkErrorViewModal({ open: false, errors: [], idx: 0 })} title="Bulk Error Viewer">
-        <div className="p-4 text-white">Bulk error viewing coming soon.</div>
-        <Button onClick={() => setBulkErrorViewModal({ open: false, errors: [], idx: 0 })} className="mt-4">Close</Button>
-      </Modal>
-      <BulkUplanViewModal
-        open={bulkUplanViewModal.open}
-        onClose={() => setBulkUplanViewModal({ open: false, uplans: [], names: [] })}
-        uplans={bulkUplanViewModal.uplans}
-        names={bulkUplanViewModal.names}
+
+      {/* U-Plan form modal - TASK-023: editable form for U-Plan data */}
+      <UplanFormModal
+        open={uplanFormModal.open}
+        onClose={() => setUplanFormModal({ open: false, planId: '', uplan: null, name: '' })}
+        planId={uplanFormModal.planId}
+        existingUplan={uplanFormModal.uplan}
+        planName={uplanFormModal.name}
+        authToken={typeof window !== 'undefined' ? localStorage.getItem('authToken') || '' : ''}
+        hasBeenProcessed={selectedPlan?.status === 'procesado'}
+        hasScheduledAt={!!selectedPlan?.scheduledAt}
+        onSave={() => {
+          // Refresh flight plans after saving draft
+          refreshPlans()
+        }}
+        onSubmitToFAS={() => {
+          // Refresh flight plans after FAS submission
+          refreshPlans()
+          setUplanFormModal({ open: false, planId: '', uplan: null, name: '' })
+        }}
       />
-      <BulkErrorViewModal
-        open={bulkErrorViewModal.open}
-        onClose={() => setBulkErrorViewModal({ open: false, errors: [], idx: 0 })}
-        errors={bulkErrorViewModal.errors}
-        idx={bulkErrorIdx}
-        setIdx={setBulkErrorIdx}
-      />
-      {/* Uplan Edit Modal */}
-      <UplanEditModal
-        open={uplanEditModal.open}
-        onClose={() => setUplanEditModal({ open: false, uplan: null, planId: null })}
-        uplan={uplanEditModal.uplan}
-        onSave={handleSaveUplanEdit}
-      />
-      {/* Geoawareness Modal */}
-      <GeoawarenessModal
+
+      {/* TASK-076: Geoawareness viewer modal - shows trajectory over geozones */}
+      <Modal
         open={geoawarenessModal.open}
-        onClose={handleCloseGeoawarenessModal}
-        onProceed={handleProceedWithAuthorization}
-        geozones={geoawarenessModal.geozones}
-        trajectory={geoawarenessModal.trajectory}
-        planName={geoawarenessModal.planName}
-        hasConflicts={geoawarenessModal.hasConflicts}
-        loading={geoawarenessModal.loading}
-      />
+        onClose={() => setGeoawarenessModal({ open: false, planId: '', planName: '', uspaceId: null })}
+        title={`Geoawareness: ${geoawarenessModal.planName}`}
+        maxWidth="4xl"
+      >
+        <div className="h-[70vh] -mx-6 -mb-6">
+          <GeoawarenessViewer
+            key={geoawarenessModal.planId}
+            planId={geoawarenessModal.planId}
+            planName={geoawarenessModal.planName}
+            uspaceId={geoawarenessModal.uspaceId}
+          />
+        </div>
+      </Modal>
     </div>
-  );
+  )
 }
 
-export default FlightPlansUploader;
+export default FlightPlansUploader

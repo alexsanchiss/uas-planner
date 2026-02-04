@@ -26,17 +26,12 @@
 // - Unified transaction management
 // - Better performance through optimized database calls
 
-import React, { useState, useEffect } from "react";
-import {
-  MapContainer,
-  TileLayer,
-  Marker,
-  Popup,
-  Polyline,
-  useMapEvents,
-  Rectangle, // <-- add Rectangle
-} from "react-leaflet";
+import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
+// Note: react-leaflet imports are used by PlanMap component via dynamic import
 import "leaflet/dist/leaflet.css";
+import { useToast } from "../hooks/useToast";
+import { generateOrientedBBox, Waypoint as UplanWaypoint, DEFAULT_UPLAN_CONFIG } from "@/lib/uplan/generate_oriented_volumes";
+import { generateJSON } from "@/lib/uplan/generate_json";
 
 // Fix for leaflet icons in Next.js
 import L from "leaflet";
@@ -49,16 +44,31 @@ L.Icon.Default.mergeOptions({
 
 import { useAuth } from "../hooks/useAuth";
 import axios from "axios";
+
+// Helper to get auth headers for API requests
+function getAuthHeaders(): { Authorization: string } | Record<string, never> {
+  if (typeof window === "undefined") return {};
+  const token = localStorage.getItem("authToken");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 import {
   DragDropContext,
   Droppable,
   Draggable,
   DropResult,
 } from "@hello-pangea/dnd";
-import { HelpCircle } from "lucide-react";
+import { HelpCircle, Grid3X3, MousePointer2, ChevronRight, Edit2 } from "lucide-react";
 import dynamic from 'next/dynamic';
 
 const PlanMap = dynamic(() => import('./PlanMap'), { ssr: false });
+const UspaceSelector = dynamic(() => import('./plan-generator/UspaceSelector'), { ssr: false });
+import ScanPatternGeneratorV2 from './plan-generator/ScanPatternGeneratorV2';
+import { Point, ScanWaypoint } from '@/lib/scan-generator';
+import { useUspaces, USpace } from '@/app/hooks/useUspaces';
+import { useGeoawarenessWebSocket, type GeozoneData } from '@/app/hooks/useGeoawarenessWebSocket';
+
+// Plan generator modes
+type GeneratorMode = 'manual' | 'scan';
 
 const waypointTypes = [
   { value: "takeoff", label: "Takeoff" },
@@ -73,6 +83,8 @@ interface Waypoint {
   type: "takeoff" | "cruise" | "landing";
   altitude: number;
   speed: number;
+  pauseDuration: number; // TASK-121: Hold time in seconds (0-3600)
+  flyOverMode: boolean; // TASK-126: true = fly-over (pass directly over), false = fly-by (smooth curve)
 }
 
 interface PlanInfo {
@@ -139,12 +151,43 @@ const initialFlightPlanDetails = {
 const SERVICE_LIMITS = [-0.4257, 39.415, -0.280, 39.4988]; // [minLng, minLat, maxLng, maxLat]
 const ALT_LIMITS = [0, 200];
 
-// Helper to check if a point is inside the limits
-function isWithinServiceLimits(lat: number, lng: number) {
-  return (
-    lat >= SERVICE_LIMITS[1] && lat <= SERVICE_LIMITS[3] &&
-    lng >= SERVICE_LIMITS[0] && lng <= SERVICE_LIMITS[2]
-  );
+// TASK-154: Distance threshold for boundary warning (in meters)
+const BOUNDARY_WARNING_DISTANCE = 100;
+
+// TASK-154: Calculate approximate distance from point to service area boundary (in meters)
+// TASK-043: Updated to accept limits parameter for U-space support
+// Uses Haversine formula approximation for short distances
+function distanceToBoundary(lat: number, lng: number, limits: number[]): number {
+  const [minLng, minLat, maxLng, maxLat] = limits;
+  
+  // Approximate meters per degree at this latitude
+  const latMetersPerDeg = 111320; // ~111km per degree latitude
+  const lngMetersPerDeg = 111320 * Math.cos((lat * Math.PI) / 180);
+  
+  // Calculate distance to each edge
+  const distToNorth = (maxLat - lat) * latMetersPerDeg;
+  const distToSouth = (lat - minLat) * latMetersPerDeg;
+  const distToEast = (maxLng - lng) * lngMetersPerDeg;
+  const distToWest = (lng - minLng) * lngMetersPerDeg;
+  
+  // Return minimum distance to any edge
+  return Math.min(distToNorth, distToSouth, distToEast, distToWest);
+}
+
+// TASK-154: Check if any waypoint is approaching the boundary
+// TASK-043: Updated to accept limits parameter for U-space support
+function getWaypointsNearBoundary(waypoints: Waypoint[], limits: number[]): { index: number; distance: number }[] {
+  const nearBoundary: { index: number; distance: number }[] = [];
+  
+  for (let i = 0; i < waypoints.length; i++) {
+    const wp = waypoints[i];
+    const dist = distanceToBoundary(wp.lat, wp.lng, limits);
+    if (dist < BOUNDARY_WARNING_DISTANCE) {
+      nearBoundary.push({ index: i, distance: Math.round(dist) });
+    }
+  }
+  
+  return nearBoundary;
 }
 
 function clampAltitude(alt: number) {
@@ -172,6 +215,7 @@ function generateQGCPlan(waypoints: Waypoint[]): any {
   });
 
   // Takeoff (22) for the first waypoint
+  // TASK-123: params[0] is hold time in seconds
   const first = waypoints[0];
   items.push({
     AMSLAltAboveTerrain: null,
@@ -181,13 +225,19 @@ function generateQGCPlan(waypoints: Waypoint[]): any {
     command: 22,
     doJumpId: doJumpId++,
     frame: 3,
-    params: [0, 0, 0, null, first.lat, first.lng, first.altitude],
+    params: [first.pauseDuration || 0, 0, 0, null, first.lat, first.lng, first.altitude],
     type: "SimpleItem",
   });
 
   // Cruise (16) for intermediate waypoints (excluding first and last)
+  // TASK-123: params[0] is hold time in seconds
+  // TASK-128: params[1] is acceptance radius - set to 0.1m for fly-over mode, 0 for fly-by (smooth curve)
   for (let i = 1; i < waypoints.length - 1; i++) {
     const wp = waypoints[i];
+    // For NAV_WAYPOINT (cmd 16): params = [Hold, Accept_Radius, Pass_Radius, Yaw, Lat, Lon, Alt]
+    // Accept_Radius = 0.1m forces drone to pass directly over (fly-over)
+    // Accept_Radius = 0 allows smooth curving (fly-by, default)
+    const acceptRadius = wp.flyOverMode ? 0.1 : 0;
     items.push({
       AMSLAltAboveTerrain: null,
       Altitude: wp.altitude,
@@ -196,12 +246,13 @@ function generateQGCPlan(waypoints: Waypoint[]): any {
       command: 16,
       doJumpId: doJumpId++,
       frame: 3,
-      params: [0, 0, 0, null, wp.lat, wp.lng, wp.altitude],
+      params: [wp.pauseDuration || 0, acceptRadius, 0, null, wp.lat, wp.lng, wp.altitude],
       type: "SimpleItem",
     });
   }
 
   // Landing (21) for the last waypoint
+  // TASK-123: params[0] is hold time in seconds (typically 0 for landing)
   if (waypoints.length > 1) {
     const last = waypoints[waypoints.length - 1];
     items.push({
@@ -212,7 +263,7 @@ function generateQGCPlan(waypoints: Waypoint[]): any {
       command: 21,
       doJumpId: doJumpId++,
       frame: 3,
-      params: [0, 0, 0, null, last.lat, last.lng, 0],
+      params: [last.pauseDuration || 0, 0, 0, null, last.lat, last.lng, 0],
       type: "SimpleItem",
     });
   }
@@ -243,31 +294,163 @@ export default function PlanGenerator() {
   const [planInfo, setPlanInfo] = useState<PlanInfo>({ date: "", time: "" });
   const [planName, setPlanName] = useState("");
   const [loading, setLoading] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const toast = useToast();
+  // Create a wrapper for PlanMap to show toast messages
+  const showToast = useCallback((message: string) => {
+    // Determine toast type based on message content
+    if (message.includes('Selected U-space') || message.includes('has been saved') || message.includes('SCAN pattern applied')) {
+      toast.success(message);
+    } else {
+      toast.error(message);
+    }
+  }, [toast]);
   const { user } = useAuth();
   const [flightPlanDetails, setFlightPlanDetails] = useState(
     initialFlightPlanDetails
   );
   const [detailsOpen, setDetailsOpen] = useState(false);
+  // TASK-181: Collapsible sidebar for tablet/mobile
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  
+  // TASK-043: U-space selection state
+  const [selectedUspace, setSelectedUspace] = useState<USpace | null>(null);
+  const { getUspaceBounds, getUspaceCenter } = useUspaces();
+  
+  // TASK-082: Connect to geoawareness WebSocket when U-space is selected
+  const {
+    status: geozonesStatus,
+    data: geozonesWsData,
+    error: geozonesError,
+    isConnected: geozonesConnected,
+    reconnect: reconnectGeozones,
+  } = useGeoawarenessWebSocket({
+    uspaceId: selectedUspace?.id || null,
+    enabled: !!selectedUspace,
+    enableFallback: false, // Disable fallback to not use deprecated endpoint
+  });
+  
+  // Derive legacy-compatible variables from WebSocket data
+  const geozonesData = geozonesWsData?.geozones_data || [];
+  const geozonesLoading = geozonesStatus === 'connecting';
+  const geozonesFallback = false; // Fallback disabled to prevent deprecated usage
 
-  // Map bounds and center
-  const bounds = [
-    [SERVICE_LIMITS[1], SERVICE_LIMITS[0]], // SW: [minLat, minLng]
-    [SERVICE_LIMITS[3], SERVICE_LIMITS[2]], // NE: [maxLat, maxLng]
-  ];
-  const center = [
-    (SERVICE_LIMITS[1] + SERVICE_LIMITS[3]) / 2,
-    (SERVICE_LIMITS[0] + SERVICE_LIMITS[2]) / 2,
-  ];
+  // Log geozone status
+  useEffect(() => {
+    if (selectedUspace) {
+      if (geozonesError) {
+        console.error(`[PlanGenerator] Geoawareness error for ${selectedUspace.id}:`, geozonesError.message);
+      } else if (!geozonesLoading) {
+        console.log(`[PlanGenerator] Geozones loaded: ${geozonesData.length} zones for ${selectedUspace.id}`);
+      }
+    }
+  }, [selectedUspace, geozonesData.length, geozonesLoading, geozonesError]);
+  
+  // TASK-052: Geozone visibility toggle state
+  const [geozonesVisible, setGeozonesVisible] = useState<boolean>(true);
+  
+  // Generator mode: manual waypoint placement vs SCAN pattern generation
+  const [generatorMode, setGeneratorMode] = useState<GeneratorMode>('manual');
+  
+
+  
+  // SCAN pattern generator V2 state - overlays for the map
+  const [scanOverlays, setScanOverlays] = useState<{
+    takeoffPoint: Point | null;
+    landingPoint: Point | null;
+    polygonVertices: Point[];
+    polygonClosed: boolean;
+    previewWaypoints: ScanWaypoint[];
+    scanAngle: number;
+  } | null>(null);
+  
+  // TASK-216: Custom map click handler for SCAN mode using ref for stability
+  // Using a ref ensures the handler identity is stable across renders,
+  // preventing unnecessary cleanup/re-registration cycles
+  const scanMapClickHandlerRef = useRef<((lat: number, lng: number) => void) | null>(null);
+  
+  // State to trigger re-render when handler changes (for PlanMap to pick up changes)
+  const [scanHandlerVersion, setScanHandlerVersion] = useState(0);
+  
+  // Stable callback for setting the SCAN map click handler
+  // This function identity never changes, preventing useEffect cleanup issues
+  const handleSetScanMapClickHandler = useCallback((handler: ((lat: number, lng: number) => void) | null) => {
+    scanMapClickHandlerRef.current = handler;
+    // Increment version to force PlanMap to see the change
+    setScanHandlerVersion(v => v + 1);
+  }, []);
+
+  // Map bounds and center - TASK-043: Use selected U-space bounds when available
+  const bounds: [[number, number], [number, number]] = selectedUspace 
+    ? (() => {
+        const uspaceBounds = getUspaceBounds(selectedUspace);
+        return [
+          [uspaceBounds.south, uspaceBounds.west], // SW: [minLat, minLng]
+          [uspaceBounds.north, uspaceBounds.east], // NE: [maxLat, maxLng]
+        ];
+      })()
+    : [
+        [SERVICE_LIMITS[1], SERVICE_LIMITS[0]], // SW: [minLat, minLng]
+        [SERVICE_LIMITS[3], SERVICE_LIMITS[2]], // NE: [maxLat, maxLng]
+      ];
+  const center: [number, number] = selectedUspace 
+    ? (() => {
+        const uspaceCenter = getUspaceCenter(selectedUspace);
+        return [uspaceCenter.lat, uspaceCenter.lon];
+      })()
+    : [
+        (SERVICE_LIMITS[1] + SERVICE_LIMITS[3]) / 2,
+        (SERVICE_LIMITS[0] + SERVICE_LIMITS[2]) / 2,
+      ];
+      
+  // TASK-043: Effective service limits based on selected U-space
+  const effectiveServiceLimits = selectedUspace
+    ? (() => {
+        const uspaceBounds = getUspaceBounds(selectedUspace);
+        return [uspaceBounds.west, uspaceBounds.south, uspaceBounds.east, uspaceBounds.north];
+      })()
+    : SERVICE_LIMITS;
+    
+  // TASK-043: Handler for U-space selection
+  const handleUspaceSelect = (uspace: USpace) => {
+    setSelectedUspace(uspace);
+    // Clear existing waypoints when changing U-space
+    if (waypoints.length > 0) {
+      setWaypoints([]);
+      setSelectedIdx(null);
+    }
+    showToast(`Selected U-space: ${uspace.name}`);
+  };
+  
+  // TASK-043: Handler to change U-space (go back to selection)
+  const handleChangeUspace = () => {
+    if (waypoints.length > 0) {
+      if (!window.confirm('Changing U-space will clear your current waypoints. Continue?')) {
+        return;
+      }
+      setWaypoints([]);
+      setSelectedIdx(null);
+    }
+    setSelectedUspace(null);
+  };
+  
+  // TASK-043: Check if point is within bounds (using effective limits)
+  const isWithinEffectiveBounds = (lat: number, lng: number) => {
+    const [minLng, minLat, maxLng, maxLat] = effectiveServiceLimits;
+    return lat >= minLat && lat <= maxLat && lng >= minLng && lng <= maxLng;
+  };
 
   const handleAddWaypoint = (wp: Waypoint) => {
-    // Only add if within limits
-    if (!isWithinServiceLimits(wp.lat, wp.lng)) {
-      setToast("Waypoints must be within the FAS service area.");
+    // TASK-043: Check within selected U-space bounds or default service limits
+    if (!isWithinEffectiveBounds(wp.lat, wp.lng)) {
+      showToast(selectedUspace 
+        ? `Waypoints must be within the ${selectedUspace.name} area.`
+        : "Waypoints must be within the FAS service area.");
       return;
     }
+    // Ensure pauseDuration and flyOverMode are initialized
+    const newWp = { ...wp, pauseDuration: wp.pauseDuration ?? 0, flyOverMode: wp.flyOverMode ?? false };
     setWaypoints((prev) => {
-      let newWps = [...prev, wp];
+      let newWps = [...prev, newWp];
       // First waypoint is always takeoff
       if (newWps.length === 1) {
         newWps[0].type = "takeoff";
@@ -308,17 +491,27 @@ export default function PlanGenerator() {
         if (field === "altitude") {
           const clamped = clampAltitude(Number(value));
           if (clamped !== Number(value)) {
-            setToast(`Altitude must be between ${ALT_LIMITS[0]} and ${ALT_LIMITS[1]} meters.`);
+            showToast(`Altitude must be between ${ALT_LIMITS[0]} and ${ALT_LIMITS[1]} meters.`);
             return { ...wp, altitude: clamped };
           }
           return { ...wp, altitude: clamped };
         }
+        // TASK-124: Validate pause duration (0-3600 seconds)
+        if (field === "pauseDuration") {
+          const pauseValue = Math.max(0, Math.min(3600, Math.floor(Number(value))));
+          if (pauseValue !== Number(value)) {
+            showToast("Pause duration must be between 0 and 3600 seconds (1 hour max).");
+          }
+          return { ...wp, pauseDuration: pauseValue };
+        }
         if ((field === "lat" || field === "lng")) {
-          // Only allow if within limits
+          // TASK-043: Check within selected U-space bounds
           const newLat = field === "lat" ? Number(value) : wp.lat;
           const newLng = field === "lng" ? Number(value) : wp.lng;
-          if (!isWithinServiceLimits(newLat, newLng)) {
-            setToast("Waypoints must be within the FAS service area.");
+          if (!isWithinEffectiveBounds(newLat, newLng)) {
+            showToast(selectedUspace 
+              ? `Waypoints must be within the ${selectedUspace.name} area.`
+              : "Waypoints must be within the FAS service area.");
             return wp; // revert
           }
           return { ...wp, [field]: Number(value) };
@@ -365,7 +558,7 @@ export default function PlanGenerator() {
   };
 
   // For the Polyline
-  const polylinePositions = waypoints.map((wp) => [wp.lat, wp.lng]);
+  const polylinePositions: [number, number][] = waypoints.map((wp) => [wp.lat, wp.lng] as [number, number]);
 
   // QGC Plan generated
   const qgcPlan = generateQGCPlan(waypoints);
@@ -395,9 +588,11 @@ export default function PlanGenerator() {
 
   // Update waypoint position from marker drag
   const handleMarkerDragEnd = (idx: number, lat: number, lng: number) => {
-    // Only allow if within limits
-    if (!isWithinServiceLimits(lat, lng)) {
-      setToast("Waypoints must be within the FAS service area.");
+    // TASK-043: Check within selected U-space bounds
+    if (!isWithinEffectiveBounds(lat, lng)) {
+      showToast(selectedUspace 
+        ? `Waypoints must be within the ${selectedUspace.name} area.`
+        : "Waypoints must be within the FAS service area.");
       return;
     }
     setWaypoints((wps) =>
@@ -405,42 +600,84 @@ export default function PlanGenerator() {
     );
   };
 
+  // Handle applying SCAN pattern waypoints
+  const handleApplyScanPattern = (scanWaypoints: ScanWaypoint[]) => {
+    if (scanWaypoints.length === 0) return;
+    
+    // Convert SCAN waypoints to our Waypoint format
+    const newWaypoints: Waypoint[] = scanWaypoints.map((swp, idx) => {
+      let waypointType: 'takeoff' | 'cruise' | 'landing' = 'cruise';
+      let altitude = swp.altitude;
+      
+      if (idx === 0) {
+        waypointType = 'takeoff';
+      } else if (idx === scanWaypoints.length - 1) {
+        waypointType = 'landing';
+        altitude = 0;
+      }
+      
+      return {
+        lat: swp.lat,
+        lng: swp.lng,
+        type: waypointType,
+        altitude,
+        speed: swp.speed || 5,
+        pauseDuration: 0,
+        flyOverMode: false,
+      };
+    });
+    
+    setWaypoints(newWaypoints);
+    setGeneratorMode('manual'); // Switch back to manual mode to allow editing
+    setScanOverlays(null);
+    handleSetScanMapClickHandler(null);
+    showToast(`SCAN pattern applied with ${newWaypoints.length} waypoints. You can now edit them.`);
+  };
+
+  // Handle canceling SCAN pattern
+  const handleCancelScanPattern = () => {
+    setGeneratorMode('manual');
+    setScanOverlays(null);
+    handleSetScanMapClickHandler(null);
+  };
+
   // Upload plan
   const handleUploadPlan = async () => {
     if (!user) {
-      setToast("You must be logged in to upload the plan.");
+      showToast("You must be logged in to upload the plan.");
       return;
     }
     if (!planName.trim()) {
-      setToast("Please enter a name for the plan.");
+      showToast("Please enter a name for the plan.");
       return;
     }
     if (waypoints.length === 0) {
-      setToast("The plan must have at least one waypoint.");
+      showToast("The plan must have at least one waypoint.");
       return;
     }
     if (!waypoints.some((wp) => wp.type === "takeoff")) {
-      setToast("The plan must have at least one takeoff waypoint.");
+      showToast("The plan must have at least one takeoff waypoint.");
       return;
     }
     // Only one takeoff and one landing allowed
     if (waypoints.filter((wp) => wp.type === "takeoff").length > 1) {
-      setToast("The plan cannot have more than one takeoff waypoint.");
+      showToast("The plan cannot have more than one takeoff waypoint.");
       return;
     }
     if (waypoints.filter((wp) => wp.type === "landing").length > 1) {
-      setToast("The plan cannot have more than one landing waypoint.");
+      showToast("The plan cannot have more than one landing waypoint.");
       return;
     }
     if (waypoints.length === 10) {
-      setToast("The plan must have at least two waypoints.");
+      showToast("The plan must have at least two waypoints.");
       return;
     }
     setLoading(true);
     try {
+      const headers = getAuthHeaders();
       // 1. Find or create "Plan Generator" folder
       let folderId: number | null = null;
-      const foldersRes = await axios.get(`/api/folders?userId=${user.id}`);
+      const foldersRes = await axios.get(`/api/folders`, { headers });
       const planGenFolder = foldersRes.data.find(
         (f: any) => f.name === "Plan Generator"
       );
@@ -450,8 +687,7 @@ export default function PlanGenerator() {
         // Create folder
         const folderRes = await axios.post("/api/folders", {
           name: "Plan Generator",
-          userId: user.id,
-        });
+        }, { headers });
         folderId = folderRes.data.id;
       }
       // 2. Create the plan
@@ -464,22 +700,28 @@ export default function PlanGenerator() {
         const d = new Date(flightPlanDetails.datetime);
         if (!isNaN(d.getTime())) scheduledAt = d.toISOString();
       }
+      // TASK-045: Include geoawarenessData with uspace_identifier
+      const geoawarenessData = selectedUspace ? {
+        uspace_identifier: selectedUspace.id,
+        uspace_name: selectedUspace.name,
+      } : null;
+      
       // Use the new unified API
       const createRes = await axios.post("/api/flightPlans", {
         customName: planName,
         status: "sin procesar",
         fileContent: JSON.stringify(qgcPlan),
-        userId: user.id,
         folderId,
         uplan: JSON.stringify(uplanDetails),
         scheduledAt,
-      });
-      setToast(
+        geoawarenessData,
+      }, { headers });
+      showToast(
         `The plan "${planName}" has been saved in the Plan Generator folder in Trajectory Generator.`
       );
       setPlanName("");
     } catch (err: any) {
-      setToast(
+      showToast(
         "Error uploading the plan: " +
           (err?.response?.data?.error || err.message)
       );
@@ -488,47 +730,129 @@ export default function PlanGenerator() {
     }
   };
 
-  // Toast auto-hide
-  React.useEffect(() => {
-    if (toast) {
-      const t = setTimeout(() => setToast(null), 4000);
-      return () => clearTimeout(t);
-    }
-  }, [toast]);
-
   // Header height: 56px (py-3 on header)
   const HEADER_HEIGHT = 120.67;
   // Add login check at the top of the return
   if (!user) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-zinc-900">
-        <div className="text-2xl text-white font-semibold">You must be logged in to access the Plan Generator.</div>
+      <div className="flex items-center justify-center min-h-screen bg-[var(--bg-primary)]">
+        <div className="text-2xl text-[var(--text-primary)] font-semibold">You must be logged in to access the Plan Generator.</div>
       </div>
     );
   }
-  return (
-    <div className="w-full bg-zinc-900 overflow-x-hidden">
-      {/* Toast notification */}
-      {toast && (
-        <div
-          className={`fixed top-6 left-1/2 transform -translate-x-1/2 z-[2000] px-6 py-3 rounded shadow-lg text-base font-semibold animate-fade-in ${
-            toast.includes('has been saved in the Plan Generator folder in Trajectory Generator.')
-              ? 'bg-green-600 text-white'
-              : 'bg-red-600 text-white'
-          }`}
+  
+  // TASK-043: U-space selection step
+  if (!selectedUspace) {
+    return (
+      <div className="w-full bg-[var(--bg-primary)] overflow-x-hidden min-h-screen">
+        {/* Help Button */}
+        <a
+          href="/how-it-works#plan-generator-help"
+          target="_self"
+          className="fixed top-24 right-4 sm:right-8 z-[9999] bg-blue-700 hover:bg-blue-800 text-white rounded-full p-2 sm:p-3 shadow-lg flex items-center gap-2 transition-all duration-200"
+          title="Need help with Plan Generator?"
         >
-          {toast}
+          <HelpCircle className="w-5 h-5 sm:w-6 sm:h-6" />
+        </a>
+        
+        <div className="container mx-auto px-4 py-8 max-w-4xl">
+          {/* Step Indicator */}
+          <div className="flex items-center justify-center gap-4 mb-8">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-[var(--color-primary)] text-white flex items-center justify-center font-bold text-sm">
+                1
+              </div>
+              <span className="text-[var(--text-primary)] font-medium">Select U-space</span>
+            </div>
+            <ChevronRight className="w-5 h-5 text-[var(--text-tertiary)]" />
+            <div className="flex items-center gap-2 opacity-50">
+              <div className="w-8 h-8 rounded-full bg-[var(--bg-tertiary)] text-[var(--text-tertiary)] flex items-center justify-center font-bold text-sm">
+                2
+              </div>
+              <span className="text-[var(--text-tertiary)] font-medium">Plan Waypoints</span>
+            </div>
+          </div>
+          
+          {/* Title and Description */}
+          <div className="text-center mb-6">
+            <h1 className="text-2xl md:text-3xl font-bold text-[var(--text-primary)] mb-2">
+              Select Flight Area
+            </h1>
+            <p className="text-[var(--text-secondary)] max-w-2xl mx-auto">
+              Choose a U-space to plan your flight. Your waypoints will be restricted to the selected area.
+              Click on a polygon to select it.
+            </p>
+          </div>
+          
+          {/* U-space Selector Map */}
+          <div className="rounded-lg overflow-hidden shadow-lg border border-[var(--border-primary)]">
+            <UspaceSelector
+              onSelect={handleUspaceSelect}
+              selectedUspaceId={null}
+              className="h-[500px]"
+            />
+          </div>
+          
+          {/* Skip to default service area (fallback) */}
+          <div className="mt-6 text-center">
+            <p className="text-[var(--text-tertiary)] text-sm mb-3">
+              Can&apos;t find your area or want to use the default?
+            </p>
+            <button
+              onClick={() => {
+                // Create a U-space for VLCUspace (default area)
+                const defaultUspace: USpace = {
+                  id: 'VLCUspace',
+                  name: 'VLCUspace',
+                  boundary: [
+                    { latitude: 39.4150, longitude: -0.4257 },
+                    { latitude: 39.4150, longitude: -0.2800 },
+                    { latitude: 39.4988, longitude: -0.2800 },
+                    { latitude: 39.4988, longitude: -0.4257 },
+                    { latitude: 39.4150, longitude: -0.4257 },
+                  ],
+                };
+                handleUspaceSelect(defaultUspace);
+              }}
+              className="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-hover)] transition-colors text-sm font-medium"
+            >
+              Use Default Service Area
+            </button>
+          </div>
         </div>
-      )}
+      </div>
+    );
+  }
+  
+  return (
+    <div className="w-full bg-[var(--bg-primary)] overflow-x-hidden">
       {/* Help Button */}
       <a
         href="/how-it-works#plan-generator-help"
         target="_self"
-        className="fixed top-24 right-8 z-[2000] bg-blue-700 hover:bg-blue-800 text-white rounded-full p-3 shadow-lg flex items-center gap-2 transition-all duration-200"
+        className="fixed top-24 right-4 sm:right-8 z-[9999] bg-blue-700 hover:bg-blue-800 text-white rounded-full p-2 sm:p-3 shadow-lg flex items-center gap-2 transition-all duration-200"
         title="Need help with Plan Generator?"
       >
-        <HelpCircle className="w-6 h-6" />
+        <HelpCircle className="w-5 h-5 sm:w-6 sm:h-6" />
       </a>
+      
+      {/* TASK-181: Mobile sidebar toggle button */}
+      <button
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        className="lg:hidden fixed bottom-4 left-4 z-[9999] bg-blue-700 hover:bg-blue-800 text-white rounded-full p-3 shadow-lg flex items-center justify-center transition-all duration-200"
+        aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
+      >
+        {sidebarOpen ? (
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        ) : (
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        )}
+      </button>
+      
       <style>{`
         :root {
           --header-height: ${HEADER_HEIGHT}px;
@@ -553,30 +877,110 @@ export default function PlanGenerator() {
           height: 100% !important;
           min-height: 400px;
         }
+        /* TASK-181: Mobile sidebar styles */
+        @media (max-width: 1023px) {
+          .plan-gen-sidebar {
+            position: fixed;
+            top: var(--header-height);
+            left: 0;
+            width: 100%;
+            max-width: 420px;
+            height: calc(100vh - var(--header-height));
+            z-index: 1500;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease-in-out;
+          }
+          .plan-gen-sidebar.sidebar-open {
+            transform: translateX(0);
+          }
+          .plan-gen-map {
+            width: 100%;
+          }
+        }
+        @media (min-width: 640px) and (max-width: 1023px) {
+          .plan-gen-sidebar {
+            max-width: 380px;
+          }
+        }
       `}</style>
       <div className="plan-gen-main">
+        {/* TASK-181: Mobile sidebar overlay */}
+        {sidebarOpen && (
+          <div 
+            className="lg:hidden fixed inset-0 bg-black/50 z-[1400]" 
+            onClick={() => setSidebarOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+        
         {/* Sidebar */}
-        <aside className="plan-gen-sidebar relative z-10 flex flex-col w-[420px] min-w-[320px] max-w-[520px] bg-app-sidebar border-r border-zinc-800 shadow-lg">
+        <aside className={`plan-gen-sidebar relative z-10 flex flex-col w-full lg:w-[420px] lg:min-w-[320px] lg:max-w-[520px] bg-[var(--surface-primary)] border-r border-[var(--border-primary)] shadow-lg ${sidebarOpen ? 'sidebar-open' : ''}`}>
           <div className="flex flex-col h-full w-full">
             {/* Scrollable content: header, plan details, waypoint list, and bottom buttons */}
             <div>
               <div className="p-6 pb-0">
-                <h2 className="text-2xl font-bold mb-4 text-white">
+                <h2 className="text-2xl font-bold mb-4 text-[var(--text-primary)]">
                   Flight Plan
                 </h2>
-                <button
-                  className="w-full flex items-center justify-between bg-zinc-800 text-white px-4 py-2 rounded-t-md border border-zinc-700 font-semibold focus:outline-none"
-                  onClick={() => setDetailsOpen((o) => !o)}
-                  type="button"
-                >
-                  Flight Plan Details
-                  <span className="ml-2">{detailsOpen ? "▲" : "▼"}</span>
-                </button>
-                {detailsOpen && (
-                  <div className="bg-zinc-800 border-x border-b border-zinc-700 rounded-b-md p-4 space-y-4 mt-0">
+                
+                {/* Mode Toggle: Manual vs SCAN Pattern */}
+                <div className="mb-4 p-3 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md">
+                  <div className="text-xs text-[var(--text-tertiary)] mb-2 font-medium">Generation Mode</div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setGeneratorMode('manual')}
+                      className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded text-sm font-medium transition-colors ${
+                        generatorMode === 'manual'
+                          ? 'bg-[var(--color-primary)] text-white'
+                          : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
+                      }`}
+                    >
+                      <MousePointer2 className="w-4 h-4" />
+                      Manual
+                    </button>
+                    <button
+                      onClick={() => setGeneratorMode('scan')}
+                      className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded text-sm font-medium transition-colors ${
+                        generatorMode === 'scan'
+                          ? 'bg-[var(--color-accent)] text-white'
+                          : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
+                      }`}
+                    >
+                      <Grid3X3 className="w-4 h-4" />
+                      SCAN Pattern
+                    </button>
+                  </div>
+                </div>
+                
+                {/* SCAN Pattern Generator */}
+                {generatorMode === 'scan' && (
+                  <div className="mb-4">
+                    <ScanPatternGeneratorV2
+                      onApply={handleApplyScanPattern}
+                      onCancel={handleCancelScanPattern}
+                      serviceBounds={[SERVICE_LIMITS[0], SERVICE_LIMITS[1], SERVICE_LIMITS[2], SERVICE_LIMITS[3]]}
+                      onMapClick={handleSetScanMapClickHandler}
+                      onOverlaysChange={setScanOverlays}
+                    />
+                  </div>
+                )}
+                
+                {/* Manual mode: Flight Plan Details */}
+                {generatorMode === 'manual' && (
+                    <button
+                      className="w-full flex items-center justify-between bg-[var(--bg-secondary)] text-[var(--text-primary)] px-4 py-2 rounded-t-md border border-[var(--border-primary)] font-semibold focus:outline-none"
+                      onClick={() => setDetailsOpen((o) => !o)}
+                      type="button"
+                    >
+                      Flight Plan Details
+                      <span className="ml-2">{detailsOpen ? "▲" : "▼"}</span>
+                    </button>
+                )}
+                {generatorMode === 'manual' && detailsOpen && (
+                  <div className="bg-[var(--bg-secondary)] border-x border-b border-[var(--border-primary)] rounded-b-md p-4 space-y-4 mt-0">
                     {/* Date/Time */}
                     <div>
-                      <label className="block mb-1 font-medium text-zinc-200">
+                      <label className="block mb-1 font-medium text-[var(--text-secondary)]">
                         Flight date & time
                       </label>
                       <input
@@ -588,13 +992,13 @@ export default function PlanGenerator() {
                             datetime: e.target.value,
                           }))
                         }
-                        className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="input w-full"
                         style={{ colorScheme: "dark" }}
                       />
                     </div>
                     {/* Data Owner Identifier */}
-                    <div className="border-b border-zinc-700 pb-2 mb-2">
-                      <div className="font-semibold text-zinc-300 mb-1">
+                    <div className="border-b border-[var(--border-primary)] pb-2 mb-2">
+                      <div className="font-semibold text-[var(--text-secondary)] mb-1">
                         Data Owner Identifier
                       </div>
                       <div className="flex gap-2">
@@ -612,7 +1016,7 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-20 text-xs focus:outline-none"
+                          className="input w-20 text-xs"
                         />
                         <input
                           type="text"
@@ -628,13 +1032,13 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-20 text-xs focus:outline-none"
+                          className="input w-20 text-xs"
                         />
                       </div>
                     </div>
                     {/* Data Source Identifier */}
-                    <div className="border-b border-zinc-700 pb-2 mb-2">
-                      <div className="font-semibold text-zinc-300 mb-1">
+                    <div className="border-b border-[var(--border-primary)] pb-2 mb-2">
+                      <div className="font-semibold text-[var(--text-secondary)] mb-1">
                         Data Source Identifier
                       </div>
                       <div className="flex gap-2">
@@ -652,7 +1056,7 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-20 text-xs focus:outline-none"
+                          className="input w-20 text-xs"
                         />
                         <input
                           type="text"
@@ -668,13 +1072,13 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-20 text-xs focus:outline-none"
+                          className="input w-20 text-xs"
                         />
                       </div>
                     </div>
                     {/* Contact Details */}
-                    <div className="border-b border-zinc-700 pb-2 mb-2">
-                      <div className="font-semibold text-zinc-300 mb-1">
+                    <div className="border-b border-[var(--border-primary)] pb-2 mb-2">
+                      <div className="font-semibold text-[var(--text-secondary)] mb-1">
                         Contact Details
                       </div>
                       <div className="flex gap-2 mb-2">
@@ -691,7 +1095,7 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-32 text-xs focus:outline-none"
+                          className="input w-32 text-xs"
                         />
                         <input
                           type="text"
@@ -706,11 +1110,11 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-32 text-xs focus:outline-none"
+                          className="input w-32 text-xs"
                         />
                       </div>
                       <div className="mb-2">
-                        <div className="text-xs text-zinc-400 mb-1">Phones</div>
+                        <div className="text-xs text-[var(--text-tertiary)] mb-1">Phones</div>
                         {flightPlanDetails.contactDetails.phones.map(
                           (phone, i) => (
                             <div key={i} className="flex gap-2 mb-1">
@@ -731,11 +1135,11 @@ export default function PlanGenerator() {
                                     };
                                   })
                                 }
-                                className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-40 text-xs focus:outline-none"
+                                className="input w-40 text-xs"
                               />
                               <button
                                 type="button"
-                                className="text-red-400 hover:text-red-600 text-xs font-bold"
+                                className="text-[var(--status-error)] hover:text-[var(--status-error-hover)] text-xs font-bold"
                                 onClick={() =>
                                   setFlightPlanDetails((d) => {
                                     const phones =
@@ -759,7 +1163,7 @@ export default function PlanGenerator() {
                         )}
                         <button
                           type="button"
-                          className="text-blue-400 hover:underline text-xs"
+                          className="text-[var(--color-primary)] hover:underline text-xs"
                           onClick={() =>
                             setFlightPlanDetails((d) => ({
                               ...d,
@@ -774,7 +1178,7 @@ export default function PlanGenerator() {
                         </button>
                       </div>
                       <div>
-                        <div className="text-xs text-zinc-400 mb-1">Emails</div>
+                        <div className="text-xs text-[var(--text-tertiary)] mb-1">Emails</div>
                         {flightPlanDetails.contactDetails.emails.map(
                           (email, i) => (
                             <div key={i} className="flex gap-2 mb-1">
@@ -795,11 +1199,11 @@ export default function PlanGenerator() {
                                     };
                                   })
                                 }
-                                className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-40 text-xs focus:outline-none"
+                                className="input w-40 text-xs"
                               />
                               <button
                                 type="button"
-                                className="text-red-400 hover:text-red-600 text-xs font-bold"
+                                className="text-[var(--status-error)] hover:text-[var(--status-error-hover)] text-xs font-bold"
                                 onClick={() =>
                                   setFlightPlanDetails((d) => {
                                     const emails =
@@ -823,7 +1227,7 @@ export default function PlanGenerator() {
                         )}
                         <button
                           type="button"
-                          className="text-blue-400 hover:underline text-xs"
+                          className="text-[var(--color-primary)] hover:underline text-xs"
                           onClick={() =>
                             setFlightPlanDetails((d) => ({
                               ...d,
@@ -839,8 +1243,8 @@ export default function PlanGenerator() {
                       </div>
                     </div>
                     {/* Flight Details */}
-                    <div className="border-b border-zinc-700 pb-2 mb-2">
-                      <div className="font-semibold text-zinc-300 mb-1">
+                    <div className="border-b border-[var(--border-primary)] pb-2 mb-2">
+                      <div className="font-semibold text-[var(--text-secondary)] mb-1">
                         Flight Details
                       </div>
                       <div className="flex gap-2 mb-2 flex-wrap">
@@ -855,7 +1259,7 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 text-xs focus:outline-none"
+                          className="input select text-xs py-1"
                         >
                           <option value="">Select mode</option>
                           {FLIGHT_MODES.map((opt) => (
@@ -875,7 +1279,7 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 text-xs focus:outline-none"
+                          className="input select text-xs py-1"
                         >
                           <option value="">Select category</option>
                           {FLIGHT_CATEGORIES.map((opt) => (
@@ -884,7 +1288,7 @@ export default function PlanGenerator() {
                             </option>
                           ))}
                         </select>
-                        <label className="flex items-center gap-1 text-xs text-zinc-400">
+                        <label className="flex items-center gap-1 text-xs text-[var(--text-tertiary)]">
                           <input
                             type="checkbox"
                             checked={
@@ -917,7 +1321,7 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 text-xs focus:outline-none w-full"
+                          className="input select text-xs py-1 w-full"
                         >
                           <option value="">Special operation?</option>
                           {SPECIAL_OPERATIONS.map((opt) => (
@@ -929,8 +1333,8 @@ export default function PlanGenerator() {
                       </div>
                     </div>
                     {/* UAS */}
-                    <div className="border-b border-zinc-700 pb-2 mb-2">
-                      <div className="font-semibold text-zinc-300 mb-1">
+                    <div className="border-b border-[var(--border-primary)] pb-2 mb-2">
+                      <div className="font-semibold text-[var(--text-secondary)] mb-1">
                         UAS
                       </div>
                       <div className="flex gap-2 mb-2">
@@ -947,7 +1351,7 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-32 text-xs focus:outline-none"
+                          className="input w-32 text-xs"
                         />
                         <input
                           type="text"
@@ -960,10 +1364,10 @@ export default function PlanGenerator() {
                               uas: { ...d.uas, serialNumber: e.target.value },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-32 text-xs focus:outline-none"
+                          className="input w-32 text-xs"
                         />
                       </div>
-                      <div className="font-semibold text-zinc-400 mb-1 mt-2">
+                      <div className="font-semibold text-[var(--text-tertiary)] mb-1 mt-2">
                         Flight Characteristics
                       </div>
                       <div className="flex gap-2 mb-2 flex-wrap">
@@ -985,7 +1389,7 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-24 text-xs focus:outline-none"
+                          className="input w-24 text-xs"
                         />
                         <input
                           type="number"
@@ -1006,7 +1410,7 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-28 text-xs focus:outline-none"
+                          className="input w-28 text-xs"
                         />
                         <select
                           value={
@@ -1025,7 +1429,7 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 text-xs focus:outline-none"
+                          className="input select text-xs py-1"
                         >
                           <option value="">Connectivity</option>
                           {CONNECTIVITY.map((opt) => (
@@ -1051,7 +1455,7 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 text-xs focus:outline-none"
+                          className="input select text-xs py-1"
                         >
                           <option value="">ID Technology</option>
                           {ID_TECHNOLOGY.map((opt) => (
@@ -1079,10 +1483,10 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-40 text-xs focus:outline-none"
+                          className="input w-40 text-xs"
                         />
                       </div>
-                      <div className="font-semibold text-zinc-400 mb-1 mt-2">
+                      <div className="font-semibold text-[var(--text-tertiary)] mb-1 mt-2">
                         General Characteristics
                       </div>
                       <div className="flex gap-2 flex-wrap">
@@ -1104,7 +1508,7 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-24 text-xs focus:outline-none"
+                          className="input w-24 text-xs"
                         />
                         <input
                           type="text"
@@ -1124,7 +1528,7 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-24 text-xs focus:outline-none"
+                          className="input w-24 text-xs"
                         />
                         <input
                           type="text"
@@ -1145,7 +1549,7 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-28 text-xs focus:outline-none"
+                          className="input w-28 text-xs"
                         />
                         <select
                           value={
@@ -1163,7 +1567,7 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 text-xs focus:outline-none"
+                          className="input select text-xs py-1"
                         >
                           <option value="">UAS Type</option>
                           {UAS_TYPE.map((opt) => (
@@ -1189,7 +1593,7 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 text-xs focus:outline-none"
+                          className="input select text-xs py-1"
                         >
                           <option value="">UAS Class</option>
                           {UAS_CLASS.map((opt) => (
@@ -1215,7 +1619,7 @@ export default function PlanGenerator() {
                               },
                             }))
                           }
-                          className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 text-xs focus:outline-none"
+                          className="input select text-xs py-1"
                         >
                           <option value="">UAS Dimension</option>
                           {UAS_DIMENSION.map((opt) => (
@@ -1228,7 +1632,7 @@ export default function PlanGenerator() {
                     </div>
                     {/* Operator ID */}
                     <div>
-                      <label className="block mb-1 font-medium text-zinc-200">
+                      <label className="block mb-1 font-medium text-[var(--text-secondary)]">
                         Operator ID
                       </label>
                       <input
@@ -1240,30 +1644,133 @@ export default function PlanGenerator() {
                             operatorId: e.target.value,
                           }))
                         }
-                        className="border border-zinc-700 bg-zinc-900 text-white rounded px-2 py-1 w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="input w-full"
                         placeholder="Operator registration number"
                       />
                     </div>
                   </div>
                 )}
+                {generatorMode === 'manual' && (
                 <div className="mb-4">
-                  <label className="block mb-1 font-medium text-zinc-200">
+                  <label className="block mb-1 font-medium text-[var(--text-secondary)]">
                     Plan name
                   </label>
                   <input
                     type="text"
                     value={planName}
                     onChange={(e) => setPlanName(e.target.value)}
-                    className="border border-zinc-700 bg-zinc-800 text-white rounded px-2 py-1 w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="input w-full"
                     placeholder="e.g. Mission 1"
                     disabled={loading}
                   />
                 </div>
+                )}
+                
+                {/* TASK-153 & TASK-043: Service Area / U-space Bounds Panel */}
+                <div className="mb-4 p-3 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 border-2 border-orange-400 border-dashed rounded-sm" />
+                      <span className="text-sm font-semibold text-[var(--text-secondary)]">
+                        {selectedUspace ? selectedUspace.name : 'FAS Service Area'}
+                      </span>
+                    </div>
+                    {selectedUspace && (
+                      <button
+                        onClick={handleChangeUspace}
+                        className="flex items-center gap-1 text-xs text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] transition-colors"
+                        title="Change U-space"
+                      >
+                        <Edit2 className="w-3 h-3" />
+                        Change
+                      </button>
+                    )}
+                  </div>
+                  
+                  {/* TASK-052: Geozone visibility toggle */}
+                  {geozonesData.length > 0 && (
+                    <div className="flex items-center justify-between py-2 border-b border-[var(--border-primary)]">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-sm bg-gradient-to-r from-red-500 via-yellow-500 to-blue-500" />
+                        <span className="text-sm text-[var(--text-secondary)]">
+                          Geozones
+                        </span>
+                        <span className="text-xs text-[var(--text-muted)] bg-[var(--bg-tertiary)] px-1.5 py-0.5 rounded">
+                          {geozonesData.length}
+                        </span>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer" title={geozonesVisible ? 'Hide geozones' : 'Show geozones'}>
+                        <input
+                          type="checkbox"
+                          checked={geozonesVisible}
+                          onChange={(e) => setGeozonesVisible(e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-9 h-5 bg-[var(--bg-tertiary)] peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[var(--color-primary)] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--color-primary)]"></div>
+                        <span className="ml-2 text-xs text-[var(--text-muted)]">
+                          {geozonesVisible ? 'On' : 'Off'}
+                        </span>
+                      </label>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-[var(--text-tertiary)]">
+                    <div className="flex justify-between">
+                      <span>Min Lat:</span>
+                      <span className="text-[var(--text-secondary)] font-mono">{effectiveServiceLimits[1].toFixed(4)}°</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Max Lat:</span>
+                      <span className="text-[var(--text-secondary)] font-mono">{effectiveServiceLimits[3].toFixed(4)}°</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Min Lon:</span>
+                      <span className="text-[var(--text-secondary)] font-mono">{effectiveServiceLimits[0].toFixed(4)}°</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Max Lon:</span>
+                      <span className="text-[var(--text-secondary)] font-mono">{effectiveServiceLimits[2].toFixed(4)}°</span>
+                    </div>
+                  </div>
+                  <div className="mt-2 pt-2 border-t border-[var(--border-primary)] text-xs text-[var(--text-muted)]">
+                    Alt: {ALT_LIMITS[0]}-{ALT_LIMITS[1]}m AGL
+                  </div>
+                </div>
+                
+                {/* TASK-154: Boundary Warning - TASK-043: Updated to use effective limits */}
+                {(() => {
+                  const nearBoundary = getWaypointsNearBoundary(waypoints, effectiveServiceLimits);
+                  if (nearBoundary.length === 0) return null;
+                  return (
+                    <div className="mb-4 p-3 bg-yellow-900/30 border border-yellow-600/50 rounded-md">
+                      <div className="flex items-center gap-2 mb-1">
+                        <svg className="w-4 h-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <span className="text-sm font-semibold text-yellow-400">Boundary Warning</span>
+                      </div>
+                      <div className="text-xs text-yellow-300/80">
+                        {nearBoundary.length === 1 ? (
+                          <span>Waypoint {nearBoundary[0].index + 1} is {nearBoundary[0].distance}m from the {selectedUspace ? selectedUspace.name : 'service area'} boundary.</span>
+                        ) : (
+                          <span>
+                            {nearBoundary.map((w, i) => (
+                              <span key={w.index}>
+                                {i > 0 && ", "}
+                                WP{w.index + 1} ({w.distance}m)
+                              </span>
+                            ))} are near the boundary.
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
+              {generatorMode === 'manual' && (
               <div className="p-6 pt-2">
-                <h3 className="font-semibold mb-2 text-zinc-200">Waypoints</h3>
+                <h3 className="font-semibold mb-2 text-[var(--text-secondary)]">Waypoints</h3>
                 {waypoints.length === 0 && (
-                  <div className="text-zinc-400 text-sm">
+                  <div className="text-[var(--text-tertiary)] text-sm">
                     Click on the map to add waypoints.
                   </div>
                 )}
@@ -1288,17 +1795,17 @@ export default function PlanGenerator() {
                                 {...dragProvided.dragHandleProps}
                                 className={`relative flex flex-col gap-1 p-2 rounded border ${
                                   selectedIdx === idx
-                                    ? "bg-blue-900 border-blue-400"
-                                    : "bg-zinc-800 border-zinc-700"
+                                    ? "bg-[var(--color-primary-light)] border-[var(--color-primary)]"
+                                    : "bg-[var(--bg-secondary)] border-[var(--border-primary)]"
                                 } ${
                                   dragSnapshot.isDragging
-                                    ? "ring-2 ring-blue-400"
+                                    ? "ring-2 ring-[var(--color-primary)]"
                                     : ""
                                 }`}
                               >
                                 {/* Remove button top right */}
                                 <button
-                                  className="absolute top-2 right-2 text-red-400 hover:text-red-600 text-lg font-bold p-0.5 rounded focus:outline-none focus:ring-2 focus:ring-red-400"
+                                  className="absolute top-2 right-2 text-[var(--status-error)] hover:text-[var(--status-error-hover)] text-lg font-bold p-0.5 rounded focus:outline-none focus:ring-2 focus:ring-[var(--status-error)]"
                                   onClick={() => handleRemoveWaypoint(idx)}
                                   type="button"
                                   aria-label="Remove waypoint"
@@ -1306,7 +1813,7 @@ export default function PlanGenerator() {
                                   ×
                                 </button>
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="text-xs text-zinc-400 font-mono">
+                                  <span className="text-xs text-[var(--text-tertiary)] font-mono">
                                     {idx + 1}
                                   </span>
                                   <select
@@ -1318,7 +1825,7 @@ export default function PlanGenerator() {
                                         e.target.value
                                       )
                                     }
-                                    className="border border-zinc-700 bg-zinc-900 text-white rounded px-1 py-0.5 text-xs focus:outline-none"
+                                    className="input select text-xs py-0.5"
                                   >
                                     {waypointTypes.map((t) => (
                                       <option key={t.value} value={t.value}>
@@ -1338,11 +1845,11 @@ export default function PlanGenerator() {
                                           Number(e.target.value)
                                         )
                                       }
-                                      className="border border-zinc-700 bg-zinc-900 text-white rounded px-1 py-0.5 w-20 text-xs focus:outline-none"
+                                      className="input w-20 text-xs py-0.5"
                                       placeholder="Altitude (m)"
                                       disabled={wp.type === "landing"}
                                     />
-                                    <span className="text-xs text-zinc-400 ml-1">
+                                    <span className="text-xs text-[var(--text-tertiary)] ml-1">
                                       m
                                     </span>
                                   </div>
@@ -1358,16 +1865,64 @@ export default function PlanGenerator() {
                                           Number(e.target.value)
                                         )
                                       }
-                                      className="border border-zinc-700 bg-zinc-900 text-white rounded px-1 py-0.5 w-16 text-xs focus:outline-none"
+                                      className="input w-16 text-xs py-0.5"
                                       placeholder="Speed (m/s)"
                                     />
-                                    <span className="text-xs text-zinc-400 ml-1">
+                                    <span className="text-xs text-[var(--text-tertiary)] ml-1">
                                       m/s
                                     </span>
                                   </div>
+                                  {/* TASK-122: Pause duration input */}
+                                  <div className="flex items-center gap-1">
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      max={3600}
+                                      value={wp.pauseDuration || 0}
+                                      onChange={(e) =>
+                                        handleWaypointChange(
+                                          idx,
+                                          "pauseDuration",
+                                          Number(e.target.value)
+                                        )
+                                      }
+                                      className="input w-16 text-xs py-0.5"
+                                      placeholder="Pause"
+                                      title="Hold time at waypoint (0-3600 seconds)"
+                                    />
+                                    <span className="text-xs text-[var(--text-tertiary)] ml-1">
+                                      s ⏱️
+                                    </span>
+                                  </div>
+                                  {/* TASK-127 & TASK-130: Fly-by/Fly-over toggle with tooltip */}
+                                  {wp.type === "cruise" && (
+                                    <div className="flex items-center gap-1 ml-2" title="Fly-by: drone smoothly curves past the waypoint. Fly-over: drone must pass directly over the waypoint (more precise but slower).">
+                                      <label className="relative inline-flex items-center cursor-pointer">
+                                        <input
+                                          type="checkbox"
+                                          checked={wp.flyOverMode || false}
+                                          onChange={(e) =>
+                                            handleWaypointChange(
+                                              idx,
+                                              "flyOverMode",
+                                              e.target.checked
+                                            )
+                                          }
+                                          className="sr-only peer"
+                                        />
+                                        <div className="w-8 h-4 bg-[var(--bg-tertiary)] peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[var(--color-primary)] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-[var(--color-accent)]"></div>
+                                      </label>
+                                      <span className={`text-xs font-medium ${wp.flyOverMode ? 'text-[var(--color-accent)]' : 'text-[var(--text-tertiary)]'}`}>
+                                        {wp.flyOverMode ? '⎯○⎯' : '⌒'}
+                                      </span>
+                                      <span className="text-[10px] text-[var(--text-muted)] hidden sm:inline" title="Fly-by: smooth curve past waypoint. Fly-over: pass directly over waypoint.">
+                                        {wp.flyOverMode ? 'Over' : 'By'}
+                                      </span>
+                                    </div>
+                                  )}
                                 </div>
                                 <div className="flex items-center gap-2 flex-wrap mt-1">
-                                  <label className="text-xs text-zinc-400">
+                                  <label className="text-xs text-[var(--text-tertiary)]">
                                     Lat:
                                   </label>
                                   <input
@@ -1381,9 +1936,9 @@ export default function PlanGenerator() {
                                         Number(e.target.value)
                                       )
                                     }
-                                    className="border border-zinc-700 bg-zinc-900 text-white rounded px-1 py-0.5 w-28 text-xs focus:outline-none"
+                                    className="input w-28 text-xs py-0.5"
                                   />
-                                  <label className="text-xs text-zinc-400">
+                                  <label className="text-xs text-[var(--text-tertiary)]">
                                     Lon:
                                   </label>
                                   <input
@@ -1397,7 +1952,7 @@ export default function PlanGenerator() {
                                         Number(e.target.value)
                                       )
                                     }
-                                    className="border border-zinc-700 bg-zinc-900 text-white rounded px-1 py-0.5 w-28 text-xs focus:outline-none"
+                                    className="input w-28 text-xs py-0.5"
                                   />
                                 </div>
                               </li>
@@ -1410,10 +1965,12 @@ export default function PlanGenerator() {
                   </Droppable>
                 </DragDropContext>
               </div>
+              )}
               {/* Bottom buttons (now scroll with sidebar) */}
-              <div className="bg-app-sidebar pt-4 pb-2 flex flex-col gap-2 px-6">
+              {generatorMode === 'manual' && (
+              <div className="bg-[var(--surface-primary)] pt-4 pb-2 flex flex-col gap-2 px-6">
                 <button
-                  className="w-full bg-blue-700 text-white rounded py-2 font-semibold hover:bg-blue-800 transition border border-blue-900 disabled:opacity-60"
+                  className="btn btn-primary w-full py-2 font-semibold disabled:opacity-60"
                   onClick={handleUploadPlan}
                   type="button"
                   disabled={loading}
@@ -1421,13 +1978,14 @@ export default function PlanGenerator() {
                   {loading ? "Uploading..." : "Upload to Trajectory Generator"}
                 </button>
                 <button
-                  className="w-full bg-red-900 text-red-200 rounded py-2 font-semibold hover:bg-red-800 transition border border-red-800"
+                  className="btn btn-danger w-full py-2 font-semibold"
                   onClick={handleClearAll}
                   type="button"
                 >
                   Clear all
                 </button>
               </div>
+              )}
             </div>
           </div>
         </aside>
@@ -1435,7 +1993,30 @@ export default function PlanGenerator() {
         <main className="plan-gen-map flex-1">
           {/* The MapContainer and its logic have been moved to PlanMap.tsx */}
           {/* The PlanMap component will be rendered here */}
-          <PlanMap center={center} bounds={bounds} polylinePositions={polylinePositions} handleAddWaypoint={handleAddWaypoint} setToast={setToast} waypoints={waypoints} setSelectedIdx={setSelectedIdx} handleMarkerDragEnd={handleMarkerDragEnd} />
+          {/* TASK-216: Use ref-based handler for stable click handling in SCAN mode */}
+          <PlanMap 
+            center={center} 
+            bounds={bounds} 
+            polylinePositions={polylinePositions} 
+            handleAddWaypoint={handleAddWaypoint} 
+            setToast={showToast} 
+            waypoints={waypoints} 
+            setSelectedIdx={setSelectedIdx} 
+            handleMarkerDragEnd={handleMarkerDragEnd}
+            scanMode={generatorMode === 'scan'}
+            scanOverlays={scanOverlays || undefined}
+            customClickHandler={scanMapClickHandlerRef.current}
+            key={`planmap-${scanHandlerVersion}`} // Force re-render when handler changes
+            // TASK-051: Pass geozone data to PlanMap
+            geozonesData={geozonesData}
+            // TASK-052: Control geozone visibility via toggle
+            geozonesVisible={geozonesVisible}
+            // TASK-054/056: Pass U-space name for display and error messages
+            uspaceName={selectedUspace?.name}
+            // TASK-089: Pass WebSocket status for connection indicator
+            wsStatus={selectedUspace ? geozonesStatus : undefined}
+            onReconnect={reconnectGeozones}
+          />
         </main>
       </div>
     </div>

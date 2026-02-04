@@ -1,0 +1,917 @@
+/**
+ * Theme System - CSS Custom Properties
+ * 
+ * Default: Dark theme (applied to :root)
+ * Light theme: Applied via [data-theme="light"]
+ * 
+ * TASK-155, TASK-156, TASK-157
+ */
+
+/* ============================================
+   DARK THEME (Default)
+   ============================================ */
+:root {
+  /* Background colors */
+  --bg-primary: #111827;      /* gray-900 */
+  --bg-secondary: #1f2937;    /* gray-800 */
+  --bg-tertiary: #374151;     /* gray-700 */
+  --bg-hover: #4b5563;        /* gray-600 */
+  --bg-active: #6b7280;       /* gray-500 */
+
+  /* Surface colors (cards, modals, panels) */
+  --surface-primary: #1f2937;   /* gray-800 */
+  --surface-secondary: #374151; /* gray-700 */
+  --surface-elevated: #1f2937;  /* gray-800 */
+
+  /* Text colors */
+  --text-primary: #f9fafb;    /* gray-50 */
+  --text-secondary: #e5e7eb;  /* gray-200 */
+  --text-tertiary: #9ca3af;   /* gray-400 */
+  --text-muted: #6b7280;      /* gray-500 */
+
+  /* Border colors */
+  --border-primary: #374151;  /* gray-700 */
+  --border-secondary: #4b5563; /* gray-600 */
+  --border-hover: #6b7280;    /* gray-500 */
+
+  /* ============================================
+     TASK-186: Semantic Color Tokens
+     ============================================ */
+  /* Primary - Main brand action color */
+  --color-primary: #3b82f6;         /* blue-500 */
+  --color-primary-hover: #2563eb;   /* blue-600 */
+  --color-primary-active: #1d4ed8;  /* blue-700 */
+  --color-primary-light: rgba(59, 130, 246, 0.1);
+  
+  /* Secondary - Supporting actions */
+  --color-secondary: #6b7280;       /* gray-500 */
+  --color-secondary-hover: #4b5563; /* gray-600 */
+  --color-secondary-active: #374151;/* gray-700 */
+  --color-secondary-light: rgba(107, 114, 128, 0.1);
+  
+  /* Accent - Highlights and emphasis */
+  --color-accent: #8b5cf6;          /* violet-500 */
+  --color-accent-hover: #7c3aed;    /* violet-600 */
+  --color-accent-active: #6d28d9;   /* violet-700 */
+  --color-accent-light: rgba(139, 92, 246, 0.1);
+  
+  /* Muted - Subtle, low-emphasis elements */
+  --color-muted: #9ca3af;           /* gray-400 */
+  --color-muted-hover: #6b7280;     /* gray-500 */
+  --color-muted-light: rgba(156, 163, 175, 0.1);
+
+  /* Brand colors (legacy aliases) */
+  --brand-primary: var(--color-primary);
+  --brand-primary-hover: var(--color-primary-hover);
+  --brand-primary-active: var(--color-primary-active);
+  --brand-secondary: var(--color-accent);
+
+  /* ============================================
+     TASK-187: Status Colors
+     ============================================ */
+  /* Success - Positive outcomes (green) */
+  --status-success: #22c55e;        /* green-500 */
+  --status-success-hover: #16a34a;  /* green-600 */
+  --status-success-bg: rgba(34, 197, 94, 0.1);
+  --status-success-border: rgba(34, 197, 94, 0.3);
+  --status-success-text: #22c55e;
+  
+  /* Warning - Caution states (amber) */
+  --status-warning: #f59e0b;        /* amber-500 */
+  --status-warning-hover: #d97706;  /* amber-600 */
+  --status-warning-bg: rgba(245, 158, 11, 0.1);
+  --status-warning-border: rgba(245, 158, 11, 0.3);
+  --status-warning-text: #f59e0b;
+  
+  /* Error - Failures, destructive (red) */
+  --status-error: #ef4444;          /* red-500 */
+  --status-error-hover: #dc2626;    /* red-600 */
+  --status-error-bg: rgba(239, 68, 68, 0.1);
+  --status-error-border: rgba(239, 68, 68, 0.3);
+  --status-error-text: #ef4444;
+  
+  /* Info - Informational, neutral (blue) */
+  --status-info: #3b82f6;           /* blue-500 */
+  --status-info-hover: #2563eb;     /* blue-600 */
+  --status-info-bg: rgba(59, 130, 246, 0.1);
+  --status-info-border: rgba(59, 130, 246, 0.3);
+  --status-info-text: #3b82f6;
+
+  /* ============================================
+     TASK-188: Processing State Colors
+     ============================================ */
+  /* Queued - Waiting to process (yellow/amber) */
+  --processing-queued: #eab308;     /* yellow-500 */
+  --processing-queued-bg: rgba(234, 179, 8, 0.1);
+  --processing-queued-border: rgba(234, 179, 8, 0.3);
+  --processing-queued-text: #eab308;
+  
+  /* Processing - Currently processing (blue) */
+  --processing-active: #3b82f6;     /* blue-500 */
+  --processing-active-bg: rgba(59, 130, 246, 0.1);
+  --processing-active-border: rgba(59, 130, 246, 0.3);
+  --processing-active-text: #3b82f6;
+  
+  /* Completed - Successfully processed (green) */
+  --processing-completed: #22c55e;  /* green-500 */
+  --processing-completed-bg: rgba(34, 197, 94, 0.1);
+  --processing-completed-border: rgba(34, 197, 94, 0.3);
+  --processing-completed-text: #22c55e;
+  
+  /* Error - Processing failed (red) */
+  --processing-error: #ef4444;      /* red-500 */
+  --processing-error-bg: rgba(239, 68, 68, 0.1);
+  --processing-error-border: rgba(239, 68, 68, 0.3);
+  --processing-error-text: #ef4444;
+  
+  /* Unprocessed/Idle (gray) */
+  --processing-idle: #6b7280;       /* gray-500 */
+  --processing-idle-bg: rgba(107, 114, 128, 0.1);
+  --processing-idle-border: rgba(107, 114, 128, 0.3);
+  --processing-idle-text: #9ca3af;
+
+  /* Processing status colors (legacy aliases) */
+  --status-unprocessed: var(--processing-idle);
+  --status-processing: var(--processing-active);
+  --status-processed: var(--processing-completed);
+
+  /* ============================================
+     TASK-189: Authorization State Colors
+     ============================================ */
+  /* Pending - Awaiting authorization (yellow/amber) */
+  --auth-pending: #f59e0b;          /* amber-500 */
+  --auth-pending-bg: rgba(245, 158, 11, 0.1);
+  --auth-pending-border: rgba(245, 158, 11, 0.3);
+  --auth-pending-text: #f59e0b;
+  
+  /* Approved - Authorization granted (green) */
+  --auth-approved: #22c55e;         /* green-500 */
+  --auth-approved-bg: rgba(34, 197, 94, 0.1);
+  --auth-approved-border: rgba(34, 197, 94, 0.3);
+  --auth-approved-text: #22c55e;
+  
+  /* Denied - Authorization refused (red) */
+  --auth-denied: #ef4444;           /* red-500 */
+  --auth-denied-bg: rgba(239, 68, 68, 0.1);
+  --auth-denied-border: rgba(239, 68, 68, 0.3);
+  --auth-denied-text: #ef4444;
+  
+  /* No Authorization - Not requested (gray) */
+  --auth-none: #6b7280;             /* gray-500 */
+  --auth-none-bg: rgba(107, 114, 128, 0.1);
+  --auth-none-border: rgba(107, 114, 128, 0.3);
+  --auth-none-text: #9ca3af;
+
+  /* ============================================
+     TASK-191: Button Colors
+     ============================================ */
+  /* Primary Button */
+  --btn-primary-bg: var(--color-primary);
+  --btn-primary-bg-hover: var(--color-primary-hover);
+  --btn-primary-bg-active: var(--color-primary-active);
+  --btn-primary-text: #ffffff;
+  --btn-primary-ring: var(--color-primary);
+  --btn-primary-disabled-bg: #60a5fa; /* blue-400 */
+  
+  /* Secondary Button */
+  --btn-secondary-bg: var(--color-secondary);
+  --btn-secondary-bg-hover: var(--color-secondary-hover);
+  --btn-secondary-bg-active: var(--color-secondary-active);
+  --btn-secondary-text: #ffffff;
+  --btn-secondary-ring: var(--color-secondary);
+  --btn-secondary-disabled-bg: #9ca3af; /* gray-400 */
+  
+  /* Danger Button */
+  --btn-danger-bg: var(--status-error);
+  --btn-danger-bg-hover: var(--status-error-hover);
+  --btn-danger-bg-active: #b91c1c;  /* red-700 */
+  --btn-danger-text: #ffffff;
+  --btn-danger-ring: var(--status-error);
+  --btn-danger-disabled-bg: #f87171; /* red-400 */
+  
+  /* Success Button */
+  --btn-success-bg: var(--status-success);
+  --btn-success-bg-hover: var(--status-success-hover);
+  --btn-success-bg-active: #15803d; /* green-700 */
+  --btn-success-text: #ffffff;
+  --btn-success-ring: var(--status-success);
+  --btn-success-disabled-bg: #4ade80; /* green-400 */
+  
+  /* Warning Button */
+  --btn-warning-bg: var(--status-warning);
+  --btn-warning-bg-hover: var(--status-warning-hover);
+  --btn-warning-bg-active: #b45309; /* amber-700 */
+  --btn-warning-text: #ffffff;
+  --btn-warning-ring: var(--status-warning);
+  --btn-warning-disabled-bg: #fbbf24; /* amber-400 */
+
+  /* ============================================
+     TASK-192: Form Input Colors
+     ============================================ */
+  /* Input colors */
+  --input-bg: #374151;              /* gray-700 */
+  --input-bg-hover: #4b5563;        /* gray-600 */
+  --input-bg-disabled: #1f2937;     /* gray-800 */
+  --input-border: #4b5563;          /* gray-600 */
+  --input-border-hover: #6b7280;    /* gray-500 */
+  --input-border-focus: var(--color-primary);
+  --input-border-error: var(--status-error);
+  --input-border-success: var(--status-success);
+  --input-focus: var(--color-primary);
+  --input-ring: var(--color-primary);
+  --input-text: var(--text-primary);
+  --input-placeholder: #9ca3af;     /* gray-400 */
+  --input-label: var(--text-secondary);
+  --input-help: var(--text-muted);
+  --input-error: var(--status-error);
+  --input-success: var(--status-success);
+
+  /* Shadow colors */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+
+  /* Overlay */
+  --overlay-bg: rgba(0, 0, 0, 0.5);
+
+  /* Scrollbar */
+  --scrollbar-track: #1f2937;
+  --scrollbar-thumb: #4b5563;
+  --scrollbar-thumb-hover: #6b7280;
+
+  /* Map/Service area */
+  --service-area-border: #f59e42;
+  --service-area-fill: rgba(245, 158, 66, 0.08);
+
+  /* Sidebar */
+  --app-sidebar-bg: #111827;
+}
+
+/* ============================================
+   LIGHT THEME
+   ============================================ */
+[data-theme="light"] {
+  /* Background colors */
+  --bg-primary: #f9fafb;      /* gray-50 */
+  --bg-secondary: #ffffff;    /* white */
+  --bg-tertiary: #f3f4f6;     /* gray-100 */
+  --bg-hover: #e5e7eb;        /* gray-200 */
+  --bg-active: #d1d5db;       /* gray-300 */
+
+  /* Surface colors (cards, modals, panels) */
+  --surface-primary: #ffffff;   /* white */
+  --surface-secondary: #f9fafb; /* gray-50 */
+  --surface-elevated: #ffffff;  /* white */
+
+  /* Text colors */
+  --text-primary: #111827;    /* gray-900 */
+  --text-secondary: #374151;  /* gray-700 */
+  --text-tertiary: #6b7280;   /* gray-500 */
+  --text-muted: #9ca3af;      /* gray-400 */
+
+  /* Border colors */
+  --border-primary: #e5e7eb;  /* gray-200 */
+  --border-secondary: #d1d5db; /* gray-300 */
+  --border-hover: #9ca3af;    /* gray-400 */
+
+  /* ============================================
+     TASK-186: Semantic Color Tokens (Light)
+     ============================================ */
+  /* Primary - Main brand action color */
+  --color-primary: #2563eb;         /* blue-600 */
+  --color-primary-hover: #1d4ed8;   /* blue-700 */
+  --color-primary-active: #1e40af;  /* blue-800 */
+  --color-primary-light: rgba(37, 99, 235, 0.1);
+  
+  /* Secondary - Supporting actions */
+  --color-secondary: #4b5563;       /* gray-600 */
+  --color-secondary-hover: #374151; /* gray-700 */
+  --color-secondary-active: #1f2937;/* gray-800 */
+  --color-secondary-light: rgba(75, 85, 99, 0.1);
+  
+  /* Accent - Highlights and emphasis */
+  --color-accent: #7c3aed;          /* violet-600 */
+  --color-accent-hover: #6d28d9;    /* violet-700 */
+  --color-accent-active: #5b21b6;   /* violet-800 */
+  --color-accent-light: rgba(124, 58, 237, 0.1);
+  
+  /* Muted - Subtle, low-emphasis elements */
+  --color-muted: #6b7280;           /* gray-500 */
+  --color-muted-hover: #4b5563;     /* gray-600 */
+  --color-muted-light: rgba(107, 114, 128, 0.1);
+
+  /* Brand colors (legacy aliases) */
+  --brand-primary: var(--color-primary);
+  --brand-primary-hover: var(--color-primary-hover);
+  --brand-primary-active: var(--color-primary-active);
+  --brand-secondary: var(--color-accent);
+
+  /* ============================================
+     TASK-187: Status Colors (Light)
+     ============================================ */
+  /* Success - Positive outcomes (green) */
+  --status-success: #16a34a;        /* green-600 */
+  --status-success-hover: #15803d;  /* green-700 */
+  --status-success-bg: rgba(22, 163, 74, 0.1);
+  --status-success-border: rgba(22, 163, 74, 0.3);
+  --status-success-text: #15803d;   /* green-700 for better contrast */
+  
+  /* Warning - Caution states (amber) */
+  --status-warning: #d97706;        /* amber-600 */
+  --status-warning-hover: #b45309;  /* amber-700 */
+  --status-warning-bg: rgba(217, 119, 6, 0.1);
+  --status-warning-border: rgba(217, 119, 6, 0.3);
+  --status-warning-text: #b45309;   /* amber-700 for better contrast */
+  
+  /* Error - Failures, destructive (red) */
+  --status-error: #dc2626;          /* red-600 */
+  --status-error-hover: #b91c1c;    /* red-700 */
+  --status-error-bg: rgba(220, 38, 38, 0.1);
+  --status-error-border: rgba(220, 38, 38, 0.3);
+  --status-error-text: #b91c1c;     /* red-700 for better contrast */
+  
+  /* Info - Informational, neutral (blue) */
+  --status-info: #2563eb;           /* blue-600 */
+  --status-info-hover: #1d4ed8;     /* blue-700 */
+  --status-info-bg: rgba(37, 99, 235, 0.1);
+  --status-info-border: rgba(37, 99, 235, 0.3);
+  --status-info-text: #1d4ed8;      /* blue-700 for better contrast */
+
+  /* ============================================
+     TASK-188: Processing State Colors (Light)
+     ============================================ */
+  /* Queued - Waiting to process (yellow/amber) */
+  --processing-queued: #ca8a04;     /* yellow-600 */
+  --processing-queued-bg: rgba(202, 138, 4, 0.1);
+  --processing-queued-border: rgba(202, 138, 4, 0.3);
+  --processing-queued-text: #a16207;/* yellow-700 */
+  
+  /* Processing - Currently processing (blue) */
+  --processing-active: #2563eb;     /* blue-600 */
+  --processing-active-bg: rgba(37, 99, 235, 0.1);
+  --processing-active-border: rgba(37, 99, 235, 0.3);
+  --processing-active-text: #1d4ed8;/* blue-700 */
+  
+  /* Completed - Successfully processed (green) */
+  --processing-completed: #16a34a;  /* green-600 */
+  --processing-completed-bg: rgba(22, 163, 74, 0.1);
+  --processing-completed-border: rgba(22, 163, 74, 0.3);
+  --processing-completed-text: #15803d; /* green-700 */
+  
+  /* Error - Processing failed (red) */
+  --processing-error: #dc2626;      /* red-600 */
+  --processing-error-bg: rgba(220, 38, 38, 0.1);
+  --processing-error-border: rgba(220, 38, 38, 0.3);
+  --processing-error-text: #b91c1c; /* red-700 */
+  
+  /* Unprocessed/Idle (gray) */
+  --processing-idle: #4b5563;       /* gray-600 */
+  --processing-idle-bg: rgba(75, 85, 99, 0.1);
+  --processing-idle-border: rgba(75, 85, 99, 0.3);
+  --processing-idle-text: #374151;  /* gray-700 */
+
+  /* Processing status colors (legacy aliases) */
+  --status-unprocessed: var(--processing-idle);
+  --status-processing: var(--processing-active);
+  --status-processed: var(--processing-completed);
+
+  /* ============================================
+     TASK-189: Authorization State Colors (Light)
+     ============================================ */
+  /* Pending - Awaiting authorization (yellow/amber) */
+  --auth-pending: #d97706;          /* amber-600 */
+  --auth-pending-bg: rgba(217, 119, 6, 0.1);
+  --auth-pending-border: rgba(217, 119, 6, 0.3);
+  --auth-pending-text: #b45309;     /* amber-700 */
+  
+  /* Approved - Authorization granted (green) */
+  --auth-approved: #16a34a;         /* green-600 */
+  --auth-approved-bg: rgba(22, 163, 74, 0.1);
+  --auth-approved-border: rgba(22, 163, 74, 0.3);
+  --auth-approved-text: #15803d;    /* green-700 */
+  
+  /* Denied - Authorization refused (red) */
+  --auth-denied: #dc2626;           /* red-600 */
+  --auth-denied-bg: rgba(220, 38, 38, 0.1);
+  --auth-denied-border: rgba(220, 38, 38, 0.3);
+  --auth-denied-text: #b91c1c;      /* red-700 */
+  
+  /* No Authorization - Not requested (gray) */
+  --auth-none: #4b5563;             /* gray-600 */
+  --auth-none-bg: rgba(75, 85, 99, 0.1);
+  --auth-none-border: rgba(75, 85, 99, 0.3);
+  --auth-none-text: #374151;        /* gray-700 */
+
+  /* ============================================
+     TASK-191: Button Colors (Light)
+     ============================================ */
+  /* Primary Button */
+  --btn-primary-bg: var(--color-primary);
+  --btn-primary-bg-hover: var(--color-primary-hover);
+  --btn-primary-bg-active: var(--color-primary-active);
+  --btn-primary-text: #ffffff;
+  --btn-primary-ring: var(--color-primary);
+  --btn-primary-disabled-bg: #93c5fd; /* blue-300 */
+  
+  /* Secondary Button */
+  --btn-secondary-bg: var(--color-secondary);
+  --btn-secondary-bg-hover: var(--color-secondary-hover);
+  --btn-secondary-bg-active: var(--color-secondary-active);
+  --btn-secondary-text: #ffffff;
+  --btn-secondary-ring: var(--color-secondary);
+  --btn-secondary-disabled-bg: #d1d5db; /* gray-300 */
+  
+  /* Danger Button */
+  --btn-danger-bg: var(--status-error);
+  --btn-danger-bg-hover: var(--status-error-hover);
+  --btn-danger-bg-active: #991b1b;  /* red-800 */
+  --btn-danger-text: #ffffff;
+  --btn-danger-ring: var(--status-error);
+  --btn-danger-disabled-bg: #fca5a5; /* red-300 */
+  
+  /* Success Button */
+  --btn-success-bg: var(--status-success);
+  --btn-success-bg-hover: var(--status-success-hover);
+  --btn-success-bg-active: #166534; /* green-800 */
+  --btn-success-text: #ffffff;
+  --btn-success-ring: var(--status-success);
+  --btn-success-disabled-bg: #86efac; /* green-300 */
+  
+  /* Warning Button */
+  --btn-warning-bg: var(--status-warning);
+  --btn-warning-bg-hover: var(--status-warning-hover);
+  --btn-warning-bg-active: #92400e; /* amber-800 */
+  --btn-warning-text: #ffffff;
+  --btn-warning-ring: var(--status-warning);
+  --btn-warning-disabled-bg: #fcd34d; /* amber-300 */
+
+  /* ============================================
+     TASK-192: Form Input Colors (Light)
+     ============================================ */
+  /* Input colors */
+  --input-bg: #ffffff;              /* white */
+  --input-bg-hover: #f9fafb;        /* gray-50 */
+  --input-bg-disabled: #f3f4f6;     /* gray-100 */
+  --input-border: #d1d5db;          /* gray-300 */
+  --input-border-hover: #9ca3af;    /* gray-400 */
+  --input-border-focus: var(--color-primary);
+  --input-border-error: var(--status-error);
+  --input-border-success: var(--status-success);
+  --input-focus: var(--color-primary);
+  --input-ring: var(--color-primary);
+  --input-text: var(--text-primary);
+  --input-placeholder: #9ca3af;     /* gray-400 */
+  --input-label: var(--text-secondary);
+  --input-help: var(--text-muted);
+  --input-error: var(--status-error);
+  --input-success: var(--status-success);
+
+  /* Shadow colors */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+
+  /* Overlay */
+  --overlay-bg: rgba(0, 0, 0, 0.3);
+
+  /* Scrollbar */
+  --scrollbar-track: #f3f4f6;
+  --scrollbar-thumb: #d1d5db;
+  --scrollbar-thumb-hover: #9ca3af;
+
+  /* Map/Service area */
+  --service-area-border: #ea580c;
+  --service-area-fill: rgba(234, 88, 12, 0.08);
+
+  /* Sidebar */
+  --app-sidebar-bg: #ffffff;
+}
+
+/* ============================================
+   THEME TRANSITION (TASK-165)
+   ============================================ */
+html.theme-transition,
+html.theme-transition *,
+html.theme-transition *::before,
+html.theme-transition *::after {
+  transition: background-color 0.3s ease,
+              border-color 0.3s ease,
+              color 0.3s ease,
+              box-shadow 0.3s ease,
+              fill 0.3s ease,
+              stroke 0.3s ease !important;
+  transition-delay: 0s !important;
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+
+/* Background utilities */
+.bg-theme-primary { background-color: var(--bg-primary); }
+.bg-theme-secondary { background-color: var(--bg-secondary); }
+.bg-theme-tertiary { background-color: var(--bg-tertiary); }
+.bg-theme-surface { background-color: var(--surface-primary); }
+
+/* Text utilities */
+.text-theme-primary { color: var(--text-primary); }
+.text-theme-secondary { color: var(--text-secondary); }
+.text-theme-tertiary { color: var(--text-tertiary); }
+.text-theme-muted { color: var(--text-muted); }
+
+/* Border utilities */
+.border-theme-primary { border-color: var(--border-primary); }
+.border-theme-secondary { border-color: var(--border-secondary); }
+
+/* ============================================
+   TASK-190: Status Badge Styles
+   ============================================ */
+
+/* Plan Status Badges */
+.badge-idle {
+  background-color: var(--processing-idle-bg);
+  color: var(--processing-idle-text);
+  border-color: var(--processing-idle-border);
+}
+
+.badge-queued {
+  background-color: var(--processing-queued-bg);
+  color: var(--processing-queued-text);
+  border-color: var(--processing-queued-border);
+}
+
+.badge-processing {
+  background-color: var(--processing-active-bg);
+  color: var(--processing-active-text);
+  border-color: var(--processing-active-border);
+}
+
+.badge-completed {
+  background-color: var(--processing-completed-bg);
+  color: var(--processing-completed-text);
+  border-color: var(--processing-completed-border);
+}
+
+.badge-error {
+  background-color: var(--processing-error-bg);
+  color: var(--processing-error-text);
+  border-color: var(--processing-error-border);
+}
+
+/* Authorization Status Badges */
+.badge-auth-none {
+  background-color: var(--auth-none-bg);
+  color: var(--auth-none-text);
+  border-color: var(--auth-none-border);
+}
+
+.badge-auth-pending {
+  background-color: var(--auth-pending-bg);
+  color: var(--auth-pending-text);
+  border-color: var(--auth-pending-border);
+}
+
+.badge-auth-approved {
+  background-color: var(--auth-approved-bg);
+  color: var(--auth-approved-text);
+  border-color: var(--auth-approved-border);
+}
+
+.badge-auth-denied {
+  background-color: var(--auth-denied-bg);
+  color: var(--auth-denied-text);
+  border-color: var(--auth-denied-border);
+}
+
+/* Generic Status Badges */
+.badge-success {
+  background-color: var(--status-success-bg);
+  color: var(--status-success-text);
+  border-color: var(--status-success-border);
+}
+
+.badge-warning {
+  background-color: var(--status-warning-bg);
+  color: var(--status-warning-text);
+  border-color: var(--status-warning-border);
+}
+
+.badge-info {
+  background-color: var(--status-info-bg);
+  color: var(--status-info-text);
+  border-color: var(--status-info-border);
+}
+
+/* ============================================
+   TASK-191: Button Utility Classes
+   ============================================ */
+
+/* Base button styles */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 0.375rem;
+  transition: all 200ms ease;
+  cursor: pointer;
+}
+
+.btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--btn-primary-ring);
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Primary Button */
+.btn-primary {
+  background-color: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--btn-primary-bg-hover);
+}
+
+.btn-primary:active:not(:disabled) {
+  background-color: var(--btn-primary-bg-active);
+}
+
+.btn-primary:disabled {
+  background-color: var(--btn-primary-disabled-bg);
+}
+
+.btn-primary:focus {
+  box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--btn-primary-ring);
+}
+
+/* Secondary Button */
+.btn-secondary {
+  background-color: var(--btn-secondary-bg);
+  color: var(--btn-secondary-text);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--btn-secondary-bg-hover);
+}
+
+.btn-secondary:active:not(:disabled) {
+  background-color: var(--btn-secondary-bg-active);
+}
+
+.btn-secondary:disabled {
+  background-color: var(--btn-secondary-disabled-bg);
+}
+
+.btn-secondary:focus {
+  box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--btn-secondary-ring);
+}
+
+/* Danger Button */
+.btn-danger {
+  background-color: var(--btn-danger-bg);
+  color: var(--btn-danger-text);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background-color: var(--btn-danger-bg-hover);
+}
+
+.btn-danger:active:not(:disabled) {
+  background-color: var(--btn-danger-bg-active);
+}
+
+.btn-danger:disabled {
+  background-color: var(--btn-danger-disabled-bg);
+}
+
+.btn-danger:focus {
+  box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--btn-danger-ring);
+}
+
+/* Success Button */
+.btn-success {
+  background-color: var(--btn-success-bg);
+  color: var(--btn-success-text);
+}
+
+.btn-success:hover:not(:disabled) {
+  background-color: var(--btn-success-bg-hover);
+}
+
+.btn-success:active:not(:disabled) {
+  background-color: var(--btn-success-bg-active);
+}
+
+.btn-success:disabled {
+  background-color: var(--btn-success-disabled-bg);
+}
+
+.btn-success:focus {
+  box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--btn-success-ring);
+}
+
+/* Warning Button */
+.btn-warning {
+  background-color: var(--btn-warning-bg);
+  color: var(--btn-warning-text);
+}
+
+.btn-warning:hover:not(:disabled) {
+  background-color: var(--btn-warning-bg-hover);
+}
+
+.btn-warning:active:not(:disabled) {
+  background-color: var(--btn-warning-bg-active);
+}
+
+.btn-warning:disabled {
+  background-color: var(--btn-warning-disabled-bg);
+}
+
+.btn-warning:focus {
+  box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--btn-warning-ring);
+}
+
+/* Ghost/Outline Button Variants */
+.btn-ghost {
+  background-color: transparent;
+  color: var(--text-primary);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background-color: var(--bg-hover);
+}
+
+.btn-outline-primary {
+  background-color: transparent;
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+}
+
+.btn-outline-primary:hover:not(:disabled) {
+  background-color: var(--color-primary-light);
+}
+
+.btn-outline-danger {
+  background-color: transparent;
+  color: var(--status-error);
+  border: 1px solid var(--status-error);
+}
+
+.btn-outline-danger:hover:not(:disabled) {
+  background-color: var(--status-error-bg);
+}
+
+/* ============================================
+   TASK-192: Form Input Utility Classes
+   ============================================ */
+
+/* Base input styles */
+.input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  background-color: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 0.375rem;
+  color: var(--input-text);
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.input::placeholder {
+  color: var(--input-placeholder);
+}
+
+.input:hover:not(:disabled):not(:focus) {
+  border-color: var(--input-border-hover);
+  background-color: var(--input-bg-hover);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--input-border-focus);
+  box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--input-ring);
+}
+
+.input:disabled {
+  background-color: var(--input-bg-disabled);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Input with error state */
+.input-error {
+  border-color: var(--input-border-error);
+}
+
+.input-error:focus {
+  border-color: var(--input-border-error);
+  box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--status-error);
+}
+
+/* Input with success state */
+.input-success {
+  border-color: var(--input-border-success);
+}
+
+.input-success:focus {
+  border-color: var(--input-border-success);
+  box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--status-success);
+}
+
+/* Input label */
+.input-label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--input-label);
+}
+
+/* Input help text */
+.input-help {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--input-help);
+}
+
+/* Input error message */
+.input-error-msg {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--input-error);
+}
+
+/* Input group (label + input + help) */
+.input-group {
+  margin-bottom: 1rem;
+}
+
+/* Select input */
+.select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0.5rem center;
+  background-repeat: no-repeat;
+  background-size: 1.5em 1.5em;
+  padding-right: 2.5rem;
+}
+
+/* Checkbox and Radio */
+.checkbox,
+.radio {
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid var(--input-border);
+  background-color: var(--input-bg);
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.checkbox {
+  border-radius: 0.25rem;
+}
+
+.radio {
+  border-radius: 50%;
+}
+
+.checkbox:checked,
+.radio:checked {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.checkbox:focus,
+.radio:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--input-ring);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
