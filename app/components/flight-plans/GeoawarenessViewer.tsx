@@ -608,7 +608,7 @@ export function GeoawarenessViewer({
             {planId && (
               <MapContainer
                 center={center}
-                zoom={13}
+                zoom={bounds ? undefined : 13}
                 bounds={bounds || undefined}
                 className="w-full h-full"
                 style={{ background: '#f3f4f6', zIndex: 1 }}
@@ -659,7 +659,7 @@ export function GeoawarenessViewer({
                         center={[point.lat, point.lng]}
                         radius={idx === 0 || idx === trajectory.length - 1 ? 8 : 5}
                         pathOptions={{
-                          color: '#fff',
+                          color: '#000',
                           fillColor: getPointColor(point.type),
                           fillOpacity: 1,
                           weight: 2,
@@ -687,7 +687,7 @@ export function GeoawarenessViewer({
                         center={[simulatedPosition.lat, simulatedPosition.lng]}
                         radius={10}
                         pathOptions={{
-                          color: '#fff',
+                          color: '#000',
                           fillColor: '#f97316', // Orange for drone/simulation position
                           fillOpacity: 1,
                           weight: 3,
@@ -716,16 +716,8 @@ export function GeoawarenessViewer({
             {/* Overlay controls */}
             {planId && (
               <>
-                {/* Plan info overlay */}
-                <div className="absolute top-3 left-3 bg-[var(--surface-primary)]/95 backdrop-blur-sm rounded-lg px-3 py-2 shadow-md z-[1000]">
-                  <div className="text-xs text-[var(--text-tertiary)]">Flight Plan</div>
-                  <div className="text-sm font-medium text-[var(--text-primary)]">
-                    {planName || planId}
-                  </div>
-                </div>
-
                 {/* Status indicator */}
-                <div className="absolute top-3 right-3 bg-[var(--surface-primary)]/95 backdrop-blur-sm rounded-lg px-3 py-2 shadow-md z-[1000]">
+                <div className="absolute top-3 right-3 bg-gray-900/90 backdrop-blur-sm rounded-lg px-3 py-2 shadow-md z-[1000]">
                   <div className="flex items-center gap-2">
                     <div
                       className={`w-3 h-3 rounded-full ${
@@ -738,7 +730,7 @@ export function GeoawarenessViewer({
                           : 'bg-gray-400'
                       }`}
                     />
-                    <span className="text-xs font-medium text-[var(--text-secondary)]">
+                    <span className="text-xs font-medium text-white">
                       {hasViolations
                         ? `${violations.length} Violation${violations.length !== 1 ? 's' : ''}`
                         : !wsLoading && !wsError
@@ -754,7 +746,7 @@ export function GeoawarenessViewer({
 
                 {/* Geozone visibility toggle */}
                 {hasGeozones && (
-                  <div className="absolute bottom-24 right-3 bg-[var(--surface-primary)]/95 backdrop-blur-sm rounded-lg px-3 py-2 shadow-md z-[1000]">
+                  <div className="absolute bottom-24 right-3 bg-gray-900/90 backdrop-blur-sm rounded-lg px-3 py-2 shadow-md z-[1000]">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"
@@ -762,7 +754,7 @@ export function GeoawarenessViewer({
                         onChange={(e) => setShowGeozones(e.target.checked)}
                         className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
-                      <span className="text-xs text-[var(--text-secondary)]">
+                      <span className="text-xs text-white">
                         Show Geozones
                       </span>
                     </label>
