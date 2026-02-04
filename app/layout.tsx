@@ -3,8 +3,27 @@
 import "./globals.css";
 import { Footer } from "./components/footer";
 import { Header } from "./components/header";
+import { AuthProvider } from "./components/auth/auth-provider";
+import { ToastProvider } from "./components/ui/toast-provider";
+import { I18nProvider } from "./i18n";
 import React, { useEffect, useState } from "react";
 import { Modal } from "./components/ui/modal";
+
+/**
+ * Initialize theme before React hydration to prevent flash
+ * NOTE: Default is dark theme, NOT system preference
+ */
+function initializeTheme() {
+  if (typeof window === "undefined") return;
+  
+  const stored = localStorage.getItem("uas-planner-theme");
+  if (stored === "light") {
+    document.documentElement.setAttribute("data-theme", "light");
+  } else {
+    // Default to dark theme (do NOT check system preference)
+    document.documentElement.removeAttribute("data-theme");
+  }
+}
 
 export default function RootLayout({
   children,
@@ -14,6 +33,9 @@ export default function RootLayout({
   const [showDemoPopup, setShowDemoPopup] = useState(false);
 
   useEffect(() => {
+    // Initialize theme on mount
+    initializeTheme();
+    
     if (typeof window === "undefined") return;
     // Show if just logged in/signed up (sessionStorage flag)
     if (sessionStorage.getItem("showDemoPopupAfterAuth")) {
@@ -31,8 +53,11 @@ export default function RootLayout({
   }, []);
 
   return (
-    <html lang="en">
-      <body className="min-h-screen flex flex-col">
+    <html lang="en" suppressHydrationWarning>
+      <body className="min-h-screen flex flex-col bg-[var(--bg-primary)] text-[var(--text-primary)]">
+        <I18nProvider>
+        <AuthProvider>
+        <ToastProvider>
         <Header />
         <Modal
           open={showDemoPopup}
@@ -72,6 +97,9 @@ export default function RootLayout({
         </Modal>
         <main className="flex-1 flex flex-col">{children}</main>
         <Footer />
+        </ToastProvider>
+        </AuthProvider>
+        </I18nProvider>
       </body>
     </html>
   );

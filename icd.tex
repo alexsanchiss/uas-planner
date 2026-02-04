@@ -1,0 +1,739 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+\usepackage{hyperref}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{listings}
+\usepackage{xcolor}
+
+% JSON listing style
+\lstdefinestyle{json}{
+    basicstyle=\ttfamily\scriptsize,
+    breaklines=true,
+    frame=single,
+    backgroundcolor=\color{gray!10},
+    showstringspaces=false
+}
+
+% Prints paths/URLs in teletype and allows line breaks at separators.
+% Used inside tables to avoid overflow when showing endpoints.
+\newcommand{\icdendpoint}[1]{\begingroup\small\path{#1}\endgroup}
+
+\title{ SPIRIT \\ \small{ICD - V\_{2.0.0}}}
+\author{U-Plan Preparation Service (UPPS) \\ Álex Sanchis}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section*{Resumen}
+Este documento describe la(s) interfaz(ces) del sistema \textbf{UAS Planner} (parte de \textbf{U-Plan Preparation Service, UPPS}) dentro del contexto del proyecto \textbf{SPIRIT}. En particular, especifica:
+\begin{itemize}
+    \item La interfaz entre el \textbf{cliente web} (operador UAS) y el \textbf{backend UPPS} (API HTTP de Next.js).
+    \item La integración del backend con servicios externos: \textbf{FAS} (\textit{Flight Authorization Service}) y \textbf{Geoawareness Service}.
+    \item La integración \textbf{WebSocket} con el \textbf{Geoawareness Service} para obtención de geozonas y datos de U-space en tiempo real.
+    \item La coordinación del procesamiento distribuido de trayectorias mediante un \textbf{daemon de asignación} (\texttt{traj-assigner.js}) y \textbf{máquinas de proceso} (workers) que ejecutan el proyecto externo \texttt{traj-runner}.
+    \item El sistema de \textbf{regeneración automática de volúmenes de operación} para planes procesados.
+    \item El \textbf{workflow guiado de 5 pasos} para preparación, procesamiento y autorización de planes de vuelo.
+    \item Sistema de \textbf{visualización interactiva} con mapas Leaflet para trayectorias, waypoints y geozonas.
+\end{itemize}
+
+El objetivo de la interfaz es permitir que un usuario cargue planes de vuelo (típicamente exportados desde QGroundControl o generados directamente en la aplicación), que dichos planes se procesen para generar trayectorias (CSV) y, finalmente, que esas trayectorias puedan convertirse a \textbf{U-Plan} para su evaluación de geoawareness y envío al servicio de autorización (FAS).
+
+\subsection*{Novedades en V2.0.0 SPIRIT}
+\begin{itemize}
+    \item \textbf{Mejora general UI/UX}: Nuevo esquema visual, mejora de experiencia de usuario, optimización para escritorio y móvil.
+    \item \textbf{Sistema de temas dinámico}: Soporte completo para temas claro/oscuro con cambio instantáneo y persistencia en localStorage.
+    \item \textbf{Normalización de tiempos}: Las trayectorias CSV se normalizan automáticamente para iniciar en t=0s, independientemente del tiempo inicial de simulación.
+    \item \textbf{Regeneración automática de volúmenes}: Sistema que verifica cada 30 segundos planes procesados sin volúmenes y los regenera automáticamente.
+    \item \textbf{Viewer de trayectorias}: Visualización interactiva de trayectorias con mapas Leaflet, sustituyendo la descarga directa de CSV.
+    \item \textbf{Geoawareness mejorado}: Auto-centrado de mapas en trayectorias, visualización con marcadores reducidos y overlays optimizados.
+    \item \textbf{Gestión avanzada de folders}: Drag-and-drop para organización de planes, sección de planes huérfanos.
+    \item \textbf{Timestamps dinámicos en U-Plan}: Los campos \texttt{creationTime} y \texttt{updateTime} se actualizan automáticamente al momento del envío a FAS.
+    \item \textbf{Workflow optimizado}: Interfaz guiada de 5 pasos con indicadores de progreso, bloqueo de edición post-procesamiento y validaciones mejoradas.
+    \item \textbf{Arquitectura modular mejorada}: Componentes reutilizables organizados por funcionalidad con hooks especializados.
+\end{itemize}
+
+\section{Alcance de la Interfaz}
+\begin{itemize}
+    \item \textbf{Cliente web (navegador)}: interfaz React/Next.js utilizada por el operador para cargar planes, organizar carpetas, lanzar procesamiento, descargar CSV y gestionar el envío a autorización.
+    \item \textbf{Backend UPPS (Next.js API)}: endpoints HTTP bajo \icdendpoint{/api/*} que realizan operaciones CRUD sobre planes, carpetas y máquinas, y exponen endpoints especializados para \textbf{U-Plan} y \textbf{geoawareness}.
+    \item \textbf{Base de datos MySQL}: persistencia de usuarios, carpetas, planes, resultados CSV y estado de máquinas (gestionada con Prisma).
+    \item \textbf{Daemon de asignación de trabajos}: \texttt{traj-assigner.js} (Node.js) asigna planes en cola a máquinas disponibles mediante actualización de registros en BD.
+    \item \textbf{Workers de procesamiento}: máquinas/VMs externas (no incluidas en este repositorio) que ejecutan \texttt{traj-runner} y escriben resultados en BD (tabla \texttt{csvResult}) y estado del plan.
+    \item \textbf{Servicios externos}:
+    \begin{itemize}
+        \item \textbf{FAS} (Flight Authorization Service): recibe el U-Plan generado y posteriormente notifica el resultado al UPPS.
+        \item \textbf{Geoawareness Service}: proporciona datos de U-spaces y geozonas mediante conexión WebSocket en tiempo real. El cliente web se conecta a \texttt{ws://<GEOAWARENESS\_SERVICE\_IP>/ws/gas/\{USPACE\_ID\}} para recibir información actualizada de geozonas.
+    \end{itemize}
+    \item (Opcional) \textbf{noVNC/QGroundControl}: el frontend incluye un componente que embebe un \texttt{iframe} apuntando a \texttt{http://localhost:6080/} para visualizar/controlar una instancia VNC de QGroundControl.
+\end{itemize}
+
+\noindent\textbf{Fuera de alcance:} telemetría en tiempo real, control de aeronaves, enlaces MAVLink, o envío formal a autoridades (objetivos futuros descritos en \texttt{README.md}, no implementados completamente en el estado actual del repositorio).
+
+\section{Entradas y Salidas}
+\subsection*{Entradas}
+Las entradas al sistema UPPS se reciben principalmente como solicitudes HTTP (JSON) al backend, así como respuestas/callbacks de servicios externos y actualizaciones en base de datos realizadas por procesos internos.
+
+\subsubsection*{Entradas desde sistemas externos (FAS y Geoawareness)}
+\begin{longtable}{|p{5cm}|p{2.5cm}|p{2cm}|p{6cm}|}
+\hline
+	\textbf{Campo} & \textbf{Tipo de dato} & \textbf{Formato} & \textbf{Descripción} \\
+\hline
+\endfirsthead
+\hline
+	\textbf{Campo} & \textbf{Tipo de dato} & \textbf{Formato} & \textbf{Descripción} \\
+\hline
+\endhead
+\hline
+\endfoot
+\hline
+\endlastfoot
+FAS callback: endpoint & String & Ruta HTTP & Callback de FAS hacia UPPS: \texttt{PUT }\icdendpoint{/api/fas/<externalResponseNumber>}. \\
+\hline
+FAS callback: state & String & Texto & Campo \texttt{state} recibido en el callback. Si \texttt{state=ACCEPTED} se marca \texttt{authorizationStatus="aprobado"}; en caso contrario \texttt{"denegado"}. \\
+\hline
+FAS callback: message & String/Null & Texto & Campo \texttt{message} recibido en el callback; se persiste como \texttt{authorizationMessage}. \\
+\hline
+Geoawareness WS: endpoint & String & URL WebSocket & Conexión WebSocket a \texttt{ws://<IP>/ws/gas/\{USPACE\_ID\}}. El cliente se conecta especificando el identificador del U-space. \\
+\hline
+Geoawareness WS: message & Object & JSON & Mensaje WebSocket con estructura de 3 bloques: \texttt{uspace\_identifier}, \texttt{uspace\_data}, y \texttt{geozones} (FeatureCollection). Ver sección \ref{sec:geoawareness-ws-format}. \\
+\hline
+\end{longtable}
+
+\subsubsection*{Entradas desde sistemas internos (cliente web, procesos internos y BD)}
+\begin{longtable}{|p{5cm}|p{2.5cm}|p{2cm}|p{6cm}|}
+\hline
+	\textbf{Campo} & \textbf{Tipo de dato} & \textbf{Formato} & \textbf{Descripción} \\
+\hline
+\endfirsthead
+\hline
+	\textbf{Campo} & \textbf{Tipo de dato} & \textbf{Formato} & \textbf{Descripción} \\
+\hline
+\endhead
+\hline
+\endfoot
+\hline
+\endlastfoot
+
+userId & Integer & id BD & Identificador del usuario (parámetros/relación). Por ejemplo: \texttt{GET }\icdendpoint{/api/flightPlans?userId=...} y \texttt{GET }\icdendpoint{/api/folders?userId=...}. \\
+\hline
+folderId & Integer/Null & id BD & Carpeta destino de un plan (opcional en creación/actualización). \\
+\hline
+customName & String & UTF-8 & Nombre del plan. En la UI suele derivar del nombre de fichero sin extensión. \\
+\hline
+fileContent & String & Texto & Contenido del plan cargado desde QGroundControl (enviado como texto). Se guarda en \texttt{flightPlan.fileContent}. \\
+\hline
+status & String & Enumerado & Estado de plan: \texttt{sin procesar}, \texttt{en cola}, \texttt{procesando}, \texttt{procesado}, \texttt{error}. \\
+\hline
+scheduledAt & String/Null & ISO-8601 & Fecha/hora programada del vuelo. Obligatoria para geoawareness y generación/envío de U-Plan. \\
+\hline
+uplan & Object/String & JSON & Detalles de U-Plan aportados por el usuario (opcional). Se utiliza para rellenar campos del U-Plan final. \\
+\hline
+authorizationStatus & String & Enumerado & Estado local de autorización (persistido en BD): \texttt{sin autorización} (por defecto), \texttt{aprobado}, \texttt{denegado}. \\
+\hline
+authorizationMessage & String/Object & Texto/JSON & Mensaje asociado a la autorización (errores, feedback, etc.). \\
+\hline
+externalResponseNumber & String/Null & Texto & Identificador devuelto por FAS tras envío del U-Plan; se usa para correlación del callback. \\
+\hline
+geoawarenessData & Object/Null & JSON & Campo JSON en BD para almacenar datos de geoawareness asociados al plan. \\
+\hline
+Auth: email/password & String & UTF-8 & Credenciales recibidas en \texttt{POST }\icdendpoint{/api/auth/signup} y \texttt{POST }\icdendpoint{/api/auth/login}. \\
+\hline
+Auth: Authorization header & String & Bearer JWT & Cabecera \texttt{Authorization: Bearer <token>} requerida en \texttt{GET }\icdendpoint{/api/user}. \\
+\hline
+\end{longtable}
+
+\subsection*{Salidas}
+Las salidas del sistema consisten en respuestas HTTP al cliente web y en peticiones HTTP a servicios externos (FAS y geoawareness).
+\subsubsection*{Salidas hacia sistemas externos (FAS y Geoawareness)}
+\begin{longtable}{|p{5cm}|p{2.5cm}|p{2cm}|p{6cm}|}
+\hline
+    \textbf{Campo} & \textbf{Tipo de dato} & \textbf{Formato} & \textbf{Descripción} \\
+\hline
+\endfirsthead
+\hline
+    \textbf{Campo} & \textbf{Tipo de dato} & \textbf{Formato} & \textbf{Descripción} \\
+\hline
+\endhead
+\hline
+\endfoot
+\hline
+\endlastfoot
+HTTP request a FAS & JSON & application/json & \texttt{POST }\icdendpoint{<FAS_API_URL>} (si no se define \texttt{FAS\_ENDPOINT}, se usa el path \icdendpoint{/uplan}). Cuerpo: U-Plan. Cabecera: \texttt{Content-Type: application/json}. \\
+\hline
+WebSocket connection a Geoawareness & N/A & WebSocket & Conexión WebSocket a \texttt{ws://<GEOAWARENESS\_SERVICE\_IP>/ws/gas/\{USPACE\_ID\}}. El cliente establece la conexión y recibe actualizaciones en tiempo real. \\
+\hline
+\end{longtable}
+
+\subsubsection*{Salidas hacia sistemas internos (respuestas de la API al cliente web)}
+\begin{longtable}{|p{5cm}|p{2.5cm}|p{2cm}|p{6cm}|}
+\hline
+    \textbf{Campo} & \textbf{Tipo de dato} & \textbf{Formato} & \textbf{Descripción} \\
+\hline
+\endfirsthead
+\hline
+    \textbf{Campo} & \textbf{Tipo de dato} & \textbf{Formato} & \textbf{Descripción} \\
+\hline
+\endhead
+\hline
+\endfoot
+\hline
+\endlastfoot
+
+FlightPlan & JSON & -- & Objeto de plan devuelto por \icdendpoint{/api/flightPlans} (incluye campos de BD; en listados incluye \texttt{folder}). \\
+\hline
+Folder & JSON & -- & Objeto de carpeta devuelto por \icdendpoint{/api/folders}. \\
+\hline
+Machine & JSON & -- & Objeto de máquina devuelto por \icdendpoint{/api/machines}. \\
+\hline
+Bulk counters & Integer & -- & \texttt{createdCount} (creación bulk) y \texttt{count} (actualización bulk) en \icdendpoint{/api/flightPlans}. \\
+\hline
+CSV (individual) & String & CSV texto & \texttt{GET }\icdendpoint{/api/csvResult?id=...} devuelve \texttt{\{csvResult: "..."\}}. \\
+\hline
+CSV bulk items & Array & JSON & \texttt{POST }\icdendpoint{/api/csvResult} devuelve \texttt{\{items:[\{id,customName,csvResult\}]\}}. \\
+\hline
+Delete report & JSON & -- & \texttt{DELETE }\icdendpoint{/api/flightPlans} devuelve conteos: \texttt{deletedPlans}, \texttt{deletedCsvs}, \texttt{totalDeleted}. \\
+\hline
+U-Plan generado & JSON & application/json & \texttt{POST }\icdendpoint{/api/flightPlans/<id>/uplan} devuelve \texttt{\{uplan, authorizationMessage\}}. \\
+\hline
+Geoawareness result & JSON & -- & \texttt{POST }\icdendpoint{/api/flightPlans/<id>/geoawareness} devuelve \texttt{geozones}, \texttt{trajectory}, \texttt{uplan}, \texttt{hasConflicts}, \texttt{serviceAvailable}, \texttt{planName}. \\
+\hline
+Auth token & String & JWT & \texttt{POST }\icdendpoint{/api/auth/login} devuelve \texttt{\{token\}}. \\
+\hline
+\end{longtable}
+
+\subsection*{Formato CSV de trayectoria (mínimo requerido)}
+El conversor \texttt{trayToUplan} y el endpoint de geoawareness asumen un CSV con \textbf{encabezados} que incluya al menos las columnas: \texttt{SimTime}, \texttt{Lat}, \texttt{Lon}, \texttt{Alt}. Para geoawareness, la trayectoria para el mapa se extrae asumiendo que \texttt{Lat} y \texttt{Lon} están en las posiciones 2 y 3 (1-indexed) al separar por comas.
+
+\subsection*{Formato U-Plan (salida generada, alto nivel)}
+El U-Plan se genera a partir del CSV y \texttt{scheduledAt} y contiene una lista de \texttt{operationVolumes} (polígonos GeoJSON con ventana temporal y límites verticales). Los campos adicionales (operador, UAS, categorías, etc.) se rellenan desde \texttt{flightPlan.uplan} si se proporciona; en caso contrario, se generan valores por defecto/aleatorios.
+
+\section{Protocolos y Transporte}
+\begin{itemize}
+    \item \textbf{Cliente web $\leftrightarrow$ UPPS}: HTTP (Next.js). Puerto expuesto típicamente: \texttt{3000}.
+    \begin{itemize}
+        \item Rutas API (\texttt{pages/api/*}): REST-like sobre HTTP con payload JSON.
+        \item Límite de cuerpo (body parser): \texttt{50mb} en \icdendpoint{/api/flightPlans} y \texttt{10mb} en \icdendpoint{/api/csvResult}.
+    \end{itemize}
+    \item \textbf{UPPS $\leftrightarrow$ MySQL}: Prisma se conecta a MySQL mediante \texttt{DATABASE\_URL}. En el ejemplo de configuración, MySQL usa el puerto \texttt{3306}.
+    \item \textbf{UPPS $\rightarrow$ FAS}: HTTP \texttt{POST} sin TLS a \texttt{http://<FAS\_IP>/<FAS\_ENDPOINT>}. Si \texttt{FAS\_ENDPOINT} no existe, se usa el path \texttt{uplan}. Content-Type: \texttt{application/json}.
+    \item \textbf{FAS $\rightarrow$ UPPS}: HTTP \texttt{PUT} a \icdendpoint{/api/fas/<externalResponseNumber>} con JSON \texttt{\{state, message\}}.
+    \item \textbf{Cliente web $\leftrightarrow$ Geoawareness (WebSocket)}: El cliente web establece una conexión WebSocket directa con el servicio Geoawareness:
+    \begin{itemize}
+        \item \textbf{Endpoint}: \texttt{ws://<GEOAWARENESS\_SERVICE\_IP>/ws/gas/\{USPACE\_ID\}}
+        \item \textbf{Protocolo}: WebSocket (RFC 6455)
+        \item \textbf{Reconexión}: Backoff exponencial con retries (1s, 2s, 4s, 8s, 16s, máx. 5 intentos)
+        \item \textbf{Formato de mensaje}: JSON con estructura de 3 bloques (ver sección \ref{sec:geoawareness-ws-format})
+        \item \textbf{Fallback}: Si la conexión WebSocket falla después de 5 intentos, el sistema carga datos estáticos de geozonas desde \texttt{/api/deprecated/geoawareness-geozones}
+    \end{itemize}
+    \item \textbf{(Deprecated) UPPS $\rightarrow$ Geoawareness HTTP}: El endpoint HTTP \texttt{POST }\icdendpoint{/geozones\_searcher\_by\_volumes} está deprecado. Usar WebSocket para nuevas integraciones.
+    \item \textbf{(Opcional) noVNC/QGroundControl}: la UI incluye un \texttt{iframe} a \texttt{http://localhost:6080/}. Este transporte depende de que noVNC esté levantado localmente.
+    \item \textbf{Autenticación}:
+    \begin{itemize}
+        \item \texttt{POST }\icdendpoint{/api/auth/login} devuelve un JWT.
+        \item \texttt{GET }\icdendpoint{/api/user} requiere \texttt{Authorization: Bearer <token>}.
+        \item Los endpoints bajo \texttt{pages/api/*} no aplican verificación JWT en el estado actual del repositorio.
+    \end{itemize}
+\end{itemize}
+
+\section{Identificadores y Convenciones}
+\begin{itemize}
+    \item \textbf{IDs de recursos (BD)}: todos los identificadores principales son enteros autoincrementales (\texttt{user.id}, \texttt{folder.id}, \texttt{flightPlan.id}, \texttt{machine.id}, \texttt{csvResult.id}).
+    \item \textbf{Convención clave plan--CSV}: el borrado unificado asume \texttt{flightPlan.id == csvResult.id} (se eliminan CSVs con los mismos IDs que los planes borrados).
+    \item \textbf{Correlación FAS}: \texttt{externalResponseNumber} (string) identifica el plan en el callback \icdendpoint{/api/fas/<externalResponseNumber>}.
+    \item \textbf{Estados de procesamiento}:
+    \begin{itemize}
+        \item \texttt{flightPlan.status}: \texttt{sin procesar}, \texttt{en cola}, \texttt{procesando}, \texttt{procesado}, \texttt{error}.
+        \item \texttt{machine.status}: \texttt{Disponible}, \texttt{Ocupada}.
+        \item \texttt{flightPlan.authorizationStatus}: por defecto \texttt{sin autorización}; actualizaciones a \texttt{aprobado} o \texttt{denegado} tras callback FAS.
+    \end{itemize}
+    \item \textbf{Unidades/formatos}:
+    \begin{itemize}
+        \item \texttt{scheduledAt}: ISO-8601 (string) en API/BD.
+        \item CSV: lat/lon en grados decimales; altitud numérica.
+        \item U-Plan: geometrías GeoJSON con orden \texttt{[lon, lat]}.
+        \item Altitudes en U-Plan: \texttt{uom="M"} y \texttt{reference="AGL"}.
+    \end{itemize}
+\end{itemize}
+
+\section{Sincronización y Temporización}
+\begin{itemize}
+    \item \textbf{Asignación de planes a máquinas}: el proceso \texttt{traj-assigner.js} ejecuta asignación cada \textbf{10 ms} (\texttt{setInterval(assignNextPlan, 10)}).
+    \item \textbf{Limpieza automática de CSV pequeños}: el mismo proceso ejecuta limpieza periódica cada \textbf{5 minutos} (\texttt{setInterval(cleanSmallCsvResults, 60 * 5000)}).
+    \item \textbf{Regeneración automática de volúmenes}: el hook \texttt{useVolumeRegeneration} ejecuta verificación cada \textbf{30 segundos} para planes procesados sin volúmenes de operación.
+    \item \textbf{Polling de estado de planes}: el hook \texttt{useFlightPlans} actualiza automáticamente el estado cada \textbf{5 segundos} cuando está habilitado.
+    \item \textbf{Geoawareness WebSocket}:
+    \begin{itemize}
+        \item Reconexión con backoff exponencial: 1s, 2s, 4s, 8s, 16s (máximo 5 intentos).
+        \item Fallback a HTTP después de agotar intentos.
+    \end{itemize}
+    \item \textbf{Normalización de tiempos de trayectoria}: 
+    \begin{itemize}
+        \item Parser CSV normaliza todos los tiempos para iniciar en \texttt{t=0s}.
+        \item Se aplica en: \texttt{parseCSVToTrajectory} (GeoawarenessViewer, TrajectoryMapViewer).
+        \item Se aplica en: \texttt{trayToUplan} para generación de volúmenes con tiempos correctos.
+    \end{itemize}
+    \item \textbf{Actualización de timestamps U-Plan}: \texttt{creationTime} y \texttt{updateTime} se actualizan al momento exacto del envío a FAS (ISO-8601 UTC).
+    \item \textbf{JWT}: expiración del token de \textbf{1 día}.
+    \item \textbf{Límites operacionales de la API (bulk)}:
+    \begin{itemize}
+        \item \icdendpoint{/api/csvResult}: máximo \texttt{5000} IDs por request (POST/DELETE bulk).
+        \item \icdendpoint{/api/flightPlans}: el endpoint acepta hasta \texttt{100000} IDs en actualizaciones/borrados bulk; las actualizaciones por-item se trocean en chunks de 200 operaciones por transacción.
+    \end{itemize}
+\end{itemize}
+\section{Gestión de Errores}
+\begin{itemize}
+    \item \textbf{Códigos HTTP usados}:
+    \begin{itemize}
+        \item \texttt{200}: operación correcta.
+        \item \texttt{201}: recurso creado.
+        \item \texttt{204}: borrado correcto sin contenido.
+        \item \texttt{400}: parámetros inválidos o campos requeridos ausentes.
+        \item \texttt{401}: autenticación requerida o token inválido (\icdendpoint{/api/user}).
+        \item \texttt{404}: recurso no encontrado.
+        \item \texttt{405}: método no permitido.
+        \item \texttt{500}: error interno (BD/red/errores no controlados).
+    \end{itemize}
+    \item \textbf{Errores en integración FAS}:
+    \begin{itemize}
+        \item Si el \texttt{POST} a FAS falla con respuesta HTTP, el sistema marca \texttt{authorizationStatus="denegado"} y devuelve \texttt{400} con \texttt{\{error:"denegado", message: ...\}}.
+        \item Si falla sin respuesta (timeout/red), marca \texttt{denegado} y devuelve \texttt{500} con mensaje.
+    \end{itemize}
+    \item \textbf{Geoawareness fallback}:
+    \begin{itemize}
+        \item Si el servicio no está configurado o no responde, el endpoint devuelve una respuesta mock y marca \texttt{serviceAvailable=false}.
+    \end{itemize}
+    \item \textbf{Recuperación del pipeline de trayectorias}:
+    \begin{itemize}
+        \item Un plan puede re-ponerse en \texttt{en cola} desde la UI (\texttt{PUT }\icdendpoint{/api/flightPlans}).
+        \item \texttt{traj-assigner.js} reencola automáticamente planes procesados cuyo CSV asociado es menor a 2 KB (criterio implementado en BD).
+        \item \texttt{machine-cleaner.js} borra todas las máquinas y reencola planes en \texttt{procesando} a \texttt{en cola}.
+    \end{itemize}
+\end{itemize}
+
+\section{Versionado y Control de Cambios}
+\begin{itemize}
+    \item \textbf{Versión del ICD}: \texttt{V\_2.0.0}.
+    \item \textbf{Versión de la aplicación}: \texttt{v2.0.0 SPIRIT} (versión de producción con mejoras significativas de UX y arquitectura).
+    \item \textbf{Cambios en v2.0.0 SPIRIT}:
+    \begin{itemize}
+        \item \textbf{UI/UX Mejorado}: Sistema de temas dinámico (claro/oscuro) con CSS variables y persistencia.
+        \item \textbf{Normalización de tiempos}: Trayectorias CSV normalizadas para iniciar en t=0s, eliminando offsets temporales.
+        \item \textbf{Auto-regeneración de volúmenes}: Hook \texttt{useVolumeRegeneration} activo por defecto, verifica cada 30s planes procesados sin volúmenes.
+        \item \textbf{Viewer de trayectorias mejorado}: Componente \texttt{TrajectoryMapViewer} con mapas Leaflet interactivos y análisis detallado.
+        \item \textbf{Geoawareness avanzado}: Auto-centrado de mapa en trayectoria, marcadores reducidos (5/3px), overlays oscuros consistentes.
+        \item \textbf{WebSocket optimizado}: Manejo de errores mejorado, no muestra errores durante conexión inicial, fallback híbrido.
+        \item \textbf{Gestión de folders}: Drag-and-drop completo, sección de planes huérfanos, operaciones de renombrado y movimiento.
+        \item \textbf{Timestamps dinámicos}: \texttt{creationTime} y \texttt{updateTime} del U-Plan se actualizan al momento del envío a FAS.
+        \item \textbf{Workflow de 5 pasos}: Select → DateTime → Process → Geoawareness → Authorize con indicadores visuales.
+        \item \textbf{Arquitectura modular}: Componentes organizados en \texttt{app/components/flight-plans/} con hooks especializados.
+        \item \textbf{Endpoints optimizados}:
+        \begin{itemize}
+            \item \texttt{POST /api/flightPlans/regenerate-volumes}: Regeneración automática de volúmenes.
+            \item \texttt{POST /api/flightPlans/[id]/reset}: Reset completo de plan a estado inicial.
+            \item Mejoras en filtrado de planes procesados (\texttt{status='procesado'}, \texttt{csvResult=1}).
+        \end{itemize}
+    \end{itemize}
+    \item \textbf{Cambios en v1.0.0} (referencia histórica):
+    \begin{itemize}
+        \item Migración de Geoawareness de HTTP polling a WebSocket para obtención de geozonas en tiempo real.
+        \item Nuevo endpoint WebSocket: \texttt{ws://<IP>/ws/gas/\{USPACE\_ID\}}.
+        \item Nuevo formato de mensaje de geoawareness con 3 bloques estructurados.
+        \item Deprecación del endpoint HTTP \texttt{POST /geozones\_searcher\_by\_volumes}.
+        \item Sistema de fallback híbrido (WebSocket primario, HTTP legacy como backup).
+    \end{itemize}
+    \item \textbf{Control de cambios de interfaz}:
+    \begin{itemize}
+        \item El sistema introduce un patrón de \textit{API unificada} donde \icdendpoint{/api/flightPlans} y \icdendpoint{/api/csvResult} concentran operaciones individuales y bulk.
+        \item El endpoint \icdendpoint{/api/flightPlans/[id]} se declara \textit{deprecated} (placeholder) y no debe usarse para nuevas integraciones.
+        \item Para compatibilidad hacia atrás, se recomienda mantener campos opcionales (p.ej. \texttt{geoawarenessData}, \texttt{authorizationMessage}) sin romper respuestas existentes.
+        \item El endpoint HTTP de geoawareness está movido a \icdendpoint{/api/deprecated/geoawareness-geozones} y solo debe usarse como fallback.
+        \item Nuevo sistema de regeneración automática opera de forma transparente sin intervención del usuario.
+    \end{itemize}
+\end{itemize}
+
+\section{Integración WebSocket con Geoawareness Service}
+\label{sec:geoawareness-ws-format}
+
+\subsection{Conexión WebSocket}
+El cliente web establece conexión WebSocket directamente con el servicio Geoawareness para obtener datos de geozonas en tiempo real.
+
+\begin{itemize}
+    \item \textbf{URL}: \texttt{ws://<GEOAWARENESS\_SERVICE\_IP>/ws/gas/\{USPACE\_ID\}}
+    \item \textbf{Parámetro path}: \texttt{USPACE\_ID} -- Identificador del U-space (ej: \texttt{VLCUspace})
+    \item \textbf{Protocolo}: WebSocket (RFC 6455)
+    \item \textbf{Content-Type mensajes}: \texttt{application/json}
+\end{itemize}
+
+\subsection{Estados de Conexión}
+El hook \texttt{useGeoawarenessWebSocket} gestiona los siguientes estados:
+\begin{itemize}
+    \item \texttt{connecting}: Estableciendo conexión WebSocket
+    \item \texttt{connected}: Conexión activa, recibiendo datos
+    \item \texttt{disconnected}: Conexión cerrada
+    \item \texttt{error}: Error en la conexión
+\end{itemize}
+
+\subsection{Reconexión Automática}
+El sistema implementa reconexión automática con backoff exponencial:
+\begin{itemize}
+    \item Intentos máximos: 5
+    \item Delays: 1s $\rightarrow$ 2s $\rightarrow$ 4s $\rightarrow$ 8s $\rightarrow$ 16s
+    \item Tras agotar intentos: Fallback a endpoint HTTP deprecado
+\end{itemize}
+
+\subsection{Formato de Mensaje WebSocket}
+El mensaje WebSocket se estructura en 3 bloques principales:
+
+\subsubsection{Bloque 1: Campos de Control}
+\begin{longtable}{|p{4cm}|p{2.5cm}|p{8.5cm}|}
+\hline
+\textbf{Campo} & \textbf{Tipo} & \textbf{Descripción} \\
+\hline
+\endfirsthead
+\hline
+\textbf{Campo} & \textbf{Tipo} & \textbf{Descripción} \\
+\hline
+\endhead
+\hline
+\endfoot
+\hline
+\endlastfoot
+uspace\_identifier & String & Identificador único del U-space (ej: ``VLCUspace'') \\
+\hline
+timestamp & String (ISO-8601) & Momento de generación del mensaje \\
+\hline
+\end{longtable}
+
+\subsubsection{Bloque 2: Datos del U-space (uspace\_data)}
+Objeto GeoJSON Feature que describe el área del U-space:
+
+\begin{longtable}{|p{4cm}|p{2.5cm}|p{8.5cm}|}
+\hline
+\textbf{Campo} & \textbf{Tipo} & \textbf{Descripción} \\
+\hline
+\endfirsthead
+\hline
+\textbf{Campo} & \textbf{Tipo} & \textbf{Descripción} \\
+\hline
+\endhead
+\hline
+\endfoot
+\hline
+\endlastfoot
+type & String & Siempre ``Feature'' \\
+\hline
+id & Integer & Identificador numérico del U-space \\
+\hline
+bbox & Array[Float] & Bounding box [minLon, minLat, maxLon, maxLat] \\
+\hline
+name & String & Nombre legible del U-space \\
+\hline
+source & String & Origen de los datos \\
+\hline
+geometry.type & String & Tipo de geometría (``Polygon'', ``MultiPolygon'') \\
+\hline
+geometry.coordinates & Array & Coordenadas GeoJSON [[[lon,lat],...]] \\
+\hline
+geometry.verticalReference & Object & Límites verticales (ver tabla siguiente) \\
+\hline
+geometry.sub\_type & String & Subtipo de geometría \\
+\hline
+geometry.radius & Float & Radio para geometrías circulares \\
+\hline
+properties.identifier & String & Identificador formal del U-space \\
+\hline
+properties.country & String & País (código ISO) \\
+\hline
+properties.type & String & Tipo de zona \\
+\hline
+properties.region & String & Región geográfica \\
+\hline
+\end{longtable}
+
+\subsubsection{Referencia Vertical (verticalReference)}
+\begin{longtable}{|p{4cm}|p{2.5cm}|p{8.5cm}|}
+\hline
+\textbf{Campo} & \textbf{Tipo} & \textbf{Descripción} \\
+\hline
+\endfirsthead
+\hline
+\textbf{Campo} & \textbf{Tipo} & \textbf{Descripción} \\
+\hline
+\endhead
+\hline
+\endfoot
+\hline
+\endlastfoot
+upper & Float & Límite superior de altitud \\
+\hline
+upperReference & String & Referencia del límite superior (``AGL'', ``AMSL'') \\
+\hline
+lower & Float & Límite inferior de altitud \\
+\hline
+lowerReference & String & Referencia del límite inferior (``AGL'', ``AMSL'') \\
+\hline
+uom & String & Unidad de medida (``M'' para metros) \\
+\hline
+\end{longtable}
+
+\subsubsection{Condiciones de Restricción (restrictionConditions)}
+\begin{longtable}{|p{4cm}|p{2.5cm}|p{8.5cm}|}
+\hline
+\textbf{Campo} & \textbf{Tipo} & \textbf{Descripción} \\
+\hline
+\endfirsthead
+\hline
+\textbf{Campo} & \textbf{Tipo} & \textbf{Descripción} \\
+\hline
+\endhead
+\hline
+\endfoot
+\hline
+\endlastfoot
+uasClass & Array[String] & Clases de UAS permitidas (``C0'', ``C1'', ``C2'', etc.) \\
+\hline
+authorized & String & Tipo de autorización requerida \\
+\hline
+uasCategory & Array[String] & Categorías de operación permitidas \\
+\hline
+uasOperationMode & Array[String] & Modos de operación (``VLOS'', ``BVLOS'') \\
+\hline
+maxNoise & Float & Nivel máximo de ruido permitido (dB) \\
+\hline
+specialOperation & String & Operaciones especiales permitidas \\
+\hline
+photograph & String & Restricciones de fotografía \\
+\hline
+\end{longtable}
+
+\subsubsection{Autoridad de Zona (zoneAuthority)}
+\begin{longtable}{|p{4cm}|p{2.5cm}|p{8.5cm}|}
+\hline
+\textbf{Campo} & \textbf{Tipo} & \textbf{Descripción} \\
+\hline
+\endfirsthead
+\hline
+\textbf{Campo} & \textbf{Tipo} & \textbf{Descripción} \\
+\hline
+\endhead
+\hline
+\endfoot
+\hline
+\endlastfoot
+name & String & Nombre de la autoridad \\
+\hline
+service & String & Tipo de servicio \\
+\hline
+SiteURL & String & URL del sitio web \\
+\hline
+email & String & Email de contacto \\
+\hline
+phone & String & Teléfono de contacto \\
+\hline
+purpose & String & Propósito de la zona \\
+\hline
+intervalBefore & String & Tiempo de antelación requerido \\
+\hline
+contactName & String & Nombre del contacto \\
+\hline
+\end{longtable}
+
+\subsubsection{Aplicabilidad Limitada (limitedApplicability)}
+\begin{longtable}{|p{4cm}|p{2.5cm}|p{8.5cm}|}
+\hline
+\textbf{Campo} & \textbf{Tipo} & \textbf{Descripción} \\
+\hline
+\endfirsthead
+\hline
+\textbf{Campo} & \textbf{Tipo} & \textbf{Descripción} \\
+\hline
+\endhead
+\hline
+\endfoot
+\hline
+\endlastfoot
+startDatetime & String (ISO-8601) & Inicio de validez de la restricción \\
+\hline
+endDatetime & String (ISO-8601) & Fin de validez de la restricción \\
+\hline
+schedule.day & Array[String] & Días de la semana aplicables \\
+\hline
+schedule.startTime & String & Hora de inicio (HH:MM) \\
+\hline
+schedule.startEvent & String & Evento de inicio \\
+\hline
+schedule.endTime & String & Hora de fin (HH:MM) \\
+\hline
+schedule.endEvent & String & Evento de fin \\
+\hline
+\end{longtable}
+
+\subsubsection{Bloque 3: Geozonas (geozones)}
+FeatureCollection GeoJSON con las geozonas asociadas al U-space. Cada Feature tiene la misma estructura que \texttt{uspace\_data} (geometría, properties con restrictionConditions, zoneAuthority, limitedApplicability).
+
+\subsection{Ejemplo de Mensaje WebSocket}
+\begin{lstlisting}[style=json]
+{
+  "uspace_identifier": "VLCUspace",
+  "timestamp": "2026-02-03T10:00:00Z",
+  "uspace_data": {
+    "type": "Feature",
+    "id": 1,
+    "name": "Valencia U-space",
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [[[-0.5, 39.4], [-0.3, 39.4], [-0.3, 39.6], [-0.5, 39.6], [-0.5, 39.4]]],
+      "verticalReference": {
+        "upper": 120, "upperReference": "AGL",
+        "lower": 0, "lowerReference": "AGL", "uom": "M"
+      }
+    },
+    "properties": {
+      "identifier": "USP-ESP-VLC-01",
+      "country": "ESP",
+      "type": "uspace"
+    }
+  },
+  "geozones": {
+    "type": "FeatureCollection",
+    "features": [
+      {
+        "type": "Feature",
+        "geometry": { "type": "Polygon", "coordinates": [...] },
+        "properties": {
+          "identifier": "GZ_001",
+          "type": "prohibited",
+          "restrictionConditions": { "uasClass": ["C0", "C1"], ... },
+          "zoneAuthority": { "name": "AESA", "email": "...", ... },
+          "limitedApplicability": { "startDatetime": "...", ... }
+        }
+      }
+    ]
+  }
+}
+\end{lstlisting}
+
+\subsection{Sistema de Fallback}
+Si la conexión WebSocket falla después de 5 intentos de reconexión, el sistema activa automáticamente un fallback HTTP:
+
+\begin{itemize}
+    \item \textbf{Endpoint fallback}: \texttt{GET /api/deprecated/geoawareness-geozones}
+    \item \textbf{Fuente de datos}: \texttt{lib/geozones/geozones\_dataFrame.geojson}
+    \item \textbf{Formato}: GeoJSON FeatureCollection (formato legacy)
+    \item \textbf{Normalización}: El componente \texttt{geozone-normalizer.ts} convierte ambos formatos a una estructura común
+\end{itemize}
+
+\section*{Anexos}
+\subsection*{A. Variables de entorno (según \texttt{.env.example} y código)}
+\begin{itemize}
+    \item \texttt{DATABASE\_URL}: conexión MySQL (ejemplo: \texttt{mysql://USER@HOST:3306/upps}).
+    \item \texttt{FAS\_IP}: host:puerto del servicio FAS.
+    \item \texttt{FAS\_ENDPOINT} (opcional): path del endpoint en FAS (por defecto \texttt{uplan}).
+    \item \texttt{GEOAWARENESS\_SERVICE\_IP}: host:puerto del servicio geoawareness (usado para conexiones WebSocket).
+    \item \texttt{NEXT\_PUBLIC\_GEOAWARENESS\_SERVICE\_IP}: misma IP pero accesible desde el cliente web para conexiones WebSocket directas.
+    \item \texttt{JWT\_SECRET} (opcional, recomendado): secreto para JWT (si no existe, el sistema usa un valor por defecto en código).
+\end{itemize}
+
+\subsection*{B. Endpoints HTTP implementados (resumen)}
+\begin{itemize}
+    \item \texttt{GET }\icdendpoint{/api/flightPlans?userId=<id>}
+    \item \texttt{POST }\icdendpoint{/api/flightPlans} (individual o bulk \texttt{items})
+    \item \texttt{PUT }\icdendpoint{/api/flightPlans} (\texttt{\{id,data\}} o bulk \texttt{\{ids,data\}} / \texttt{\{items\}})
+    \item \texttt{DELETE }\icdendpoint{/api/flightPlans} (\texttt{\{id\}} o bulk \texttt{\{ids\}}; elimina también CSV asociado)
+    \item \texttt{POST }\icdendpoint{/api/flightPlans/regenerate-volumes} (v2.0: regeneración automática de volúmenes)
+    \item \texttt{POST }\icdendpoint{/api/flightPlans/<id>/reset} (v2.0: reset completo de plan a estado inicial)
+    \item \texttt{GET }\icdendpoint{/api/csvResult?id=<id>}
+    \item \texttt{POST }\icdendpoint{/api/csvResult} (bulk \texttt{\{ids\}})
+    \item \texttt{DELETE }\icdendpoint{/api/csvResult} (\texttt{\{id\}} o bulk \texttt{\{ids\}})
+    \item \texttt{POST }\icdendpoint{/api/flightPlans/<id>/geoawareness} (verifica plan contra geozonas)
+    \item \texttt{POST }\icdendpoint{/api/flightPlans/<id>/uplan} (genera y envía U-Plan a FAS)
+    \item \texttt{PUT }\icdendpoint{/api/fas/<externalResponseNumber>} (callback de FAS)
+    \item \texttt{GET/POST }\icdendpoint{/api/folders?userId=<id>}
+    \item \texttt{GET/PUT/DELETE }\icdendpoint{/api/folders/<id>}
+    \item \texttt{POST }\icdendpoint{/api/machines} y \texttt{GET }\icdendpoint{/api/machines?name=<name>}
+    \item \texttt{PUT }\icdendpoint{/api/machines/<id>}
+    \item \texttt{POST }\icdendpoint{/api/auth/signup}, \texttt{POST }\icdendpoint{/api/auth/login}, \texttt{GET }\icdendpoint{/api/user}
+    \item \texttt{GET }\icdendpoint{/api/geoawareness/uspaces} (proxy para lista de U-spaces)
+    \item \texttt{GET }\icdendpoint{/api/deprecated/geoawareness-geozones} (fallback HTTP, deprecated)
+\end{itemize}
+
+\subsection*{C. Endpoints WebSocket}
+\begin{itemize}
+    \item \texttt{ws://<GEOAWARENESS\_SERVICE\_IP>/ws/gas/\{USPACE\_ID\}} -- Conexión de geoawareness en tiempo real
+\end{itemize}
+
+\subsection*{D. Flujo de alto nivel (texto)}
+\begin{enumerate}
+    \item El usuario abre el Plan Generator y selecciona un U-space.
+    \item El cliente web conecta via WebSocket a \texttt{ws://.../ws/gas/\{USPACE\_ID\}} para recibir geozonas en tiempo real.
+    \item El usuario define waypoints sobre el mapa, visualizando las geozonas como referencia.
+    \item El usuario sube planes: \texttt{POST }\icdendpoint{/api/flightPlans} con \texttt{fileContent} y \texttt{status="sin procesar"}.
+    \item \textbf{Workflow de 5 pasos} (Trajectory Generator):
+    \begin{enumerate}
+        \item \textbf{Select}: Usuario selecciona un plan de vuelo de la lista.
+        \item \textbf{DateTime}: Usuario establece fecha/hora programada (\texttt{scheduledAt}).
+        \item \textbf{Process}: Usuario procesa el plan (marca como \texttt{"en cola"} mediante \texttt{PUT }\icdendpoint{/api/flightPlans}).
+        \item \textbf{Geoawareness}:
+        \begin{itemize}
+            \item Sistema regenera volúmenes automáticamente si faltan (cada 30s).
+            \item Usuario revisa U-Plan generado y verifica contra geozonas via WebSocket.
+            \item Usuario visualiza trayectoria procesada en mapa interactivo.
+        \end{itemize}
+        \item \textbf{Authorize}: Usuario envía U-Plan a FAS para autorización.
+    \end{enumerate}
+    \item \texttt{traj-assigner.js} asigna planes \texttt{"en cola"} a máquinas \texttt{"Disponible"} y marca el plan \texttt{"procesando"}.
+    \item Los workers externos generan el CSV con normalización de tiempos y actualizan BD (\texttt{csvResult} y estado del plan).
+    \item Check Geoawareness: El usuario visualiza la trayectoria contra geozonas actualizadas via WebSocket en tiempo real.
+    \item Envío a autorización: \texttt{POST }\icdendpoint{/api/flightPlans/<id>/uplan} (con timestamps actualizados) y callback FAS a \texttt{PUT }\icdendpoint{/api/fas/<externalResponseNumber>}.
+    \item Sistema regenera volúmenes automáticamente si el plan se resetea o pierde sus volúmenes.
+\end{enumerate}
+
+\subsection*{E. Arquitectura de Componentes (v2.0)}
+La aplicación se estructura en componentes modulares organizados por funcionalidad:
+
+\subsubsection*{Componentes principales}
+\begin{itemize}
+    \item \texttt{FlightPlansUploader}: Interfaz principal del Trajectory Generator con workflow guiado.
+    \item \texttt{PlanGenerator}: Generador de planes de vuelo con mapa interactivo y waypoints.
+    \item \texttt{ProcessingWorkflow}: Indicador visual del workflow de 5 pasos.
+    \item \texttt{FolderList}: Gestión de carpetas con drag-and-drop.
+    \item \texttt{FlightPlanCard}: Tarjeta de plan con operaciones individuales.
+    \item \texttt{DateTimePicker}: Selector de fecha/hora con soporte UTC.
+\end{itemize}
+
+\subsubsection*{Componentes de visualización}
+\begin{itemize}
+    \item \texttt{TrajectoryMapViewer}: Visualizador de trayectorias con Leaflet (sustituye descarga CSV).
+    \item \texttt{GeoawarenessViewer}: Visualizador de trayectoria sobre geozonas con WebSocket en tiempo real.
+    \item \texttt{WaypointMapModal}: Modal para preview de waypoints en plan.
+    \item \texttt{UplanViewModal}: Visualizador de volúmenes de operación en mapa.
+    \item \texttt{UplanFormModal}: Formulario de edición de campos U-Plan.
+    \item \texttt{GeozoneLayer}: Capa de geozonas con colores por tipo y opacidad configurable.
+\end{itemize}
+
+\subsubsection*{Hooks especializados}
+\begin{itemize}
+    \item \texttt{useFlightPlans}: Gestión de planes con polling opcional (5s).
+    \item \texttt{useFolders}: Gestión de carpetas.
+    \item \texttt{useGeoawarenessWebSocket}: Conexión WebSocket con reconexión automática.
+    \item \texttt{useVolumeRegeneration}: Regeneración automática de volúmenes (30s).
+    \item \texttt{usePolling}: Polling genérico con control de errores.
+    \item \texttt{useTheme}: Gestión del tema claro/oscuro con persistencia.
+    \item \texttt{useToast}: Notificaciones toast con estados y retry.
+\end{itemize}
+
+\subsubsection*{Sistema de temas (v2.0)}
+\begin{itemize}
+    \item CSS variables dinámicas: \texttt{--bg-primary}, \texttt{--surface-primary}, \texttt{--text-primary}, etc.
+    \item Cambio instantáneo sin recarga de página.
+    \item Persistencia en \texttt{localStorage}.
+    \item Soporte para \texttt{MutationObserver} en componentes dinámicos (header, footer).
+    \item Variables de estado: \texttt{--status-success-bg}, \texttt{--status-error-bg}, etc.
+\end{itemize}
+
+\end{document}
+

@@ -1,0 +1,76 @@
+# UAS Planner - Copilot Instructions
+
+## Project Overview
+UAS Planner (UPPS) is a **Next.js 14 + TypeScript** web app for drone operators to process flight plans into realistic trajectories. Plans uploaded from QGroundControl are processed by distributed `traj-runner` VMs and converted to U-Plans for authorization submission.
+
+## Architecture
+
+### Data Flow
+1. Users upload `.plan` files → stored as `flightPlan` records (status: "sin procesar")
+2. `traj-assigner.js` daemon assigns queued plans to available `machine` workers
+3. External `traj-runner` VMs process plans → results stored in `csvResult` table
+4. CSV trajectories are converted to U-Plans via `/api/flightPlans/[id]/uplan`
+5. U-Plans submitted to external authorization API
+
+### Key Models (`prisma/schema.prisma`)
+- **flightPlan**: Core entity with `status` workflow ("sin procesar" → "en cola" → "procesando" → "procesado")
+- **csvResult**: Trajectory results; **shares same ID as flightPlan** (1:1 relationship)
+- **machine**: Distributed workers with "Disponible"/"Ocupada" status
+- **folder**: User-specific plan organization
+
+### Unified API Pattern
+All CRUD operations use **single unified endpoints** supporting both individual and bulk operations:
+
+```typescript
+// Bulk create: POST /api/flightPlans with { items: [...] }
+// Bulk update: PUT /api/flightPlans with { ids: [...], data: {...} }
+// Bulk delete: DELETE /api/flightPlans with { ids: [...] }
+// Individual ops use same endpoints with single id/data
+```
+
+See `API_DOCUMENTATION.md` for complete reference.
+
+## Development Commands
+
+```bash
+npm run dev           # Start dev server (binds to 0.0.0.0:3000)
+node traj-assigner    # Required: Run plan assignment daemon separately
+npx prisma migrate dev # Apply DB migrations
+npx prisma studio     # Database GUI at :5555
+```
+
+## Code Conventions
+
+### API Routes (`pages/api/`)
+- Use unified endpoint pattern (see `pages/api/flightPlans/index.ts`)
+- Always sanitize input with helper functions before database operations
+- Process bulk operations in chunks (200 items per transaction, 500 IDs per call)
+- Include detailed JSDoc comments at file top explaining usage patterns
+
+### Components (`app/components/`)
+- Client components use `"use client"` directive
+- Large components like `FlightPlansUploader.tsx` include comprehensive header comments documenting API usage
+- Dynamic imports for map components: `dynamic(() => import('./MapModal'), { ssr: false })`
+
+### U-Plan Generation (`lib/uplan/`)
+- `tray_to_uplan.ts`: Converts CSV trajectories to U-Plan JSON format
+- `generate_bbox.ts`: Calculates bounding boxes from waypoints
+- Use `fillUplan()` helper to auto-populate missing fields with defaults/random values
+
+### Database
+- Use singleton Prisma client from `lib/prisma.ts`
+- CSV deletion is automatic when deleting flight plans (same ID relationship)
+- Status values: `"sin procesar"`, `"en cola"`, `"procesando"`, `"procesado"`, `"error"`
+
+## Key Files
+- `traj-assigner.js` - Background daemon assigning plans to machines (runs every 10ms)
+- `pages/api/flightPlans/index.ts` - Main unified API with extensive inline docs
+- `app/components/FlightPlansUploader.tsx` - Primary UI component (~2400 lines)
+- `lib/uplan/tray_to_uplan.ts` - Trajectory-to-U-Plan conversion logic
+
+## Environment
+Required in `.env`:
+```
+DATABASE_URL="mysql://USER@HOST:3306/upps"
+JWT_SECRET="your-secret-key"
+```
