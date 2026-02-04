@@ -104,6 +104,102 @@ interface GeozonePolygonProps {
 }
 
 /**
+ * Detect if a coordinate pair is in [lat, lng] or [lng, lat] format
+ * Latitude must be between -90 and 90, longitude between -180 and 180
+ * If first value is > 90 or < -90, it's likely longitude (so format is [lng, lat])
+ * If first value is between -90 and 90 and second is > 90 or < -90, it's [lat, lng]
+ */
+function isLatLngOrder(coord: number[]): boolean {
+  if (coord.length < 2) return false;
+  const [first, second] = coord;
+  // If first value is a valid latitude (-90 to 90) and second is outside that range or also valid
+  // we assume [lat, lng] if second value looks like a longitude
+  if (Math.abs(first) <= 90 && Math.abs(second) <= 180) {
+    // If second value is clearly out of latitude range, it's [lat, lng]
+    if (Math.abs(second) > 90) return true;
+    // Both could be valid lat or lng - check which makes more geographic sense
+    // For European coordinates (Spain), lat ~39-40, lng ~0 (negative)
+    // If first is around 39-40 and second is around -0.3, it's [lat, lng]
+    if (first > 30 && first < 50 && Math.abs(second) < 1) return true;
+  }
+  return false;
+}
+
+/**
+ * Parse geometry coordinates to Leaflet positions [lat, lng][]
+ * Handles various malformed GeoJSON coordinate formats:
+ * - Standard: [[[lng, lat], ...]] (Polygon with rings)
+ * - Missing ring: [[lng, lat], ...] (flat coordinate pairs)
+ * - Swapped order: [[[lat, lng], ...]] or [[lat, lng], ...]
+ */
+function parseCoordinatesToPositions(geometry: GeozoneData['geometry']): [number, number][] | null {
+  if (!geometry || !geometry.coordinates) return null;
+  
+  const coords = geometry.coordinates;
+  
+  // Handle non-array coordinates (e.g., malformed data)
+  if (!Array.isArray(coords) || coords.length === 0) return null;
+  
+  // Determine the structure of the coordinates
+  let ring: unknown[];
+  
+  if (geometry.type === "MultiPolygon") {
+    // MultiPolygon: [[[[lng, lat], ...], ...], ...]
+    const multiCoords = coords as number[][][][];
+    if (multiCoords.length === 0 || !multiCoords[0] || multiCoords[0].length === 0) return null;
+    ring = multiCoords[0][0];
+  } else {
+    // Polygon or similar - need to detect the nesting level
+    // Check what the first element looks like
+    const firstElement = coords[0];
+    
+    if (!Array.isArray(firstElement)) {
+      // coords is just a single point? Not valid
+      return null;
+    }
+    
+    // Check if firstElement is a coordinate pair [number, number]
+    // or another array (ring of coordinates [[number, number], ...])
+    if (typeof firstElement[0] === 'number') {
+      // coords is [[lng, lat], [lng, lat], ...] - missing outer ring wrapper
+      // This is incorrectly nested - should be [[[lng, lat], ...]]
+      ring = coords as unknown[];
+    } else if (Array.isArray(firstElement[0])) {
+      // coords is [[[lng, lat], ...]] - properly nested
+      ring = firstElement as unknown[];
+    } else {
+      return null;
+    }
+  }
+  
+  // Now ring should be [[lng, lat], [lng, lat], ...]
+  if (!Array.isArray(ring) || ring.length === 0) return null;
+  
+  // Validate we have coordinate pairs
+  const firstCoord = ring[0];
+  if (!Array.isArray(firstCoord) || firstCoord.length < 2) return null;
+  
+  // Detect coordinate order
+  const needsSwap = isLatLngOrder(firstCoord as number[]);
+  
+  // Convert to Leaflet positions [lat, lng]
+  return ring
+    .filter((coord): coord is number[] => 
+      Array.isArray(coord) && coord.length >= 2 && 
+      typeof coord[0] === 'number' && typeof coord[1] === 'number'
+    )
+    .map(coord => {
+      if (needsSwap) {
+        // Already in [lat, lng] order
+        return [coord[0], coord[1]] as [number, number];
+      } else {
+        // Standard GeoJSON [lng, lat] -> convert to [lat, lng]
+        return [coord[1], coord[0]] as [number, number];
+      }
+    });
+}
+
+/**
  * Individual geozone polygon component
  */
 function GeozonePolygon({
@@ -114,26 +210,9 @@ function GeozonePolygon({
 }: GeozonePolygonProps) {
   const [isHovered, setIsHovered] = useState(false);
 
-  // Convert GeoJSON coordinates to Leaflet positions
+  // Convert GeoJSON coordinates to Leaflet positions with robust parsing
   const positions = useMemo(() => {
-    const { geometry } = geozone;
-    
-    if (geometry.type === "Polygon") {
-      // GeoJSON Polygon: coordinates is [ring1, ring2, ...] where each ring is [[lng, lat], ...]
-      const coords = geometry.coordinates as number[][][];
-      if (coords.length === 0 || coords[0].length === 0) return null;
-      
-      // Convert outer ring to Leaflet format [lat, lng]
-      return coords[0].map(([lng, lat]) => [lat, lng] as [number, number]);
-    } else if (geometry.type === "MultiPolygon") {
-      // MultiPolygon: return the first polygon for now
-      const coords = geometry.coordinates as number[][][][];
-      if (coords.length === 0 || coords[0].length === 0 || coords[0][0].length === 0) return null;
-      
-      return coords[0][0].map(([lng, lat]) => [lat, lng] as [number, number]);
-    }
-    
-    return null;
+    return parseCoordinatesToPositions(geozone.geometry);
   }, [geozone]);
 
   // Get colors based on geozone type
