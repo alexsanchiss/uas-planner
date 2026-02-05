@@ -161,7 +161,6 @@ export function DateTimePicker({
           id={inputId}
           value={localValue}
           onChange={handleChange}
-          onKeyDown={(e) => e.preventDefault()}
           disabled={disabled}
           required={required}
           min={min}
