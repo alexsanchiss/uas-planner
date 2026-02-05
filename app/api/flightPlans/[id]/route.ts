@@ -45,7 +45,7 @@ type FlightPlanUpdateData = {
   fileContent?: string;
   authorizationStatus?: string;
   authorizationMessage?: Prisma.InputJsonValue | null;
-  uplan?: Prisma.InputJsonValue | null;
+  uplan?: string | null;
   scheduledAt?: Date | string | null;
   csvResult?: number | null;
   machineAssignedId?: number | null;
@@ -67,7 +67,10 @@ function sanitizeUpdateData(
   if (typeof data.fileContent === 'string') out.fileContent = data.fileContent;
   if (typeof data.authorizationStatus === 'string') out.authorizationStatus = data.authorizationStatus;
   if (data.authorizationMessage !== undefined) out.authorizationMessage = data.authorizationMessage as Prisma.InputJsonValue | null;
-  if (data.uplan !== undefined) out.uplan = data.uplan as Prisma.InputJsonValue | null;
+  if (data.uplan !== undefined) {
+    // Convert uplan to JSON string for database storage
+    out.uplan = data.uplan !== null && data.uplan !== undefined ? JSON.stringify(data.uplan) : null;
+  }
   if (data.scheduledAt !== undefined) {
     out.scheduledAt = data.scheduledAt === null ? null : new Date(data.scheduledAt as string);
   }

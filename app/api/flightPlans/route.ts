@@ -229,7 +229,10 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
     if (typeof d.fileContent === 'string') out.fileContent = d.fileContent;
     if (typeof d.authorizationStatus === 'string') out.authorizationStatus = d.authorizationStatus;
     if (d.authorizationMessage !== undefined) out.authorizationMessage = d.authorizationMessage;
-    if (d.uplan !== undefined) out.uplan = d.uplan;
+    if (d.uplan !== undefined) {
+      // Convert uplan to JSON string for database storage
+      out.uplan = d.uplan !== null && d.uplan !== undefined ? JSON.stringify(d.uplan) : null;
+    }
     if (d.scheduledAt !== undefined) out.scheduledAt = d.scheduledAt;
     if (typeof d.csvResult === 'number' || d.csvResult === null) out.csvResult = d.csvResult;
     if (typeof d.machineAssignedId === 'number' || d.machineAssignedId === null) out.machineAssignedId = d.machineAssignedId;

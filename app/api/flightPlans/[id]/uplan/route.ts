@@ -191,14 +191,14 @@ export async function POST(
           ? response.data
           : JSON.stringify(response.data);
 
-      // Serialize to plain JSON to prevent Prisma interpreting nested keys as operations
-      const uplanJson = JSON.parse(JSON.stringify(uplan));
+      // Convert uplan to JSON string for database storage
+      const uplanString = JSON.stringify(uplan);
 
       // Save as processing (FAS will update status later)
       await prisma.flightPlan.update({
         where: { id },
         data: {
-          uplan: uplanJson,
+          uplan: uplanString,
           authorizationMessage: 'FAS procesando...',
           externalResponseNumber,
         },
@@ -213,13 +213,13 @@ export async function POST(
 
       // Handle axios errors with response data
       if (axios.isAxiosError(err) && err.response?.data) {
-        // Serialize to plain JSON to prevent Prisma interpreting nested keys as operations
-        const uplanJsonAxios = JSON.parse(JSON.stringify(uplan));
+        // Convert uplan to JSON string for database storage
+        const uplanString = JSON.stringify(uplan);
 
         await prisma.flightPlan.update({
           where: { id },
           data: {
-            uplan: uplanJsonAxios,
+            uplan: uplanString,
             authorizationStatus: 'denegado',
             authorizationMessage: err.response.data,
             externalResponseNumber: `error: ${err.message}`,
@@ -235,13 +235,13 @@ export async function POST(
       // Handle other errors
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
 
-      // Serialize to plain JSON to prevent Prisma interpreting nested keys as operations
-      const uplanJsonError = JSON.parse(JSON.stringify(uplan));
+      // Convert uplan to JSON string for database storage
+      const uplanString = JSON.stringify(uplan);
       
       await prisma.flightPlan.update({
         where: { id },
         data: {
-          uplan: uplanJsonError,
+          uplan: uplanString,
           authorizationStatus: 'denegado',
           authorizationMessage: err instanceof Error 
             ? JSON.parse(JSON.stringify(err)) 
