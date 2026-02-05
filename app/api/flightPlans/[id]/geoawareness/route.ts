@@ -9,10 +9,11 @@ import prisma from '@/lib/prisma'
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const planId = parseInt(params.id, 10)
+    const { id } = await params;
+    const planId = parseInt(id, 10)
     
     if (isNaN(planId)) {
       return NextResponse.json({ error: 'Invalid flight plan ID' }, { status: 400 })
@@ -51,7 +52,6 @@ export async function POST(
     }
 
     const wsUrl = `ws://${process.env.GEOAWARENESS_SERVICE_IP}/ws/gas/${uspaceIdentifier}`;
-    console.log(`[Geoawareness API] Plan ${planId} validated, U-Space: ${uspaceIdentifier}, WS: ${wsUrl}`);
 
     return NextResponse.json({
       success: true,
@@ -72,10 +72,11 @@ export async function POST(
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const planId = parseInt(params.id, 10)
+    const { id } = await params;
+    const planId = parseInt(id, 10)
     
     if (isNaN(planId)) {
       return NextResponse.json({ error: 'Invalid flight plan ID' }, { status: 400 })
