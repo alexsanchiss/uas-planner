@@ -126,6 +126,13 @@ export function FolderCard({
     }
   }, [folder.name, isEditing])
 
+  // Auto-expand folder when it contains the selected plan
+  useEffect(() => {
+    if (selectedPlanId && folder.flightPlans.some(plan => plan.id === selectedPlanId)) {
+      setExpanded(true)
+    }
+  }, [selectedPlanId, folder.flightPlans])
+
   const handleToggle = () => {
     if (!isEditing) {
       setExpanded(!expanded)

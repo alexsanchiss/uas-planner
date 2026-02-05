@@ -942,15 +942,19 @@ export function FlightPlansUploader() {
             </div>
           )}
 
-          {/* Geoawareness step prompt */}
-          {currentStep === 'geoawareness' && selectedPlan.status === 'procesado' && (
+          {/* Action buttons for processed plans - always shown after processing */}
+          {selectedPlan.status === 'procesado' && (
             <div className="mt-4 p-4 bg-[var(--surface-primary)] rounded-lg border border-[var(--border-primary)] fade-in">
               <p className="text-sm text-[var(--text-secondary)] mb-3">
-                The plan has been processed. Review the U-Plan information and check geoawareness data before requesting authorization.
+                {selectedPlan.authorizationStatus === 'pendiente' 
+                  ? 'Authorization request sent to FAS. You can review data while waiting.'
+                  : selectedPlan.authorizationStatus === 'aprobado' || selectedPlan.authorizationStatus === 'denegado'
+                    ? 'View your flight plan data below.'
+                    : 'The plan has been processed. Review the U-Plan information and check geoawareness data before requesting authorization.'}
               </p>
               <div className="flex flex-wrap items-center gap-3 mb-3">
                 {/* Review U-Plan button - TASK-023: Opens UplanFormModal for editing */}
-                {/* Disabled when plan is already authorized (aprobado) or denied (denegado) */}
+                {/* Disabled when plan is already authorized (aprobado), denied (denegado), or pending (pendiente) */}
                 <button
                   onClick={() => {
                     setUplanFormModal({
@@ -960,8 +964,8 @@ export function FlightPlansUploader() {
                       name: selectedPlan.name,
                     })
                   }}
-                  disabled={selectedPlan.authorizationStatus === 'aprobado' || selectedPlan.authorizationStatus === 'denegado'}
-                  title={selectedPlan.authorizationStatus === 'aprobado' || selectedPlan.authorizationStatus === 'denegado' ? 'Cannot edit - plan has been authorized/denied' : undefined}
+                  disabled={selectedPlan.authorizationStatus === 'aprobado' || selectedPlan.authorizationStatus === 'denegado' || selectedPlan.authorizationStatus === 'pendiente'}
+                  title={selectedPlan.authorizationStatus === 'aprobado' || selectedPlan.authorizationStatus === 'denegado' ? 'Cannot edit - plan has been authorized/denied' : selectedPlan.authorizationStatus === 'pendiente' ? 'Cannot edit while FAS is processing' : undefined}
                   className="px-4 py-2 text-sm font-medium text-[var(--text-primary)] bg-[var(--surface-tertiary)] border border-[var(--border-primary)] rounded-md hover:bg-[var(--bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors btn-interactive flex items-center gap-2"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1025,30 +1029,29 @@ export function FlightPlansUploader() {
                 </button>
               </div>
 
-
-              <p className="text-xs text-[var(--text-muted)] mb-3">
-                Review the U-Plan, check geoawareness for conflicting zones, and view the trajectory before continuing to authorization.
-              </p>
-              {/* TASK-035: Disable authorization button during FAS processing */}
-              <button
-                onClick={() => handleAuthorizePlan(selectedPlan.id)}
-                disabled={loadingPlanIds.authorizing.has(selectedPlan.id) || isFasProcessing}
-                className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 disabled:bg-purple-400 transition-colors btn-interactive disabled-transition flex items-center gap-2"
-              >
-                {loadingPlanIds.authorizing.has(selectedPlan.id) ? (
-                  <>
-                    <LoadingSpinner size="xs" variant="white" />
-                    Requesting...
-                  </>
-                ) : isFasProcessing ? (
-                  <>
-                    <LoadingSpinner size="xs" variant="white" />
-                    FAS Processing...
-                  </>
-                ) : (
-                  'Continue to authorization'
-                )}
-              </button>
+              {/* Only show authorization prompt when not yet authorized */}
+              {selectedPlan.authorizationStatus === 'sin autorización' && (
+                <>
+                  <p className="text-xs text-[var(--text-muted)] mb-3">
+                    Review the U-Plan, check geoawareness for conflicting zones, and view the trajectory before continuing to authorization.
+                  </p>
+                  {/* TASK-035: Disable authorization button during FAS processing */}
+                  <button
+                    onClick={() => handleAuthorizePlan(selectedPlan.id)}
+                    disabled={loadingPlanIds.authorizing.has(selectedPlan.id)}
+                    className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 disabled:bg-purple-400 transition-colors btn-interactive disabled-transition flex items-center gap-2"
+                  >
+                    {loadingPlanIds.authorizing.has(selectedPlan.id) ? (
+                      <>
+                        <LoadingSpinner size="xs" variant="white" />
+                        Requesting...
+                      </>
+                    ) : (
+                      'Continue to authorization'
+                    )}
+                  </button>
+                </>
+              )}
             </div>
           )}
 
