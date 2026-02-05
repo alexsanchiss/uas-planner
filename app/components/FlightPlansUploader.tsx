@@ -425,44 +425,96 @@ export function FlightPlansUploader() {
       return
     }
 
-    // TASK-003: Validate uplan data is complete before sending to FAS
-    const uplanData = plan.uplan ? (typeof plan.uplan === 'string' ? JSON.parse(plan.uplan) : plan.uplan) : null
-    if (!uplanData) {
-      toast.error('Cannot submit to FAS: U-Plan data is not available.')
-      return
+    // Parse uplan
+    let uplanData = plan.uplan
+    if (typeof uplanData === 'string') {
+      try { uplanData = JSON.parse(uplanData) } catch { uplanData = null }
     }
-
-    const validationResult = isUplanComplete(uplanData)
     
-    if (!validationResult.isComplete) {
-      console.log('[handleAuthorizePlan] Validation failed:', {
-        missingFields: validationResult.missingFields,
-        fieldErrors: validationResult.fieldErrors
-      })
-      
-      // Show toast with summary of missing fields
-      const fieldList = validationResult.missingFields.slice(0, 3).join(', ')
-      const remaining = validationResult.missingFields.length - 3
-      const summary = remaining > 0 
-        ? `${fieldList}, and ${remaining} more` 
-        : fieldList
-      
-      toast.error(`Please complete the required fields: ${summary}`)
-      
-      // Open UplanFormModal automatically with highlighted errors
-      setUplanFormModal({
-        open: true,
-        planId,
-        uplan: uplanData,
-        name: plan.customName,
-        missingFields: validationResult.missingFields,
-        fieldErrors: validationResult.fieldErrors,
-      })
-      
-      return
+    const uplanObj = uplanData as { operationVolumes?: unknown[] } | null
+    const hasVolumes = Array.isArray(uplanObj?.operationVolumes) && uplanObj.operationVolumes.length > 0
+    const GENERATE_RANDOM_DATA = process.env.NEXT_PUBLIC_GENERATE_RANDOM_UPLAN_DATA === 'true'
+
+    // Step 1: Check if volumes need to be generated
+    if (!hasVolumes && plan.csvResult) {
+      addLoadingPlan('authorizing', planId)
+      try {
+        toast.info('Generating operation volumes...')
+        const token = localStorage.getItem('authToken')
+        const response = await fetch(`/api/flightPlans/${planId}/generate-volumes`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+        
+        if (!response.ok) {
+          throw new Error('Failed to generate volumes')
+        }
+        
+        // Refresh plans to get updated uplan with volumes
+        await refreshPlans()
+        
+        // Re-fetch the updated plan data
+        const updatedPlan = flightPlans.find((p) => String(p.id) === planId)
+        uplanData = updatedPlan?.uplan ?? null
+        if (typeof uplanData === 'string') {
+          try { uplanData = JSON.parse(uplanData) } catch { uplanData = null }
+        }
+      } catch (error) {
+        removeLoadingPlan('authorizing', planId)
+        toast.error('Failed to generate volumes. Please try again.')
+        console.error('[handleAuthorizePlan] Volume generation error:', error)
+        return
+      }
     }
 
-    addLoadingPlan('authorizing', planId)
+    // Step 2: If NOT random data mode, validate completeness
+    if (!GENERATE_RANDOM_DATA) {
+      if (!uplanData) {
+        toast.error('Cannot submit to FAS: U-Plan data is not available.')
+        return
+      }
+
+      const validationResult = isUplanComplete(uplanData)
+      
+      if (!validationResult.isComplete) {
+        console.log('[handleAuthorizePlan] Validation failed:', {
+          missingFields: validationResult.missingFields,
+          fieldErrors: validationResult.fieldErrors
+        })
+        
+        // Show toast with summary of missing fields
+        const fieldList = validationResult.missingFields.slice(0, 3).join(', ')
+        const remaining = validationResult.missingFields.length - 3
+        const summary = remaining > 0 
+          ? `${fieldList}, and ${remaining} more` 
+          : fieldList
+        
+        toast.error(`Please complete the required fields: ${summary}`)
+        
+        // Open UplanFormModal automatically with highlighted errors
+        setUplanFormModal({
+          open: true,
+          planId,
+          uplan: uplanData,
+          name: plan.customName,
+          missingFields: validationResult.missingFields,
+          fieldErrors: validationResult.fieldErrors,
+        })
+        
+        removeLoadingPlan('authorizing', planId)
+        return
+      }
+    }
+
+    // Step 3: Proceed with FAS authorization
+    // Add loading state if not already added (when volumes were generated)
+    if (!loadingPlanIds.authorizing.has(planId)) {
+      addLoadingPlan('authorizing', planId)
+    }
+    
     try {
       // Submit U-Plan to FAS
       const response = await fetch(`/api/flightPlans/${planId}/uplan`, {
@@ -488,7 +540,7 @@ export function FlightPlansUploader() {
     } finally {
       removeLoadingPlan('authorizing', planId)
     }
-  }, [flightPlans, refreshPlans, addLoadingPlan, removeLoadingPlan, toast])
+  }, [flightPlans, refreshPlans, addLoadingPlan, removeLoadingPlan, toast, loadingPlanIds.authorizing])
 
   // Handle geoawareness service call
   const handleGeoawareness = useCallback(async (planId: string) => {
