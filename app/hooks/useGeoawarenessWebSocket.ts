@@ -365,7 +365,7 @@ function getWebSocketUrl(uspaceId: string): string | null {
   }
   
   const fullUrl = `${wsUrl}/ws/gas/${uspaceId}`
-  console.log(`[useGeoawarenessWebSocket] WebSocket URL: ${fullUrl}`)
+  // console.log(`[useGeoawarenessWebSocket] WebSocket URL: ${fullUrl}`)
   return fullUrl
 }
 
@@ -562,7 +562,7 @@ export function useGeoawarenessWebSocket({
       return
     }
 
-    console.log('[useGeoawarenessWebSocket] 🔄 WebSocket failed, loading fallback geozones from HTTP API...')
+    // console.log('[useGeoawarenessWebSocket] 🔄 WebSocket failed, loading fallback geozones from HTTP API...')
     setLoadingFallback(true)
 
     try {
@@ -588,8 +588,8 @@ export function useGeoawarenessWebSocket({
         }
       }
 
-      console.log(`[useGeoawarenessWebSocket] ✅ Fallback loaded successfully: ${fallbackData.geozones_data?.length || 0} geozones`)
-      console.log(`[useGeoawarenessWebSocket] 📋 Fallback source: ${result.fallback ? 'static data' : 'service'}`)
+      // console.log(`[useGeoawarenessWebSocket] ✅ Fallback loaded successfully: ${fallbackData.geozones_data?.length || 0} geozones`)
+      // console.log(`[useGeoawarenessWebSocket] 📋 Fallback source: ${result.fallback ? 'static data' : 'service'}`)
 
       setData(fallbackData)
       setUsingFallback(true)
@@ -660,7 +660,7 @@ export function useGeoawarenessWebSocket({
         console.warn('[WS] Using deprecated HTTP fallback due to missing WebSocket configuration')
         fetchFallbackData()
       } else {
-        console.log('[WS] Fallback disabled - no geoawareness data will be loaded')
+        // console.log('[WS] Fallback disabled - no geoawareness data will be loaded')
       }
       return
     }
@@ -669,7 +669,7 @@ export function useGeoawarenessWebSocket({
     setStatus('connecting')
     setError(null)
 
-    console.log(`[WS] Connecting to: ${wsUrl}`)
+    // console.log(`[WS] Connecting to: ${wsUrl}`)
 
     try {
       const ws = new WebSocket(wsUrl)
@@ -678,7 +678,7 @@ export function useGeoawarenessWebSocket({
       ws.onopen = () => {
         if (!mountedRef.current) return
 
-        console.log(`[WS] Connected to ${uspaceId}`)
+        // console.log(`[WS] Connected to ${uspaceId}`)
         setStatus('connected')
         // Reset retry count on successful connection
         retryCountRef.current = 0
@@ -699,7 +699,7 @@ export function useGeoawarenessWebSocket({
           // Normalize the data to support both new 3-block format and legacy format
           const normalizedData = normalizeGeoawarenessMessage(rawData)
           
-          console.log(`[WS] Received ${normalizedData.geozones_data?.length || 0} geozones for ${normalizedData.uspace_identifier}`)
+          // console.log(`[WS] Received ${normalizedData.geozones_data?.length || 0} geozones for ${normalizedData.uspace_identifier}`)
           
           setData(normalizedData)
           setLastMessageTime(Date.now())
@@ -726,7 +726,7 @@ export function useGeoawarenessWebSocket({
       ws.onclose = (event) => {
         if (!mountedRef.current) return
 
-        console.log(`[WS] Closed (code: ${event.code})`)
+        // console.log(`[WS] Closed (code: ${event.code})`)
         wsRef.current = null
         setStatus('disconnected')
         onCloseRef.current?.()
@@ -735,7 +735,7 @@ export function useGeoawarenessWebSocket({
         const currentRetryCount = retryCountRef.current
         if (!manualDisconnectRef.current && enabled && currentRetryCount < maxRetries) {
           const delay = calculateBackoffDelay(currentRetryCount, baseDelay, maxDelay)
-          console.log(`[WS] Reconnecting in ${delay}ms (${currentRetryCount + 1}/${maxRetries})`)
+          // console.log(`[WS] Reconnecting in ${delay}ms (${currentRetryCount + 1}/${maxRetries})`)
           
           retryCountRef.current = currentRetryCount + 1
           setRetryCount(currentRetryCount + 1)
@@ -753,7 +753,7 @@ export function useGeoawarenessWebSocket({
           
           // TASK-086: Trigger fallback to HTTP API when WebSocket fails
           if (enableFallback && !fallbackLoadedRef.current) {
-            console.log('[WS] Loading fallback geozones...')
+            // console.log('[WS] Loading fallback geozones...')
             fetchFallbackData()
           }
         }
@@ -773,7 +773,7 @@ export function useGeoawarenessWebSocket({
    * Manually trigger a reconnection attempt
    */
   const reconnect = useCallback(() => {
-    console.log('[WS] Manual reconnect')
+    // console.log('[WS] Manual reconnect')
     // Reset retry count for manual reconnect
     retryCountRef.current = 0
     setRetryCount(0)
@@ -795,7 +795,7 @@ export function useGeoawarenessWebSocket({
    * Disconnect the WebSocket
    */
   const disconnect = useCallback(() => {
-    console.log('[useGeoawarenessWebSocket] Manual disconnect')
+    // console.log('[useGeoawarenessWebSocket] Manual disconnect')
     manualDisconnectRef.current = true
     closeConnection()
     setStatus('disconnected')

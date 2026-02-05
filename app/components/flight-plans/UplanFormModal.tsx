@@ -490,10 +490,10 @@ export default function UplanFormModal({
         }
         
         const volumeResult = await volumeResponse.json();
-        console.log('[UplanFormModal] Volume generation:', {
-          volumesGenerated: volumeResult.volumesGenerated,
-          randomDataGenerated: volumeResult.randomDataGenerated
-        });
+        // console.log('[UplanFormModal] Volume generation:', {
+          // volumesGenerated: volumeResult.volumesGenerated,
+          // randomDataGenerated: volumeResult.randomDataGenerated
+        // });
         
         toast.success(`Operation volumes generated (${volumeResult.volumesGenerated} volumes)`);
         

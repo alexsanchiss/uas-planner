@@ -293,7 +293,7 @@ export async function DELETE(
     const csvResultId = existing.csvResult;
 
     // Log the deletion operation for audit purposes
-    console.log(`[DELETE] Flight plan id=${id} ("${existing.customName}") by userId=${userId}. Associated csvResult id=${csvResultId ?? 'none'}`);
+    // console.log(`[DELETE] Flight plan id=${id} ("${existing.customName}") by userId=${userId}. Associated csvResult id=${csvResultId ?? 'none'}`);
 
     // Delete in transaction: CSV result first (if exists), then flight plan
     // Use the actual csvResult ID from the flightPlan record, not the flightPlan ID
@@ -311,7 +311,7 @@ export async function DELETE(
     const deletedCsvResult = csvResultId !== null;
 
     // Log successful deletion
-    console.log(`[DELETE] Successfully deleted flight plan id=${id}${deletedCsvResult ? ` and csvResult id=${csvResultId}` : ''}`);
+    //console.log(`[DELETE] Successfully deleted flight plan id=${id}${deletedCsvResult ? ` and csvResult id=${csvResultId}` : ''}`);
 
     return NextResponse.json({
       message: 'Flight plan deleted successfully',

@@ -44,7 +44,7 @@ export function useVolumeRegeneration(enabled: boolean = true) {
 
     async function checkAndRegenerateVolumes() {
       if (isCheckingRef.current) {
-        console.log('[VolumeRegeneration] Check already in progress, skipping...')
+        // console.log('[VolumeRegeneration] Check already in progress, skipping...')
         return
       }
 
@@ -52,11 +52,11 @@ export function useVolumeRegeneration(enabled: boolean = true) {
       const startTime = Date.now()
       
       try {
-        console.log('[VolumeRegeneration] Starting volume check...')
+        // console.log('[VolumeRegeneration] Starting volume check...')
         
         const token = localStorage.getItem('authToken')
         if (!token) {
-          console.log('[VolumeRegeneration] No auth token, skipping check')
+          // console.log('[VolumeRegeneration] No auth token, skipping check')
           return
         }
 
@@ -87,15 +87,15 @@ export function useVolumeRegeneration(enabled: boolean = true) {
         const elapsed = Date.now() - startTime
         
         if (result.plansRegenerated > 0) {
-          console.log(
-            `[VolumeRegeneration] ✅ Regenerated ${result.plansRegenerated} plan(s) ` +
-            `(checked ${result.plansChecked} plans in ${elapsed}ms)`
-          )
+          // console.log(
+            // `[VolumeRegeneration] ✅ Regenerated ${result.plansRegenerated} plan(s) ` +
+            // `(checked ${result.plansChecked} plans in ${elapsed}ms)`
+          // )
         } else {
-          console.log(
-            `[VolumeRegeneration] ℹ️ No plans needed regeneration ` +
-            `(checked ${result.plansChecked} plans in ${elapsed}ms)`
-          )
+          // console.log(
+            // `[VolumeRegeneration] ℹ️ No plans needed regeneration ` +
+            // `(checked ${result.plansChecked} plans in ${elapsed}ms)`
+          // )
         }
 
         if (result.errors && result.errors.length > 0) {

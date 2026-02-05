@@ -398,15 +398,15 @@ export function FlightPlansUploader() {
     // Normalize both IDs to strings for comparison
     const plan = flightPlans.find(p => String(p.id) === String(planId))
     
-    console.log('[FlightPlansUploader] View Trajectory clicked:', {
-      requestedPlanId: planId,
-      requestedPlanIdType: typeof planId,
-      foundPlan: plan?.id,
-      foundPlanIdType: typeof plan?.id,
-      planName: plan?.customName,
-      csvResultFlag: plan?.csvResult,
-      allPlanIds: flightPlans.map(p => ({ id: p.id, type: typeof p.id }))
-    })
+    // console.log('[FlightPlansUploader] View Trajectory clicked:', {
+      // requestedPlanId: planId,
+      // requestedPlanIdType: typeof planId,
+      // foundPlan: plan?.id,
+      // foundPlanIdType: typeof plan?.id,
+      // planName: plan?.customName,
+      // csvResultFlag: plan?.csvResult,
+      // allPlanIds: flightPlans.map(p => ({ id: p.id, type: typeof p.id }))
+    // })
     
     if (!plan?.csvResult) {
       toast.warning('No trajectory available to view.')
@@ -415,7 +415,7 @@ export function FlightPlansUploader() {
 
     // Open trajectory map viewer with the correct planId
     const planIdToUse = String(plan.id)
-    console.log('[FlightPlansUploader] Opening trajectory viewer with planId:', planIdToUse)
+    // console.log('[FlightPlansUploader] Opening trajectory viewer with planId:', planIdToUse)
     
     setTrajectoryViewer({
       open: true,
@@ -481,10 +481,10 @@ export function FlightPlansUploader() {
           
           // Get the updated uplan directly from the response (don't rely on flightPlans array refresh)
           const result = await response.json()
-          console.log('[confirmAuthorizePlan] Volume generation result:', {
-            volumesGenerated: result.volumesGenerated,
-            randomDataGenerated: result.randomDataGenerated
-          })
+          // console.log('[confirmAuthorizePlan] Volume generation result:', {
+           //  volumesGenerated: result.volumesGenerated,
+           //  randomDataGenerated: result.randomDataGenerated
+          // })
           
           // Use the uplan from the response which includes the newly generated volumes
           uplanData = result.uplan
@@ -514,10 +514,10 @@ export function FlightPlansUploader() {
       const validationResult = isUplanComplete(uplanData)
       
       if (!validationResult.isComplete) {
-        console.log('[confirmAuthorizePlan] Validation failed:', {
-          missingFields: validationResult.missingFields,
-          fieldErrors: validationResult.fieldErrors
-        })
+        // console.log('[confirmAuthorizePlan] Validation failed:', {
+          // missingFields: validationResult.missingFields,
+          // fieldErrors: validationResult.fieldErrors
+        // })
         
         // Show toast with summary of missing fields
         const fieldList = validationResult.missingFields.slice(0, 3).join(', ')
@@ -596,7 +596,7 @@ export function FlightPlansUploader() {
       return
     }
 
-    console.log(`${logPrefix} Checking plan: ${plan.customName}`);
+    // console.log(`${logPrefix} Checking plan: ${plan.customName}`);
 
     // TASK-076: Extract uspace_identifier for WebSocket connection
     let uspaceId: string | null = null
@@ -614,7 +614,7 @@ export function FlightPlansUploader() {
       return
     }
 
-    console.log(`${logPrefix} U-Space: ${uspaceId}, calling API...`);
+    // console.log(`${logPrefix} U-Space: ${uspaceId}, calling API...`);
     addLoadingPlan('geoawareness', planId)
     
     try {
@@ -632,7 +632,7 @@ export function FlightPlansUploader() {
       }
 
       const data = await response.json()
-      console.log(`${logPrefix} Validated. Opening modal with WS: ${data.wsUrl}`);
+      // console.log(`${logPrefix} Validated. Opening modal with WS: ${data.wsUrl}`);
       
       await refreshPlans()
       

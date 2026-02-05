@@ -435,9 +435,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     }
 
     // Extract the actual csvResult IDs from the flight plans (filter out nulls)
-    const csvResultIds = userPlans
-      .map((p) => p.csvResult)
-      .filter((id): id is number => id !== null);
+    const csvResultIds = userPlanIds;
 
     // Log the deletion operation for audit purposes
     console.log(`[BULK DELETE] userId=${userId} deleting ${userPlanIds.length} flight plans: [${userPlanIds.join(', ')}]`);

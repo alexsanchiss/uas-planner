@@ -174,7 +174,7 @@ export async function POST(
     uplan.creationTime = currentTime;
     uplan.updateTime = currentTime;
 
-    console.log('Plan procesado');
+    // console.log('Plan procesado');
 
     // 4. Send U-Plan to external FAS API
     let externalResponseNumber = String(null);

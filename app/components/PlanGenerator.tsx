@@ -340,7 +340,7 @@ export default function PlanGenerator() {
       if (geozonesError) {
         console.error(`[PlanGenerator] Geoawareness error for ${selectedUspace.id}:`, geozonesError.message);
       } else if (!geozonesLoading) {
-        console.log(`[PlanGenerator] Geozones loaded: ${geozonesData.length} zones for ${selectedUspace.id}`);
+        // console.log(`[PlanGenerator] Geozones loaded: ${geozonesData.length} zones for ${selectedUspace.id}`);
       }
     }
   }, [selectedUspace, geozonesData.length, geozonesLoading, geozonesError]);

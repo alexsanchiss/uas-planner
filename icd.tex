@@ -48,7 +48,16 @@ El objetivo de la interfaz es permitir que un usuario cargue planes de vuelo (t�
     \item \textbf{Sistema de temas dinámico}: Soporte completo para temas claro/oscuro con cambio instantáneo y persistencia en localStorage.
     \item \textbf{Normalización de tiempos}: Las trayectorias CSV se normalizan automáticamente para iniciar en t=0s, independientemente del tiempo inicial de simulación.
     \item \textbf{Regeneración automática de volúmenes}: Sistema que verifica cada 30 segundos planes procesados sin volúmenes y los regenera automáticamente.
+    \item \textbf{Optimización del flujo de volúmenes}: Eliminada la regeneración redundante de volúmenes antes del envío a FAS cuando ya existen, reduciendo notificaciones duplicadas y carga de procesamiento.
     \item \textbf{Viewer de trayectorias}: Visualización interactiva de trayectorias con mapas Leaflet, sustituyendo la descarga directa de CSV.
+    \item \textbf{Visualización mejorada de volúmenes de operación}:
+    \begin{itemize}
+        \item Todos los volúmenes se muestran simultáneamente en el mapa (no solo los activos).
+        \item Volúmenes activos destacados en morado brillante (40\% opacidad).
+        \item Volúmenes inactivos mostrados en gris semi-transparente (15\% opacidad) para contexto.
+        \item Control de tiempo permite navegar entre ventanas temporales.
+        \item Carga fresca de datos desde API antes de cada visualización para garantizar sincronización.
+    \end{itemize}
     \item \textbf{Geoawareness mejorado}: Auto-centrado de mapas en trayectorias, visualización con marcadores reducidos y overlays optimizados.
     \item \textbf{Gestión avanzada de folders}: Drag-and-drop para organización de planes, sección de planes huérfanos.
     \item \textbf{Timestamps dinámicos en U-Plan}: Los campos \texttt{creationTime} y \texttt{updateTime} se actualizan automáticamente al momento del envío a FAS.

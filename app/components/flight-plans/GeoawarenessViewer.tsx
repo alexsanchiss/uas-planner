@@ -267,10 +267,10 @@ export function GeoawarenessViewer({
 
   // Log WebSocket status changes once on mount
   useEffect(() => {
-    console.log(`[GeoawarenessViewer] Props: planId=${planId}, uspaceId=${uspaceId}`);
+    // console.log(`[GeoawarenessViewer] Props: planId=${planId}, uspaceId=${uspaceId}`);
     // Log the actual env var value to debug
     const envValue = process.env.NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP;
-    console.log(`[GeoawarenessViewer] NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP = "${envValue}"`);
+    // console.log(`[GeoawarenessViewer] NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP = "${envValue}"`);
     if (!envValue) {
       console.error('[GeoawarenessViewer] ❌ ENV VAR IS UNDEFINED! Next.js needs a full rebuild after adding NEXT_PUBLIC_ variables.');
       console.error('[GeoawarenessViewer] Run: npm run build OR restart dev server to fix.');
@@ -312,7 +312,7 @@ export function GeoawarenessViewer({
         return
       }
 
-      console.log('[GeoawarenessViewer] Fetching trajectory for planId:', planId)
+      // console.log('[GeoawarenessViewer] Fetching trajectory for planId:', planId)
 
       setTrajectoryLoading(true)
       setTrajectoryError(null)
@@ -339,12 +339,12 @@ export function GeoawarenessViewer({
         // The csvResult table uses the same ID as flightPlan (1:1 relationship)
         const hasCsvResult = plan.csvResult
         
-        console.log('[GeoawarenessViewer] Found plan:', {
-          planId: plan.id,
-          planName: plan.customName,
-          hasCsvResult,
-          status: plan.status
-        })
+        // console.log('[GeoawarenessViewer] Found plan:', {
+          // planId: plan.id,
+          // planName: plan.customName,
+          // hasCsvResult,
+          // status: plan.status
+        // })
         
         if (!hasCsvResult) {
           // No trajectory data yet - not necessarily an error
@@ -353,7 +353,7 @@ export function GeoawarenessViewer({
         }
 
         // Fetch the CSV content using the plan's ID (csvResult has same ID)
-        console.log('[GeoawarenessViewer] Fetching CSV with id:', plan.id)
+        // console.log('[GeoawarenessViewer] Fetching CSV with id:', plan.id)
         const csvRes = await fetch(`/api/csvResult?id=${plan.id}`, { headers })
         if (!csvRes.ok) {
           if (csvRes.status === 404) {

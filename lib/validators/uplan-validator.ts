@@ -589,8 +589,8 @@ export function isUplanComplete(data: unknown): UplanCompletionResult {
   const missingFields: string[] = [];
   const fieldErrors: { [fieldName: string]: string } = {};
 
-  console.log('[isUplanComplete] Validation failed. Errors:', JSON.stringify(result.error.issues, null, 2));
-  console.log('[isUplanComplete] Data received:', JSON.stringify(data, null, 2).substring(0, 1000));
+  // console.log('[isUplanComplete] Validation failed. Errors:', JSON.stringify(result.error.issues, null, 2));
+  // console.log('[isUplanComplete] Data received:', JSON.stringify(data, null, 2).substring(0, 1000));
 
   // Process each issue to build user-friendly field paths and messages
   for (const issue of result.error.issues) {

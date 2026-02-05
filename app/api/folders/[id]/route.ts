@@ -244,15 +244,14 @@ export async function DELETE(
 
   try {
     // Get all flight plans associated with this folder
+
     const folderPlans = await prisma.flightPlan.findMany({
       where: { folderId },
-      select: { csvResult: true },
+      select: { id: true },
     });
 
-    // Delete CSV results associated with flight plans
-    const csvResultIds = folderPlans
-      .map((plan) => plan.csvResult)
-      .filter((id): id is number => id !== null);
+    // Delete CSV results associated with flight plans (use plan.id, not csvResult)
+    const csvResultIds = folderPlans.map((plan) => plan.id);
 
     if (csvResultIds.length > 0) {
       await prisma.csvResult.deleteMany({

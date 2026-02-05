@@ -119,7 +119,7 @@ export async function POST(
       );
     }
 
-    console.log(`[GenerateVolumes] Plan ${id}: Starting volume generation for user ${userId}`);
+    // console.log(`[GenerateVolumes] Plan ${id}: Starting volume generation for user ${userId}`);
 
     // 6. Parse existing uplan details if available
     let existingUplan: unknown;
@@ -162,10 +162,10 @@ export async function POST(
       },
     });
 
-    console.log(
-      `[GenerateVolumes] ✅ Plan ${id}: Generated ${volumesGenerated} volumes ` +
-      `(randomData: ${GENERATE_RANDOM_UPLAN_DATA})`
-    );
+    // console.log(
+    //   `[GenerateVolumes] ✅ Plan ${id}: Generated ${volumesGenerated} volumes ` +
+    //   `(randomData: ${GENERATE_RANDOM_UPLAN_DATA})`
+    // );
 
     // 9. Return success response
     return NextResponse.json({

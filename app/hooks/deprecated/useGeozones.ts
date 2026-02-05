@@ -307,7 +307,7 @@ export function useGeozones({
     setError(null);
     setUsingFallback(false);
 
-    console.log(`[useGeozones] Fetching geozones for U-space: ${uspaceId}`);
+    // console.log(`[useGeozones] Fetching geozones for U-space: ${uspaceId}`);
 
     try {
       const response = await axios.get('/api/deprecated/geoawareness-geozones', {
@@ -318,7 +318,7 @@ export function useGeozones({
       if (!mountedRef.current) return;
 
       if (response.data.success && response.data.geozones) {
-        console.log(`[useGeozones] ✅ Received ${response.data.geozones.length} geozones from API`);
+        // console.log(`[useGeozones] ✅ Received ${response.data.geozones.length} geozones from API`);
         setGeozones(response.data.geozones);
         setUsingFallback(false);
       } else {
@@ -328,7 +328,7 @@ export function useGeozones({
       if (!mountedRef.current) return;
 
       console.error('[useGeozones] ❌ Failed to fetch geozones:', err);
-      console.log('[useGeozones] 📋 Using fallback geozones for Valencia area');
+      // console.log('[useGeozones] 📋 Using fallback geozones for Valencia area');
       
       // Use fallback data
       setGeozones(FALLBACK_GEOZONES);
