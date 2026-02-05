@@ -7,10 +7,19 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model user {
+  id          Int          @id @default(autoincrement())
+  email       String       @unique @db.VarChar(255)
+  password    String       @db.VarChar(255)
+  createdAt   DateTime     @default(now()) @db.Timestamp(0)
+  flightPlans flightPlan[]
+  folders     folder[]
+}
+
 model machine {
-  id         Int          @id @default(autoincrement())
-  name       String       @db.Text
-  status     String       @db.Text
+  id          Int          @id @default(autoincrement())
+  name        String       @db.Text
+  status      String       @db.Text
   flightPlans flightPlan[]
 }
 
@@ -25,27 +34,6 @@ model folder {
   user           user         @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "folder_ibfk_1")
 
   @@index([userId], map: "userId")
-}
-
-model flightPlan {
-  id                  Int      @id @default(autoincrement())
-  customName          String
-  status              String
-  fileContent         String
-  csvResult           Int?     // IMPORTANT: This is a BOOLEAN FLAG (0 or 1), NOT an ID!
-                               // The csvResult table has a 1:1 relationship via the SAME ID
-                               // Usage: if (flightPlan.csvResult) { fetch csvResult where id = flightPlan.id }
-  createdAt           DateTime @default(now())
-  machineAssignedId   Int?
-  userId              Int
-  folderId            Int?
-  folder              folder?  @relation(fields: [folderId], references: [id])
-  uplan                 Json?    // JSON calculado
-  authorizationStatus   String   @default("sin autorización") // Estado de autorización
-  authorizationMessage  Json?    // Mensaje de autorización (JSON, puede ser largo)
-  scheduledAt           DateTime? // <-- Nueva línea: fecha y hora de vuelo (opcional)
-  externalResponseNumber String?
-  geoawarenessData  Json?    // Respuesta del servicio de geoawareness (GeoJSON)
 }
 
 model csvResult {

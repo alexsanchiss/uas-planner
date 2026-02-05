@@ -44,7 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     try {
       // Busca la máquina en la base de datos por su nombre
-      const machine = await prisma.machine.findUnique({
+      const machine = await prisma.machine.findFirst({
         where: { name },
       });
 

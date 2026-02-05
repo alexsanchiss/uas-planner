@@ -103,7 +103,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     fileContent: p.fileContent,
     userId, // Always from auth token
     folderId: p.folderId ?? null,
-    uplan: p.uplan !== undefined && p.uplan !== null ? JSON.stringify(p.uplan) : Prisma.DbNull,
+    uplan: p.uplan !== undefined && p.uplan !== null ? JSON.stringify(p.uplan) : null,
     scheduledAt: p.scheduledAt ?? null,
     geoawarenessData: p.geoawarenessData !== undefined && p.geoawarenessData !== null ? p.geoawarenessData : Prisma.DbNull,
   });
