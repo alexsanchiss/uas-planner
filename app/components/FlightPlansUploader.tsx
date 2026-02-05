@@ -460,45 +460,46 @@ export function FlightPlansUploader() {
     
     const GENERATE_RANDOM_DATA = process.env.NEXT_PUBLIC_GENERATE_RANDOM_UPLAN_DATA === 'true'
 
-    // Step 1: ALWAYS regenerate volumes before FAS submission
-    // This ensures volumes are up-to-date with any uplan changes made by the user
-    if (plan.csvResult) {
-      addLoadingPlan('authorizing', planId)
-      try {
-        toast.info('Generating operation volumes...')
-        const token = localStorage.getItem('authToken')
-        const response = await fetch(`/api/flightPlans/${planId}/generate-volumes`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
+    // Step 1: Check if uplanData exists and skip volume regeneration
+    if (!uplanData) {
+      if (plan.csvResult) {
+        addLoadingPlan('authorizing', planId)
+        try {
+          toast.info('Generating operation volumes...')
+          const token = localStorage.getItem('authToken')
+          const response = await fetch(`/api/flightPlans/${planId}/generate-volumes`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          })
+          
+          if (!response.ok) {
+            throw new Error('Failed to generate volumes')
           }
-        })
-        
-        if (!response.ok) {
-          throw new Error('Failed to generate volumes')
+          
+          // Get the updated uplan directly from the response (don't rely on flightPlans array refresh)
+          const result = await response.json()
+          console.log('[confirmAuthorizePlan] Volume generation result:', {
+            volumesGenerated: result.volumesGenerated,
+            randomDataGenerated: result.randomDataGenerated
+          })
+          
+          // Use the uplan from the response which includes the newly generated volumes
+          uplanData = result.uplan
+          
+          // Confirm volumes were saved to database
+          toast.success(`Operation volumes generated (${result.volumesGenerated} volumes)`)
+          
+          // Also refresh plans in background for UI consistency
+          refreshPlans().catch(err => console.error('[confirmAuthorizePlan] Refresh error:', err))
+        } catch (error) {
+          removeLoadingPlan('authorizing', planId)
+          toast.error('Failed to generate volumes. Please try again.')
+          console.error('[confirmAuthorizePlan] Volume generation error:', error)
+          return
         }
-        
-        // Get the updated uplan directly from the response (don't rely on flightPlans array refresh)
-        const result = await response.json()
-        console.log('[confirmAuthorizePlan] Volume generation result:', {
-          volumesGenerated: result.volumesGenerated,
-          randomDataGenerated: result.randomDataGenerated
-        })
-        
-        // Use the uplan from the response which includes the newly generated volumes
-        uplanData = result.uplan
-        
-        // Confirm volumes were saved to database
-        toast.success(`Operation volumes generated (${result.volumesGenerated} volumes)`)
-        
-        // Also refresh plans in background for UI consistency
-        refreshPlans().catch(err => console.error('[confirmAuthorizePlan] Refresh error:', err))
-      } catch (error) {
-        removeLoadingPlan('authorizing', planId)
-        toast.error('Failed to generate volumes. Please try again.')
-        console.error('[confirmAuthorizePlan] Volume generation error:', error)
-        return
       }
     }
 
@@ -885,7 +886,6 @@ export function FlightPlansUploader() {
       
       if (!hasVolumes && freshPlan.csvResult) {
         // Need to generate volumes first
-        toast.info('Generating operation volumes...')
         
         const volumeResponse = await fetch(`/api/flightPlans/${planId}/generate-volumes`, {
           method: 'POST',
