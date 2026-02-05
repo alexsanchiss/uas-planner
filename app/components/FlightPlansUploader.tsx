@@ -1029,6 +1029,34 @@ export function FlightPlansUploader() {
                 </button>
               </div>
 
+              {/* TASK: Large authorization status button for approved/denied plans */}
+              {(selectedPlan.authorizationStatus === 'aprobado' || selectedPlan.authorizationStatus === 'denegado') && (
+                <button
+                  onClick={() => handleViewAuthorizationMessage(selectedPlan.id, selectedPlan.authorizationMessage)}
+                  className={`w-full mt-4 px-6 py-3 text-base font-semibold rounded-lg transition-all transform hover:scale-[1.02] shadow-md hover:shadow-lg flex items-center justify-center gap-3 ${
+                    selectedPlan.authorizationStatus === 'aprobado'
+                      ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
+                      : 'bg-red-500 hover:bg-red-600 text-white'
+                  }`}
+                >
+                  {selectedPlan.authorizationStatus === 'aprobado' ? (
+                    <>
+                      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      View Authorization Details (Approved)
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      View Authorization Details (Denied)
+                    </>
+                  )}
+                </button>
+              )}
+
               {/* Only show authorization prompt when not yet authorized */}
               {selectedPlan.authorizationStatus === 'sin autorización' && (
                 <>
