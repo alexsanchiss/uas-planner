@@ -60,11 +60,16 @@ export async function PUT(
     }
 
     // Update authorization status and message
+    // Note: message can be a complex object from FAS, so we stringify it for storage
+    const authMessage = message !== null && message !== undefined 
+      ? (typeof message === 'string' ? message : JSON.stringify(message))
+      : undefined;
+    
     await prisma.flightPlan.update({
       where: { id: flightPlan.id },
       data: {
         authorizationStatus: state === "ACCEPTED" ? "aprobado" : "denegado",
-        authorizationMessage: message !== null && message !== undefined ? message : undefined,
+        authorizationMessage: authMessage,
       },
     });
 
