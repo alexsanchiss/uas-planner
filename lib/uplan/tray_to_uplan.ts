@@ -3,6 +3,11 @@ import { generateOrientedBBox, Waypoint, DEFAULT_UPLAN_CONFIG, UplanConfig } fro
 import { generateRandomJSON } from "./generate_random_json";
 import { generateJSON } from "./generate_json";
 
+// Environment variable to control random data generation
+// When true (default): generates complete U-Plan with random placeholder data
+// When false: generates only operation volumes, user must fill other fields
+const GENERATE_RANDOM_UPLAN_DATA = process.env.NEXT_PUBLIC_GENERATE_RANDOM_UPLAN_DATA !== 'false';
+
 export interface TrayToUplanParams {
   scheduledAt: number; // POSIX timestamp (segundos)
   csv: string; // CSV string con columnas: time, lat, lon, h
@@ -145,8 +150,15 @@ export function trayToUplan({
   const bbox = generateOrientedBBox(scheduledAt, wpReduced, volumeConfig);
   // Generar JSON final
   if (uplan && typeof uplan === "object") {
-    const filledUplan = fillUplan(uplan);
-    return generateJSON(bbox, wpReduced, filledUplan);
+    // If GENERATE_RANDOM_UPLAN_DATA is enabled, fill missing fields with random data
+    // Otherwise, only use the provided uplan data (user must fill fields manually)
+    const processedUplan = GENERATE_RANDOM_UPLAN_DATA ? fillUplan(uplan) : uplan;
+    return generateJSON(bbox, wpReduced, processedUplan);
   }
-  return generateRandomJSON(bbox, wpReduced);
+  // No uplan provided - generate with random data if enabled, otherwise empty structure
+  if (GENERATE_RANDOM_UPLAN_DATA) {
+    return generateRandomJSON(bbox, wpReduced);
+  }
+  // Generate with empty uplan fields - user must fill through form
+  return generateJSON(bbox, wpReduced, {});
 }

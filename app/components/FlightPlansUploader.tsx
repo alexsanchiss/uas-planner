@@ -928,14 +928,16 @@ export function FlightPlansUploader() {
           {currentStep === 'process' && (
             <div className="mt-4 p-4 bg-[var(--surface-primary)] rounded-lg border border-[var(--border-primary)] fade-in">
               <p className="text-sm text-[var(--text-secondary)] mb-3">
-                The plan is ready to be processed. This will generate the trajectory and U-Plan.
+                {selectedPlan.status === 'en proceso' 
+                  ? 'The plan is currently being processed. Please wait for completion.'
+                  : 'The plan is ready to be processed. This will generate the trajectory and U-Plan.'}
               </p>
               <button
                 onClick={() => handleProcessPlan(selectedPlan.id)}
-                disabled={loadingPlanIds.processing.has(selectedPlan.id)}
+                disabled={loadingPlanIds.processing.has(selectedPlan.id) || selectedPlan.status !== 'sin procesar'}
                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-blue-400 transition-colors btn-interactive disabled-transition"
               >
-                {loadingPlanIds.processing.has(selectedPlan.id) ? 'Processing...' : 'Process plan'}
+                {loadingPlanIds.processing.has(selectedPlan.id) || selectedPlan.status === 'en proceso' ? 'Processing...' : 'Process plan'}
               </button>
             </div>
           )}

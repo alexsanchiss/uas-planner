@@ -268,35 +268,38 @@ const ContactDetailsPartialSchema = z.object({
 
 /**
  * Flight Details Schema for partial validation
+ * Allows empty strings and undefined for enum fields (for form drafts)
  */
 const FlightDetailsPartialSchema = z.object({
-  mode: FlightModeEnum.optional(),
-  category: FlightCategoryEnum.optional(),
+  mode: FlightModeEnum.optional().or(z.literal('')),
+  category: FlightCategoryEnum.optional().or(z.literal('')),
   specialOperation: SpecialOperationEnum.optional(),
   privateFlight: z.boolean().optional(),
 }).optional();
 
 /**
  * Flight Characteristics Schema for partial validation
+ * Uses coercion to handle string inputs from form fields
  */
 const FlightCharacteristicsPartialSchema = z.object({
-  uasMTOM: z.number().optional(),
-  uasMaxSpeed: z.number().optional(),
-  Connectivity: ConnectivityEnum.optional(),
-  idTechnology: IdTechnologyEnum.optional(),
-  maxFlightTime: z.number().optional(),
+  uasMTOM: z.union([z.number(), z.string().transform(v => v === '' ? undefined : parseFloat(v))]).optional(),
+  uasMaxSpeed: z.union([z.number(), z.string().transform(v => v === '' ? undefined : parseFloat(v))]).optional(),
+  Connectivity: ConnectivityEnum.optional().or(z.literal('')),
+  idTechnology: IdTechnologyEnum.optional().or(z.literal('')),
+  maxFlightTime: z.union([z.number(), z.string().transform(v => v === '' ? undefined : parseFloat(v))]).optional(),
 }).optional();
 
 /**
  * General Characteristics Schema for partial validation
+ * Allows empty strings for enum fields
  */
 const GeneralCharacteristicsPartialSchema = z.object({
   brand: z.string().optional().or(z.literal('')),
   model: z.string().optional().or(z.literal('')),
   typeCertificate: z.string().optional().or(z.literal('')),
-  uasType: UasTypeEnum.optional(),
-  uasClass: UasClassEnum.optional(),
-  uasDimension: UasDimensionEnum.optional(),
+  uasType: UasTypeEnum.optional().or(z.literal('')),
+  uasClass: UasClassEnum.optional().or(z.literal('')),
+  uasDimension: UasDimensionEnum.optional().or(z.literal('')),
 }).optional();
 
 /**
