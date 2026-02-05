@@ -102,7 +102,7 @@ export async function GET() {
 
     // Check if we're in test mode with hardcoded data
     if (endpoint === 'PRUEBA') {
-      console.log('[USpaces] Using hardcoded test U-spaces (PRUEBA mode)')
+      // console.log('[USpaces] Using hardcoded test U-spaces (PRUEBA mode)')
       const testUspaces = getTestUspaces()
       return NextResponse.json({
         success: true,
@@ -121,7 +121,7 @@ export async function GET() {
 
     const serviceUrl = `http://${serviceIp}/${endpoint}`
     
-    console.log(`[USpaces] Fetching U-spaces from: ${serviceUrl}`)
+    // console.log(`[USpaces] Fetching U-spaces from: ${serviceUrl}`)
 
     try {
       const response = await fetch(serviceUrl, {
@@ -144,7 +144,7 @@ export async function GET() {
 
       const data: USpacesResponse = await response.json()
       
-      console.log(`[USpaces] Received ${data.u_spaces?.length || 0} U-spaces`)
+      // console.log(`[USpaces] Received ${data.u_spaces?.length || 0} U-spaces`)
 
       // Validate response structure
       if (!data.u_spaces || !Array.isArray(data.u_spaces)) {

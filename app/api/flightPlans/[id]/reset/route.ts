@@ -115,9 +115,9 @@ export async function POST(
     // 2. Perform reset in a transaction
     // Delete CSV result (if exists) and reset flight plan fields
     const [deletedCsvResult, updatedPlan] = await prisma.$transaction([
-      // Delete CSV result by the flight plan's csvResult ID (if it exists)
+      // Delete CSV result by the flight plan's ID (1:1 relationship)
       prisma.csvResult.deleteMany({
-        where: { id: flightPlan.csvResult ?? -1 },
+        where: { id },
       }),
       // Reset flight plan to initial state
       prisma.flightPlan.update({
@@ -137,7 +137,7 @@ export async function POST(
       }),
     ]);
 
-    console.log(`Flight plan ${id} reset successfully`);
+    // console.log(`Flight plan ${id} reset successfully`);
 
     return NextResponse.json({
       message: 'Plan de vuelo reiniciado correctamente',

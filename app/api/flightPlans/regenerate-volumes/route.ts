@@ -55,12 +55,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
              uplanObj.operationVolumes.length === 0
     })
 
-    console.log(
-      `[RegenerateVolumes] User ${userId}: ` +
-      `Checked ${plans.length} processed plans, ` +
-      `found ${plansNeedingRegeneration.length} needing regeneration`
-    )
-
+    // console.log(
+    //   `[RegenerateVolumes] User ${userId}: ` +
+    //   `Checked ${plans.length} processed plans, ` +
+    //   `found ${plansNeedingRegeneration.length} needing regeneration`
+    // )
     const errors: string[] = []
     let regeneratedCount = 0
 

@@ -255,7 +255,7 @@ export function TrajectoryMapViewer({ planId, planName, onClose, className = '' 
       setLoading(true)
       setError(null)
 
-      console.log('[TrajectoryMapViewer] Fetching trajectory for planId:', planId)
+      // console.log('[TrajectoryMapViewer] Fetching trajectory for planId:', planId)
 
       try {
         const token = localStorage.getItem('authToken')
@@ -279,12 +279,12 @@ export function TrajectoryMapViewer({ planId, planName, onClose, className = '' 
         // The csvResult table uses the same ID as flightPlan (1:1 relationship)
         const hasCsvResult = plan.csvResult
         
-        console.log('[TrajectoryMapViewer] Found plan:', {
-          planId: plan.id,
-          planName: plan.customName,
-          hasCsvResult,
-          status: plan.status
-        })
+        // console.log('[TrajectoryMapViewer] Found plan:', {
+        //   planId: plan.id,
+        //   planName: plan.customName,
+        //   hasCsvResult,
+        //   status: plan.status
+        // })
         
         if (!hasCsvResult) {
           setError(createTrajectoryError('NO_CSV_RESULT'))
@@ -292,7 +292,7 @@ export function TrajectoryMapViewer({ planId, planName, onClose, className = '' 
         }
 
         // Fetch the CSV content using the plan's ID (csvResult has same ID)
-        console.log('[TrajectoryMapViewer] Fetching CSV with id:', plan.id)
+        // console.log('[TrajectoryMapViewer] Fetching CSV with id:', plan.id)
         const csvRes = await fetch(`/api/csvResult?id=${plan.id}`, { headers })
         if (!csvRes.ok) {
           if (csvRes.status === 404) {

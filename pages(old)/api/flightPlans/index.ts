@@ -101,7 +101,7 @@ export default async function handler(
       // Debug: log plans with geoawarenessData
       flightPlans.forEach((plan: any) => {
         if (plan.geoawarenessData) {
-          console.log(`[GET /api/flightPlans] Plan ${plan.id} has geoawarenessData:`, plan.geoawarenessData);
+          // console.log(`[GET /api/flightPlans] Plan ${plan.id} has geoawarenessData:`, plan.geoawarenessData);
         }
       });
       res.json(flightPlans);
@@ -178,10 +178,10 @@ export default async function handler(
       if (typeof d.folderId === 'number' || d.folderId === null) out.folderId = d.folderId;
       // geoawarenessData is a JSON field - accept as object or null
       if (typeof d.geoawarenessData === 'object' || d.geoawarenessData === null) {
-        console.log('[sanitizeData] Including geoawarenessData:', d.geoawarenessData);
+        // console.log('[sanitizeData] Including geoawarenessData:', d.geoawarenessData);
         out.geoawarenessData = d.geoawarenessData;
       }
-      console.log('[sanitizeData] Final output:', out);
+      // console.log('[sanitizeData] Final output:', out);
       return out;
     };
 
@@ -219,7 +219,7 @@ export default async function handler(
           return res.status(400).json({ error: "No supported fields in data" });
         }
 
-        console.log(`[PUT /api/flightPlans] Updating plan ${id} with:`, updateData);
+        // console.log(`[PUT /api/flightPlans] Updating plan ${id} with:`, updateData);
 
         const result = await prisma.flightPlan.updateMany({
           where: { id: Number(id) },
@@ -232,7 +232,7 @@ export default async function handler(
 
         // Return the updated flight plan
         const updated = await prisma.flightPlan.findUnique({ where: { id: Number(id) } });
-        console.log(`[PUT /api/flightPlans] Plan ${id} after update:`, updated);
+        // console.log(`[PUT /api/flightPlans] Plan ${id} after update:`, updated);
         return res.status(200).json(updated);
       }
 

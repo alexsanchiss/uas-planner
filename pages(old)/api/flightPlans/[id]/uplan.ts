@@ -122,7 +122,7 @@ export default async function handler(
       csv: csvResult.csvResult,
       ...(uplanDetails ? { uplan: uplanDetails } : {}),
     });
-    console.log("Plan procesado");
+    // console.log("Plan procesado");
     // 4. Enviar el U-Plan a la API externa (FAS)
     const fasIp = process.env.FAS_IP;
     const fasEndpoint = process.env.FAS_ENDPOINT || "uplan";

@@ -161,9 +161,9 @@ function MapClickHandler({
       // Select the smallest one (first in sorted list)
       if (containingUspaces.length > 0) {
         const smallestUspace = containingUspaces[0];
-        console.log(`[UspaceSelector] Clicked at (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
-        console.log(`[UspaceSelector] Found ${containingUspaces.length} U-spaces containing this point`);
-        console.log(`[UspaceSelector] Selecting smallest: ${smallestUspace.name} (area: ${calculatePolygonArea(smallestUspace.boundary).toFixed(6)})`);
+        // console.log(`[UspaceSelector] Clicked at (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
+        // console.log(`[UspaceSelector] Found ${containingUspaces.length} U-spaces containing this point`);
+        // console.log(`[UspaceSelector] Selecting smallest: ${smallestUspace.name} (area: ${calculatePolygonArea(smallestUspace.boundary).toFixed(6)})`);
         onSelect(smallestUspace);
       }
     },

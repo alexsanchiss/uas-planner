@@ -167,7 +167,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log(`[Geozones API] � Fallback endpoint called for: ${uspaceId}`);
+    // console.log(`[Geozones API] � Fallback endpoint called for: ${uspaceId}`);
 
     // CRITICAL: DO NOT attempt HTTP connection to the geoawareness service
     // The service ONLY works via WebSocket at ws://{IP}/ws/gas/{uspaceId}
