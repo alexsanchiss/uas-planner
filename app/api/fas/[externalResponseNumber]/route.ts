@@ -65,6 +65,7 @@ export async function PUT(
     }
 
     console.log('[FAS Callback] Found flightPlan id:', flightPlan.id);
+    console.log('[FAS Callback] Current status:', flightPlan.authorizationStatus, 'Current message:', flightPlan.authorizationMessage);
 
     // Update authorization status and message
     // Store the entire body (minus state) as the authorization message
@@ -75,13 +76,22 @@ export async function PUT(
     const newStatus = state === "ACCEPTED" ? "aprobado" : "denegado";
     console.log('[FAS Callback] Updating status to:', newStatus, 'message:', authMessage);
     
-    await prisma.flightPlan.update({
+    const updatedPlan = await prisma.flightPlan.update({
       where: { id: flightPlan.id },
       data: {
         authorizationStatus: newStatus,
         authorizationMessage: authMessage,
       },
     });
+
+    console.log('[FAS Callback] Update result - id:', updatedPlan.id, 'newStatus:', updatedPlan.authorizationStatus, 'newMessage:', updatedPlan.authorizationMessage);
+    
+    // Verify the update by reading it back
+    const verifyPlan = await prisma.flightPlan.findUnique({
+      where: { id: flightPlan.id },
+      select: { id: true, authorizationStatus: true, authorizationMessage: true }
+    });
+    console.log('[FAS Callback] Verification read - status:', verifyPlan?.authorizationStatus, 'message:', verifyPlan?.authorizationMessage);
 
     console.log('[FAS Callback] Successfully updated flightPlan:', flightPlan.id);
     return NextResponse.json({ success: true });
