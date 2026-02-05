@@ -50,7 +50,7 @@ export async function POST(
       return NextResponse.json({ error: 'No U-Space identifier in flight plan.' }, { status: 400 });
     }
 
-    const wsUrl = `ws://${process.env.NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP}/ws/gas/${uspaceIdentifier}`;
+    const wsUrl = `ws://${process.env.GEOAWARENESS_SERVICE_IP}/ws/gas/${uspaceIdentifier}`;
     console.log(`[Geoawareness API] Plan ${planId} validated, U-Space: ${uspaceIdentifier}, WS: ${wsUrl}`);
 
     return NextResponse.json({

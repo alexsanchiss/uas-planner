@@ -6,7 +6,7 @@
  * TASK-086: Implements fallback to legacy geozones when WebSocket fails
  * 
  * Features:
- * - Connects to ws://${NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP}/ws/gas/${uspaceId}
+ * - Connects to ws://${GEOAWARENESS_SERVICE_IP}/ws/gas/${uspaceId}
  * - Status tracking: connecting, connected, disconnected, error
  * - Auto-reconnection with exponential backoff (1s, 2s, 4s, 8s, 16s)
  * - Maximum retry limit (default: 5)
@@ -347,10 +347,10 @@ export interface UseGeoawarenessWebSocketReturn {
  * Get the WebSocket URL for a given U-space
  */
 function getWebSocketUrl(uspaceId: string): string | null {
-  const serviceIp = process.env.NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP
+  const serviceIp = process.env.GEOAWARENESS_SERVICE_IP
   
   if (!serviceIp) {
-    console.warn('[useGeoawarenessWebSocket] NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP not configured')
+    console.warn('[useGeoawarenessWebSocket] GEOAWARENESS_SERVICE_IP not configured')
     return null
   }
   
@@ -647,8 +647,8 @@ export function useGeoawarenessWebSocket({
 
     const wsUrl = getWebSocketUrl(uspaceId)
     if (!wsUrl) {
-      console.error('[WS] Geoawareness service not configured (NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP missing)')
-      const envError = new Error('Geoawareness service not configured. Please set NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP environment variable')
+      console.error('[WS] Geoawareness service not configured (GEOAWARENESS_SERVICE_IP missing)')
+      const envError = new Error('Geoawareness service not configured. Please set GEOAWARENESS_SERVICE_IP environment variable')
       setError(envError)
       setStatus('error')
       onErrorRef.current?.(envError)
@@ -744,7 +744,7 @@ export function useGeoawarenessWebSocket({
             }
           }, delay)
         } else if (currentRetryCount >= maxRetries) {
-          console.error(`[WS] Max retries reached. Service: ${process.env.NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP}`)
+          console.error(`[WS] Max retries reached. Service: ${process.env.GEOAWARENESS_SERVICE_IP}`)
           const maxRetryError = new Error(`Connection failed after ${maxRetries} attempts`)
           setError(maxRetryError)
           setStatus('error')
