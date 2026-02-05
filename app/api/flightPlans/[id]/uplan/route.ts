@@ -199,6 +199,7 @@ export async function POST(
         where: { id },
         data: {
           uplan: uplanString,
+          authorizationStatus: 'pendiente',
           authorizationMessage: 'FAS procesando...',
           externalResponseNumber,
         },
