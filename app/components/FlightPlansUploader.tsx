@@ -490,7 +490,7 @@ export function FlightPlansUploader() {
         uplanData = result.uplan
         
         // Confirm volumes were saved to database
-        toast.success(`Operation volumes generated and saved (${result.volumesGenerated} volumes)`)
+        toast.success(`Operation volumes generated (${result.volumesGenerated} volumes)`)
         
         // Also refresh plans in background for UI consistency
         refreshPlans().catch(err => console.error('[confirmAuthorizePlan] Refresh error:', err))
@@ -526,7 +526,6 @@ export function FlightPlansUploader() {
           : fieldList
         
         toast.error(`Please complete the required fields: ${summary}`)
-        toast.info('Note: Operation volumes were successfully generated and saved to database.')
         
         // Open UplanFormModal automatically with highlighted errors
         setUplanFormModal({
@@ -857,23 +856,38 @@ export function FlightPlansUploader() {
     const plan = flightPlans.find(p => String(p.id) === planId)
     if (!plan) return
     
-    // Parse uplan to check if volumes exist
-    let uplanData: unknown = plan.uplan
-    if (typeof uplanData === 'string') {
-      try { uplanData = JSON.parse(uplanData) } catch { uplanData = null }
-    }
+    // Always fetch fresh plan data from API to ensure we have latest uplan with volumes
+    setGeneratingVolumes(planId)
     
-    // Check for operation volumes
-    const uplanObj = uplanData as { operationVolumes?: unknown[] } | null
-    const hasVolumes = Array.isArray(uplanObj?.operationVolumes) && uplanObj.operationVolumes.length > 0
-    
-    if (!hasVolumes && plan.csvResult) {
-      // Need to generate volumes first
-      setGeneratingVolumes(planId)
+    try {
+      const token = localStorage.getItem('authToken')
+      const response = await fetch(`/api/flightPlans/${planId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        }
+      })
       
-      try {
-        const token = localStorage.getItem('authToken')
-        const response = await fetch(`/api/flightPlans/${planId}/generate-volumes`, {
+      if (!response.ok) {
+        throw new Error('Failed to fetch plan data')
+      }
+      
+      const freshPlan = await response.json()
+      
+      // Parse uplan to check if volumes exist
+      let uplanData: unknown = freshPlan.uplan
+      if (typeof uplanData === 'string') {
+        try { uplanData = JSON.parse(uplanData) } catch { uplanData = null }
+      }
+      
+      // Check for operation volumes
+      const uplanObj = uplanData as { operationVolumes?: unknown[] } | null
+      const hasVolumes = Array.isArray(uplanObj?.operationVolumes) && uplanObj.operationVolumes.length > 0
+      
+      if (!hasVolumes && freshPlan.csvResult) {
+        // Need to generate volumes first
+        toast.info('Generating operation volumes...')
+        
+        const volumeResponse = await fetch(`/api/flightPlans/${planId}/generate-volumes`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -881,14 +895,14 @@ export function FlightPlansUploader() {
           }
         })
         
-        if (!response.ok) {
+        if (!volumeResponse.ok) {
           throw new Error('Failed to generate volumes')
         }
         
-        const result = await response.json()
+        const result = await volumeResponse.json()
         
-        // Refresh flight plans to get updated uplan
-        await refreshPlans()
+        // Refresh flight plans in background for UI consistency
+        refreshPlans().catch(err => console.error('[ViewUplanMap] Refresh error:', err))
         
         // Open modal with generated data from response
         setUplanViewModal({
@@ -899,20 +913,25 @@ export function FlightPlansUploader() {
         })
         
         toast.success(`Generated ${result.volumesGenerated} operation volumes`)
-      } catch (error) {
-        toast.error('Failed to generate volumes. Please try again.')
-        console.error('[ViewUplanMap] Error generating volumes:', error)
-      } finally {
-        setGeneratingVolumes(null)
+      } else {
+        // Volumes exist, open modal with fresh data
+        setUplanViewModal({
+          open: true,
+          uplan: uplanData, // Use parsed uplan
+          name: plan.customName,
+          fileContent: freshPlan.fileContent ?? null,
+        })
+        
+        if (hasVolumes) {
+          const volumeCount = (uplanObj?.operationVolumes as unknown[]).length
+          toast.success(`Loaded ${volumeCount} operation volumes`)
+        }
       }
-    } else {
-      // Volumes exist, just open modal
-      setUplanViewModal({
-        open: true,
-        uplan: plan.uplan,
-        name: plan.customName,
-        fileContent: plan.fileContent ?? null,
-      })
+    } catch (error) {
+      toast.error('Failed to load U-Plan data. Please try again.')
+      console.error('[ViewUplanMap] Error:', error)
+    } finally {
+      setGeneratingVolumes(null)
     }
   }, [flightPlans, refreshPlans, toast])
 
