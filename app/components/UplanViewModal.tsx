@@ -149,10 +149,13 @@ const UplanViewModal = ({ open, onClose, uplan, name, fileContent }: UplanViewMo
   // TASK-079: Early return only if modal is closed OR we have neither waypoints nor volumes
   if (!open || (!hasWaypoints && !hasVolumes)) return null;
   
-  // Show only active polygons (time-based)
+  // Show only active polygons (time-based) - but always show all volumes with different styling
   const activeVols = hasVolumes 
     ? vols.filter((v: any) => currentTime + minT >= v.t0 && currentTime + minT <= v.t1)
     : [];
+  
+  // When showVolumes is true, render all volumes (active ones highlighted, inactive dimmed)
+  const volumesToRender = hasVolumes ? vols : [];
   
   // Find the first active volume for the label
   const activeLabelVol = activeVols.length > 0 ? activeVols[0] : null;
@@ -265,10 +268,13 @@ const UplanViewModal = ({ open, onClose, uplan, name, fileContent }: UplanViewMo
           )}
           
           {/* Render 4D volumes with hover tooltips - TASK-081 */}
-          {showVolumes && activeVols.map((v: any, i: number) => {
+          {showVolumes && volumesToRender.map((v: any, i: number) => {
             const origVol = uplan.operationVolumes?.[v.idx];
             const timeBegin = origVol?.timeBegin ? new Date(origVol.timeBegin).toISOString().replace('T', ' ').slice(0, 19) + ' UTC' : 'N/A';
             const timeEnd = origVol?.timeEnd ? new Date(origVol.timeEnd).toISOString().replace('T', ' ').slice(0, 19) + ' UTC' : 'N/A';
+            
+            // Check if this volume is active at current time
+            const isActive = currentTime + minT >= v.t0 && currentTime + minT <= v.t1;
             
             // Extract altitude info - handle both number and {value, reference, uom} object format
             let minAlt: string = 'N/A';
@@ -316,7 +322,12 @@ const UplanViewModal = ({ open, onClose, uplan, name, fileContent }: UplanViewMo
               <Polygon
                 key={`vol-${i}`}
                 positions={v.coords}
-                pathOptions={{ color: '#8b5cf6', fillColor: '#a78bfa', fillOpacity: 0.4 }}
+                pathOptions={{ 
+                  color: isActive ? '#8b5cf6' : '#94a3b8', 
+                  fillColor: isActive ? '#a78bfa' : '#cbd5e1', 
+                  fillOpacity: isActive ? 0.4 : 0.15,
+                  weight: isActive ? 2 : 1
+                }}
               >
                 <Tooltip direction="top" offset={[0, -10]} sticky>
                   <div className="text-xs min-w-[160px]">
