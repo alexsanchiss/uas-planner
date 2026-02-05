@@ -391,6 +391,9 @@ export function AuthorizationResultIconButton({
   const isDisabled = authorizationStatus === 'pendiente' || 
                      (authorizationStatus === 'sin autorización' && disabled)
   
+  // Show loading spinner when actively loading OR when FAS is processing (pending status)
+  const showSpinner = loading || isPending
+
   return (
     <IconButtonTooltip content={tooltip} position="top">
       <button
@@ -398,9 +401,9 @@ export function AuthorizationResultIconButton({
         disabled={isDisabled || loading}
         aria-label={ariaLabel}
         style={{ color }}
-        className={`${iconButtonBaseStyles} ${iconButtonSizeStyles[size]} hover:bg-[${hoverBg}] focus:ring-[${ring}] disabled:opacity-50 ${isPending ? 'animate-pulse' : ''} ${className}`}
+        className={`${iconButtonBaseStyles} ${iconButtonSizeStyles[size]} hover:bg-[${hoverBg}] focus:ring-[${ring}] disabled:opacity-50 ${className}`}
       >
-        {loading ? <LoadingSpinner size={size} /> : icon}
+        {showSpinner ? <LoadingSpinner size={size} /> : icon}
       </button>
     </IconButtonTooltip>
   )

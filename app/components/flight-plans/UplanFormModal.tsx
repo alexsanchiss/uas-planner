@@ -937,45 +937,22 @@ export default function UplanFormModal({
 
         {/* Footer with Actions */}
         <div className="px-6 py-4 border-t border-gray-700 flex items-center justify-between bg-gray-800/50">
-          <Button variant="outline" onClick={onClose} disabled={isSubmitting || isSavingDraft}>
+          <Button variant="outline" onClick={onClose} disabled={isSavingDraft}>
             Cancel
           </Button>
-          <div className="flex gap-3">
-            <Button 
-              variant="outline" 
-              onClick={handleSaveDraft}
-              disabled={isSubmitting || isSavingDraft}
-            >
-              {isSavingDraft ? (
-                <>
-                  <LoadingSpinner size="sm" className="mr-2" />
-                  Saving...
-                </>
-              ) : (
-                'Save Draft'
-              )}
-            </Button>
-            <Button
-              onClick={handleSubmitToFAS}
-              disabled={isSubmitting || isSavingDraft || !hasBeenProcessed || !hasScheduledAt}
-              title={
-                !hasBeenProcessed 
-                  ? 'Process the plan first'
-                  : !hasScheduledAt 
-                    ? 'Set a scheduled date first'
-                    : 'Submit to FAS for authorization'
-              }
-            >
-              {isSubmitting ? (
-                <>
-                  <LoadingSpinner size="sm" className="mr-2" />
-                  Submitting...
-                </>
-              ) : (
-                'Send to FAS ▸'
-              )}
-            </Button>
-          </div>
+          <Button 
+            onClick={handleSaveDraft}
+            disabled={isSavingDraft}
+          >
+            {isSavingDraft ? (
+              <>
+                <LoadingSpinner size="sm" className="mr-2" />
+                Saving...
+              </>
+            ) : (
+              'Save Draft'
+            )}
+          </Button>
         </div>
       </div>
     </div>

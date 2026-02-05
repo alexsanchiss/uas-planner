@@ -47,11 +47,11 @@ export function generateRandomJSON(bbox: VolumeData, wp: Waypoint[]): unknown {
     registrationNumber: "1",
     serialNumber: "2",
     flightCharacteristics: {
-      uasMTOM: "3",
-      uasMaxSpeed: "4",
+      uasMTOM: 3,
+      uasMaxSpeed: 4,
       Connectivity: "5G",
       idTechnology: "ADSB",
-      maxFlightTime: "7",
+      maxFlightTime: 7,
     },
     generalCharacteristics: {
       brand: "8",
