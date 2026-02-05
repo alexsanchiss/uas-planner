@@ -176,7 +176,7 @@ export default async function handler(
       where: { id: Number(id) },
     });
 
-    if (!csvResult) {
+    if (!csvResult || !csvResult.csvResult) {
       return res.status(404).json({ error: "CSV no encontrado" });
     }
 
