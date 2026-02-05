@@ -12,6 +12,7 @@
 | TASK-006 | Fix DateTime Picker Typing Issues | completed | agent | 2026-02-05 |
 | TASK-007 | Cross-Platform Build Validation | completed | agent | 2026-02-05 |
 | TASK-008 | Final Commit and Tag | completed | agent | 2026-02-05 |
+| TASK-009 | Fix Auto-Scroll on Plan Selection | completed | agent | 2026-02-05 |
 
 ## Execution Log
 
@@ -25,6 +26,7 @@
 | 2026-02-05 | TASK-006 | Added onKeyDown={(e) => e.preventDefault()} to datetime-local input to disable direct typing and force users to use the popup picker. | pending |
 | 2026-02-05 | TASK-007 | Verified `npx prisma generate` and `npm run build` complete without errors. TypeScript types valid. | - |
 | 2026-02-05 | TASK-008 | All stabilization changes pushed to origin/master. 5 commits: schema fix, uplan serialization, logo aspect ratio, theme independence, datetime-picker fix. | 0e831b7 |
+| 2026-02-05 | TASK-009 | Removed automatic scroll-to-top behavior when selecting flight plans. Plans now remain visible in their folders after selection, improving user experience. | 416e88a |
 
 ## Notes
 - Tasks must be completed in order (Phase 1 before Phase 2)
