@@ -171,6 +171,12 @@ export function FlightPlansUploader() {
     planId: string | null
     planName: string
   }>({ open: false, planId: null, planName: '' })
+  // Authorization confirmation dialog state
+  const [authorizationConfirmDialog, setAuthorizationConfirmDialog] = useState<{
+    open: boolean
+    planId: string | null
+    planName: string
+  }>({ open: false, planId: null, planName: '' })
   // TASK-219: Trajectory map viewer state (replaces CSV download)
   const [trajectoryViewer, setTrajectoryViewer] = useState<{
     open: boolean
@@ -418,7 +424,28 @@ export function FlightPlansUploader() {
     })
   }, [flightPlans, toast])
 
-  const handleAuthorizePlan = useCallback(async (planId: string) => {
+  const handleAuthorizePlan = useCallback((planId: string) => {
+    const plan = flightPlans.find(p => String(p.id) === planId)
+    if (!plan || plan.status !== 'procesado') {
+      toast.warning('The plan must be processed before requesting authorization.')
+      return
+    }
+
+    // Show confirmation dialog
+    setAuthorizationConfirmDialog({
+      open: true,
+      planId,
+      planName: plan.customName,
+    })
+  }, [flightPlans, toast])
+
+  // Actual authorization after confirmation
+  const confirmAuthorizePlan = useCallback(async () => {
+    const planId = authorizationConfirmDialog.planId
+    if (!planId) return
+
+    setAuthorizationConfirmDialog(prev => ({ ...prev, open: false }))
+    
     const plan = flightPlans.find(p => String(p.id) === planId)
     if (!plan || plan.status !== 'procesado') {
       toast.warning('The plan must be processed before requesting authorization.')
@@ -454,7 +481,7 @@ export function FlightPlansUploader() {
         
         // Get the updated uplan directly from the response (don't rely on flightPlans array refresh)
         const result = await response.json()
-        console.log('[handleAuthorizePlan] Volume generation result:', {
+        console.log('[confirmAuthorizePlan] Volume generation result:', {
           volumesGenerated: result.volumesGenerated,
           randomDataGenerated: result.randomDataGenerated
         })
@@ -462,12 +489,15 @@ export function FlightPlansUploader() {
         // Use the uplan from the response which includes the newly generated volumes
         uplanData = result.uplan
         
+        // Confirm volumes were saved to database
+        toast.success(`Operation volumes generated and saved (${result.volumesGenerated} volumes)`)
+        
         // Also refresh plans in background for UI consistency
-        refreshPlans().catch(err => console.error('[handleAuthorizePlan] Refresh error:', err))
+        refreshPlans().catch(err => console.error('[confirmAuthorizePlan] Refresh error:', err))
       } catch (error) {
         removeLoadingPlan('authorizing', planId)
         toast.error('Failed to generate volumes. Please try again.')
-        console.error('[handleAuthorizePlan] Volume generation error:', error)
+        console.error('[confirmAuthorizePlan] Volume generation error:', error)
         return
       }
     }
@@ -475,6 +505,7 @@ export function FlightPlansUploader() {
     // Step 2: If NOT random data mode, validate completeness
     if (!GENERATE_RANDOM_DATA) {
       if (!uplanData) {
+        removeLoadingPlan('authorizing', planId)
         toast.error('Cannot submit to FAS: U-Plan data is not available.')
         return
       }
@@ -482,7 +513,7 @@ export function FlightPlansUploader() {
       const validationResult = isUplanComplete(uplanData)
       
       if (!validationResult.isComplete) {
-        console.log('[handleAuthorizePlan] Validation failed:', {
+        console.log('[confirmAuthorizePlan] Validation failed:', {
           missingFields: validationResult.missingFields,
           fieldErrors: validationResult.fieldErrors
         })
@@ -495,6 +526,7 @@ export function FlightPlansUploader() {
           : fieldList
         
         toast.error(`Please complete the required fields: ${summary}`)
+        toast.info('Note: Operation volumes were successfully generated and saved to database.')
         
         // Open UplanFormModal automatically with highlighted errors
         setUplanFormModal({
@@ -1435,6 +1467,18 @@ export function FlightPlansUploader() {
         variant="warning"
       />
 
+      {/* Authorization confirmation dialog */}
+      <ConfirmDialog
+        open={authorizationConfirmDialog.open}
+        onClose={() => setAuthorizationConfirmDialog(prev => ({ ...prev, open: false }))}
+        onConfirm={confirmAuthorizePlan}
+        title="Confirm Authorization Request"
+        message={`You are about to submit the plan "${authorizationConfirmDialog.planName}" to the Flight Authorization Service (FAS) for approval.\n\nPlease confirm that:\n• All flight plan data is accurate and complete\n• Operation volumes have been reviewed\n• Geoawareness zones have been checked\n• You understand this action will send the plan for official authorization\n\nDo you want to proceed?`}
+        confirmLabel="Submit to FAS"
+        cancelLabel="Cancel"
+        variant="warning"
+      />
+
       {/* TASK-109: Reset confirmation dialog */}
       <ConfirmDialog
         open={resetConfirmDialog.open}
@@ -1590,10 +1634,9 @@ export function FlightPlansUploader() {
           // Refresh flight plans after saving draft
           refreshPlans()
         }}
-        onSubmitToFAS={() => {
-          // Refresh flight plans after FAS submission
-          refreshPlans()
-          setUplanFormModal({ open: false, planId: '', uplan: null, name: '' })
+        onRequestAuthorization={(planId) => {
+          // User clicked "Save & Request Auth" - trigger authorization flow with confirmation
+          handleAuthorizePlan(planId)
         }}
       />
 
