@@ -31,19 +31,18 @@ export function useVolumeRegeneration(enabled: boolean = true) {
   const isCheckingRef = useRef(false)
 
   useEffect(() => {
-    if (!enabled) {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current)
-        intervalRef.current = null
-      }
+    // Clean up any existing interval
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+      intervalRef.current = null
+    }
+
+    // Don't create interval if disabled or paused
+    if (!enabled || isPaused) {
       return
     }
 
     async function checkAndRegenerateVolumes() {
-      if (isPaused) {
-        return
-      }
-
       if (isCheckingRef.current) {
         console.log('[VolumeRegeneration] Check already in progress, skipping...')
         return
@@ -114,9 +113,8 @@ export function useVolumeRegeneration(enabled: boolean = true) {
       }
     }
 
-    // NOTE: Initial call removed - no automatic volume check on mount
-    // The interval is still set up but isPaused=true prevents execution
-
+    // Create interval and run initial check
+    checkAndRegenerateVolumes()
     intervalRef.current = setInterval(() => {
       checkAndRegenerateVolumes()
     }, 30000)
