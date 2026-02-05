@@ -519,7 +519,7 @@ export default function UplanFormModal({
   };
 
   // TASK-003: Save draft and request authorization in one action
-  // This implements the iterative workflow: save → validate → submit if valid, else show errors
+  // This implements the iterative workflow: save → generate volumes → validate → submit if valid, else show errors
   const handleSaveAndRequestAuthorization = async () => {
     // First, save the draft
     setIsSavingDraft(true);
@@ -555,7 +555,39 @@ export default function UplanFormModal({
       
       setIsSavingDraft(false);
 
-      // Now validate and submit to FAS
+      // Step 2: ALWAYS regenerate operation volumes from trajectory before validating/sending to FAS
+      // This ensures volumes are current with any uplan changes made by the user
+      setIsSubmitting(true);
+      try {
+        toast.info('Generating operation volumes...');
+        const volumeResponse = await fetch(`/api/flightPlans/${planId}/generate-volumes`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!volumeResponse.ok) {
+          throw new Error('Failed to generate volumes');
+        }
+        
+        const volumeResult = await volumeResponse.json();
+        console.log('[UplanFormModal] Volume generation:', {
+          volumesGenerated: volumeResult.volumesGenerated,
+          randomDataGenerated: volumeResult.randomDataGenerated
+        });
+        
+        // Notify parent to refresh (UI consistency)
+        onSave?.();
+      } catch (error) {
+        console.error('[UplanFormModal] Volume generation error:', error);
+        toast.error('Failed to generate volumes. Please try again.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Step 3: Now validate and submit to FAS
       await handleSubmitToFAS();
     } catch (error) {
       console.error('Error saving draft:', error);

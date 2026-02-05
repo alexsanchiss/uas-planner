@@ -431,12 +431,11 @@ export function FlightPlansUploader() {
       try { uplanData = JSON.parse(uplanData) } catch { uplanData = null }
     }
     
-    const uplanObj = uplanData as { operationVolumes?: unknown[] } | null
-    const hasVolumes = Array.isArray(uplanObj?.operationVolumes) && uplanObj.operationVolumes.length > 0
     const GENERATE_RANDOM_DATA = process.env.NEXT_PUBLIC_GENERATE_RANDOM_UPLAN_DATA === 'true'
 
-    // Step 1: Check if volumes need to be generated
-    if (!hasVolumes && plan.csvResult) {
+    // Step 1: ALWAYS regenerate volumes before FAS submission
+    // This ensures volumes are up-to-date with any uplan changes made by the user
+    if (plan.csvResult) {
       addLoadingPlan('authorizing', planId)
       try {
         toast.info('Generating operation volumes...')
