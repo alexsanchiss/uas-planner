@@ -8,7 +8,7 @@
 | TASK-002 | Verify and Fix TypeScript Build Errors | completed | agent | 2026-02-05 |
 | TASK-003 | Fix uplan JSON Serialization in API Route | completed | agent | 2026-02-05 |
 | TASK-004 | Fix Header Logo Aspect Ratio | completed | agent | 2026-02-05 |
-| TASK-005 | Ensure Theme Independence from System | not-started | - | - |
+| TASK-005 | Ensure Theme Independence from System | completed | agent | 2026-02-05 |
 | TASK-006 | Fix DateTime Picker Typing Issues | not-started | - | - |
 | TASK-007 | Cross-Platform Build Validation | not-started | - | - |
 | TASK-008 | Final Commit and Tag | not-started | - | - |
@@ -21,6 +21,7 @@
 | 2026-02-05 | TASK-002 | Verified TypeScript build passes after schema fix. No additional errors found. | - |
 | 2026-02-05 | TASK-003 | Added JSON.parse(JSON.stringify(uplan)) serialization before all 3 Prisma update calls in uplan route to prevent nested object keys from being interpreted as Prisma operations. | pending |
 | 2026-02-05 | TASK-004 | Added object-contain to Image component and flex-shrink-0 to logo containers to prevent aspect ratio distortion at various viewport widths. | pending |
+| 2026-02-05 | TASK-005 | Added color-scheme CSS property to :root (dark) and [data-theme="light"] to prevent system theme from affecting form elements and scrollbars. | pending |
 
 ## Notes
 - Tasks must be completed in order (Phase 1 before Phase 2)

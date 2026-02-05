@@ -11,6 +11,9 @@
    DARK THEME (Default)
    ============================================ */
 :root {
+  /* Block system color-scheme influence on form elements/scrollbars */
+  color-scheme: dark;
+
   /* Background colors */
   --bg-primary: #111827;      /* gray-900 */
   --bg-secondary: #1f2937;    /* gray-800 */
@@ -251,6 +254,9 @@
    LIGHT THEME
    ============================================ */
 [data-theme="light"] {
+  /* Block system color-scheme influence on form elements/scrollbars */
+  color-scheme: light;
+
   /* Background colors */
   --bg-primary: #f9fafb;      /* gray-50 */
   --bg-secondary: #ffffff;    /* white */
