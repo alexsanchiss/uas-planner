@@ -347,10 +347,10 @@ export interface UseGeoawarenessWebSocketReturn {
  * Get the WebSocket URL for a given U-space
  */
 function getWebSocketUrl(uspaceId: string): string | null {
-  const serviceIp = process.env.GEOAWARENESS_SERVICE_IP
+  const serviceIp = process.env.NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP
   
   if (!serviceIp) {
-    console.warn('[useGeoawarenessWebSocket] GEOAWARENESS_SERVICE_IP not configured')
+    console.warn('[useGeoawarenessWebSocket] NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP not configured')
     return null
   }
   
@@ -647,8 +647,8 @@ export function useGeoawarenessWebSocket({
 
     const wsUrl = getWebSocketUrl(uspaceId)
     if (!wsUrl) {
-      console.error('[WS] Geoawareness service not configured (GEOAWARENESS_SERVICE_IP missing)')
-      const envError = new Error('Geoawareness service not configured. Please set GEOAWARENESS_SERVICE_IP environment variable')
+      console.error('[WS] Geoawareness service not configured (NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP missing)')
+      const envError = new Error('Geoawareness service not configured. Please set NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP environment variable')
       setError(envError)
       setStatus('error')
       onErrorRef.current?.(envError)
