@@ -453,15 +453,18 @@ export function FlightPlansUploader() {
           throw new Error('Failed to generate volumes')
         }
         
-        // Refresh plans to get updated uplan with volumes
-        await refreshPlans()
+        // Get the updated uplan directly from the response (don't rely on flightPlans array refresh)
+        const result = await response.json()
+        console.log('[handleAuthorizePlan] Volume generation result:', {
+          volumesGenerated: result.volumesGenerated,
+          randomDataGenerated: result.randomDataGenerated
+        })
         
-        // Re-fetch the updated plan data
-        const updatedPlan = flightPlans.find((p) => String(p.id) === planId)
-        uplanData = updatedPlan?.uplan ?? null
-        if (typeof uplanData === 'string') {
-          try { uplanData = JSON.parse(uplanData) } catch { uplanData = null }
-        }
+        // Use the uplan from the response which includes the newly generated volumes
+        uplanData = result.uplan
+        
+        // Also refresh plans in background for UI consistency
+        refreshPlans().catch(err => console.error('[handleAuthorizePlan] Refresh error:', err))
       } catch (error) {
         removeLoadingPlan('authorizing', planId)
         toast.error('Failed to generate volumes. Please try again.')
