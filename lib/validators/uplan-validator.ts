@@ -129,11 +129,20 @@ export type FlightDetails = z.infer<typeof FlightDetailsSchema>;
  * Flight Characteristics
  */
 export const FlightCharacteristicsSchema = z.object({
-  uasMTOM: z.number().positive('MTOM must be a positive number'),
-  uasMaxSpeed: z.number().positive('Max speed must be a positive number'),
+  uasMTOM: z.preprocess(
+    (val) => typeof val === 'string' ? parseFloat(val) : val,
+    z.number().positive('MTOM must be a positive number')
+  ),
+  uasMaxSpeed: z.preprocess(
+    (val) => typeof val === 'string' ? parseFloat(val) : val,
+    z.number().positive('Max speed must be a positive number')
+  ),
   Connectivity: ConnectivityEnum,
   idTechnology: IdTechnologyEnum,
-  maxFlightTime: z.number().positive('Max flight time must be a positive number'),
+  maxFlightTime: z.preprocess(
+    (val) => typeof val === 'string' ? parseFloat(val) : val,
+    z.number().positive('Max flight time must be a positive number')
+  ),
 });
 export type FlightCharacteristics = z.infer<typeof FlightCharacteristicsSchema>;
 
@@ -548,6 +557,10 @@ export function getPartialValidationErrors(data: unknown): UplanValidationErrors
  */
 export function isUplanComplete(data: unknown): boolean {
   const result = UplanFormDataSchema.safeParse(data);
+  if (!result.success) {
+    console.log('[isUplanComplete] Validation failed. Errors:', JSON.stringify(result.error.issues, null, 2));
+    console.log('[isUplanComplete] Data received:', JSON.stringify(data, null, 2).substring(0, 1000));
+  }
   return result.success;
 }
 

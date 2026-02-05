@@ -25,22 +25,26 @@ export async function PUT(
 ): Promise<NextResponse> {
   try {
     const { externalResponseNumber } = await params;
+    console.log('[FAS Callback] Received PUT for:', externalResponseNumber);
 
     // Parse request body
-    let body: { state?: string; message?: string };
+    let body: Record<string, unknown>;
     try {
       body = await request.json();
+      console.log('[FAS Callback] Request body:', JSON.stringify(body));
     } catch {
+      console.error('[FAS Callback] Invalid JSON body');
       return NextResponse.json(
         { error: "Invalid JSON body" },
         { status: 400 }
       );
     }
 
-    const { state, message } = body;
+    const { state, ...restOfBody } = body;
 
     // Validate required fields
     if (!state) {
+      console.error('[FAS Callback] Missing state field');
       return NextResponse.json(
         { error: "Missing required field: state" },
         { status: 400 }
@@ -53,26 +57,33 @@ export async function PUT(
     });
 
     if (!flightPlan) {
+      console.error('[FAS Callback] FlightPlan not found:', externalResponseNumber);
       return NextResponse.json(
         { error: "FlightPlan not found" },
         { status: 404 }
       );
     }
 
+    console.log('[FAS Callback] Found flightPlan id:', flightPlan.id);
+
     // Update authorization status and message
-    // Note: message can be a complex object from FAS, so we stringify it for storage
-    const authMessage = message !== null && message !== undefined 
-      ? (typeof message === 'string' ? message : JSON.stringify(message))
-      : undefined;
+    // Store the entire body (minus state) as the authorization message
+    const authMessage = Object.keys(restOfBody).length > 0
+      ? JSON.stringify(restOfBody)
+      : null;
+    
+    const newStatus = state === "ACCEPTED" ? "aprobado" : "denegado";
+    console.log('[FAS Callback] Updating status to:', newStatus, 'message:', authMessage);
     
     await prisma.flightPlan.update({
       where: { id: flightPlan.id },
       data: {
-        authorizationStatus: state === "ACCEPTED" ? "aprobado" : "denegado",
+        authorizationStatus: newStatus,
         authorizationMessage: authMessage,
       },
     });
 
+    console.log('[FAS Callback] Successfully updated flightPlan:', flightPlan.id);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error in FAS PUT callback:", error);
