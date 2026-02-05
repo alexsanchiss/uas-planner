@@ -25,6 +25,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useFlightPlans, type FlightPlan as FlightPlanData } from '../hooks/useFlightPlans'
 import { useFolders } from '../hooks/useFolders'
 import { useVolumeRegeneration } from '../hooks/useVolumeRegeneration'
+import { isUplanComplete } from '@/lib/validators/uplan-validator'
 import {
   FolderList,
   FlightPlanCard,
@@ -190,7 +191,8 @@ export function FlightPlansUploader() {
     planName: string
     message: unknown
     status: 'aprobado' | 'denegado' | null
-  }>({ open: false, planId: null, planName: '', message: null, status: null })
+    uplan: unknown
+  }>({ open: false, planId: null, planName: '', message: null, status: null, uplan: null })
   // U-Plan review modal state - shows U-Plan before authorization
   // TASK-079: Include fileContent for waypoint visualization
   const [uplanViewModal, setUplanViewModal] = useState<{
@@ -414,6 +416,13 @@ export function FlightPlansUploader() {
     const plan = flightPlans.find(p => String(p.id) === planId)
     if (!plan || plan.status !== 'procesado') {
       toast.warning('The plan must be processed before requesting authorization.')
+      return
+    }
+
+    // Validate uplan data is complete before sending to FAS
+    const uplanData = plan.uplan ? (typeof plan.uplan === 'string' ? JSON.parse(plan.uplan) : plan.uplan) : null
+    if (!uplanData || !isUplanComplete(uplanData)) {
+      toast.error('Cannot submit to FAS: U-Plan data is incomplete. Please review and fill all required fields in the U-Plan form.')
       return
     }
 
@@ -726,6 +735,8 @@ export function FlightPlansUploader() {
   const handleViewAuthorizationMessage = useCallback((planId: string, message: unknown) => {
     const plan = flightPlans.find(p => String(p.id) === planId)
     if (plan) {
+      // Parse uplan for download
+      const uplanData = plan.uplan ? (typeof plan.uplan === 'string' ? JSON.parse(plan.uplan) : plan.uplan) : null
       setAuthorizationMessageModal({
         open: true,
         planId,
@@ -733,9 +744,26 @@ export function FlightPlansUploader() {
         message,
         status: plan.authorizationStatus === 'aprobado' ? 'aprobado' : 
                 plan.authorizationStatus === 'denegado' ? 'denegado' : null,
+        uplan: uplanData,
       })
     }
   }, [flightPlans])
+
+  // Download U-Plan as JSON file
+  const handleDownloadUplan = useCallback(() => {
+    if (!authorizationMessageModal.uplan || !authorizationMessageModal.planName) return
+    
+    const jsonStr = JSON.stringify(authorizationMessageModal.uplan, null, 2)
+    const blob = new Blob([jsonStr], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `uplan_${authorizationMessageModal.planName.replace(/[^a-zA-Z0-9]/g, '_')}.json`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }, [authorizationMessageModal.uplan, authorizationMessageModal.planName])
 
   // Loading state
   if (!user) {
@@ -1213,7 +1241,7 @@ export function FlightPlansUploader() {
       {authorizationMessageModal.open && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-          onClick={() => setAuthorizationMessageModal({ open: false, planId: null, planName: '', message: null, status: null })}
+          onClick={() => setAuthorizationMessageModal({ open: false, planId: null, planName: '', message: null, status: null, uplan: null })}
         >
           <div
             className="bg-[var(--surface-primary)] rounded-xl shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col"
@@ -1253,7 +1281,7 @@ export function FlightPlansUploader() {
                 </div>
               </div>
               <button
-                onClick={() => setAuthorizationMessageModal({ open: false, planId: null, planName: '', message: null, status: null })}
+                onClick={() => setAuthorizationMessageModal({ open: false, planId: null, planName: '', message: null, status: null, uplan: null })}
                 className="p-2 rounded-lg text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors"
                 aria-label="Close"
               >
@@ -1281,10 +1309,21 @@ export function FlightPlansUploader() {
               )}
             </div>
             {/* Footer */}
-            <div className="px-6 py-4 border-t border-[var(--border-primary)] flex justify-end">
+            <div className="px-6 py-4 border-t border-[var(--border-primary)] flex justify-between items-center">
+              {!!authorizationMessageModal.uplan && (
+                <button
+                  onClick={handleDownloadUplan}
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  Download U-Plan (JSON)
+                </button>
+              )}
               <button
-                onClick={() => setAuthorizationMessageModal({ open: false, planId: null, planName: '', message: null, status: null })}
-                className="px-4 py-2 text-sm font-medium text-[var(--text-secondary)] bg-[var(--bg-tertiary)] rounded-md hover:bg-[var(--bg-hover)] transition-colors"
+                onClick={() => setAuthorizationMessageModal({ open: false, planId: null, planName: '', message: null, status: null, uplan: null })}
+                className="px-4 py-2 text-sm font-medium text-[var(--text-secondary)] bg-[var(--bg-tertiary)] rounded-md hover:bg-[var(--bg-hover)] transition-colors ml-auto"
               >
                 Close
               </button>
