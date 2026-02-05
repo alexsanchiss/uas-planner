@@ -16,7 +16,7 @@
  * @implements TASK-012 through TASK-022
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Checkbox } from '../ui/checkbox';
@@ -302,6 +302,9 @@ export default function UplanFormModal({
   const [validationErrors, setValidationErrors] = useState<UplanValidationErrors | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
+  
+  // Track whether modal was previously open to detect open transitions
+  const wasOpenRef = useRef(false);
 
   // TASK-003: Merge external fieldErrors (from parent) with internal validation errors
   const mergedFieldErrors = React.useMemo(() => {
@@ -314,15 +317,17 @@ export default function UplanFormModal({
     return merged;
   }, [fieldErrors, validationErrors]);
 
-  // Initialize form data when modal opens or existingUplan changes
+  // Initialize form data ONLY when modal transitions from closed to open
+  // This prevents form data from being reset when existingUplan reference changes
+  // (e.g., due to polling refreshes while the modal is already open)
   useEffect(() => {
-    if (open) {
+    if (open && !wasOpenRef.current) {
+      // Modal just opened - initialize form data
       const merged = mergeWithDefaults(existingUplan);
       setFormData(merged);
       
       // TASK-003: Show external validation errors on open (if any)
       if (Object.keys(fieldErrors).length > 0) {
-        // Convert flat fieldErrors to UplanValidationErrors format
         const errors: UplanValidationErrors = {
           formErrors: [],
           fieldErrors: {},
@@ -335,6 +340,7 @@ export default function UplanFormModal({
         setValidationErrors(null);
       }
     }
+    wasOpenRef.current = open;
   }, [open, existingUplan, fieldErrors]);
 
   // Helper to get field error
@@ -1122,7 +1128,7 @@ export default function UplanFormModal({
                   <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  Save & Request Authorization
+                  Save & Request Auth
                 </>
               )}
             </Button>
