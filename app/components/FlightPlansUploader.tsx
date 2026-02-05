@@ -793,6 +793,12 @@ export function FlightPlansUploader() {
   const handlePlanClick = useCallback((planId: string) => {
     // Toggle selection for workflow UI
     setSelectedPlanId(prev => prev === planId ? null : planId)
+    
+    // Smooth scroll to top to show the selected plan details
+    window.scrollTo({ 
+      top: 0, 
+      behavior: 'smooth' 
+    })
   }, [])
 
   // Handle waypoint preview click - opens waypoint map modal
