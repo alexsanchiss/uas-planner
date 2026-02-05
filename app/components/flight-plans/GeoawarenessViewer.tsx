@@ -268,6 +268,13 @@ export function GeoawarenessViewer({
   // Log WebSocket status changes once on mount
   useEffect(() => {
     console.log(`[GeoawarenessViewer] Props: planId=${planId}, uspaceId=${uspaceId}`);
+    // Log the actual env var value to debug
+    const envValue = process.env.NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP;
+    console.log(`[GeoawarenessViewer] NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP = "${envValue}"`);
+    if (!envValue) {
+      console.error('[GeoawarenessViewer] ❌ ENV VAR IS UNDEFINED! Next.js needs a full rebuild after adding NEXT_PUBLIC_ variables.');
+      console.error('[GeoawarenessViewer] Run: npm run build OR restart dev server to fix.');
+    }
   }, [planId, uspaceId])
 
   // Log WebSocket status changes
@@ -582,6 +589,20 @@ export function GeoawarenessViewer({
               <p className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded px-3 py-2 mt-2">
                 {displayError}
               </p>
+              {displayError?.includes('NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP') && (
+                <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-700">
+                  <p className="text-xs text-yellow-800 dark:text-yellow-200 font-medium mb-1">
+                    ⚠️ NEXT_PUBLIC_ variables require full rebuild
+                  </p>
+                  <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                    Next.js inlines NEXT_PUBLIC_* at build time. After adding this variable to .env, you must:
+                  </p>
+                  <ol className="text-xs text-yellow-700 dark:text-yellow-300 list-decimal list-inside mt-2 space-y-1">
+                    <li><code className="bg-yellow-100 dark:bg-yellow-900/40 px-1 py-0.5 rounded">npm run build</code> (for production)</li>
+                    <li><strong>OR</strong> restart dev server: <code className="bg-yellow-100 dark:bg-yellow-900/40 px-1 py-0.5 rounded">ctrl+c</code> then <code className="bg-yellow-100 dark:bg-yellow-900/40 px-1 py-0.5 rounded">npm run dev</code></li>
+                  </ol>
+                </div>
+              )}
             </div>
 
             <button
