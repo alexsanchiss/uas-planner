@@ -1,11 +1,11 @@
 /**
  * useVolumeRegeneration Hook
  * 
- * Auto-regenerates missing operation volumes for processed flight plans.
- * Checks every 30 seconds for plans that:
- * - Have csvResult (are processed)
- * - Don't have operationVolumes in their uplan
- * - Regenerates them automatically
+ * Provides volume regeneration functionality for processed flight plans.
+ * 
+ * NOTE: Automatic polling is DISABLED by default. Volumes are now generated
+ * on-demand when needed. The hook is kept available for future manual use.
+ * To re-enable automatic polling, set isPaused to false via setIsPaused(false).
  */
 
 import { useEffect, useRef, useState } from 'react'
@@ -25,7 +25,8 @@ export function useVolumeRegeneration(enabled: boolean = true) {
     errors: []
   })
   
-  const [isPaused, setIsPaused] = useState(false) // Active by default - auto-regenerates volumes
+  // DISABLED: Automatic polling is paused by default - volumes are generated on-demand
+  const [isPaused, setIsPaused] = useState(true)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const isCheckingRef = useRef(false)
 
@@ -113,7 +114,8 @@ export function useVolumeRegeneration(enabled: boolean = true) {
       }
     }
 
-    checkAndRegenerateVolumes()
+    // NOTE: Initial call removed - no automatic volume check on mount
+    // The interval is still set up but isPaused=true prevents execution
 
     intervalRef.current = setInterval(() => {
       checkAndRegenerateVolumes()
