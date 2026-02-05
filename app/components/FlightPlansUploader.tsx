@@ -202,11 +202,14 @@ export function FlightPlansUploader() {
     fileContent: string | null
   }>({ open: false, uplan: null, name: '', fileContent: null })
   // TASK-023: UplanFormModal state for editing U-Plan before authorization
+  // TASK-003: Include validation errors for highlighting missing fields
   const [uplanFormModal, setUplanFormModal] = useState<{
     open: boolean
     planId: string
     uplan: unknown
     name: string
+    missingFields?: string[]
+    fieldErrors?: { [fieldName: string]: string }
   }>({ open: false, planId: '', uplan: null, name: '' })
   // TASK-076: Geoawareness viewer modal state
   const [geoawarenessModal, setGeoawarenessModal] = useState<{
@@ -419,10 +422,40 @@ export function FlightPlansUploader() {
       return
     }
 
-    // Validate uplan data is complete before sending to FAS
+    // TASK-003: Validate uplan data is complete before sending to FAS
     const uplanData = plan.uplan ? (typeof plan.uplan === 'string' ? JSON.parse(plan.uplan) : plan.uplan) : null
-    if (!uplanData || !isUplanComplete(uplanData)) {
-      toast.error('Cannot submit to FAS: U-Plan data is incomplete. Please review and fill all required fields in the U-Plan form.')
+    if (!uplanData) {
+      toast.error('Cannot submit to FAS: U-Plan data is not available.')
+      return
+    }
+
+    const validationResult = isUplanComplete(uplanData)
+    
+    if (!validationResult.isComplete) {
+      console.log('[handleAuthorizePlan] Validation failed:', {
+        missingFields: validationResult.missingFields,
+        fieldErrors: validationResult.fieldErrors
+      })
+      
+      // Show toast with summary of missing fields
+      const fieldList = validationResult.missingFields.slice(0, 3).join(', ')
+      const remaining = validationResult.missingFields.length - 3
+      const summary = remaining > 0 
+        ? `${fieldList}, and ${remaining} more` 
+        : fieldList
+      
+      toast.error(`Please complete the required fields: ${summary}`)
+      
+      // Open UplanFormModal automatically with highlighted errors
+      setUplanFormModal({
+        open: true,
+        planId,
+        uplan: uplanData,
+        name: plan.customName,
+        missingFields: validationResult.missingFields,
+        fieldErrors: validationResult.fieldErrors,
+      })
+      
       return
     }
 
@@ -1412,6 +1445,7 @@ export function FlightPlansUploader() {
       />
 
       {/* U-Plan form modal - TASK-023: editable form for U-Plan data */}
+      {/* TASK-003: Pass validation errors for field highlighting */}
       <UplanFormModal
         open={uplanFormModal.open}
         onClose={() => setUplanFormModal({ open: false, planId: '', uplan: null, name: '' })}
@@ -1421,6 +1455,8 @@ export function FlightPlansUploader() {
         authToken={typeof window !== 'undefined' ? localStorage.getItem('authToken') || '' : ''}
         hasBeenProcessed={selectedPlan?.status === 'procesado'}
         hasScheduledAt={!!selectedPlan?.scheduledAt}
+        missingFields={uplanFormModal.missingFields}
+        fieldErrors={uplanFormModal.fieldErrors}
         onSave={() => {
           // Refresh flight plans after saving draft
           refreshPlans()

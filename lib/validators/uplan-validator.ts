@@ -550,18 +550,142 @@ export function getPartialValidationErrors(data: unknown): UplanValidationErrors
 }
 
 /**
+ * Result of U-Plan completion check with detailed field information
+ */
+export interface UplanCompletionResult {
+  isComplete: boolean;
+  missingFields: string[];
+  fieldErrors: { [fieldName: string]: string };
+}
+
+/**
  * Checks if the U-Plan form data is complete and valid for FAS submission.
+ * Returns detailed information about missing fields and validation errors.
  * 
  * @param data - The U-Plan data to check
- * @returns True if complete and valid
+ * @returns Object with completion status, missing fields, and specific error messages
+ * 
+ * @example
+ * ```typescript
+ * const result = isUplanComplete(uplanData);
+ * if (!result.isComplete) {
+ *   console.log('Missing fields:', result.missingFields);
+ *   console.log('Field errors:', result.fieldErrors);
+ * }
+ * ```
  */
-export function isUplanComplete(data: unknown): boolean {
+export function isUplanComplete(data: unknown): UplanCompletionResult {
   const result = UplanFormDataSchema.safeParse(data);
-  if (!result.success) {
-    console.log('[isUplanComplete] Validation failed. Errors:', JSON.stringify(result.error.issues, null, 2));
-    console.log('[isUplanComplete] Data received:', JSON.stringify(data, null, 2).substring(0, 1000));
+  
+  if (result.success) {
+    return {
+      isComplete: true,
+      missingFields: [],
+      fieldErrors: {},
+    };
   }
-  return result.success;
+
+  // Extract missing fields and error messages
+  const missingFields: string[] = [];
+  const fieldErrors: { [fieldName: string]: string } = {};
+
+  console.log('[isUplanComplete] Validation failed. Errors:', JSON.stringify(result.error.issues, null, 2));
+  console.log('[isUplanComplete] Data received:', JSON.stringify(data, null, 2).substring(0, 1000));
+
+  // Process each issue to build user-friendly field paths and messages
+  for (const issue of result.error.issues) {
+    const fieldPath = issue.path.join('.');
+    const fieldName = generateUserFriendlyFieldName(issue.path);
+    
+    if (!missingFields.includes(fieldName)) {
+      missingFields.push(fieldName);
+    }
+    
+    fieldErrors[fieldPath] = issue.message;
+  }
+
+  return {
+    isComplete: false,
+    missingFields,
+    fieldErrors,
+  };
+}
+
+/**
+ * Generates a user-friendly field name from a path array.
+ * Example: ['uas', 'flightCharacteristics', 'uasMTOM'] -> 'MTOM (UAS Flight Characteristics)'
+ */
+function generateUserFriendlyFieldName(path: (string | number)[]): string {
+  if (path.length === 0) return 'Unknown field';
+  
+  // Map field names to user-friendly labels
+  const fieldNameMap: { [key: string]: string } = {
+    // Data identifiers
+    'dataOwnerIdentifier': 'Data Owner',
+    'dataSourceIdentifier': 'Data Source',
+    'sac': 'SAC',
+    'sic': 'SIC',
+    
+    // Contact details
+    'contactDetails': 'Contact Details',
+    'firstName': 'First Name',
+    'lastName': 'Last Name',
+    'phones': 'Phone Numbers',
+    'emails': 'Email Addresses',
+    
+    // Flight details
+    'flightDetails': 'Flight Details',
+    'mode': 'Flight Mode',
+    'category': 'Category',
+    'specialOperation': 'Special Operation',
+    'privateFlight': 'Private Flight',
+    
+    // UAS
+    'uas': 'UAS',
+    'registrationNumber': 'Registration Number',
+    'serialNumber': 'Serial Number',
+    'flightCharacteristics': 'Flight Characteristics',
+    'generalCharacteristics': 'General Characteristics',
+    
+    // Flight characteristics
+    'uasMTOM': 'MTOM',
+    'uasMaxSpeed': 'Max Speed',
+    'Connectivity': 'Connectivity',
+    'idTechnology': 'ID Technology',
+    'maxFlightTime': 'Max Flight Time',
+    
+    // General characteristics
+    'brand': 'Brand',
+    'model': 'Model',
+    'typeCertificate': 'Type Certificate',
+    'uasType': 'UAS Type',
+    'uasClass': 'UAS Class',
+    'uasDimension': 'Dimension',
+    
+    // Operator
+    'operatorId': 'Operator ID',
+  };
+  
+  // Build a hierarchical label
+  const parts: string[] = [];
+  for (const segment of path) {
+    if (typeof segment === 'string') {
+      const mapped = fieldNameMap[segment] || segment;
+      parts.push(mapped);
+    }
+  }
+  
+  // If nested (e.g., ['uas', 'flightCharacteristics', 'uasMTOM'])
+  // Return: "MTOM (UAS Flight Characteristics)"
+  if (parts.length > 2) {
+    const field = parts[parts.length - 1];
+    const section = parts.slice(0, -1).join(' ');
+    return `${field} (${section})`;
+  } else if (parts.length === 2) {
+    return `${parts[1]} (${parts[0]})`;
+  } else {
+    return parts[0] || 'Unknown field';
+  }
 }
 
 /**

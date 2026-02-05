@@ -65,6 +65,10 @@ interface UplanFormModalProps {
   hasBeenProcessed: boolean;
   /** Whether the plan has scheduledAt set */
   hasScheduledAt: boolean;
+  /** TASK-003: Missing fields from validation (for highlighting) */
+  missingFields?: string[];
+  /** TASK-003: Field-level error messages from validation */
+  fieldErrors?: { [fieldName: string]: string };
 }
 
 interface CollapsibleSectionProps {
@@ -123,18 +127,34 @@ interface FormFieldProps {
   required?: boolean;
   error?: string[];
   children: React.ReactNode;
+  /** TASK-003: Whether this field has a validation error (for red highlighting) */
+  hasValidationError?: boolean;
 }
 
-function FormField({ label, required, error, children }: FormFieldProps) {
+function FormField({ label, required, error, children, hasValidationError }: FormFieldProps) {
   return (
     <div className="mb-4">
-      <label className="block text-sm font-medium text-gray-300 mb-1">
+      <label className={`block text-sm font-medium mb-1 flex items-center gap-1 ${
+        hasValidationError ? 'text-red-400' : 'text-gray-300'
+      }`}>
+        {hasValidationError && (
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+          </svg>
+        )}
         {label}
         {required && <span className="text-red-400 ml-1">*</span>}
       </label>
-      {children}
+      <div className={hasValidationError ? 'error-shake' : ''}>
+        {children}
+      </div>
       {error && error.length > 0 && (
-        <p className="mt-1 text-sm text-red-400">{error.join(', ')}</p>
+        <p className="mt-1 text-xs text-red-400 flex items-center gap-1">
+          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293z" clipRule="evenodd" />
+          </svg>
+          {error.join(', ')}
+        </p>
       )}
     </div>
   );
@@ -147,15 +167,21 @@ interface SelectFieldProps {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  /** TASK-003: Whether this field has a validation error (for red highlighting) */
+  hasValidationError?: boolean;
 }
 
-function SelectField({ value, onChange, options, placeholder = 'Select...', disabled = false, className = '' }: SelectFieldProps) {
+function SelectField({ value, onChange, options, placeholder = 'Select...', disabled = false, className = '', hasValidationError }: SelectFieldProps) {
   return (
     <select
       value={value || ''}
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
-      className={`w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 ${className}`}
+      className={`w-full px-3 py-2 border rounded-md text-white focus:outline-none focus:ring-2 focus:border-transparent disabled:opacity-50 transition-colors ${
+        hasValidationError 
+          ? 'bg-red-900/30 border-red-500 focus:ring-red-500' 
+          : 'bg-gray-700 border-gray-600 focus:ring-blue-500'
+      } ${className}`}
     >
       <option value="">{placeholder}</option>
       {options.map((opt) => (
@@ -266,6 +292,8 @@ export default function UplanFormModal({
   authToken,
   hasBeenProcessed,
   hasScheduledAt,
+  missingFields: _missingFields = [], // Prefixed with _ to indicate intentionally unused (used for validation info passed from parent)
+  fieldErrors = {},
 }: UplanFormModalProps) {
   const toast = useToast();
 
@@ -275,14 +303,39 @@ export default function UplanFormModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
 
+  // TASK-003: Merge external fieldErrors (from parent) with internal validation errors
+  const mergedFieldErrors = React.useMemo(() => {
+    const merged = { ...fieldErrors };
+    if (validationErrors) {
+      Object.entries(validationErrors.fieldErrors).forEach(([path, messages]) => {
+        merged[path] = messages.join(', ');
+      });
+    }
+    return merged;
+  }, [fieldErrors, validationErrors]);
+
   // Initialize form data when modal opens or existingUplan changes
   useEffect(() => {
     if (open) {
       const merged = mergeWithDefaults(existingUplan);
       setFormData(merged);
-      setValidationErrors(null);
+      
+      // TASK-003: Show external validation errors on open (if any)
+      if (Object.keys(fieldErrors).length > 0) {
+        // Convert flat fieldErrors to UplanValidationErrors format
+        const errors: UplanValidationErrors = {
+          formErrors: [],
+          fieldErrors: {},
+        };
+        Object.entries(fieldErrors).forEach(([path, message]) => {
+          errors.fieldErrors[path] = [message];
+        });
+        setValidationErrors(errors);
+      } else {
+        setValidationErrors(null);
+      }
     }
-  }, [open, existingUplan]);
+  }, [open, existingUplan, fieldErrors]);
 
   // Helper to get field error
   const getFieldError = useCallback((path: string): string[] | undefined => {
@@ -306,6 +359,11 @@ export default function UplanFormModal({
     if (!validationErrors) return false;
     return Object.keys(validationErrors.fieldErrors).some(key => key.startsWith(sectionPrefix));
   }, [validationErrors]);
+
+  // TASK-003: Helper to check if a specific field path has validation error
+  const hasFieldError = useCallback((fieldPath: string): boolean => {
+    return !!mergedFieldErrors[fieldPath];
+  }, [mergedFieldErrors]);
 
   // Update nested form field
   const updateField = useCallback((path: string, value: unknown) => {
@@ -454,6 +512,52 @@ export default function UplanFormModal({
     }
   };
 
+  // TASK-003: Save draft and request authorization in one action
+  // This implements the iterative workflow: save → validate → submit if valid, else show errors
+  const handleSaveAndRequestAuthorization = async () => {
+    // First, save the draft
+    setIsSavingDraft(true);
+    
+    try {
+      // Merge form data with existing U-Plan to preserve auto-generated fields
+      const existingData = (typeof existingUplan === 'object' && existingUplan !== null) 
+        ? existingUplan as Record<string, unknown>
+        : {};
+      
+      const mergedUplan = {
+        ...existingData, // Preserve auto-generated fields
+        ...formData,     // Overwrite with user edits
+      };
+
+      const saveResponse = await fetch(`/api/flightPlans/${planId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          uplan: mergedUplan,
+        }),
+      });
+
+      if (!saveResponse.ok) {
+        throw new Error('Failed to save draft');
+      }
+
+      toast.success('Draft saved');
+      onSave?.();
+      
+      setIsSavingDraft(false);
+
+      // Now validate and submit to FAS
+      await handleSubmitToFAS();
+    } catch (error) {
+      console.error('Error saving draft:', error);
+      toast.error('Failed to save draft');
+      setIsSavingDraft(false);
+    }
+  };
+
   // Extract location display values from existing uplan
   const existingUplanObj = typeof existingUplan === 'object' && existingUplan !== null 
     ? existingUplan as Record<string, unknown> 
@@ -510,24 +614,28 @@ export default function UplanFormModal({
                       label="SAC" 
                       required 
                       error={getNestedError('dataOwnerIdentifier', 'sac')}
+                      hasValidationError={hasFieldError('dataOwnerIdentifier.sac')}
                     >
                       <Input
                         value={formData.dataOwnerIdentifier?.sac || ''}
                         onChange={(e) => updateField('dataOwnerIdentifier.sac', e.target.value.toUpperCase().slice(0, 3))}
                         placeholder="3 chars"
                         maxLength={3}
+                        hasValidationError={hasFieldError('dataOwnerIdentifier.sac')}
                       />
                     </FormField>
                     <FormField 
                       label="SIC" 
                       required 
                       error={getNestedError('dataOwnerIdentifier', 'sic')}
+                      hasValidationError={hasFieldError('dataOwnerIdentifier.sic')}
                     >
                       <Input
                         value={formData.dataOwnerIdentifier?.sic || ''}
                         onChange={(e) => updateField('dataOwnerIdentifier.sic', e.target.value.toUpperCase().slice(0, 3))}
                         placeholder="3 chars"
                         maxLength={3}
+                        hasValidationError={hasFieldError('dataOwnerIdentifier.sic')}
                       />
                     </FormField>
                   </div>
@@ -539,24 +647,28 @@ export default function UplanFormModal({
                       label="SAC" 
                       required 
                       error={getNestedError('dataSourceIdentifier', 'sac')}
+                      hasValidationError={hasFieldError('dataSourceIdentifier.sac')}
                     >
                       <Input
                         value={formData.dataSourceIdentifier?.sac || ''}
                         onChange={(e) => updateField('dataSourceIdentifier.sac', e.target.value.toUpperCase().slice(0, 3))}
                         placeholder="3 chars"
                         maxLength={3}
+                        hasValidationError={hasFieldError('dataSourceIdentifier.sac')}
                       />
                     </FormField>
                     <FormField 
                       label="SIC" 
                       required 
                       error={getNestedError('dataSourceIdentifier', 'sic')}
+                      hasValidationError={hasFieldError('dataSourceIdentifier.sic')}
                     >
                       <Input
                         value={formData.dataSourceIdentifier?.sic || ''}
                         onChange={(e) => updateField('dataSourceIdentifier.sic', e.target.value.toUpperCase().slice(0, 3))}
                         placeholder="3 chars"
                         maxLength={3}
+                        hasValidationError={hasFieldError('dataSourceIdentifier.sic')}
                       />
                     </FormField>
                   </div>
@@ -575,22 +687,26 @@ export default function UplanFormModal({
                   label="First Name" 
                   required 
                   error={getNestedError('contactDetails', 'firstName')}
+                  hasValidationError={hasFieldError('contactDetails.firstName')}
                 >
                   <Input
                     value={formData.contactDetails?.firstName || ''}
                     onChange={(e) => updateField('contactDetails.firstName', e.target.value)}
                     placeholder="Enter first name"
+                    hasValidationError={hasFieldError('contactDetails.firstName')}
                   />
                 </FormField>
                 <FormField 
                   label="Last Name" 
                   required 
                   error={getNestedError('contactDetails', 'lastName')}
+                  hasValidationError={hasFieldError('contactDetails.lastName')}
                 >
                   <Input
                     value={formData.contactDetails?.lastName || ''}
                     onChange={(e) => updateField('contactDetails.lastName', e.target.value)}
                     placeholder="Enter last name"
+                    hasValidationError={hasFieldError('contactDetails.lastName')}
                   />
                 </FormField>
               </div>
@@ -633,24 +749,28 @@ export default function UplanFormModal({
                   label="Flight Mode" 
                   required 
                   error={getNestedError('flightDetails', 'mode')}
+                  hasValidationError={hasFieldError('flightDetails.mode')}
                 >
                   <SelectField
                     value={formData.flightDetails?.mode}
                     onChange={(v) => updateField('flightDetails.mode', v as FlightMode)}
                     options={UplanDropdownOptions.mode}
                     placeholder="Select mode..."
+                    hasValidationError={hasFieldError('flightDetails.mode')}
                   />
                 </FormField>
                 <FormField 
                   label="Category" 
                   required 
                   error={getNestedError('flightDetails', 'category')}
+                  hasValidationError={hasFieldError('flightDetails.category')}
                 >
                   <SelectField
                     value={formData.flightDetails?.category}
                     onChange={(v) => updateField('flightDetails.category', v as FlightCategory)}
                     options={UplanDropdownOptions.category}
                     placeholder="Select category..."
+                    hasValidationError={hasFieldError('flightDetails.category')}
                   />
                 </FormField>
               </div>
@@ -658,12 +778,14 @@ export default function UplanFormModal({
                 <FormField 
                   label="Special Operation" 
                   error={getNestedError('flightDetails', 'specialOperation')}
+                  hasValidationError={hasFieldError('flightDetails.specialOperation')}
                 >
                   <SelectField
                     value={formData.flightDetails?.specialOperation}
                     onChange={(v) => updateField('flightDetails.specialOperation', v as SpecialOperation)}
                     options={UplanDropdownOptions.specialOperation}
                     placeholder="None"
+                    hasValidationError={hasFieldError('flightDetails.specialOperation')}
                   />
                 </FormField>
                 <FormField label="Private Flight">
@@ -689,23 +811,27 @@ export default function UplanFormModal({
                   label="Registration Number" 
                   required 
                   error={getNestedError('uas', 'registrationNumber') || validationErrors?.nestedErrors?.uas?.root?.['registrationNumber']}
+                  hasValidationError={hasFieldError('uas.registrationNumber')}
                 >
                   <Input
                     value={formData.uas?.registrationNumber || ''}
                     onChange={(e) => updateField('uas.registrationNumber', e.target.value)}
                     placeholder="Enter registration number"
+                    hasValidationError={hasFieldError('uas.registrationNumber')}
                   />
                 </FormField>
                 <FormField 
                   label="Serial Number" 
                   required 
                   error={getNestedError('uas', 'serialNumber') || validationErrors?.nestedErrors?.uas?.root?.['serialNumber']}
+                  hasValidationError={hasFieldError('uas.serialNumber')}
                 >
                   <Input
                     value={formData.uas?.serialNumber || ''}
                     onChange={(e) => updateField('uas.serialNumber', e.target.value.slice(0, 20))}
                     placeholder="Max 20 characters"
                     maxLength={20}
+                    hasValidationError={hasFieldError('uas.serialNumber')}
                   />
                 </FormField>
               </div>
@@ -718,6 +844,7 @@ export default function UplanFormModal({
                     label="MTOM (kg)" 
                     required 
                     error={validationErrors?.nestedErrors?.uas?.flightCharacteristics?.['uasMTOM']}
+                    hasValidationError={hasFieldError('uas.flightCharacteristics.uasMTOM')}
                   >
                     <Input
                       type="number"
@@ -726,12 +853,14 @@ export default function UplanFormModal({
                       value={formData.uas?.flightCharacteristics?.uasMTOM ?? ''}
                       onChange={(e) => updateField('uas.flightCharacteristics.uasMTOM', e.target.value ? parseFloat(e.target.value) : undefined)}
                       placeholder="e.g., 2.5"
+                      hasValidationError={hasFieldError('uas.flightCharacteristics.uasMTOM')}
                     />
                   </FormField>
                   <FormField 
                     label="Max Speed (m/s)" 
                     required 
                     error={validationErrors?.nestedErrors?.uas?.flightCharacteristics?.['uasMaxSpeed']}
+                    hasValidationError={hasFieldError('uas.flightCharacteristics.uasMaxSpeed')}
                   >
                     <Input
                       type="number"
@@ -740,36 +869,42 @@ export default function UplanFormModal({
                       value={formData.uas?.flightCharacteristics?.uasMaxSpeed ?? ''}
                       onChange={(e) => updateField('uas.flightCharacteristics.uasMaxSpeed', e.target.value ? parseFloat(e.target.value) : undefined)}
                       placeholder="e.g., 15"
+                      hasValidationError={hasFieldError('uas.flightCharacteristics.uasMaxSpeed')}
                     />
                   </FormField>
                   <FormField 
                     label="Connectivity" 
                     required 
                     error={validationErrors?.nestedErrors?.uas?.flightCharacteristics?.['Connectivity']}
+                    hasValidationError={hasFieldError('uas.flightCharacteristics.Connectivity')}
                   >
                     <SelectField
                       value={formData.uas?.flightCharacteristics?.Connectivity}
                       onChange={(v) => updateField('uas.flightCharacteristics.Connectivity', v as Connectivity)}
                       options={UplanDropdownOptions.connectivity}
                       placeholder="Select..."
+                      hasValidationError={hasFieldError('uas.flightCharacteristics.Connectivity')}
                     />
                   </FormField>
                   <FormField 
                     label="ID Technology" 
                     required 
                     error={validationErrors?.nestedErrors?.uas?.flightCharacteristics?.['idTechnology']}
+                    hasValidationError={hasFieldError('uas.flightCharacteristics.idTechnology')}
                   >
                     <SelectField
                       value={formData.uas?.flightCharacteristics?.idTechnology}
                       onChange={(v) => updateField('uas.flightCharacteristics.idTechnology', v as IdTechnology)}
                       options={UplanDropdownOptions.idTechnology}
                       placeholder="Select..."
+                      hasValidationError={hasFieldError('uas.flightCharacteristics.idTechnology')}
                     />
                   </FormField>
                   <FormField 
                     label="Max Flight Time (min)" 
                     required 
                     error={validationErrors?.nestedErrors?.uas?.flightCharacteristics?.['maxFlightTime']}
+                    hasValidationError={hasFieldError('uas.flightCharacteristics.maxFlightTime')}
                   >
                     <Input
                       type="number"
@@ -778,6 +913,7 @@ export default function UplanFormModal({
                       value={formData.uas?.flightCharacteristics?.maxFlightTime ?? ''}
                       onChange={(e) => updateField('uas.flightCharacteristics.maxFlightTime', e.target.value ? parseInt(e.target.value) : undefined)}
                       placeholder="e.g., 30"
+                      hasValidationError={hasFieldError('uas.flightCharacteristics.maxFlightTime')}
                     />
                   </FormField>
                 </div>
@@ -791,69 +927,81 @@ export default function UplanFormModal({
                     label="Brand" 
                     required 
                     error={validationErrors?.nestedErrors?.uas?.generalCharacteristics?.['brand']}
+                    hasValidationError={hasFieldError('uas.generalCharacteristics.brand')}
                   >
                     <Input
                       value={formData.uas?.generalCharacteristics?.brand || ''}
                       onChange={(e) => updateField('uas.generalCharacteristics.brand', e.target.value)}
                       placeholder="e.g., DJI"
+                      hasValidationError={hasFieldError('uas.generalCharacteristics.brand')}
                     />
                   </FormField>
                   <FormField 
                     label="Model" 
                     required 
                     error={validationErrors?.nestedErrors?.uas?.generalCharacteristics?.['model']}
+                    hasValidationError={hasFieldError('uas.generalCharacteristics.model')}
                   >
                     <Input
                       value={formData.uas?.generalCharacteristics?.model || ''}
                       onChange={(e) => updateField('uas.generalCharacteristics.model', e.target.value)}
                       placeholder="e.g., Mavic 3"
+                      hasValidationError={hasFieldError('uas.generalCharacteristics.model')}
                     />
                   </FormField>
                   <FormField 
                     label="Type Certificate" 
                     required 
                     error={validationErrors?.nestedErrors?.uas?.generalCharacteristics?.['typeCertificate']}
+                    hasValidationError={hasFieldError('uas.generalCharacteristics.typeCertificate')}
                   >
                     <Input
                       value={formData.uas?.generalCharacteristics?.typeCertificate || ''}
                       onChange={(e) => updateField('uas.generalCharacteristics.typeCertificate', e.target.value)}
                       placeholder="Enter certificate"
+                      hasValidationError={hasFieldError('uas.generalCharacteristics.typeCertificate')}
                     />
                   </FormField>
                   <FormField 
                     label="UAS Type" 
                     required 
                     error={validationErrors?.nestedErrors?.uas?.generalCharacteristics?.['uasType']}
+                    hasValidationError={hasFieldError('uas.generalCharacteristics.uasType')}
                   >
                     <SelectField
                       value={formData.uas?.generalCharacteristics?.uasType}
                       onChange={(v) => updateField('uas.generalCharacteristics.uasType', v as UasType)}
                       options={UplanDropdownOptions.uasType}
                       placeholder="Select..."
+                      hasValidationError={hasFieldError('uas.generalCharacteristics.uasType')}
                     />
                   </FormField>
                   <FormField 
                     label="UAS Class" 
                     required 
                     error={validationErrors?.nestedErrors?.uas?.generalCharacteristics?.['uasClass']}
+                    hasValidationError={hasFieldError('uas.generalCharacteristics.uasClass')}
                   >
                     <SelectField
                       value={formData.uas?.generalCharacteristics?.uasClass}
                       onChange={(v) => updateField('uas.generalCharacteristics.uasClass', v as UasClass)}
                       options={UplanDropdownOptions.uasClass}
                       placeholder="Select..."
+                      hasValidationError={hasFieldError('uas.generalCharacteristics.uasClass')}
                     />
                   </FormField>
                   <FormField 
                     label="Dimension" 
                     required 
                     error={validationErrors?.nestedErrors?.uas?.generalCharacteristics?.['uasDimension']}
+                    hasValidationError={hasFieldError('uas.generalCharacteristics.uasDimension')}
                   >
                     <SelectField
                       value={formData.uas?.generalCharacteristics?.uasDimension}
                       onChange={(v) => updateField('uas.generalCharacteristics.uasDimension', v as UasDimension)}
                       options={UplanDropdownOptions.uasDimension}
                       placeholder="Select..."
+                      hasValidationError={hasFieldError('uas.generalCharacteristics.uasDimension')}
                     />
                   </FormField>
                 </div>
@@ -870,11 +1018,13 @@ export default function UplanFormModal({
                 label="Operator ID" 
                 required 
                 error={getFieldError('operatorId')}
+                hasValidationError={hasFieldError('operatorId')}
               >
                 <Input
                   value={formData.operatorId || ''}
                   onChange={(e) => updateField('operatorId', e.target.value)}
                   placeholder="Enter operator ID"
+                  hasValidationError={hasFieldError('operatorId')}
                 />
               </FormField>
             </CollapsibleSection>
@@ -936,23 +1086,47 @@ export default function UplanFormModal({
         </div>
 
         {/* Footer with Actions */}
+        {/* TASK-003: Added "Save & Request Authorization" button for iterative workflow */}
         <div className="px-6 py-4 border-t border-gray-700 flex items-center justify-between bg-gray-800/50">
-          <Button variant="outline" onClick={onClose} disabled={isSavingDraft}>
+          <Button variant="outline" onClick={onClose} disabled={isSavingDraft || isSubmitting}>
             Cancel
           </Button>
-          <Button 
-            onClick={handleSaveDraft}
-            disabled={isSavingDraft}
-          >
-            {isSavingDraft ? (
-              <>
-                <LoadingSpinner size="sm" className="mr-2" />
-                Saving...
-              </>
-            ) : (
-              'Save Draft'
-            )}
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button 
+              onClick={handleSaveDraft}
+              disabled={isSavingDraft || isSubmitting}
+              variant="outline"
+            >
+              {isSavingDraft ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2" />
+                  Saving...
+                </>
+              ) : (
+                'Save Draft'
+              )}
+            </Button>
+            <Button 
+              onClick={handleSaveAndRequestAuthorization}
+              disabled={isSavingDraft || isSubmitting || !hasScheduledAt || !hasBeenProcessed}
+              title={!hasScheduledAt ? 'Please set a scheduled date/time first' : !hasBeenProcessed ? 'Please process the flight plan first' : undefined}
+              className="bg-purple-600 hover:bg-purple-700 text-white font-semibold"
+            >
+              {isSubmitting ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2" />
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Save & Request Authorization
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
