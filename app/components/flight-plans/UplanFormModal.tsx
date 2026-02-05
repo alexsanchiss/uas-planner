@@ -57,8 +57,8 @@ interface UplanFormModalProps {
   planName: string;
   /** Callback after successful save */
   onSave?: () => void;
-  /** Callback after successful FAS submission */
-  onSubmitToFAS?: () => void;
+  /** Callback to request authorization - parent will handle confirmation dialog */
+  onRequestAuthorization?: (planId: string) => void;
   /** Auth token for API calls */
   authToken: string;
   /** Whether the plan has been processed (has CSV result) */
@@ -288,7 +288,7 @@ export default function UplanFormModal({
   existingUplan,
   planName,
   onSave,
-  onSubmitToFAS,
+  onRequestAuthorization,
   authToken,
   hasBeenProcessed,
   hasScheduledAt,
@@ -438,94 +438,13 @@ export default function UplanFormModal({
     }
   };
 
-  // Send to FAS (full validation required)
-  // TASK-090: Merge form data with existing U-Plan to preserve auto-generated fields
-  const handleSubmitToFAS = async () => {
-    // Clear previous errors
-    setValidationErrors(null);
-
-    // Validate fully
-    const result = validateUplanFormData(formData);
-    if (!result.success) {
-      setValidationErrors(result.errors || null);
-      toast.error('Please fill all required fields before submitting');
-      return;
-    }
-
-    // Check prerequisites
-    if (!hasScheduledAt) {
-      toast.error('Please set a scheduled date/time before submitting to FAS');
-      return;
-    }
-
-    if (!hasBeenProcessed) {
-      toast.error('Please process the flight plan before submitting to FAS');
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      // Merge form data with existing U-Plan to preserve auto-generated fields
-      // (operationVolumes, takeoffLocation, landingLocation, gcsLocation, etc.)
-      const existingData = (typeof existingUplan === 'object' && existingUplan !== null) 
-        ? existingUplan as Record<string, unknown>
-        : {};
-      
-      const mergedUplan = {
-        ...existingData, // Preserve auto-generated fields
-        ...formData,     // Overwrite with user edits
-      };
-
-      // First, save the form data (merged with existing)
-      const saveResponse = await fetch(`/api/flightPlans/${planId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
-        },
-        body: JSON.stringify({
-          uplan: mergedUplan,
-        }),
-      });
-
-      if (!saveResponse.ok) {
-        throw new Error('Failed to save U-Plan data');
-      }
-
-      // Then submit to FAS
-      const fasResponse = await fetch(`/api/flightPlans/${planId}/uplan`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
-        },
-      });
-
-      if (!fasResponse.ok) {
-        const errorData = await fasResponse.json();
-        throw new Error(errorData.error || 'FAS submission failed');
-      }
-
-      toast.success('U-Plan submitted to FAS for authorization');
-      onSubmitToFAS?.();
-      onClose();
-    } catch (error) {
-      console.error('Error submitting to FAS:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to submit to FAS');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // TASK-003: Save draft and request authorization in one action
-  // This implements the iterative workflow: save → generate volumes → validate → submit if valid, else show errors
+  // TASK-003: Save draft, generate volumes, and request authorization
+  // This saves changes and generates volumes, then closes modal and delegates to parent for confirmation
   const handleSaveAndRequestAuthorization = async () => {
-    // First, save the draft
     setIsSavingDraft(true);
     
     try {
-      // Merge form data with existing U-Plan to preserve auto-generated fields
+      // Step 1: Save the draft with user edits
       const existingData = (typeof existingUplan === 'object' && existingUplan !== null) 
         ? existingUplan as Record<string, unknown>
         : {};
@@ -550,13 +469,11 @@ export default function UplanFormModal({
         throw new Error('Failed to save draft');
       }
 
-      toast.success('Draft saved');
-      onSave?.();
+      toast.success('U-Plan data saved');
       
       setIsSavingDraft(false);
 
-      // Step 2: ALWAYS regenerate operation volumes from trajectory before validating/sending to FAS
-      // This ensures volumes are current with any uplan changes made by the user
+      // Step 2: Generate operation volumes from trajectory
       setIsSubmitting(true);
       try {
         toast.info('Generating operation volumes...');
@@ -578,17 +495,25 @@ export default function UplanFormModal({
           randomDataGenerated: volumeResult.randomDataGenerated
         });
         
-        // Notify parent to refresh (UI consistency)
+        toast.success(`Operation volumes generated (${volumeResult.volumesGenerated} volumes)`);
+        
+        // Notify parent to refresh
         onSave?.();
+        
+        setIsSubmitting(false);
+        
+        // Step 3: Close modal and delegate to parent for authorization confirmation
+        onClose();
+        
+        // Step 4: Trigger parent authorization flow (which will show confirmation dialog)
+        if (onRequestAuthorization) {
+          onRequestAuthorization(planId);
+        }
       } catch (error) {
         console.error('[UplanFormModal] Volume generation error:', error);
         toast.error('Failed to generate volumes. Please try again.');
         setIsSubmitting(false);
-        return;
       }
-
-      // Step 3: Now validate and submit to FAS
-      await handleSubmitToFAS();
     } catch (error) {
       console.error('Error saving draft:', error);
       toast.error('Failed to save draft');
