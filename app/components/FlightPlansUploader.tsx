@@ -218,6 +218,9 @@ export function FlightPlansUploader() {
     planName: string
     uspaceId: string | null
   }>({ open: false, planId: '', planName: '', uspaceId: null })
+  // TASK-003: State for on-demand volume generation
+  const [generatingVolumes, setGeneratingVolumes] = useState<string | null>(null) // planId or null
+  
   const [loadingPlanIds, setLoadingPlanIds] = useState<{
     processing: Set<string>
     downloading: Set<string>
@@ -757,6 +760,70 @@ export function FlightPlansUploader() {
     }
   }, [flightPlans, toast])
 
+  // TASK-003: Handle viewing U-Plan map - generates volumes on demand if not present
+  const handleViewUplanMap = useCallback(async (planId: string) => {
+    const plan = flightPlans.find(p => String(p.id) === planId)
+    if (!plan) return
+    
+    // Parse uplan to check if volumes exist
+    let uplanData: unknown = plan.uplan
+    if (typeof uplanData === 'string') {
+      try { uplanData = JSON.parse(uplanData) } catch { uplanData = null }
+    }
+    
+    // Check for operation volumes
+    const uplanObj = uplanData as { operationVolumes?: unknown[] } | null
+    const hasVolumes = Array.isArray(uplanObj?.operationVolumes) && uplanObj.operationVolumes.length > 0
+    
+    if (!hasVolumes && plan.csvResult) {
+      // Need to generate volumes first
+      setGeneratingVolumes(planId)
+      
+      try {
+        const token = localStorage.getItem('authToken')
+        const response = await fetch(`/api/flightPlans/${planId}/generate-volumes`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+        
+        if (!response.ok) {
+          throw new Error('Failed to generate volumes')
+        }
+        
+        const result = await response.json()
+        
+        // Refresh flight plans to get updated uplan
+        await refreshPlans()
+        
+        // Open modal with generated data from response
+        setUplanViewModal({
+          open: true,
+          uplan: result.uplan,
+          name: plan.customName,
+          fileContent: plan.fileContent ?? null,
+        })
+        
+        toast.success(`Generated ${result.volumesGenerated} operation volumes`)
+      } catch (error) {
+        toast.error('Failed to generate volumes. Please try again.')
+        console.error('[ViewUplanMap] Error generating volumes:', error)
+      } finally {
+        setGeneratingVolumes(null)
+      }
+    } else {
+      // Volumes exist, just open modal
+      setUplanViewModal({
+        open: true,
+        uplan: plan.uplan,
+        name: plan.customName,
+        fileContent: plan.fileContent ?? null,
+      })
+    }
+  }, [flightPlans, refreshPlans, toast])
+
   // Handle viewing authorization message - opens modal with FAS response
   const handleViewAuthorizationMessage = useCallback((planId: string, message: unknown) => {
     const plan = flightPlans.find(p => String(p.id) === planId)
@@ -1041,22 +1108,28 @@ export function FlightPlansUploader() {
                 </button>
                 {/* View U-Plan Map button - shows operation volumes on map */}
                 {/* TASK-079: Show waypoints even without uplan, for planning visualization */}
+                {/* TASK-003: Generate volumes on demand if not present */}
                 <button
-                  onClick={() => {
-                    setUplanViewModal({
-                      open: true,
-                      uplan: selectedPlan.uplan,
-                      name: selectedPlan.name,
-                      fileContent: selectedPlan.fileContent ?? null,
-                    })
-                  }}
-                  disabled={!selectedPlan.fileContent}
+                  onClick={() => handleViewUplanMap(selectedPlan.id)}
+                  disabled={!selectedPlan.fileContent || generatingVolumes === selectedPlan.id}
                   className="px-4 py-2 text-sm font-medium text-[var(--text-primary)] bg-[var(--surface-tertiary)] border border-[var(--border-primary)] rounded-md hover:bg-[var(--bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors btn-interactive flex items-center gap-2"
                 >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                  </svg>
-                  View U-Plan Map
+                  {generatingVolumes === selectedPlan.id ? (
+                    <>
+                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Generating Volumes...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                      </svg>
+                      View U-Plan Map
+                    </>
+                  )}
                 </button>
                 {/* View trajectory button - TASK-001: Require status=procesado AND csvResult */}
                 <button
