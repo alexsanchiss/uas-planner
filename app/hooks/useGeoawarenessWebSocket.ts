@@ -350,7 +350,7 @@ function getWebSocketUrl(uspaceId: string): string | null {
   const serviceIp = process.env.NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP
   
   if (!serviceIp) {
-    console.warn('[useGeoawarenessWebSocket] NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP not configured')
+    console.warn('[useGeoawarenessWebSocket] NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP not configured. Make sure the env var is set and the Next.js dev server was restarted after adding it.')
     return null
   }
   
@@ -364,7 +364,9 @@ function getWebSocketUrl(uspaceId: string): string | null {
     wsUrl = `ws://${wsUrl}`
   }
   
-  return `${wsUrl}/ws/gas/${uspaceId}`
+  const fullUrl = `${wsUrl}/ws/gas/${uspaceId}`
+  console.log(`[useGeoawarenessWebSocket] WebSocket URL: ${fullUrl}`)
+  return fullUrl
 }
 
 /**

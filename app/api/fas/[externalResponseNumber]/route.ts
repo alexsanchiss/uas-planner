@@ -57,13 +57,13 @@ export async function PUT(
     }
 
     const newStatus = state === "ACCEPTED" ? "aprobado" : "denegado";
-    const authMessage = typeof message === 'string' ? message : (message ? JSON.stringify(message) : null);
+    const authMessage = typeof message === 'string' ? message : (message ? JSON.stringify(message) : undefined);
 
     await prisma.flightPlan.update({
       where: { id: flightPlan.id },
       data: {
         authorizationStatus: newStatus,
-        authorizationMessage: authMessage,
+        ...(authMessage !== undefined && { authorizationMessage: authMessage }),
       },
     });
 
