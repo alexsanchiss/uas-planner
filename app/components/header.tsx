@@ -43,7 +43,7 @@ function ThemedLogo({ width, height, className }: { width: number; height: numbe
       alt="UAS PLANNER Logo"
       width={width}
       height={height}
-      className={className}
+      className={`object-contain ${className || ''}`}
     />
   );
 }
@@ -260,8 +260,8 @@ export function Header() {
             ))}
           </div>
           {/* Logo centrado */}
-          <div className="flex justify-center">
-            <Link href="/">
+          <div className="flex justify-center flex-shrink-0">
+            <Link href="/" className="flex-shrink-0">
               <ThemedLogo width={150} height={50} />
             </Link>
           </div>
