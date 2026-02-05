@@ -927,18 +927,58 @@ export function FlightPlansUploader() {
           {/* Process action prompt */}
           {currentStep === 'process' && (
             <div className="mt-4 p-4 bg-[var(--surface-primary)] rounded-lg border border-[var(--border-primary)] fade-in">
-              <p className="text-sm text-[var(--text-secondary)] mb-3">
-                {selectedPlan.status === 'en proceso' 
-                  ? 'The plan is currently being processed. Please wait for completion.'
-                  : 'The plan is ready to be processed. This will generate the trajectory and U-Plan.'}
-              </p>
-              <button
-                onClick={() => handleProcessPlan(selectedPlan.id)}
-                disabled={loadingPlanIds.processing.has(selectedPlan.id) || selectedPlan.status !== 'sin procesar'}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-blue-400 transition-colors btn-interactive disabled-transition"
-              >
-                {loadingPlanIds.processing.has(selectedPlan.id) || selectedPlan.status === 'en proceso' ? 'Processing...' : 'Process plan'}
-              </button>
+              {/* Animated processing indicator when plan is in process or queued */}
+              {(selectedPlan.status === 'en proceso' || selectedPlan.status === 'en cola') ? (
+                <>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="relative">
+                      <LoadingSpinner size="md" variant="primary" />
+                      <div className="absolute inset-0 animate-ping opacity-30">
+                        <LoadingSpinner size="md" variant="primary" />
+                      </div>
+                    </div>
+                    <div>
+                      <span className="font-semibold text-blue-700 dark:text-blue-400">
+                        {selectedPlan.status === 'en cola' ? 'Plan Queued...' : 'Processing Plan...'}
+                      </span>
+                      <p className="text-xs text-[var(--text-muted)]">
+                        {selectedPlan.status === 'en cola' 
+                          ? 'Waiting to be processed'
+                          : 'Generating trajectory and U-Plan'}
+                      </p>
+                    </div>
+                  </div>
+                  {/* Animated progress bar */}
+                  <div className="w-full h-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-full overflow-hidden mb-3">
+                    <div className="h-full bg-blue-500 dark:bg-blue-400 rounded-full animate-pulse" style={{ width: '60%' }} />
+                  </div>
+                  <p className="text-sm text-[var(--text-secondary)]">
+                    {selectedPlan.status === 'en cola' 
+                      ? 'The plan is in queue. Processing will begin shortly.'
+                      : 'The plan is currently being processed. Please wait for completion.'}
+                  </p>
+                  <button
+                    disabled={true}
+                    className="mt-3 px-4 py-2 text-sm font-medium text-white bg-blue-400 dark:bg-blue-600 rounded-md cursor-not-allowed opacity-70 flex items-center gap-2"
+                  >
+                    <LoadingSpinner size="xs" variant="white" />
+                    {selectedPlan.status === 'en cola' ? 'Queued' : 'Processing...'}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-[var(--text-secondary)] mb-3">
+                    The plan is ready to be processed. This will generate the trajectory and U-Plan.
+                  </p>
+                  <button
+                    onClick={() => handleProcessPlan(selectedPlan.id)}
+                    disabled={loadingPlanIds.processing.has(selectedPlan.id) || selectedPlan.status !== 'sin procesar'}
+                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-blue-400 transition-colors btn-interactive disabled-transition"
+                  >
+                    {loadingPlanIds.processing.has(selectedPlan.id) ? 'Processing...' : 'Process plan'}
+                  </button>
+                </>
+              )}
             </div>
           )}
 
