@@ -117,7 +117,11 @@ export const FlightDetailsSchema = z.object({
   mode: FlightModeEnum,
   category: FlightCategoryEnum,
   specialOperation: SpecialOperationEnum,
-  privateFlight: z.boolean(),
+  // Coerce privateFlight to boolean (handles string "true"/"false", numbers 0/1)
+  privateFlight: z.preprocess(
+    (val) => val === undefined || val === null ? false : val === 'true' || val === true || val === 1,
+    z.boolean()
+  ),
 });
 export type FlightDetails = z.infer<typeof FlightDetailsSchema>;
 
@@ -274,7 +278,11 @@ const FlightDetailsPartialSchema = z.object({
   mode: FlightModeEnum.optional().or(z.literal('')),
   category: FlightCategoryEnum.optional().or(z.literal('')),
   specialOperation: SpecialOperationEnum.optional(),
-  privateFlight: z.boolean().optional(),
+  // Coerce privateFlight to boolean (handles string "true"/"false", numbers 0/1, undefined)
+  privateFlight: z.preprocess(
+    (val) => val === undefined || val === null ? false : val === 'true' || val === true || val === 1,
+    z.boolean()
+  ).optional(),
 }).optional();
 
 /**

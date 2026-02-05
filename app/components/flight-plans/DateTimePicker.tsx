@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useMemo, useCallback } from 'react'
+import React, { useMemo, useCallback, useState, useRef, useEffect } from 'react'
 import { HelpTooltip } from '../ui/tooltip'
 
 export interface DateTimePickerProps {
@@ -100,7 +100,16 @@ export function DateTimePicker({
   className = '',
 }: DateTimePickerProps) {
   // Convert UTC value from API to local datetime-local format
-  const localValue = useMemo(() => utcToLocalDatetimeString(value), [value])
+  const apiValue = useMemo(() => utcToLocalDatetimeString(value), [value])
+  
+  // Local state for input value (to allow typing without immediate API calls)
+  const [localValue, setLocalValue] = useState(apiValue)
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
+  
+  // Sync local state with API value when it changes externally
+  useEffect(() => {
+    setLocalValue(apiValue)
+  }, [apiValue])
   
   // Get timezone information
   const timezoneInfo = useMemo(() => {
@@ -121,16 +130,52 @@ export function DateTimePicker({
     }
   }, [])
 
-  // Handle change: convert local datetime to UTC for storage
+  // Handle change: convert local datetime to UTC for storage with debouncing
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const localInput = e.target.value
-    if (!localInput) {
+    setLocalValue(localInput)
+    
+    // Clear existing timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
+    }
+    
+    // Debounce the API call (800ms)
+    debounceTimerRef.current = setTimeout(() => {
+      if (!localInput) {
+        onChange('')
+        return
+      }
+      const utcIso = localDatetimeStringToUtc(localInput)
+      onChange(utcIso)
+    }, 800)
+  }, [onChange])
+  
+  // Handle blur: immediately save on blur (in case user clicks away before debounce)
+  const handleBlur = useCallback(() => {
+    // Clear debounce timer and save immediately
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
+    }
+    if (!localValue) {
       onChange('')
       return
     }
-    const utcIso = localDatetimeStringToUtc(localInput)
-    onChange(utcIso)
-  }, [onChange])
+    const utcIso = localDatetimeStringToUtc(localValue)
+    // Only call onChange if value actually changed
+    if (utcIso !== (value ? new Date(value as string).toISOString() : '')) {
+      onChange(utcIso)
+    }
+  }, [localValue, value, onChange])
+  
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
+      }
+    }
+  }, [])
 
   const inputId = `datetime-picker-${label.toLowerCase().replace(/\s+/g, '-')}`
 
@@ -161,6 +206,7 @@ export function DateTimePicker({
           id={inputId}
           value={localValue}
           onChange={handleChange}
+          onBlur={handleBlur}
           disabled={disabled}
           required={required}
           min={min}
