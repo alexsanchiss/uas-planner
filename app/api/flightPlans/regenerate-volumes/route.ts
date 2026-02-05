@@ -117,14 +117,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           ...(uplanDetails ? { uplan: uplanDetails } : {}),
         })
 
-        // Serialize to plain JSON to prevent Prisma interpreting nested keys as operations
-        const uplanJson = JSON.parse(JSON.stringify(newUplan))
+        // Convert to JSON string for database storage
+        const uplanString = JSON.stringify(newUplan)
 
         // Update the plan with new U-Plan (DO NOT change authorizationStatus)
         await prisma.flightPlan.update({
           where: { id: plan.id },
           data: {
-            uplan: uplanJson,
+            uplan: uplanString,
           },
         })
 
