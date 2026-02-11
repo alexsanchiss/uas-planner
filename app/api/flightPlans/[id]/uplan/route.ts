@@ -118,23 +118,9 @@ export async function POST(
       );
     }
 
-    // For external UPLANs: if uplan already exists, skip CSV requirement
-    let uplan: any;
-    let isExternalUplan = false;
+    // External UPLANs (imported) have uplan but no csvResult
+    const isExternalUplan = !flightPlan.csvResult && flightPlan.uplan;
 
-    if (flightPlan.uplan) {
-      // Parse existing uplan
-      try {
-        uplan = typeof flightPlan.uplan === 'string' 
-          ? JSON.parse(flightPlan.uplan) 
-          : flightPlan.uplan;
-        isExternalUplan = true;
-      } catch (error) {
-        console.error('Error parsing existing uplan:', error);
-      }
-    }
-
-    // Only require csvResult if we don't have a valid uplan already
     if (!isExternalUplan && !flightPlan.csvResult) {
       return NextResponse.json(
         { error: 'No CSV result associated with this flight plan' },
@@ -142,9 +128,43 @@ export async function POST(
       );
     }
 
-    // 2. Generate or use existing U-Plan
-    if (!isExternalUplan) {
-      // Generate U-Plan from CSV result
+    let uplan: any;
+
+    if (isExternalUplan) {
+      // External UPLAN - use existing data without regeneration
+      if (typeof flightPlan.uplan === 'string') {
+        try {
+          uplan = JSON.parse(flightPlan.uplan);
+        } catch (error) {
+          return NextResponse.json(
+            { error: 'Invalid UPLAN data format' },
+            { status: 400 }
+          );
+        }
+      } else if (flightPlan.uplan && typeof flightPlan.uplan === 'object') {
+        uplan = flightPlan.uplan;
+      } else {
+        return NextResponse.json(
+          { error: 'UPLAN data not available' },
+          { status: 400 }
+        );
+      }
+
+      // Validate that external UPLAN has operation volumes
+      if (!uplan.operationVolumes || !Array.isArray(uplan.operationVolumes) || uplan.operationVolumes.length === 0) {
+        return NextResponse.json(
+          { error: 'External UPLAN has no operation volumes' },
+          { status: 400 }
+        );
+      }
+
+      // Update creationTime and updateTime to current UTC time
+      const currentTime = new Date().toISOString();
+      uplan.creationTime = currentTime;
+      uplan.updateTime = currentTime;
+    } else {
+      // Internal plan - regenerate UPLAN from CSV trajectory
+      // 2. Get the CSV result (1:1 relationship via same ID)
       const csvResult = await prisma.csvResult.findUnique({
         where: { id },
       });
@@ -163,7 +183,7 @@ export async function POST(
         );
       }
 
-      // 3. Generate the U-Plan from CSV
+      // 3. Generate the U-Plan from trajectory
       const scheduledAtPosix = Math.floor(
         new Date(flightPlan.scheduledAt).getTime() / 1000
       );
@@ -185,13 +205,12 @@ export async function POST(
         csv: csvResult.csvResult,
         ...(uplanDetails ? { uplan: uplanDetails } : {}),
       });
-    }
-    // else: uplan already parsed from flightPlan.uplan above
 
-    // Update creationTime and updateTime to current UTC time before sending to FAS
-    const currentTime = new Date().toISOString();
-    uplan.creationTime = currentTime;
-    uplan.updateTime = currentTime;
+      // Update creationTime and updateTime to current UTC time before sending to FAS
+      const currentTime = new Date().toISOString();
+      uplan.creationTime = currentTime;
+      uplan.updateTime = currentTime;
+    }
 
     // console.log('Plan procesado');
 
