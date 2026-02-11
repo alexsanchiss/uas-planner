@@ -14,7 +14,7 @@
 | 8 | Password Reset Flow | ⬜ Not started | Depends on Task 5, 6 |
 | 9 | FAS Authorization Email Notifications | ⬜ Not started | Depends on Task 5 |
 | 10 | Denial Visualization Map — DenialMapModal | ✅ Completed | New DenialMapModal component with conflict highlighting |
-| 11 | Denial Visualization — Integration with UI | ⬜ Not started | Depends on Task 10 |
+| 11 | Denial Visualization — Integration with UI | ✅ Completed | DenialMapModal integrated into FlightPlanCard, AuthorizationPanel, and FlightPlansUploader |
 | 12 | Scan Waypoint Editing — Editable Map Popup | ⬜ Not started | |
 | 13 | Scan Pattern — Editable Corner Coordinates | ⬜ Not started | |
 | 14 | Scan Pattern — Draggable Markers on Map | ⬜ Not started | Depends on Task 13 |
@@ -83,3 +83,9 @@ _(Updated by subagent after each task completion)_
 - Auto-fits map bounds to all displayed polygons
 - Exported from barrel file `app/components/flight-plans/index.ts`
 - Added denial map i18n keys (en + es) to `app/i18n/translations.ts`
+
+### Task 11 — Denial Visualization — Integration with Existing UI
+- Modified `app/components/FlightPlansUploader.tsx` — denied plan icon/button click now opens DenialMapModal directly; raw JSON still accessible via button in authorization message modal footer
+- Modified `app/components/flight-plans/AuthorizationPanel.tsx` — added "View denial on map" button for denied plans, keeping raw JSON as secondary option
+- Updated large "View Authorization Details" button for denied plans to show map icon and "View Denial on Map" label
+- Added `viewRawJson` and `viewDenialDetails` i18n keys (en + es) to translations
