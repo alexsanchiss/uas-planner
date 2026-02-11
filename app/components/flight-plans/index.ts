@@ -92,3 +92,9 @@ export {
   WaypointMapModal,
   type WaypointMapModalProps,
 } from './WaypointMapModal'
+
+// Denial visualization map modal
+export {
+  DenialMapModal,
+  type DenialMapModalProps,
+} from './DenialMapModal'
