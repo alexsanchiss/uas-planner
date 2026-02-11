@@ -6,7 +6,7 @@
 |------|-------------|--------|-------|
 | 1 | External UPLAN Import — API & Validation | ✅ Completed | externalUplanSchema + POST handler variant |
 | 2 | External UPLAN Import — Folder Drag-and-Drop UI | ✅ Completed | FolderCard file drop + importExternalUplan hook + i18n |
-| 3 | External UPLAN Import — UI Button State & Display | ⬜ Not started | Depends on Task 2 |
+| 3 | External UPLAN Import — UI Button State & Display | ✅ Completed | Disabled buttons, volume rendering in geoawareness, workflow adjustments |
 | 4 | Prisma Schema & SQL — Email Verification Fields | ✅ Completed | Added email verification and password reset fields to user model |
 | 5 | MailerSend Email Service Library | ✅ Completed | mailersend package + lib/email.ts with 3 email functions |
 | 6 | Email Verification Flow — API Routes | ✅ Completed | Signup sends verification email, login checks emailVerified, verify-email + resend-verification routes |
@@ -96,3 +96,8 @@ _(Updated by subagent after each task completion)_
 - Modified `app/components/flight-plans/AuthorizationPanel.tsx` — added "View denial on map" button for denied plans, keeping raw JSON as secondary option
 - Updated large "View Authorization Details" button for denied plans to show map icon and "View Denial on Map" label
 - Added `viewRawJson` and `viewDenialDetails` i18n keys (en + es) to translations
+
+### Task 3 — External UPLAN Import — UI Button State & Display Adjustments
+- Modified `app/components/flight-plans/FlightPlanCard.tsx` — Process and Download buttons now require `fileContent` to be enabled; new tooltips ("No trajectory to process", "No trajectory available") for external plans; waypoint mini-preview already hidden when no fileContent
+- Modified `app/components/flight-plans/GeoawarenessViewer.tsx` — When no trajectory data (no csvResult), renders UPLAN operation volumes as purple polygons on map with time/altitude tooltips; updated bounds calculation to include volumes; added legend entry for operation volumes
+- Modified `app/components/FlightPlansUploader.tsx` — "View U-Plan Map" button enabled for external plans with uplan data (not just fileContent); workflow steps already correctly skip datetime/process for external plans

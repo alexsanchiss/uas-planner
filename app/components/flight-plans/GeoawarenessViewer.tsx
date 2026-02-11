@@ -27,6 +27,14 @@ const Popup = dynamic(
   () => import('react-leaflet').then((mod) => mod.Popup),
   { ssr: false }
 )
+const Polygon = dynamic(
+  () => import('react-leaflet').then((mod) => mod.Polygon),
+  { ssr: false }
+)
+const MapTooltip = dynamic(
+  () => import('react-leaflet').then((mod) => mod.Tooltip),
+  { ssr: false }
+)
 
 // Dynamically import GeozoneLayer
 const GeozoneLayer = dynamic(
@@ -86,6 +94,68 @@ interface TrajectoryPoint {
   alt?: number
   time?: number
   type?: 'takeoff' | 'cruise' | 'landing' | 'waypoint'
+}
+
+/** Parsed operation volume for map rendering (Task 3: fallback when no trajectory) */
+interface OperationVolume {
+  coords: [number, number][]
+  idx: number
+  label: string
+  timeBegin: string
+  timeEnd: string
+  minAlt: string
+  maxAlt: string
+}
+
+function extractAltitudeValue(alt: unknown): string {
+  if (!alt) return 'N/A'
+  if (typeof alt === 'number') return `${alt.toFixed(1)}m`
+  if (typeof alt === 'object' && alt !== null && 'value' in alt) {
+    const obj = alt as { value: unknown; uom?: string }
+    return `${typeof obj.value === 'number' ? obj.value.toFixed(1) : obj.value}${obj.uom || 'm'}`
+  }
+  if (typeof alt === 'string') return alt
+  return 'N/A'
+}
+
+function parseOperationVolumes(uplan: unknown): OperationVolume[] {
+  if (!uplan || typeof uplan !== 'object') return []
+  const uplanObj = uplan as { operationVolumes?: unknown[] }
+  if (!Array.isArray(uplanObj.operationVolumes)) return []
+  return uplanObj.operationVolumes
+    .map((vol: unknown, idx: number) => {
+      const v = vol as {
+        geometry?: { coordinates?: number[][][] }
+        timeBegin?: string
+        timeEnd?: string
+        minAltitude?: unknown
+        maxAltitude?: unknown
+        elevation?: { min?: unknown; max?: unknown }
+        name?: string
+      }
+      const coords = v.geometry?.coordinates?.[0]?.map(
+        ([lon, lat]: number[]) => [lat, lon] as [number, number]
+      ) || []
+      let minAlt = 'N/A'
+      let maxAlt = 'N/A'
+      if (v.minAltitude && v.maxAltitude) {
+        minAlt = extractAltitudeValue(v.minAltitude)
+        maxAlt = extractAltitudeValue(v.maxAltitude)
+      } else if (v.elevation) {
+        minAlt = extractAltitudeValue(v.elevation.min)
+        maxAlt = extractAltitudeValue(v.elevation.max)
+      }
+      return {
+        coords,
+        idx,
+        label: v.name || `Volume ${idx + 1}`,
+        timeBegin: v.timeBegin || '',
+        timeEnd: v.timeEnd || '',
+        minAlt,
+        maxAlt,
+      }
+    })
+    .filter(v => v.coords.length > 0)
 }
 
 export interface GeoawarenessViewerProps {
@@ -176,29 +246,6 @@ function parseCSVToTrajectory(csvContent: string): TrajectoryPoint[] {
   return points
 }
 
-// Calculate bounds from trajectory points
-function calculateBounds(points: TrajectoryPoint[]): [[number, number], [number, number]] | null {
-  if (points.length === 0) return null
-
-  let minLat = Infinity, maxLat = -Infinity
-  let minLng = Infinity, maxLng = -Infinity
-
-  for (const p of points) {
-    minLat = Math.min(minLat, p.lat)
-    maxLat = Math.max(maxLat, p.lat)
-    minLng = Math.min(minLng, p.lng)
-    maxLng = Math.max(maxLng, p.lng)
-  }
-
-  const latPad = (maxLat - minLat) * 0.15 || 0.01
-  const lngPad = (maxLng - minLng) * 0.15 || 0.01
-
-  return [
-    [minLat - latPad, minLng - lngPad],
-    [maxLat + latPad, maxLng + lngPad],
-  ]
-}
-
 // Get point color based on type
 function getPointColor(type?: string): string {
   switch (type) {
@@ -243,6 +290,8 @@ export function GeoawarenessViewer({
   const [selectedGeozone, setSelectedGeozone] = useState<GeozoneData | null>(null)
   const [popupPosition, setPopupPosition] = useState<L.LatLngExpression | null>(null)
   const [showGeozones, setShowGeozones] = useState(true)
+  // Task 3: Operation volumes for rendering when no trajectory data
+  const [operationVolumes, setOperationVolumes] = useState<OperationVolume[]>([])
   
   // TASK-077: Time slider state for trajectory simulation
   const [simulationTime, setSimulationTime] = useState(0)
@@ -303,12 +352,14 @@ export function GeoawarenessViewer({
   const hasViolations = violations.length > 0
   const hasTrajectory = trajectory.length > 0
   const hasGeozones = allGeozones.length > 0
+  const hasVolumes = operationVolumes.length > 0
 
   // TASK-060: Fetch trajectory data when planId changes
   useEffect(() => {
     async function fetchTrajectory() {
       if (!planId) {
         setTrajectory([])
+        setOperationVolumes([])
         return
       }
 
@@ -316,6 +367,7 @@ export function GeoawarenessViewer({
 
       setTrajectoryLoading(true)
       setTrajectoryError(null)
+      setOperationVolumes([])
 
       try {
         const token = localStorage.getItem('authToken')
@@ -347,7 +399,15 @@ export function GeoawarenessViewer({
         // })
         
         if (!hasCsvResult) {
-          // No trajectory data yet - not necessarily an error
+          // Task 3: No trajectory — render operation volumes instead
+          if (plan.uplan) {
+            try {
+              const uplanData = typeof plan.uplan === 'string' ? JSON.parse(plan.uplan) : plan.uplan
+              setOperationVolumes(parseOperationVolumes(uplanData))
+            } catch {
+              // Ignore parse errors
+            }
+          }
           setTrajectory([])
           return
         }
@@ -379,16 +439,30 @@ export function GeoawarenessViewer({
   }, [planId])
 
   // Calculate map bounds and center
+  // Task 3: Include operation volume coordinates in bounds calculation
   const { bounds, center } = useMemo(() => {
-    if (trajectory.length > 0) {
-      const calculatedBounds = calculateBounds(trajectory)
-      const lat = trajectory.reduce((sum, p) => sum + p.lat, 0) / trajectory.length
-      const lng = trajectory.reduce((sum, p) => sum + p.lng, 0) / trajectory.length
-      return { bounds: calculatedBounds, center: [lat, lng] as [number, number] }
+    const trajCoords = trajectory.map(p => ({ lat: p.lat, lng: p.lng }))
+    const volCoords = operationVolumes.flatMap(v => v.coords.map(([lat, lng]) => ({ lat, lng })))
+    const allPoints = [...trajCoords, ...volCoords]
+    if (allPoints.length > 0) {
+      let minLat = Infinity, maxLat = -Infinity
+      let minLng = Infinity, maxLng = -Infinity
+      for (const p of allPoints) {
+        minLat = Math.min(minLat, p.lat)
+        maxLat = Math.max(maxLat, p.lat)
+        minLng = Math.min(minLng, p.lng)
+        maxLng = Math.max(maxLng, p.lng)
+      }
+      const latPad = (maxLat - minLat) * 0.15 || 0.01
+      const lngPad = (maxLng - minLng) * 0.15 || 0.01
+      return {
+        bounds: [[minLat - latPad, minLng - lngPad], [maxLat + latPad, maxLng + lngPad]] as [[number, number], [number, number]],
+        center: [(minLat + maxLat) / 2, (minLng + maxLng) / 2] as [number, number],
+      }
     }
-    // Default to Madrid if no trajectory
+    // Default to Madrid if no data
     return { bounds: null, center: [40.4168, -3.7038] as [number, number] }
-  }, [trajectory])
+  }, [trajectory, operationVolumes])
 
   // Create polyline positions
   const polylinePositions = useMemo(() => 
@@ -767,6 +841,40 @@ export function GeoawarenessViewer({
                     )}
                   </>
                 )}
+
+                {/* Task 3: Operation volumes when no trajectory (external UPLAN) */}
+                {!hasTrajectory && hasVolumes && operationVolumes.map((v, i) => {
+                  const fmtTime = (t: string) => {
+                    if (!t) return 'N/A'
+                    try { return new Date(t).toISOString().replace('T', ' ').slice(0, 19) + ' UTC' } catch { return t }
+                  }
+                  return (
+                    <Polygon
+                      key={`vol-${i}`}
+                      positions={v.coords}
+                      pathOptions={{
+                        color: '#8b5cf6',
+                        fillColor: '#a78bfa',
+                        fillOpacity: 0.35,
+                        weight: 2,
+                      }}
+                    >
+                      <MapTooltip direction="top" offset={[0, -10]} sticky>
+                        <div className="text-xs min-w-[160px]">
+                          <div className="font-semibold text-purple-600 mb-1">{v.label}</div>
+                          <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
+                            <span className="text-gray-500">Start:</span>
+                            <span>{fmtTime(v.timeBegin)}</span>
+                            <span className="text-gray-500">End:</span>
+                            <span>{fmtTime(v.timeEnd)}</span>
+                            <span className="text-gray-500">Alt:</span>
+                            <span>{v.minAlt} – {v.maxAlt}</span>
+                          </div>
+                        </div>
+                      </MapTooltip>
+                    </Polygon>
+                  )
+                })}
               </MapContainer>
             )}
 
@@ -983,6 +1091,13 @@ export function GeoawarenessViewer({
                   <div className="w-3 h-3 bg-orange-500 rounded-full border-2 border-white shadow-sm" />
                   <span className="text-[var(--text-tertiary)]">Drone Position</span>
                 </div>
+                {/* Task 3: Operation volume legend */}
+                {hasVolumes && (
+                  <div className="flex items-center gap-2 text-xs">
+                    <div className="w-3 h-3 rounded bg-purple-500/60 border border-purple-500" />
+                    <span className="text-[var(--text-tertiary)]">Operation Volume</span>
+                  </div>
+                )}
 
                 {/* Geozone types */}
                 {Object.entries(GEOZONE_COLORS).map(([type, config]) => (
