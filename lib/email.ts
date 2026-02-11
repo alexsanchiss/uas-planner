@@ -1,7 +1,7 @@
 import { MailerSend, EmailParams, Sender, Recipient, Attachment } from 'mailersend';
 import { logger } from './logger';
 
-const SENDER_EMAIL = process.env.MAILERSEND_SENDER_EMAIL || 'noreply@trial-z86org8d9v0lew13.mlsender.net';
+const SENDER_EMAIL = process.env.MAILERSEND_SENDER_EMAIL || 'UPPS@sna-upv.com';
 const SENDER_NAME = process.env.MAILERSEND_SENDER_NAME || 'UAS Planner';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001';
 
@@ -45,8 +45,9 @@ export async function sendVerificationEmail(
   try {
     await client.email.send(emailParams);
     logger.info('Verification email sent', { to });
-  } catch (error) {
-    logger.exception('Failed to send verification email', error, { to });
+  } catch (error: unknown) {
+    const detail = error instanceof Error ? error.message : JSON.stringify(error);
+    logger.error('Failed to send verification email', { to, error: detail });
   }
 }
 
@@ -79,8 +80,9 @@ export async function sendPasswordResetEmail(
   try {
     await client.email.send(emailParams);
     logger.info('Password reset email sent', { to });
-  } catch (error) {
-    logger.exception('Failed to send password reset email', error, { to });
+  } catch (error: unknown) {
+    const detail = error instanceof Error ? error.message : JSON.stringify(error);
+    logger.error('Failed to send password reset email', { to, error: detail });
   }
 }
 
@@ -122,7 +124,8 @@ export async function sendAuthorizationResultEmail(
   try {
     await client.email.send(emailParams);
     logger.info('Authorization result email sent', { to, planName, status });
-  } catch (error) {
-    logger.exception('Failed to send authorization result email', error, { to, planName });
+  } catch (error: unknown) {
+    const detail = error instanceof Error ? error.message : JSON.stringify(error);
+    logger.error('Failed to send authorization result email', { to, planName, error: detail });
   }
 }

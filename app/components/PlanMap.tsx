@@ -137,17 +137,18 @@ function EditablePopupContent({ wp, idx, onWaypointChange }: {
   const { t } = useI18n();
   const inputStyle: React.CSSProperties = {
     width: '100%', fontSize: '12px', padding: '2px 4px',
-    border: '1px solid #ccc', borderRadius: '3px', boxSizing: 'border-box',
+    border: '1px solid var(--border-primary, #ccc)', borderRadius: '3px', boxSizing: 'border-box',
+    backgroundColor: 'var(--input-bg, #fff)', color: 'var(--text-primary, #000)',
   };
   const labelStyle: React.CSSProperties = {
-    fontSize: '11px', fontWeight: 'bold', display: 'block', marginBottom: '1px', color: '#555',
+    fontSize: '11px', fontWeight: 'bold', display: 'block', marginBottom: '1px', color: 'var(--text-secondary, #555)',
   };
   const rowStyle: React.CSSProperties = { marginBottom: '5px' };
   const typeColor = wp.type === 'takeoff' ? '#22c55e' : wp.type === 'landing' ? '#ef4444' : '#3b82f6';
 
   return (
     <div style={{ minWidth: '190px' }}>
-      <div style={{ fontWeight: 'bold', marginBottom: '6px', fontSize: '13px', borderBottom: '1px solid #eee', paddingBottom: '4px' }}>
+      <div style={{ fontWeight: 'bold', marginBottom: '6px', fontSize: '13px', borderBottom: '1px solid var(--border-primary, #eee)', paddingBottom: '4px', color: 'var(--text-primary, #000)' }}>
         {t.flightPlans.waypoint} {idx + 1} <span style={{ color: typeColor, textTransform: 'capitalize' }}>({wp.type})</span>
       </div>
       <div style={rowStyle}>
@@ -186,7 +187,7 @@ function EditablePopupContent({ wp, idx, onWaypointChange }: {
           <label style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
             <input type="checkbox" checked={wp.flyOverMode || false}
               onChange={(e) => onWaypointChange(idx, 'flyOverMode', e.target.checked)} />
-            <span style={{ fontWeight: 'bold', color: '#555' }}>{t.planGenerator.flyOver}</span>
+            <span style={{ fontWeight: 'bold', color: 'var(--text-secondary, #555)' }}>{t.planGenerator.flyOver}</span>
             <span style={{ color: wp.flyOverMode ? '#a855f7' : '#3b82f6', fontSize: '12px' }}>
               {wp.flyOverMode ? '⊙ Over' : '∽ By'}
             </span>
@@ -302,6 +303,15 @@ function ScanOverlays({ scanOverlays, onDragEnd }: { scanOverlays: any; onDragEn
   if (!scanOverlays) return null;
   
   const { takeoffPoint, landingPoint, polygonVertices, polygonClosed, previewWaypoints } = scanOverlays;
+
+  const coordLabelStyle: React.CSSProperties = {
+    fontSize: '11px', fontWeight: 'bold', display: 'block', marginBottom: '1px', color: 'var(--text-secondary, #555)',
+  };
+  const coordInputStyle: React.CSSProperties = {
+    width: '100%', fontSize: '12px', padding: '2px 4px',
+    border: '1px solid var(--border-primary, #ccc)', borderRadius: '3px', boxSizing: 'border-box',
+    backgroundColor: 'var(--input-bg, #fff)', color: 'var(--text-primary, #000)',
+  };
   
   // Create custom icons for takeoff and landing
   const takeoffIcon = L.divIcon({
@@ -410,9 +420,24 @@ function ScanOverlays({ scanOverlays, onDragEnd }: { scanOverlays: any; onDragEn
             },
           } : undefined}
         >
-          <Popup>
-            <strong>{t.planGenerator.takeoffPointLabel}</strong><br />
-            {takeoffPoint.lat.toFixed(6)}, {takeoffPoint.lng.toFixed(6)}
+          <Popup minWidth={180}>
+            <div style={{ minWidth: '170px' }}>
+              <div style={{ fontWeight: 'bold', marginBottom: '6px', fontSize: '13px', borderBottom: '1px solid var(--border-primary, #eee)', paddingBottom: '4px', color: 'var(--text-primary, #000)' }}>
+                {t.planGenerator.takeoffPointLabel}
+              </div>
+              <div style={{ marginBottom: '4px' }}>
+                <label style={coordLabelStyle}>{t.planGenerator.latitude}</label>
+                <input type="number" step="any" defaultValue={takeoffPoint.lat}
+                  onBlur={(e) => { const v = Number(e.target.value); if (!isNaN(v) && onDragEnd) onDragEnd('takeoff', 0, v, takeoffPoint.lng); }}
+                  style={coordInputStyle} />
+              </div>
+              <div>
+                <label style={coordLabelStyle}>{t.planGenerator.longitude}</label>
+                <input type="number" step="any" defaultValue={takeoffPoint.lng}
+                  onBlur={(e) => { const v = Number(e.target.value); if (!isNaN(v) && onDragEnd) onDragEnd('takeoff', 0, takeoffPoint.lat, v); }}
+                  style={coordInputStyle} />
+              </div>
+            </div>
           </Popup>
         </Marker>
       )}
@@ -430,9 +455,24 @@ function ScanOverlays({ scanOverlays, onDragEnd }: { scanOverlays: any; onDragEn
             },
           } : undefined}
         >
-          <Popup>
-            <strong>{t.planGenerator.landingPointLabel}</strong><br />
-            {landingPoint.lat.toFixed(6)}, {landingPoint.lng.toFixed(6)}
+          <Popup minWidth={180}>
+            <div style={{ minWidth: '170px' }}>
+              <div style={{ fontWeight: 'bold', marginBottom: '6px', fontSize: '13px', borderBottom: '1px solid var(--border-primary, #eee)', paddingBottom: '4px', color: 'var(--text-primary, #000)' }}>
+                {t.planGenerator.landingPointLabel}
+              </div>
+              <div style={{ marginBottom: '4px' }}>
+                <label style={coordLabelStyle}>{t.planGenerator.latitude}</label>
+                <input type="number" step="any" defaultValue={landingPoint.lat}
+                  onBlur={(e) => { const v = Number(e.target.value); if (!isNaN(v) && onDragEnd) onDragEnd('landing', 0, v, landingPoint.lng); }}
+                  style={coordInputStyle} />
+              </div>
+              <div>
+                <label style={coordLabelStyle}>{t.planGenerator.longitude}</label>
+                <input type="number" step="any" defaultValue={landingPoint.lng}
+                  onBlur={(e) => { const v = Number(e.target.value); if (!isNaN(v) && onDragEnd) onDragEnd('landing', 0, landingPoint.lat, v); }}
+                  style={coordInputStyle} />
+              </div>
+            </div>
           </Popup>
         </Marker>
       )}
@@ -480,12 +520,27 @@ function ScanOverlays({ scanOverlays, onDragEnd }: { scanOverlays: any; onDragEn
                 },
               } : undefined}
             >
-              <Popup>
-                <strong>{t.planGenerator.vertex} {idx + 1}</strong><br />
-                {v.lat.toFixed(6)}, {v.lng.toFixed(6)}
-                {idx === 0 && !polygonClosed && polygonVertices.length >= 3 && (
-                  <><br /><em style={{color: '#a855f7'}}>{t.planGenerator.clickNearToClose}</em></>
-                )}
+              <Popup minWidth={180}>
+                <div style={{ minWidth: '170px' }}>
+                  <div style={{ fontWeight: 'bold', marginBottom: '6px', fontSize: '13px', borderBottom: '1px solid var(--border-primary, #eee)', paddingBottom: '4px', color: 'var(--text-primary, #000)' }}>
+                    {t.planGenerator.vertex} {idx + 1}
+                    {idx === 0 && !polygonClosed && polygonVertices.length >= 3 && (
+                      <div style={{color: '#a855f7', fontSize: '11px', fontWeight: 'normal', marginTop: '2px'}}>{t.planGenerator.clickNearToClose}</div>
+                    )}
+                  </div>
+                  <div style={{ marginBottom: '4px' }}>
+                    <label style={coordLabelStyle}>{t.planGenerator.latitude}</label>
+                    <input type="number" step="any" defaultValue={v.lat}
+                      onBlur={(e) => { const val = Number(e.target.value); if (!isNaN(val) && onDragEnd) onDragEnd('vertex', idx, val, v.lng); }}
+                      style={coordInputStyle} />
+                  </div>
+                  <div>
+                    <label style={coordLabelStyle}>{t.planGenerator.longitude}</label>
+                    <input type="number" step="any" defaultValue={v.lng}
+                      onBlur={(e) => { const val = Number(e.target.value); if (!isNaN(val) && onDragEnd) onDragEnd('vertex', idx, v.lat, val); }}
+                      style={coordInputStyle} />
+                  </div>
+                </div>
               </Popup>
             </Marker>
           ))}

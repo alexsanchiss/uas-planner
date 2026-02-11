@@ -78,19 +78,37 @@ function parseDenialMessage(authorizationMessage?: string | null): ParsedDenial 
       ? JSON.parse(authorizationMessage)
       : authorizationMessage
 
-    const volumes: DenialVolume[] = Array.isArray(parsed.volumes) ? parsed.volumes : []
+    // Handle multiple FAS response formats for volumes:
+    // Format A: { "volumes": [{ "ordinal": 0, "status": "CONFLICTING" }, ...] }
+    // Format B: { "volumes": [0, 1, 2] }  (just conflicting indices)
+    // Format C: No volumes key — all volumes are conflicting (denial)
+    const rawVolumes = parsed.volumes
 
     const conflictingIndices = new Set<number>()
-    for (const vol of volumes) {
-      if (
-        typeof vol.status === 'string' &&
-        vol.status.toUpperCase() === 'CONFLICTING' &&
-        typeof vol.ordinal === 'number'
-      ) {
-        conflictingIndices.add(vol.ordinal)
+    const volumes: DenialVolume[] = []
+
+    if (Array.isArray(rawVolumes)) {
+      for (const vol of rawVolumes) {
+        if (typeof vol === 'number') {
+          // Format B: volume index = conflicting
+          conflictingIndices.add(vol)
+          volumes.push({ ordinal: vol, status: 'CONFLICTING' })
+        } else if (typeof vol === 'object' && vol !== null) {
+          volumes.push(vol)
+          if (
+            typeof vol.status === 'string' &&
+            vol.status.toUpperCase() === 'CONFLICTING' &&
+            typeof vol.ordinal === 'number'
+          ) {
+            conflictingIndices.add(vol.ordinal)
+          }
+        }
       }
     }
 
+    // If we got a denial message but no conflicting indices were identified,
+    // assume ALL volumes are conflicting (the plan was denied for a reason)
+    // This handles Format C and edge cases where the FAS response doesn't specify volumes
     const geozonesInfo = parsed.geozones_information || parsed.geozonesInformation || {}
     const conflictingGeozones: ConflictingGeozone[] = Array.isArray(geozonesInfo.conflicting_geozones)
       ? geozonesInfo.conflicting_geozones
@@ -161,11 +179,14 @@ export function DenialMapModal({ open, onClose, uplan, authorizationMessage }: D
 
   const operationVolumes = useMemo(() => {
     if (!uplan?.operationVolumes || !Array.isArray(uplan.operationVolumes)) return []
+    // If no specific conflicting indices were identified but plan was denied,
+    // mark all volumes as conflicting
+    const allConflicting = denial.conflictingIndices.size === 0 && denial.volumes.length === 0
     return uplan.operationVolumes.map((vol, idx) => {
       const coords = vol.geometry?.coordinates?.[0]
       if (!coords || !Array.isArray(coords)) return null
       const leafletCoords = toLeafletCoords(coords)
-      const isConflicting = denial.conflictingIndices.has(vol.ordinal ?? idx)
+      const isConflicting = allConflicting || denial.conflictingIndices.has(vol.ordinal ?? idx)
       return {
         coords: leafletCoords,
         idx,
