@@ -12,7 +12,7 @@
 | 6 | Email Verification Flow — API Routes | ✅ Completed | Signup sends verification email, login checks emailVerified, verify-email + resend-verification routes |
 | 7 | Email Verification Flow — Frontend Pages | ✅ Completed | verify-email page + login redirect + useAuth requiresVerification handling + i18n |
 | 8 | Password Reset Flow | ✅ Completed | forgot-password + reset-password API routes & pages |
-| 9 | FAS Authorization Email Notifications | ⬜ Not started | Depends on Task 5 |
+| 9 | FAS Authorization Email Notifications | ✅ Completed | Sends email with UPLAN attachment on FAS callback |
 | 10 | Denial Visualization Map — DenialMapModal | ✅ Completed | New DenialMapModal component with conflict highlighting |
 | 11 | Denial Visualization — Integration with UI | ✅ Completed | DenialMapModal integrated into FlightPlanCard, AuthorizationPanel, and FlightPlansUploader |
 | 12 | Scan Waypoint Editing — Editable Map Popup | ⬜ Not started | |
@@ -113,6 +113,11 @@ _(Updated by subagent after each task completion)_
 - Modified `app/hooks/useAuth.ts` — `login()` return type updated to `boolean | { requiresVerification: true; email: string }`. Detects unverified-user API response and returns structured object instead of storing empty token
 - Modified `app/components/auth/auth-provider.tsx` — Updated `AuthContextType` interface to match new `login()` return type
 - Added 13 email verification i18n keys (en + es) to `app/i18n/translations.ts`: verifyEmail, verifyYourEmail, enterVerificationCode, verificationCodePlaceholder, verifying, emailVerified, emailVerifiedSuccess, verificationFailed, verificationLinkExpired, resendCode, resending, codeSent, backToLogin, goToLogin, enterCodeManually
+
+### Task 9 — FAS Authorization Email Notifications
+- Modified `app/api/fas/[externalResponseNumber]/route.ts` — After updating authorization status, fetches user email via flightPlan.userId → user.email, then calls `sendAuthorizationResultEmail()` with plan name, status, message, and UPLAN JSON
+- Email notification is fire-and-forget: wrapped in try/catch, failures are logged but never block the FAS 200 response
+- Uses existing `sendAuthorizationResultEmail` from `lib/email.ts` which attaches the UPLAN JSON as a file
 - Modified `app/components/flight-plans/FlightPlanCard.tsx` — Process and Download buttons now require `fileContent` to be enabled; new tooltips ("No trajectory to process", "No trajectory available") for external plans; waypoint mini-preview already hidden when no fileContent
 - Modified `app/components/flight-plans/GeoawarenessViewer.tsx` — When no trajectory data (no csvResult), renders UPLAN operation volumes as purple polygons on map with time/altitude tooltips; updated bounds calculation to include volumes; added legend entry for operation volumes
 - Modified `app/components/FlightPlansUploader.tsx` — "View U-Plan Map" button enabled for external plans with uplan data (not just fileContent); workflow steps already correctly skip datetime/process for external plans

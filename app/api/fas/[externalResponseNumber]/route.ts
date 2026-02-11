@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { sendAuthorizationResultEmail } from "@/lib/email";
 
 /**
  * FAS Callback Endpoint
@@ -66,6 +67,28 @@ export async function PUT(
         ...(authMessage !== undefined && { authorizationMessage: authMessage }),
       },
     });
+
+    // Send authorization result email notification (fire-and-forget)
+    try {
+      if (flightPlan.userId) {
+        const user = await prisma.user.findUnique({
+          where: { id: flightPlan.userId },
+          select: { email: true },
+        });
+        if (user?.email) {
+          const uplanJson = flightPlan.uplan || '{}';
+          sendAuthorizationResultEmail(
+            user.email,
+            flightPlan.customName,
+            newStatus as 'aprobado' | 'denegado',
+            authMessage || '',
+            uplanJson,
+          ).catch(() => {/* already logged inside sendAuthorizationResultEmail */});
+        }
+      }
+    } catch (emailError) {
+      console.error('[FAS Callback] Failed to send notification email:', emailError);
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
