@@ -16,7 +16,7 @@
 | 10 | Denial Visualization Map — DenialMapModal | ✅ Completed | New DenialMapModal component with conflict highlighting |
 | 11 | Denial Visualization — Integration with UI | ✅ Completed | DenialMapModal integrated into FlightPlanCard, AuthorizationPanel, and FlightPlansUploader |
 | 12 | Scan Waypoint Editing — Editable Map Popup | ✅ Completed | Editable inputs for lat, lng, altitude, speed, pause, flyOverMode in map popup |
-| 13 | Scan Pattern — Editable Corner Coordinates | ⬜ Not started | |
+| 13 | Scan Pattern — Editable Corner Coordinates | ✅ Completed | Editable lat/lng inputs in Steps 1, 2, 3 with bounds validation |
 | 14 | Scan Pattern — Draggable Markers on Map | ⬜ Not started | Depends on Task 13 |
 | 15 | FAS Cancellation on Individual Delete | ✅ Completed | FAS PUT cancellation sent before deleting approved plans |
 | 16 | FAS Cancellation on Bulk Delete | ✅ Completed | FAS cancellation sent for each approved plan in bulk delete |
@@ -129,3 +129,13 @@ _(Updated by subagent after each task completion)_
 - Added `onWaypointChange` prop to `PlanMapProps` and wired it through `WaypointMarkers`
 - Modified `app/components/PlanGenerator.tsx` — Passes `handleWaypointChange` to PlanMap as `onWaypointChange` prop
 - Works for both SCAN-generated and MANUAL waypoints (SCAN waypoints become manual after applying)
+
+### Task 13 — Scan Pattern — Editable Corner Coordinates in Left Menu
+- Modified `app/components/plan-generator/ScanPatternGeneratorV2.tsx`
+- Added `EditableCoord` component with dual lat/lng number inputs, local state for typing, and commit-on-blur/Enter
+- Added `isWithinBounds` helper for service area validation
+- Step 1 (Takeoff): replaced read-only coordinate text with editable inputs
+- Step 2 (Polygon): replaced read-only vertex list with per-vertex editable lat/lng; added `handleVertexUpdate`; polygon and scan preview regenerate on change
+- Step 3 (Landing): replaced read-only coordinate text with editable inputs
+- Validation: rejects coordinates outside valid ranges and outside service area bounds
+- Fixed pre-existing lint issues: removed unused `Info` import, escaped quotes in JSX

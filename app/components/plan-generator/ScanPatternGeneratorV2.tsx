@@ -27,7 +27,6 @@ import {
   Grid3X3,
   ChevronDown,
   ChevronUp,
-  Info,
   AlertCircle,
   Check,
   ChevronRight,
@@ -102,6 +101,93 @@ function formatArea(sqMeters: number): string {
     return `${sqMeters.toFixed(0)} m²`;
   }
   return `${(sqMeters / 10000).toFixed(2)} ha`;
+}
+
+function isWithinBounds(
+  lat: number,
+  lng: number,
+  bounds?: [number, number, number, number]
+): boolean {
+  if (!bounds) return true;
+  const [minLng, minLat, maxLng, maxLat] = bounds;
+  return lat >= minLat && lat <= maxLat && lng >= minLng && lng <= maxLng;
+}
+
+/** Inline editable coordinate pair */
+function EditableCoord({
+  lat,
+  lng,
+  onChange,
+  serviceBounds,
+}: {
+  lat: number;
+  lng: number;
+  onChange: (lat: number, lng: number) => void;
+  serviceBounds?: [number, number, number, number];
+}) {
+  const [localLat, setLocalLat] = React.useState(lat.toFixed(6));
+  const [localLng, setLocalLng] = React.useState(lng.toFixed(6));
+  const [error, setError] = React.useState<string | null>(null);
+
+  // Sync when external value changes (e.g. map click sets new point)
+  React.useEffect(() => {
+    setLocalLat(lat.toFixed(6));
+    setLocalLng(lng.toFixed(6));
+    setError(null);
+  }, [lat, lng]);
+
+  const commit = (newLat: string, newLng: string) => {
+    const parsedLat = parseFloat(newLat);
+    const parsedLng = parseFloat(newLng);
+    if (isNaN(parsedLat) || isNaN(parsedLng)) {
+      setError("Invalid number");
+      return;
+    }
+    if (parsedLat < -90 || parsedLat > 90) {
+      setError("Lat must be -90..90");
+      return;
+    }
+    if (parsedLng < -180 || parsedLng > 180) {
+      setError("Lng must be -180..180");
+      return;
+    }
+    if (!isWithinBounds(parsedLat, parsedLng, serviceBounds)) {
+      setError("Outside service area");
+      return;
+    }
+    setError(null);
+    onChange(parsedLat, parsedLng);
+  };
+
+  return (
+    <div className="mt-1 space-y-1">
+      <div className="flex items-center gap-1">
+        <label className="text-[10px] text-zinc-500 w-6">Lat</label>
+        <input
+          type="number"
+          step="0.000001"
+          value={localLat}
+          onChange={(e) => setLocalLat(e.target.value)}
+          onBlur={() => commit(localLat, localLng)}
+          onKeyDown={(e) => { if (e.key === "Enter") commit(localLat, localLng); }}
+          className="flex-1 px-1.5 py-0.5 bg-zinc-800 border border-zinc-600 rounded text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 w-24"
+        />
+        <label className="text-[10px] text-zinc-500 w-6">Lng</label>
+        <input
+          type="number"
+          step="0.000001"
+          value={localLng}
+          onChange={(e) => setLocalLng(e.target.value)}
+          onBlur={() => commit(localLat, localLng)}
+          onKeyDown={(e) => { if (e.key === "Enter") commit(localLat, localLng); }}
+          className="flex-1 px-1.5 py-0.5 bg-zinc-800 border border-zinc-600 rounded text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 w-24"
+        />
+      </div>
+      {error && (
+        <p className="text-[10px] text-red-400">{error}</p>
+      )}
+    </div>
+  );
 }
 
 // ============================================================================
@@ -324,6 +410,10 @@ export default function ScanPatternGeneratorV2({
     }
   }, [polygonClosed]);
 
+  const handleVertexUpdate = useCallback((index: number, lat: number, lng: number) => {
+    setPolygonVertices(prev => prev.map((v, i) => (i === index ? { lat, lng } : v)));
+  }, []);
+
   const handleClearPolygon = useCallback(() => {
     setPolygonVertices([]);
     setPolygonClosed(false);
@@ -469,9 +559,12 @@ export default function ScanPatternGeneratorV2({
                     <X className="w-4 h-4" />
                   </button>
                 </div>
-                <div className="text-xs text-zinc-400 mt-1">
-                  {takeoffPoint.lat.toFixed(6)}, {takeoffPoint.lng.toFixed(6)}
-                </div>
+                <EditableCoord
+                  lat={takeoffPoint.lat}
+                  lng={takeoffPoint.lng}
+                  onChange={(lat, lng) => setTakeoffPoint({ lat, lng })}
+                  serviceBounds={serviceBounds}
+                />
               </div>
             )}
             
@@ -503,7 +596,7 @@ export default function ScanPatternGeneratorV2({
                 <p className="text-xs text-zinc-400">
                   • Add at least 3 points to form a polygon<br />
                   • Click near the first point to close the polygon<br />
-                  • Or use the "Close Polygon" button below
+                  • Or use the &quot;Close Polygon&quot; button below
                 </p>
               </div>
             ) : (
@@ -537,19 +630,24 @@ export default function ScanPatternGeneratorV2({
                   {polygonVertices.map((v, idx) => (
                     <div
                       key={idx}
-                      className="flex items-center justify-between px-2 py-1 rounded text-xs hover:bg-zinc-700"
+                      className="px-2 py-1.5 rounded hover:bg-zinc-700"
                     >
-                      <span className="text-zinc-300">
-                        <span className="text-zinc-500 font-mono mr-2">{idx + 1}</span>
-                        {v.lat.toFixed(6)}, {v.lng.toFixed(6)}
-                      </span>
-                      <button
-                        onClick={() => handleDeleteVertex(idx)}
-                        className="p-1 rounded hover:bg-red-900/50 text-zinc-400 hover:text-red-400 transition-colors"
-                        title="Delete vertex"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
+                      <div className="flex items-center justify-between">
+                        <span className="text-zinc-500 font-mono text-xs">{idx + 1}</span>
+                        <button
+                          onClick={() => handleDeleteVertex(idx)}
+                          className="p-1 rounded hover:bg-red-900/50 text-zinc-400 hover:text-red-400 transition-colors"
+                          title="Delete vertex"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                      <EditableCoord
+                        lat={v.lat}
+                        lng={v.lng}
+                        onChange={(lat, lng) => handleVertexUpdate(idx, lat, lng)}
+                        serviceBounds={serviceBounds}
+                      />
                     </div>
                   ))}
                 </div>
@@ -620,9 +718,12 @@ export default function ScanPatternGeneratorV2({
                     <X className="w-4 h-4" />
                   </button>
                 </div>
-                <div className="text-xs text-zinc-400 mt-1">
-                  {landingPoint.lat.toFixed(6)}, {landingPoint.lng.toFixed(6)}
-                </div>
+                <EditableCoord
+                  lat={landingPoint.lat}
+                  lng={landingPoint.lng}
+                  onChange={(lat, lng) => setLandingPoint({ lat, lng })}
+                  serviceBounds={serviceBounds}
+                />
               </div>
             )}
             
