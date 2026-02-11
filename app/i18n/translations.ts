@@ -161,6 +161,8 @@ export interface Translations {
     reviewDenialDetails: string
     noSpatialData: string
     viewDenialMap: string
+    viewRawJson: string
+    viewDenialDetails: string
     
     // Trajectory viewer
     trajectoryViewer: string
@@ -409,6 +411,8 @@ export const translations: Record<Language, Translations> = {
       reviewDenialDetails: 'Review the denial details below',
       noSpatialData: 'No spatial data available to display',
       viewDenialMap: 'View denial on map',
+      viewRawJson: 'View raw JSON',
+      viewDenialDetails: 'View conflicting volumes and geozones on an interactive map',
       
       trajectoryViewer: 'Trajectory Viewer',
       trajectory: 'Trajectory',
@@ -644,6 +648,8 @@ export const translations: Record<Language, Translations> = {
       reviewDenialDetails: 'Revise los detalles de la denegación abajo',
       noSpatialData: 'No hay datos espaciales disponibles para mostrar',
       viewDenialMap: 'Ver denegación en mapa',
+      viewRawJson: 'Ver JSON sin procesar',
+      viewDenialDetails: 'Ver volúmenes en conflicto y geozonas en un mapa interactivo',
       
       trajectoryViewer: 'Visor de Trayectoria',
       trajectory: 'Trayectoria',

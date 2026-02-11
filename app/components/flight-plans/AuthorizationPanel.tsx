@@ -10,6 +10,8 @@ export interface AuthorizationPanelProps {
   isProcessed: boolean
   onCheckGeoawareness: () => void
   onAuthorize: () => void
+  /** Task 11: Callback to view denial on map */
+  onViewDenialMap?: () => void
   isCheckingGeoawareness?: boolean
   isAuthorizing?: boolean
   geoawarenessResult?: 'pass' | 'fail' | null
@@ -161,6 +163,7 @@ export function AuthorizationPanel({
   isProcessed,
   onCheckGeoawareness,
   onAuthorize,
+  onViewDenialMap,
   isCheckingGeoawareness = false,
   isAuthorizing = false,
   geoawarenessResult = null,
@@ -191,6 +194,24 @@ export function AuthorizationPanel({
       {authorizationMessage && (
         <div className="mb-4">
           <FASResponseViewer message={authorizationMessage} />
+        </div>
+      )}
+
+      {/* Task 11: View denial on map button for denied plans */}
+      {authorizationStatus === 'denegado' && authorizationMessage && onViewDenialMap && (
+        <div className="mb-4">
+          <button
+            onClick={onViewDenialMap}
+            className="w-full px-4 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+            </svg>
+            View denial on map
+          </button>
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            View conflicting volumes and geozones on an interactive map
+          </p>
         </div>
       )}
 

@@ -57,6 +57,9 @@ const UplanFormModal = dynamic(() => import('./flight-plans/UplanFormModal'), { 
 // TASK-076: Dynamic import for GeoawarenessViewer modal
 const GeoawarenessViewer = dynamic(() => import('./flight-plans/GeoawarenessViewer'), { ssr: false })
 
+// Task 11: Dynamic import for DenialMapModal (uses Leaflet, requires SSR disabled)
+const DenialMapModal = dynamic(() => import('./flight-plans/DenialMapModal'), { ssr: false })
+
 /**
  * Transform API flight plan data to component flight plan format
  * TASK-220: Include fileContent for waypoint preview extraction
@@ -224,6 +227,13 @@ export function FlightPlansUploader() {
     planName: string
     uspaceId: string | null
   }>({ open: false, planId: '', planName: '', uspaceId: null })
+  // Task 11: Denial map modal state
+  const [denialMapModal, setDenialMapModal] = useState<{
+    open: boolean
+    uplan: unknown
+    authorizationMessage: string | null
+    geoawarenessData: unknown
+  }>({ open: false, uplan: null, authorizationMessage: null, geoawarenessData: null })
   // TASK-003: State for on-demand volume generation
   const [generatingVolumes, setGeneratingVolumes] = useState<string | null>(null) // planId or null
   
@@ -935,23 +945,68 @@ export function FlightPlansUploader() {
     }
   }, [flightPlans, refreshPlans, toast])
 
-  // Handle viewing authorization message - opens modal with FAS response
+  // Handle viewing authorization message - opens DenialMapModal for denied plans, otherwise raw JSON modal
   const handleViewAuthorizationMessage = useCallback((planId: string, message: unknown) => {
     const plan = flightPlans.find(p => String(p.id) === planId)
     if (plan) {
       // Parse uplan for download
       const uplanData = plan.uplan ? (typeof plan.uplan === 'string' ? JSON.parse(plan.uplan) : plan.uplan) : null
+
+      // Task 11: For denied plans, open DenialMapModal directly
+      if (plan.authorizationStatus === 'denegado') {
+        const messageStr = typeof message === 'string' ? message : JSON.stringify(message)
+        setDenialMapModal({
+          open: true,
+          uplan: uplanData,
+          authorizationMessage: messageStr,
+          geoawarenessData: plan.geoawarenessData ?? null,
+        })
+        return
+      }
+
       setAuthorizationMessageModal({
         open: true,
         planId,
         planName: plan.customName,
         message,
-        status: plan.authorizationStatus === 'aprobado' ? 'aprobado' : 
-                plan.authorizationStatus === 'denegado' ? 'denegado' : null,
+        status: plan.authorizationStatus === 'aprobado' ? 'aprobado' : null,
         uplan: uplanData,
       })
     }
   }, [flightPlans])
+
+  // Task 11: Open denial map from authorization message modal
+  const handleOpenDenialMap = useCallback(() => {
+    if (!authorizationMessageModal.message || !authorizationMessageModal.uplan) return
+    const messageStr = typeof authorizationMessageModal.message === 'string'
+      ? authorizationMessageModal.message
+      : JSON.stringify(authorizationMessageModal.message)
+    setDenialMapModal({
+      open: true,
+      uplan: authorizationMessageModal.uplan,
+      authorizationMessage: messageStr,
+      geoawarenessData: null,
+    })
+  }, [authorizationMessageModal])
+
+  // Task 11: Open raw JSON modal from denial map (secondary access)
+  const handleViewRawDenial = useCallback(() => {
+    // Find the plan that matches the current denial modal's uplan
+    const plan = flightPlans.find(p => {
+      const uplanData = p.uplan ? (typeof p.uplan === 'string' ? JSON.parse(p.uplan) : p.uplan) : null
+      return uplanData === denialMapModal.uplan || JSON.stringify(uplanData) === JSON.stringify(denialMapModal.uplan)
+    })
+    if (plan) {
+      setAuthorizationMessageModal({
+        open: true,
+        planId: String(plan.id),
+        planName: plan.customName,
+        message: plan.authorizationMessage,
+        status: 'denegado',
+        uplan: denialMapModal.uplan,
+      })
+    }
+  }, [flightPlans, denialMapModal])
 
   // Download U-Plan as JSON file
   const handleDownloadUplan = useCallback(() => {
@@ -1295,9 +1350,9 @@ export function FlightPlansUploader() {
                   ) : (
                     <>
                       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                       </svg>
-                      View Authorization Details (Denied)
+                      View Denial on Map
                     </>
                   )}
                 </button>
@@ -1604,17 +1659,31 @@ export function FlightPlansUploader() {
             </div>
             {/* Footer */}
             <div className="px-6 py-4 border-t border-[var(--border-primary)] flex justify-between items-center">
-              {!!authorizationMessageModal.uplan && (
-                <button
-                  onClick={handleDownloadUplan}
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors flex items-center gap-2"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                  Download U-Plan (JSON)
-                </button>
-              )}
+              <div className="flex items-center gap-2">
+                {!!authorizationMessageModal.uplan && (
+                  <button
+                    onClick={handleDownloadUplan}
+                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Download U-Plan (JSON)
+                  </button>
+                )}
+                {/* Task 11: View denial on map button for denied plans */}
+                {authorizationMessageModal.status === 'denegado' && !!authorizationMessageModal.uplan && (
+                  <button
+                    onClick={handleOpenDenialMap}
+                    className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                    </svg>
+                    View denial on map
+                  </button>
+                )}
+              </div>
               <button
                 onClick={() => setAuthorizationMessageModal({ open: false, planId: null, planName: '', message: null, status: null, uplan: null })}
                 className="px-4 py-2 text-sm font-medium text-[var(--text-secondary)] bg-[var(--bg-tertiary)] rounded-md hover:bg-[var(--bg-hover)] transition-colors ml-auto"
@@ -1625,6 +1694,15 @@ export function FlightPlansUploader() {
           </div>
         </div>
       )}
+
+      {/* Task 11: Denial map modal - shows conflicting volumes and geozones */}
+      <DenialMapModal
+        open={denialMapModal.open}
+        onClose={() => setDenialMapModal({ open: false, uplan: null, authorizationMessage: null, geoawarenessData: null })}
+        uplan={denialMapModal.uplan as { operationVolumes?: { geometry: { type: string; coordinates: number[][][] }; [key: string]: unknown }[] } | null}
+        authorizationMessage={denialMapModal.authorizationMessage}
+        geoawarenessData={denialMapModal.geoawarenessData}
+      />
 
       {/* U-Plan map viewer modal - shows operation volumes on map */}
       {/* TASK-079: Now also shows waypoints from fileContent */}
