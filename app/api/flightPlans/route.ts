@@ -19,6 +19,7 @@ import prisma from '@/lib/prisma';
 import { withAuth, isAuthError } from '@/lib/auth-middleware';
 import {
   flightPlanDeleteSchema,
+  externalUplanSchema,
   safeParseBody,
 } from '@/lib/validators';
 import { z } from 'zod';
@@ -150,6 +151,39 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   });
 
   try {
+    // Check if this is an external UPLAN import
+    if (typeof body === 'object' && body !== null && (body as Record<string, unknown>).type === 'external_uplan') {
+      const extResult = safeParseBody(externalUplanSchema, body);
+      if (!extResult.success) {
+        return NextResponse.json(
+          { error: 'Validation failed', details: extResult.errors },
+          { status: 400 }
+        );
+      }
+
+      const { uplan, folderId, customName } = extResult.data;
+
+      // Extract scheduledAt from first volume's timeBegin
+      const scheduledAt = uplan.operationVolumes[0]?.timeBegin ?? null;
+
+      const created = await prisma.flightPlan.create({
+        data: {
+          customName,
+          status: 'procesado',
+          fileContent: null,
+          userId,
+          folderId,
+          uplan: JSON.stringify(uplan),
+          scheduledAt,
+          csvResult: 0,
+          authorizationStatus: 'sin autorización',
+          geoawarenessData: Prisma.DbNull,
+        },
+      });
+
+      return NextResponse.json(created, { status: 201 });
+    }
+
     // Check if this is a bulk create request
     if (typeof body === 'object' && body !== null && 'items' in body) {
       // Validate bulk create schema (but without userId since we use the token)

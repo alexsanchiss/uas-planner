@@ -16,6 +16,7 @@ import {
   flightPlanCreateSchema,
   flightPlanUpdateDataSchema,
   flightPlanDeleteSchema,
+  externalUplanSchema,
   folderCreateSchema,
   folderUpdateSchema,
   csvResultCreateSchema,
@@ -297,6 +298,93 @@ describe('Validators', () => {
 
       it('should reject when neither id nor ids provided', () => {
         expect(() => flightPlanDeleteSchema.parse({})).toThrow();
+      });
+    });
+  });
+
+  describe('External UPLAN Schema', () => {
+    describe('externalUplanSchema', () => {
+      const validInput = {
+        type: 'external_uplan' as const,
+        uplan: {
+          operationVolumes: [
+            {
+              geometry: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 0]]] },
+              timeBegin: '2024-06-01T10:00:00Z',
+              timeEnd: '2024-06-01T11:00:00Z',
+              minAltitude: { value: 0, reference: 'AGL', uom: 'm' },
+              maxAltitude: { value: 120, reference: 'AGL', uom: 'm' },
+              ordinal: 0,
+            },
+          ],
+          operatorId: 'OP-001',
+        },
+        folderId: 1,
+        customName: 'external-plan.json',
+      };
+
+      it('should accept valid external UPLAN input', () => {
+        const result = externalUplanSchema.parse(validInput);
+        expect(result.type).toBe('external_uplan');
+        expect(result.customName).toBe('external-plan.json');
+        expect(result.folderId).toBe(1);
+        expect(result.uplan.operationVolumes).toHaveLength(1);
+      });
+
+      it('should reject when type is not external_uplan', () => {
+        expect(() => externalUplanSchema.parse({
+          ...validInput,
+          type: 'other',
+        })).toThrow();
+      });
+
+      it('should reject empty operationVolumes', () => {
+        expect(() => externalUplanSchema.parse({
+          ...validInput,
+          uplan: { operationVolumes: [] },
+        })).toThrow();
+      });
+
+      it('should reject missing operationVolumes', () => {
+        expect(() => externalUplanSchema.parse({
+          ...validInput,
+          uplan: {},
+        })).toThrow();
+      });
+
+      it('should reject missing folderId', () => {
+        const { folderId, ...rest } = validInput;
+        expect(() => externalUplanSchema.parse(rest)).toThrow();
+      });
+
+      it('should reject empty customName', () => {
+        expect(() => externalUplanSchema.parse({
+          ...validInput,
+          customName: '',
+        })).toThrow();
+      });
+
+      it('should accept uplan with extra fields (passthrough)', () => {
+        const result = externalUplanSchema.parse({
+          ...validInput,
+          uplan: {
+            ...validInput.uplan,
+            operatorId: 'OP-999',
+            extraField: 'allowed',
+          },
+        });
+        expect(result.uplan.operatorId).toBe('OP-999');
+      });
+
+      it('should accept volumes without timeBegin (optional)', () => {
+        const input = {
+          ...validInput,
+          uplan: {
+            operationVolumes: [{ ordinal: 0 }],
+          },
+        };
+        const result = externalUplanSchema.parse(input);
+        expect(result.uplan.operationVolumes[0].timeBegin).toBeUndefined();
       });
     });
   });

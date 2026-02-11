@@ -181,6 +181,30 @@ export const flightPlanQuerySchema = z.object({
 export type FlightPlanQueryInput = z.infer<typeof flightPlanQuerySchema>;
 
 // ============================================================================
+// External UPLAN Import Schema
+// ============================================================================
+
+/**
+ * Schema for external UPLAN import requests.
+ * Validates that the UPLAN contains operationVolumes and required metadata.
+ */
+export const externalUplanSchema = z.object({
+  type: z.literal('external_uplan'),
+  uplan: z.object({
+    operationVolumes: z.array(
+      z.object({
+        timeBegin: z.string().optional(),
+      }).passthrough()
+    ).min(1, 'At least one operation volume is required'),
+  }).passthrough(),
+  folderId: idSchema,
+  customName: z.string().min(1, 'Name is required').max(255),
+});
+
+/** Type for validated external UPLAN import input */
+export type ExternalUplanInput = z.infer<typeof externalUplanSchema>;
+
+// ============================================================================
 // Folder Schemas
 // ============================================================================
 

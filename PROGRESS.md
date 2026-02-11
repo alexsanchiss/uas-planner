@@ -4,7 +4,7 @@
 
 | Task | Description | Status | Notes |
 |------|-------------|--------|-------|
-| 1 | External UPLAN Import — API & Validation | ⬜ Not started | |
+| 1 | External UPLAN Import — API & Validation | ✅ Completed | externalUplanSchema + POST handler variant |
 | 2 | External UPLAN Import — Folder Drag-and-Drop UI | ⬜ Not started | Depends on Task 1 |
 | 3 | External UPLAN Import — UI Button State & Display | ⬜ Not started | Depends on Task 2 |
 | 4 | Prisma Schema & SQL — Email Verification Fields | ⬜ Not started | |
@@ -50,3 +50,10 @@ _(Updated by subagent after each task completion)_
 - Bulk DELETE handler now filters approved plans with `externalResponseNumber` and sends FAS cancellation PUTs via `Promise.allSettled`
 - Cancellation results are logged (warnings for failures) but do not block deletion
 - Reuses same `getFasBaseUrl()` / `sendFasCancellation()` pattern from Task 15
+
+### Task 1 — External UPLAN Import — API & Validation
+- Added `externalUplanSchema` to `lib/validators.ts` — validates `type: 'external_uplan'`, `operationVolumes[]` (min 1), `folderId`, `customName`
+- Modified `app/api/flightPlans/route.ts` POST handler to detect `type: 'external_uplan'` requests
+- Creates flight plan with `fileContent: null`, `status: 'procesado'`, `csvResult: 0`, `authorizationStatus: 'sin autorización'`
+- Extracts `scheduledAt` from first volume's `timeBegin`
+- Added comprehensive tests for the new schema in `lib/__tests__/validators.test.ts`
