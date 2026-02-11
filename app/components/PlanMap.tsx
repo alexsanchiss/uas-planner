@@ -295,7 +295,7 @@ function createServiceAreaMask(bounds: [[number, number], [number, number]]): [n
 }
 
 // SCAN Pattern Overlays Component
-function ScanOverlays({ scanOverlays }: { scanOverlays: any }) {
+function ScanOverlays({ scanOverlays, onDragEnd }: { scanOverlays: any; onDragEnd?: (type: 'takeoff' | 'landing' | 'vertex', index: number, lat: number, lng: number) => void }) {
   if (!scanOverlays) return null;
   
   const { takeoffPoint, landingPoint, polygonVertices, polygonClosed, previewWaypoints } = scanOverlays;
@@ -399,6 +399,13 @@ function ScanOverlays({ scanOverlays }: { scanOverlays: any }) {
         <Marker
           position={[takeoffPoint.lat, takeoffPoint.lng]}
           icon={takeoffIcon}
+          draggable={!!onDragEnd}
+          eventHandlers={onDragEnd ? {
+            dragend: (e) => {
+              const { lat, lng } = e.target.getLatLng();
+              onDragEnd('takeoff', 0, lat, lng);
+            },
+          } : undefined}
         >
           <Popup>
             <strong>Takeoff Point</strong><br />
@@ -412,6 +419,13 @@ function ScanOverlays({ scanOverlays }: { scanOverlays: any }) {
         <Marker
           position={[landingPoint.lat, landingPoint.lng]}
           icon={landingIcon}
+          draggable={!!onDragEnd}
+          eventHandlers={onDragEnd ? {
+            dragend: (e) => {
+              const { lat, lng } = e.target.getLatLng();
+              onDragEnd('landing', 0, lat, lng);
+            },
+          } : undefined}
         >
           <Popup>
             <strong>Landing Point</strong><br />
@@ -455,6 +469,13 @@ function ScanOverlays({ scanOverlays }: { scanOverlays: any }) {
               key={`vertex-${idx}`}
               position={[v.lat, v.lng]}
               icon={createVertexIcon(idx, idx === 0 && !polygonClosed && polygonVertices.length >= 3)}
+              draggable={!!onDragEnd}
+              eventHandlers={onDragEnd ? {
+                dragend: (e) => {
+                  const { lat, lng } = e.target.getLatLng();
+                  onDragEnd('vertex', idx, lat, lng);
+                },
+              } : undefined}
             >
               <Popup>
                 <strong>Vertex {idx + 1}</strong><br />
@@ -533,6 +554,8 @@ interface PlanMapProps {
   // TASK-089: WebSocket connection status for geoawareness
   wsStatus?: WebSocketStatus;
   onReconnect?: () => void;
+  // TASK-14: Scan overlay marker drag callback
+  onScanOverlayDragEnd?: (type: 'takeoff' | 'landing' | 'vertex', index: number, lat: number, lng: number) => void;
 }
 
 const PlanMap = (props: PlanMapProps) => {
@@ -615,7 +638,7 @@ const PlanMap = (props: PlanMapProps) => {
       
       {/* SCAN Mode Overlays */}
       {props.scanMode && props.scanOverlays && (
-        <ScanOverlays scanOverlays={props.scanOverlays} />
+        <ScanOverlays scanOverlays={props.scanOverlays} onDragEnd={props.onScanOverlayDragEnd} />
       )}
       
       {/* Regular waypoints (only in manual mode) */}

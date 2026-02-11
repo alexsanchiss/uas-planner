@@ -379,6 +379,21 @@ export default function PlanGenerator() {
     setScanHandlerVersion(v => v + 1);
   }, []);
 
+  // TASK-14: Drag handlers from ScanPatternGeneratorV2 for map marker drag events
+  const scanDragHandlersRef = useRef<{
+    updateTakeoff: (lat: number, lng: number) => void;
+    updateLanding: (lat: number, lng: number) => void;
+    updateVertex: (index: number, lat: number, lng: number) => void;
+  } | null>(null);
+
+  const handleSetScanDragHandlers = useCallback((handlers: {
+    updateTakeoff: (lat: number, lng: number) => void;
+    updateLanding: (lat: number, lng: number) => void;
+    updateVertex: (index: number, lat: number, lng: number) => void;
+  } | null) => {
+    scanDragHandlersRef.current = handlers;
+  }, []);
+
   // Map bounds and center - TASK-043: Use selected U-space bounds when available
   const bounds: [[number, number], [number, number]] = selectedUspace 
     ? (() => {
@@ -640,6 +655,15 @@ export default function PlanGenerator() {
     setScanOverlays(null);
     handleSetScanMapClickHandler(null);
   };
+
+  // TASK-14: Handle scan overlay marker drag (takeoff, landing, vertex)
+  const handleScanOverlayDragEnd = useCallback((type: 'takeoff' | 'landing' | 'vertex', index: number, lat: number, lng: number) => {
+    const handlers = scanDragHandlersRef.current;
+    if (!handlers) return;
+    if (type === 'takeoff') handlers.updateTakeoff(lat, lng);
+    else if (type === 'landing') handlers.updateLanding(lat, lng);
+    else if (type === 'vertex') handlers.updateVertex(index, lat, lng);
+  }, []);
 
   // Upload plan
   const handleUploadPlan = async () => {
@@ -961,6 +985,7 @@ export default function PlanGenerator() {
                       serviceBounds={[SERVICE_LIMITS[0], SERVICE_LIMITS[1], SERVICE_LIMITS[2], SERVICE_LIMITS[3]]}
                       onMapClick={handleSetScanMapClickHandler}
                       onOverlaysChange={setScanOverlays}
+                      onDragHandlers={handleSetScanDragHandlers}
                     />
                   </div>
                 )}
@@ -2017,6 +2042,8 @@ export default function PlanGenerator() {
             // TASK-089: Pass WebSocket status for connection indicator
             wsStatus={selectedUspace ? geozonesStatus : undefined}
             onReconnect={reconnectGeozones}
+            // TASK-14: Scan overlay marker drag
+            onScanOverlayDragEnd={generatorMode === 'scan' ? handleScanOverlayDragEnd : undefined}
           />
         </main>
       </div>

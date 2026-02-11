@@ -17,7 +17,7 @@
 | 11 | Denial Visualization — Integration with UI | ✅ Completed | DenialMapModal integrated into FlightPlanCard, AuthorizationPanel, and FlightPlansUploader |
 | 12 | Scan Waypoint Editing — Editable Map Popup | ✅ Completed | Editable inputs for lat, lng, altitude, speed, pause, flyOverMode in map popup |
 | 13 | Scan Pattern — Editable Corner Coordinates | ✅ Completed | Editable lat/lng inputs in Steps 1, 2, 3 with bounds validation |
-| 14 | Scan Pattern — Draggable Markers on Map | ⬜ Not started | Depends on Task 13 |
+| 14 | Scan Pattern — Draggable Markers on Map | ✅ Completed | Takeoff, landing, and vertex markers draggable on map |
 | 15 | FAS Cancellation on Individual Delete | ✅ Completed | FAS PUT cancellation sent before deleting approved plans |
 | 16 | FAS Cancellation on Bulk Delete | ✅ Completed | FAS cancellation sent for each approved plan in bulk delete |
 | 17 | Translations & i18n for All Features | ⬜ Not started | Depends on all |
@@ -139,3 +139,8 @@ _(Updated by subagent after each task completion)_
 - Step 3 (Landing): replaced read-only coordinate text with editable inputs
 - Validation: rejects coordinates outside valid ranges and outside service area bounds
 - Fixed pre-existing lint issues: removed unused `Info` import, escaped quotes in JSX
+
+### Task 14 — Scan Pattern — Draggable Markers on Map
+- Modified `app/components/PlanMap.tsx` — Added `onScanOverlayDragEnd` prop to PlanMapProps. Modified `ScanOverlays` component to accept drag callback and make takeoff, landing, and polygon vertex markers draggable with `dragend` event handlers. Preview (generated scan) waypoints remain non-draggable.
+- Modified `app/components/PlanGenerator.tsx` — Added `scanDragHandlersRef` and `handleSetScanDragHandlers` callback to store update functions from ScanPatternGeneratorV2. Created `handleScanOverlayDragEnd` that dispatches drag events to the appropriate handler (updateTakeoff/updateLanding/updateVertex). Passed `onDragHandlers` to ScanPatternGeneratorV2 and `onScanOverlayDragEnd` to PlanMap in scan mode.
+- Modified `app/components/plan-generator/ScanPatternGeneratorV2.tsx` — Added `onDragHandlers` prop that exposes `updateTakeoff`, `updateLanding`, and `updateVertex` functions to the parent. Created stable handler functions using `useCallback` and registered them via `useEffect`. Reuses existing `handleVertexUpdate` for vertex updates.
