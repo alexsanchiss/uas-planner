@@ -205,6 +205,37 @@ export const externalUplanSchema = z.object({
 export type ExternalUplanInput = z.infer<typeof externalUplanSchema>;
 
 // ============================================================================
+// Email Verification Schemas
+// ============================================================================
+
+/**
+ * Schema for email verification via token link or email+code.
+ * Accepts either { token } or { email, code }.
+ */
+export const verifyEmailSchema = z.union([
+  z.object({
+    token: z.string().min(1, 'Token is required'),
+  }),
+  z.object({
+    email: z.string().email('Invalid email address'),
+    code: z.string().length(6, 'Code must be 6 digits'),
+  }),
+]);
+
+/** Type for validated verify-email input */
+export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;
+
+/**
+ * Schema for resending verification email.
+ */
+export const resendVerificationSchema = z.object({
+  email: z.string().email('Invalid email address'),
+});
+
+/** Type for validated resend-verification input */
+export type ResendVerificationInput = z.infer<typeof resendVerificationSchema>;
+
+// ============================================================================
 // Folder Schemas
 // ============================================================================
 

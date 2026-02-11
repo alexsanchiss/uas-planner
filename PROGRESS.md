@@ -9,7 +9,7 @@
 | 3 | External UPLAN Import — UI Button State & Display | ⬜ Not started | Depends on Task 2 |
 | 4 | Prisma Schema & SQL — Email Verification Fields | ✅ Completed | Added email verification and password reset fields to user model |
 | 5 | MailerSend Email Service Library | ✅ Completed | mailersend package + lib/email.ts with 3 email functions |
-| 6 | Email Verification Flow — API Routes | ⬜ Not started | Depends on Task 4, 5 |
+| 6 | Email Verification Flow — API Routes | ✅ Completed | Signup sends verification email, login checks emailVerified, verify-email + resend-verification routes |
 | 7 | Email Verification Flow — Frontend Pages | ⬜ Not started | Depends on Task 6 |
 | 8 | Password Reset Flow | ⬜ Not started | Depends on Task 5, 6 |
 | 9 | FAS Authorization Email Notifications | ⬜ Not started | Depends on Task 5 |
@@ -67,3 +67,10 @@ _(Updated by subagent after each task completion)_
 - Graceful error handling: logs errors but never throws (fire-and-forget for notifications)
 - Handles missing/placeholder `MAILERSEND_API_KEY` gracefully
 - Added 8 tests in `lib/__tests__/email.test.ts`
+
+### Task 6 — Email Verification Flow — API Routes
+- Modified `app/api/auth/signup/route.ts` — generates UUID token + 6-digit code with 24h expiry, sends verification email on signup
+- Modified `app/api/auth/login/route.ts` — checks `emailVerified` after password validation; returns `{ requiresVerification: true, email }` for unverified users
+- Created `app/api/auth/verify-email/route.ts` — POST route accepting `{ token }` or `{ email, code }`; validates token/code not expired, sets `emailVerified: true`, clears verification fields
+- Created `app/api/auth/resend-verification/route.ts` — POST route accepting `{ email }`; regenerates token + code, resends email; rate limited to 1 per minute
+- Added `verifyEmailSchema` and `resendVerificationSchema` to `lib/validators.ts`

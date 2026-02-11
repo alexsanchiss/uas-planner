@@ -16,6 +16,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 400 })
     }
 
+    if (!user.emailVerified) {
+      return NextResponse.json({ requiresVerification: true, email: user.email }, { status: 200 })
+    }
+
     // Generate access token (short-lived, 15 minutes)
     const token = generateToken(user.id)
     
