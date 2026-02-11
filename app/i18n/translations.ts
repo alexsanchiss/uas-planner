@@ -46,6 +46,22 @@ export interface Translations {
     invalidCredentials: string
     sessionExpired: string
     pleaseLogin: string
+    // Email verification
+    verifyEmail: string
+    verifyYourEmail: string
+    enterVerificationCode: string
+    verificationCodePlaceholder: string
+    verifying: string
+    emailVerified: string
+    emailVerifiedSuccess: string
+    verificationFailed: string
+    verificationLinkExpired: string
+    resendCode: string
+    resending: string
+    codeSent: string
+    backToLogin: string
+    goToLogin: string
+    enterCodeManually: string
   }
   
   // Navigation
@@ -315,6 +331,21 @@ export const translations: Record<Language, Translations> = {
       invalidCredentials: 'Invalid credentials',
       sessionExpired: 'Session expired',
       pleaseLogin: 'Please log in to view your flight plans.',
+      verifyEmail: 'Email Verification',
+      verifyYourEmail: 'Verify Your Email',
+      enterVerificationCode: 'Enter the 6-digit code sent to your email address.',
+      verificationCodePlaceholder: '6-digit code',
+      verifying: 'Verifying...',
+      emailVerified: 'Email verified',
+      emailVerifiedSuccess: 'Your email has been verified successfully!',
+      verificationFailed: 'Verification failed',
+      verificationLinkExpired: 'Verification failed. The link may have expired.',
+      resendCode: 'Resend verification code',
+      resending: 'Sending...',
+      codeSent: 'A new code has been sent.',
+      backToLogin: 'Back to Login',
+      goToLogin: 'Go to Login',
+      enterCodeManually: 'Enter code manually',
     },
     nav: {
       home: 'Home',
@@ -559,6 +590,21 @@ export const translations: Record<Language, Translations> = {
       invalidCredentials: 'Credenciales inválidas',
       sessionExpired: 'Sesión expirada',
       pleaseLogin: 'Por favor, inicie sesión para ver sus planes de vuelo.',
+      verifyEmail: 'Verificación de correo',
+      verifyYourEmail: 'Verifica tu correo electrónico',
+      enterVerificationCode: 'Introduce el código de 6 dígitos enviado a tu correo electrónico.',
+      verificationCodePlaceholder: 'Código de 6 dígitos',
+      verifying: 'Verificando...',
+      emailVerified: 'Correo verificado',
+      emailVerifiedSuccess: '¡Tu correo electrónico ha sido verificado correctamente!',
+      verificationFailed: 'Verificación fallida',
+      verificationLinkExpired: 'La verificación falló. El enlace puede haber expirado.',
+      resendCode: 'Reenviar código de verificación',
+      resending: 'Enviando...',
+      codeSent: 'Se ha enviado un nuevo código.',
+      backToLogin: 'Volver a Iniciar Sesión',
+      goToLogin: 'Ir a Iniciar Sesión',
+      enterCodeManually: 'Introducir código manualmente',
     },
     nav: {
       home: 'Inicio',
