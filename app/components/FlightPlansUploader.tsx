@@ -1284,7 +1284,7 @@ export function FlightPlansUploader() {
                 {/* TASK-003: Generate volumes on demand if not present */}
                 <button
                   onClick={() => handleViewUplanMap(selectedPlan.id)}
-                  disabled={!selectedPlan.fileContent || generatingVolumes === selectedPlan.id}
+                  disabled={(!selectedPlan.fileContent && !selectedPlan.uplan) || generatingVolumes === selectedPlan.id}
                   className="px-4 py-2 text-sm font-medium text-[var(--text-primary)] bg-[var(--surface-tertiary)] border border-[var(--border-primary)] rounded-md hover:bg-[var(--bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors btn-interactive flex items-center gap-2"
                 >
                   {generatingVolumes === selectedPlan.id ? (

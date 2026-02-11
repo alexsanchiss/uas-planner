@@ -132,6 +132,8 @@ function parseWaypointsFromPlan(fileContent?: string): Waypoint[] {
 
 // Helper to get the appropriate disabled tooltip for each button
 function getProcessDisabledTooltip(plan: FlightPlan): string | undefined {
+  // Task 3: External plans without fileContent cannot be processed
+  if (!plan.fileContent) return 'No trajectory to process'
   // TASK-090: No scheduledAt
   if (!plan.scheduledAt) return 'Select date/time first'
   // TASK-091: Already processing (en proceso means in progress)
@@ -168,6 +170,8 @@ function isFasProcessingPlan(plan: FlightPlan): boolean {
 }
 
 function getDownloadDisabledTooltip(plan: FlightPlan): string | undefined {
+  // Task 3: External plans without fileContent have no trajectory
+  if (!plan.fileContent) return 'No trajectory available'
   // TASK-001: Must be processed first
   if (plan.status !== 'procesado') return 'Plan must be processed first'
   // TASK-094: No CSV result
@@ -226,9 +230,10 @@ export function FlightPlanCard({
 
   // TASK-089-095: Button state management with tooltips
   // Fixed: Also disable process when status is 'en proceso' (currently processing)
-  const canProcess = !!plan.scheduledAt && plan.status === 'sin procesar'
-  // TASK-001: Can only view trajectory when processed AND csvResult exists
-  const canDownload = plan.status === 'procesado' && !!plan.csvResult
+  // Task 3: External plans (no fileContent) cannot be processed or have trajectories viewed
+  const canProcess = !!plan.fileContent && !!plan.scheduledAt && plan.status === 'sin procesar'
+  // TASK-001: Can only view trajectory when processed AND csvResult AND fileContent exist
+  const canDownload = !!plan.fileContent && plan.status === 'procesado' && !!plan.csvResult
   const canAuthorize = plan.status === 'procesado' && plan.authorizationStatus === 'sin autorización'
   const canReset = plan.status !== 'sin procesar'
 
