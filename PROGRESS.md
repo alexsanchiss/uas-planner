@@ -1,36 +1,46 @@
-# Progress - UAS Planner V2.0.0 Stabilization
+# PROGRESS.md — Implementation Progress
 
-## Task Status
+## Tasks Overview
 
-| Task ID | Description | Status | Assigned | Completed At |
-|---------|-------------|--------|----------|--------------|
-| TASK-001 | Fix Prisma Schema - Remove Duplicate, Add User Model | completed | agent | 2026-02-05 |
-| TASK-002 | Verify and Fix TypeScript Build Errors | completed | agent | 2026-02-05 |
-| TASK-003 | Fix uplan JSON Serialization in API Route | completed | agent | 2026-02-05 |
-| TASK-004 | Fix Header Logo Aspect Ratio | completed | agent | 2026-02-05 |
-| TASK-005 | Ensure Theme Independence from System | completed | agent | 2026-02-05 |
-| TASK-006 | Fix DateTime Picker Typing Issues | completed | agent | 2026-02-05 |
-| TASK-007 | Cross-Platform Build Validation | completed | agent | 2026-02-05 |
-| TASK-008 | Final Commit and Tag | completed | agent | 2026-02-05 |
-| TASK-009 | Fix Auto-Scroll on Plan Selection | completed | agent | 2026-02-05 |
-| TASK-003-NEW | Improve U-Plan Validation UX with Detailed Field Feedback | completed | agent | 2026-02-05 |
+| Task | Description | Status | Notes |
+|------|-------------|--------|-------|
+| 1 | External UPLAN Import — API & Validation | ⬜ Not started | |
+| 2 | External UPLAN Import — Folder Drag-and-Drop UI | ⬜ Not started | Depends on Task 1 |
+| 3 | External UPLAN Import — UI Button State & Display | ⬜ Not started | Depends on Task 2 |
+| 4 | Prisma Schema & SQL — Email Verification Fields | ⬜ Not started | |
+| 5 | MailerSend Email Service Library | ⬜ Not started | Depends on Task 4 |
+| 6 | Email Verification Flow — API Routes | ⬜ Not started | Depends on Task 4, 5 |
+| 7 | Email Verification Flow — Frontend Pages | ⬜ Not started | Depends on Task 6 |
+| 8 | Password Reset Flow | ⬜ Not started | Depends on Task 5, 6 |
+| 9 | FAS Authorization Email Notifications | ⬜ Not started | Depends on Task 5 |
+| 10 | Denial Visualization Map — DenialMapModal | ⬜ Not started | |
+| 11 | Denial Visualization — Integration with UI | ⬜ Not started | Depends on Task 10 |
+| 12 | Scan Waypoint Editing — Editable Map Popup | ⬜ Not started | |
+| 13 | Scan Pattern — Editable Corner Coordinates | ⬜ Not started | |
+| 14 | Scan Pattern — Draggable Markers on Map | ⬜ Not started | Depends on Task 13 |
+| 15 | FAS Cancellation on Individual Delete | ✅ Completed | FAS PUT cancellation sent before deleting approved plans |
+| 16 | FAS Cancellation on Bulk Delete | ⬜ Not started | Depends on Task 15 |
+| 17 | Translations & i18n for All Features | ⬜ Not started | Depends on all |
 
-## Execution Log
+## Dependency Graph
 
-| Date | Task | Details | Commit |
-|------|------|---------|--------|
-| 2026-02-05 | TASK-001 | Fixed Prisma schema: removed duplicate flightPlan model, added user model with proper relations. Fixed related TypeScript errors in route handlers (DbNull → null for string fields, findUnique → findFirst for non-unique queries). | pending |
-| 2026-02-05 | TASK-002 | Verified TypeScript build passes after schema fix. No additional errors found. | - |
-| 2026-02-05 | TASK-003 | Added JSON.parse(JSON.stringify(uplan)) serialization before all 3 Prisma update calls in uplan route to prevent nested object keys from being interpreted as Prisma operations. | pending |
-| 2026-02-05 | TASK-004 | Added object-contain to Image component and flex-shrink-0 to logo containers to prevent aspect ratio distortion at various viewport widths. | pending |
-| 2026-02-05 | TASK-005 | Added color-scheme CSS property to :root (dark) and [data-theme="light"] to prevent system theme from affecting form elements and scrollbars. | pending |
-| 2026-02-05 | TASK-006 | Added onKeyDown={(e) => e.preventDefault()} to datetime-local input to disable direct typing and force users to use the popup picker. | pending |
-| 2026-02-05 | TASK-007 | Verified `npx prisma generate` and `npm run build` complete without errors. TypeScript types valid. | - |
-| 2026-02-05 | TASK-008 | All stabilization changes pushed to origin/master. 5 commits: schema fix, uplan serialization, logo aspect ratio, theme independence, datetime-picker fix. | 0e831b7 |
-| 2026-02-05 | TASK-009 | Removed automatic scroll-to-top behavior when selecting flight plans. Plans now remain visible in their folders after selection, improving user experience. | 416e88a |
-| 2026-02-05 | TASK-003-NEW | Enhanced U-Plan validation with detailed field-level feedback. Modified isUplanComplete to return structured validation results (missingFields, fieldErrors). Auto-opens UplanFormModal with red highlighting on invalid fields. Added "Save & Request Authorization" button for iterative validation workflow. Includes visual error indicators with shake animation, error icons, and specific field messages. Creates smooth validation loop that keeps modal open until all required fields complete. | f85f385 |
+```
+Task 1 → Task 2 → Task 3
+Task 4 → Task 5 → Task 6 → Task 7
+              ↘ Task 9     ↘ Task 8
+Task 10 → Task 11
+Task 13 → Task 14
+Task 15 → Task 16
+Task 12 (independent)
+All → Task 17
+```
 
-## Notes
-- Tasks must be completed in order (Phase 1 before Phase 2)
-- TASK-001 is CRITICAL - blocks all other tasks
-- TASK-007 and TASK-008 are final validation steps
+## Completed Tasks Log
+
+_(Updated by subagent after each task completion)_
+
+### Task 15 — FAS Cancellation on Individual Delete
+- Modified `app/api/flightPlans/[id]/route.ts`
+- DELETE handler now sends `PUT /uplan_cancelation/{externalResponseNumber}` to FAS before deleting approved plans
+- Cancellation is fire-and-forget: failures are logged but do not block deletion
+- FAS base URL derived from `FAS_API_URL` env var
