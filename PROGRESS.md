@@ -5,7 +5,7 @@
 | Task | Description | Status | Notes |
 |------|-------------|--------|-------|
 | 1 | External UPLAN Import — API & Validation | ✅ Completed | externalUplanSchema + POST handler variant |
-| 2 | External UPLAN Import — Folder Drag-and-Drop UI | ⬜ Not started | Depends on Task 1 |
+| 2 | External UPLAN Import — Folder Drag-and-Drop UI | ✅ Completed | FolderCard file drop + importExternalUplan hook + i18n |
 | 3 | External UPLAN Import — UI Button State & Display | ⬜ Not started | Depends on Task 2 |
 | 4 | Prisma Schema & SQL — Email Verification Fields | ✅ Completed | Added email verification and password reset fields to user model |
 | 5 | MailerSend Email Service Library | ✅ Completed | mailersend package + lib/email.ts with 3 email functions |
@@ -85,6 +85,13 @@ _(Updated by subagent after each task completion)_
 - Added denial map i18n keys (en + es) to `app/i18n/translations.ts`
 
 ### Task 11 — Denial Visualization — Integration with Existing UI
+
+### Task 2 — External UPLAN Import — Folder Drag-and-Drop UI
+- Modified `app/components/flight-plans/FolderCard.tsx` — Differentiates between flight plan card drag (`FLIGHT_PLAN_DRAG_TYPE`) and external file drag (`Files`). For file drops: accepts only `.json`, reads file content, parses JSON, validates `operationVolumes`, calls import handler. Green drop zone visual for file drops (vs blue for plan drags)
+- Modified `app/hooks/useFlightPlans.ts` — Added `importExternalUplan(uplan, folderId, customName)` function that POSTs to `/api/flightPlans` with `type: 'external_uplan'`
+- Modified `app/i18n/translations.ts` — Added `externalUplanImport`, `externalUplanSuccess`, `externalUplanError`, `externalUplanInvalidFormat`, `dropUplanHere`, `noTrajectoryAvailable` keys (en + es)
+- Modified `app/components/flight-plans/FolderList.tsx` — Passes through `onImportExternalUplan` prop to FolderCard
+- Modified `app/components/FlightPlansUploader.tsx` — Wired `handleImportExternalUplan` handler with toast notifications
 - Modified `app/components/FlightPlansUploader.tsx` — denied plan icon/button click now opens DenialMapModal directly; raw JSON still accessible via button in authorization message modal footer
 - Modified `app/components/flight-plans/AuthorizationPanel.tsx` — added "View denial on map" button for denied plans, keeping raw JSON as secondary option
 - Updated large "View Authorization Details" button for denied plans to show map icon and "View Denial on Map" label

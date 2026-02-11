@@ -183,6 +183,14 @@ export interface Translations {
     noWaypoints: string
     expandMap: string
     
+    // External UPLAN import
+    externalUplanImport: string
+    externalUplanSuccess: string
+    externalUplanError: string
+    externalUplanInvalidFormat: string
+    dropUplanHere: string
+    noTrajectoryAvailable: string
+    
     // Sync
     syncing: string
     syncPaused: string
@@ -431,6 +439,13 @@ export const translations: Record<Language, Translations> = {
       noWaypoints: 'No waypoints',
       expandMap: 'Click to expand map',
       
+      externalUplanImport: 'Import external UPLAN',
+      externalUplanSuccess: 'External UPLAN imported successfully.',
+      externalUplanError: 'Error importing external UPLAN.',
+      externalUplanInvalidFormat: 'Invalid file: must be a .json file with operationVolumes.',
+      dropUplanHere: 'Drop UPLAN .json here',
+      noTrajectoryAvailable: 'No trajectory available',
+      
       syncing: 'Syncing...',
       syncPaused: 'Automatic sync has been paused due to connection errors.',
       syncError: 'Sync error',
@@ -667,6 +682,13 @@ export const translations: Record<Language, Translations> = {
       waypointPreview: 'Vista previa de waypoints',
       noWaypoints: 'Sin waypoints',
       expandMap: 'Clic para ampliar mapa',
+      
+      externalUplanImport: 'Importar UPLAN externo',
+      externalUplanSuccess: 'UPLAN externo importado correctamente.',
+      externalUplanError: 'Error al importar UPLAN externo.',
+      externalUplanInvalidFormat: 'Archivo inválido: debe ser un archivo .json con operationVolumes.',
+      dropUplanHere: 'Suelte el UPLAN .json aquí',
+      noTrajectoryAvailable: 'No hay trayectoria disponible',
       
       syncing: 'Sincronizando...',
       syncPaused: 'La sincronización automática se ha pausado debido a errores de conexión.',

@@ -138,6 +138,8 @@ interface UseFlightPlansReturn {
   getByFolder: (folderId: number | null) => FlightPlan[]
   /** Get flight plans by status */
   getByStatus: (status: FlightPlanStatus) => FlightPlan[]
+  /** Import an external UPLAN into a folder */
+  importExternalUplan: (uplan: object, folderId: number, customName: string) => Promise<FlightPlan | null>
 }
 
 /**
@@ -435,6 +437,31 @@ export function useFlightPlans(options: UseFlightPlansOptions = {}): UseFlightPl
   }, [optimisticRemove, clearOptimistic, refresh])
 
   /**
+   * Import an external UPLAN into a folder
+   */
+  const importExternalUplan = useCallback(async (
+    uplan: object,
+    folderId: number,
+    customName: string
+  ): Promise<FlightPlan | null> => {
+    try {
+      const response = await axios.post<FlightPlan>('/api/flightPlans', {
+        type: 'external_uplan',
+        uplan,
+        folderId,
+        customName,
+      }, {
+        headers: getAuthHeaders(),
+      })
+      await refresh()
+      return response.data
+    } catch (err) {
+      console.error('Error importing external UPLAN:', err)
+      throw err
+    }
+  }, [refresh])
+
+  /**
    * Get flight plans by folder ID
    */
   const getByFolder = useCallback((folderId: number | null): FlightPlan[] => {
@@ -469,6 +496,7 @@ export function useFlightPlans(options: UseFlightPlansOptions = {}): UseFlightPl
     optimisticRemove,
     getByFolder,
     getByStatus,
+    importExternalUplan,
   }
 }
 
