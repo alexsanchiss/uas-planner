@@ -580,6 +580,12 @@ export function FlightPlansUploader() {
 
       if (!response.ok) {
         const error = await response.json()
+        
+        // Handle 503: FAS temporarily unavailable (after all retries failed)
+        if (response.status === 503) {
+          throw new Error('FAS is temporarily unavailable. The plan remains in "sin autorización" state. Please try again later.')
+        }
+        
         throw new Error(error.error || 'Error submitting to FAS')
       }
 
@@ -587,7 +593,10 @@ export function FlightPlansUploader() {
       toast.success('Authorization request sent successfully.')
     } catch (error) {
       console.error('Authorization error:', error)
-      toast.error('Error requesting authorization.', {
+      
+      // Show different message for FAS unavailability vs other errors
+      const errorMessage = error instanceof Error ? error.message : 'Error requesting authorization.'
+      toast.error(errorMessage, {
         onRetry: () => handleAuthorizePlan(planId),
       })
     } finally {
@@ -680,9 +689,14 @@ export function FlightPlansUploader() {
     const planId = uspaceSelectionModal.planId
     if (!planId) return
 
+    const plan = flightPlans.find(p => String(p.id) === planId)
+    if (!plan) return
+
+    addLoadingPlan('geoawareness', planId)
+
     try {
       // Update plan's geoawarenessData with selected U-Space
-      const response = await fetch(`/api/flightPlans`, {
+      const updateResponse = await fetch(`/api/flightPlans`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -696,23 +710,52 @@ export function FlightPlansUploader() {
         }),
       })
 
-      if (!response.ok) {
+      if (!updateResponse.ok) {
         throw new Error('Failed to update U-Space')
       }
 
-      await refreshPlans()
       toast.success(`U-Space "${uspace.name}" assigned to flight plan`)
       
-      // Close modal
+      // Close U-Space selector modal
       setUspaceSelectionModal({ open: false, planId: '' })
+
+      // Call geoawareness API directly (don't wait for state refresh)
+      const geoResponse = await fetch(`/api/flightPlans/${planId}/geoawareness`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('authToken')}`,
+        },
+      })
+
+      if (!geoResponse.ok) {
+        const error = await geoResponse.json()
+        throw new Error(error.error || 'Error calling geoawareness service')
+      }
+
+      await geoResponse.json()
       
-      // Now proceed with geoawareness check
-      handleGeoawareness(planId)
+      // Refresh plans to get updated geoawareness data
+      await refreshPlans()
+      
+      toast.success('Opening geoawareness viewer...')
+
+      // Open geoawareness viewer modal directly with the selected U-Space
+      setGeoawarenessModal({
+        open: true,
+        planId: planId,
+        planName: plan.customName,
+        uspaceId: uspace.id,
+      })
     } catch (error) {
-      console.error('Error assigning U-Space:', error)
-      toast.error('Failed to assign U-Space')
+      console.error('Error in U-Space selection flow:', error)
+      toast.error(error instanceof Error ? error.message : 'Error checking geoawareness.', {
+        onRetry: () => handleGeoawareness(planId),
+      })
+    } finally {
+      removeLoadingPlan('geoawareness', planId)
     }
-  }, [uspaceSelectionModal.planId, refreshPlans, toast, handleGeoawareness])
+  }, [uspaceSelectionModal.planId, flightPlans, refreshPlans, toast, addLoadingPlan, removeLoadingPlan])
 
   // TASK-109: Show reset confirmation dialog
   const handleResetPlan = useCallback((planId: string) => {
