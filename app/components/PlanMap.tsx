@@ -7,6 +7,7 @@ import L from "leaflet";
 import { Point, ScanWaypoint } from "@/lib/scan-generator";
 import { GeozoneLayer } from "./plan-generator/GeozoneLayer";
 import { GeozoneInfoPopup } from "./plan-generator/GeozoneInfoPopup";
+import { useI18n } from "@/app/i18n";
 import type { GeozoneData, WebSocketStatus } from "@/app/hooks/useGeoawarenessWebSocket";
 
 // TASK-152: Large bounds for overlay outside service area (covers the world)
@@ -133,6 +134,7 @@ function EditablePopupContent({ wp, idx, onWaypointChange }: {
   idx: number;
   onWaypointChange: (idx: number, field: WaypointField, value: number | boolean) => void;
 }) {
+  const { t } = useI18n();
   const inputStyle: React.CSSProperties = {
     width: '100%', fontSize: '12px', padding: '2px 4px',
     border: '1px solid #ccc', borderRadius: '3px', boxSizing: 'border-box',
@@ -146,35 +148,35 @@ function EditablePopupContent({ wp, idx, onWaypointChange }: {
   return (
     <div style={{ minWidth: '190px' }}>
       <div style={{ fontWeight: 'bold', marginBottom: '6px', fontSize: '13px', borderBottom: '1px solid #eee', paddingBottom: '4px' }}>
-        Waypoint {idx + 1} <span style={{ color: typeColor, textTransform: 'capitalize' }}>({wp.type})</span>
+        {t.flightPlans.waypoint} {idx + 1} <span style={{ color: typeColor, textTransform: 'capitalize' }}>({wp.type})</span>
       </div>
       <div style={rowStyle}>
-        <label style={labelStyle}>Latitude</label>
+        <label style={labelStyle}>{t.planGenerator.latitude}</label>
         <input type="number" step="any" value={wp.lat}
           onChange={(e) => { const v = Number(e.target.value); if (!isNaN(v)) onWaypointChange(idx, 'lat', v); }}
           style={inputStyle} />
       </div>
       <div style={rowStyle}>
-        <label style={labelStyle}>Longitude</label>
+        <label style={labelStyle}>{t.planGenerator.longitude}</label>
         <input type="number" step="any" value={wp.lng}
           onChange={(e) => { const v = Number(e.target.value); if (!isNaN(v)) onWaypointChange(idx, 'lng', v); }}
           style={inputStyle} />
       </div>
       <div style={rowStyle}>
-        <label style={labelStyle}>Altitude (m)</label>
+        <label style={labelStyle}>{t.planGenerator.altitude} (m)</label>
         <input type="number" min={0} value={wp.altitude}
           onChange={(e) => { const v = Number(e.target.value); if (!isNaN(v)) onWaypointChange(idx, 'altitude', v); }}
           disabled={wp.type === 'landing'}
           style={{ ...inputStyle, ...(wp.type === 'landing' ? { opacity: 0.5, cursor: 'not-allowed' } : {}) }} />
       </div>
       <div style={rowStyle}>
-        <label style={labelStyle}>Speed (m/s)</label>
+        <label style={labelStyle}>{t.planGenerator.speed} (m/s)</label>
         <input type="number" min={0} step="0.1" value={wp.speed}
           onChange={(e) => { const v = Number(e.target.value); if (!isNaN(v)) onWaypointChange(idx, 'speed', v); }}
           style={inputStyle} />
       </div>
       <div style={rowStyle}>
-        <label style={labelStyle}>Pause (s)</label>
+        <label style={labelStyle}>{t.planGenerator.pause} (s)</label>
         <input type="number" min={0} max={3600} value={wp.pauseDuration || 0}
           onChange={(e) => { const v = Number(e.target.value); if (!isNaN(v)) onWaypointChange(idx, 'pauseDuration', v); }}
           style={inputStyle} />
@@ -184,7 +186,7 @@ function EditablePopupContent({ wp, idx, onWaypointChange }: {
           <label style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
             <input type="checkbox" checked={wp.flyOverMode || false}
               onChange={(e) => onWaypointChange(idx, 'flyOverMode', e.target.checked)} />
-            <span style={{ fontWeight: 'bold', color: '#555' }}>Fly-Over</span>
+            <span style={{ fontWeight: 'bold', color: '#555' }}>{t.planGenerator.flyOver}</span>
             <span style={{ color: wp.flyOverMode ? '#a855f7' : '#3b82f6', fontSize: '12px' }}>
               {wp.flyOverMode ? '⊙ Over' : '∽ By'}
             </span>
@@ -296,6 +298,7 @@ function createServiceAreaMask(bounds: [[number, number], [number, number]]): [n
 
 // SCAN Pattern Overlays Component
 function ScanOverlays({ scanOverlays, onDragEnd }: { scanOverlays: any; onDragEnd?: (type: 'takeoff' | 'landing' | 'vertex', index: number, lat: number, lng: number) => void }) {
+  const { t } = useI18n();
   if (!scanOverlays) return null;
   
   const { takeoffPoint, landingPoint, polygonVertices, polygonClosed, previewWaypoints } = scanOverlays;
@@ -408,7 +411,7 @@ function ScanOverlays({ scanOverlays, onDragEnd }: { scanOverlays: any; onDragEn
           } : undefined}
         >
           <Popup>
-            <strong>Takeoff Point</strong><br />
+            <strong>{t.planGenerator.takeoffPointLabel}</strong><br />
             {takeoffPoint.lat.toFixed(6)}, {takeoffPoint.lng.toFixed(6)}
           </Popup>
         </Marker>
@@ -428,7 +431,7 @@ function ScanOverlays({ scanOverlays, onDragEnd }: { scanOverlays: any; onDragEn
           } : undefined}
         >
           <Popup>
-            <strong>Landing Point</strong><br />
+            <strong>{t.planGenerator.landingPointLabel}</strong><br />
             {landingPoint.lat.toFixed(6)}, {landingPoint.lng.toFixed(6)}
           </Popup>
         </Marker>
@@ -478,10 +481,10 @@ function ScanOverlays({ scanOverlays, onDragEnd }: { scanOverlays: any; onDragEn
               } : undefined}
             >
               <Popup>
-                <strong>Vertex {idx + 1}</strong><br />
+                <strong>{t.planGenerator.vertex} {idx + 1}</strong><br />
                 {v.lat.toFixed(6)}, {v.lng.toFixed(6)}
                 {idx === 0 && !polygonClosed && polygonVertices.length >= 3 && (
-                  <><br /><em style={{color: '#a855f7'}}>Click near here to close polygon</em></>
+                  <><br /><em style={{color: '#a855f7'}}>{t.planGenerator.clickNearToClose}</em></>
                 )}
               </Popup>
             </Marker>
@@ -511,9 +514,9 @@ function ScanOverlays({ scanOverlays, onDragEnd }: { scanOverlays: any; onDragEn
               icon={createPreviewIcon(idx, previewWaypoints.length)}
             >
               <Popup>
-                <strong>Waypoint {idx + 1}</strong><br />
-                Type: {wp.type}<br />
-                Altitude: {wp.altitude}m
+                <strong>{t.flightPlans.waypoint} {idx + 1}</strong><br />
+                {t.flightPlans.typeLabel}: {wp.type}<br />
+                {t.planGenerator.altitude}: {wp.altitude}m
               </Popup>
             </Marker>
           ))}

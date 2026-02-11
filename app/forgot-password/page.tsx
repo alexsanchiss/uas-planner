@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
+import { useI18n } from "../i18n";
 import axios from "axios";
 
 export default function ForgotPasswordPage() {
+  const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
@@ -20,7 +22,7 @@ export default function ForgotPasswordPage() {
       await axios.post("/api/auth/forgot-password", { email });
       setSubmitted(true);
     } catch {
-      setError("An error occurred. Please try again.");
+      setError(t.auth.errorOccurredRetry);
     } finally {
       setLoading(false);
     }
@@ -31,27 +33,25 @@ export default function ForgotPasswordPage() {
       <main className="flex items-center justify-center w-full py-20">
         <div className="bg-[var(--surface-primary)] p-6 rounded-lg shadow-md w-full max-w-sm">
           <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-2">
-            Forgot Password
+            {t.auth.forgotPasswordTitle}
           </h1>
 
           {submitted ? (
             <>
               <p className="text-[var(--text-secondary)] text-sm mb-6">
-                If an account with that email exists, we&apos;ve sent a password
-                reset link. Please check your inbox.
+                {t.auth.resetLinkSentDesc}
               </p>
               <a
                 href="/login"
                 className="text-[var(--color-primary)] hover:underline hover:text-[var(--color-primary-hover)] text-sm"
               >
-                Back to Login
+                {t.auth.backToLogin}
               </a>
             </>
           ) : (
             <>
               <p className="text-[var(--text-secondary)] text-sm mb-6">
-                Enter your email address and we&apos;ll send you a link to reset
-                your password.
+                {t.auth.forgotPasswordDesc}
               </p>
               {error && (
                 <p className="text-[var(--status-error)] mb-4 text-sm">
@@ -61,13 +61,13 @@ export default function ForgotPasswordPage() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <Input
                   type="email"
-                  placeholder="Email"
+                  placeholder={t.auth.email}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                 />
                 <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Sending..." : "Send Reset Link"}
+                  {loading ? t.auth.sending : t.auth.sendResetLink}
                 </Button>
               </form>
               <p className="text-[var(--text-tertiary)] text-sm mt-4 text-center">
@@ -75,7 +75,7 @@ export default function ForgotPasswordPage() {
                   href="/login"
                   className="text-[var(--color-primary)] hover:underline hover:text-[var(--color-primary-hover)]"
                 >
-                  Back to Login
+                  {t.auth.backToLogin}
                 </a>
               </p>
             </>

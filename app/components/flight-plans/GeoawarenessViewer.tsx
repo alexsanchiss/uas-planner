@@ -4,6 +4,7 @@ import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { useGeoawarenessWebSocket, type GeozoneData } from '@/app/hooks/useGeoawarenessWebSocket'
 import { useMap } from 'react-leaflet'
+import { useI18n } from '@/app/i18n'
 import L from 'leaflet'
 
 // Dynamically import Leaflet components to avoid SSR issues
@@ -290,8 +291,8 @@ export function GeoawarenessViewer({
   const [selectedGeozone, setSelectedGeozone] = useState<GeozoneData | null>(null)
   const [popupPosition, setPopupPosition] = useState<L.LatLngExpression | null>(null)
   const [showGeozones, setShowGeozones] = useState(true)
-  // Task 3: Operation volumes for rendering when no trajectory data
   const [operationVolumes, setOperationVolumes] = useState<OperationVolume[]>([])
+  const { t } = useI18n()
   
   // TASK-077: Time slider state for trajectory simulation
   const [simulationTime, setSimulationTime] = useState(0)
@@ -380,7 +381,7 @@ export function GeoawarenessViewer({
         const planRes = await fetch(`/api/flightPlans/${planId}`, { headers })
         if (!planRes.ok) {
           if (planRes.status === 404) {
-            setTrajectoryError('Flight plan not found')
+            setTrajectoryError(t.flightPlans.flightPlanNotFound)
             return
           }
           throw new Error(`Failed to load plan (HTTP ${planRes.status})`)
@@ -417,7 +418,7 @@ export function GeoawarenessViewer({
         const csvRes = await fetch(`/api/csvResult?id=${plan.id}`, { headers })
         if (!csvRes.ok) {
           if (csvRes.status === 404) {
-            setTrajectoryError('Trajectory data not found')
+            setTrajectoryError(t.flightPlans.trajectoryDataNotFound)
             return
           }
           throw new Error(`Error loading CSV (HTTP ${csvRes.status})`)
@@ -619,9 +620,9 @@ export function GeoawarenessViewer({
               />
             </svg>
             <span className="text-sm text-[var(--text-secondary)] bg-black/40 dark:bg-white/10 px-3 py-1.5 rounded-md backdrop-blur-sm">
-              {wsLoading && 'Loading geoawareness data...'}
-              {trajectoryLoading && !wsLoading && 'Loading trajectory data...'}
-              {externalLoading && 'Loading...'}
+              {wsLoading && t.flightPlans.loadingGeoawarenessData}
+              {trajectoryLoading && !wsLoading && t.flightPlans.loadingTrajectoryData}
+              {externalLoading && t.common.loading}
             </span>
             {usingFallback && (
               <span className="text-xs text-[var(--text-tertiary)] bg-black/40 dark:bg-white/10 px-3 py-1 rounded-md backdrop-blur-sm">
@@ -654,10 +655,10 @@ export function GeoawarenessViewer({
 
             <div>
               <h4 className="text-lg font-semibold text-[var(--text-primary)] mb-2">
-                Geoawareness Error
+                {t.flightPlans.geoawarenessError}
               </h4>
               <p className="text-sm text-[var(--text-secondary)] mb-1">
-                Failed to load geoawareness data
+                {t.flightPlans.failedLoadGeoawareness}
                 {planName && <span className="font-medium"> for &ldquo;{planName}&rdquo;</span>}
               </p>
               <p className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded px-3 py-2 mt-2">
@@ -696,7 +697,7 @@ export function GeoawarenessViewer({
                   d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                 />
               </svg>
-              Retry
+              {t.common.retry}
             </button>
           </div>
         </div>
@@ -724,10 +725,10 @@ export function GeoawarenessViewer({
                   />
                 </svg>
                 <h4 className="text-lg font-medium text-[var(--text-secondary)] mb-2">
-                  Geoawareness Map
+                  {t.flightPlans.geoawarenessMapTitle}
                 </h4>
                 <p className="text-sm text-[var(--text-tertiary)] text-center max-w-xs">
-                  Select a flight plan to view trajectory and geoawareness data
+                  {t.flightPlans.selectPlanToViewGeoawareness}
                 </p>
               </div>
             )}
@@ -826,14 +827,14 @@ export function GeoawarenessViewer({
                       >
                         <Popup>
                           <div className="text-sm min-w-[150px]">
-                            <p className="font-bold text-gray-900 mb-1">🛸 Drone Position</p>
+                            <p className="font-bold text-gray-900 mb-1">🛸 {t.flightPlans.dronePosition}</p>
                             <div className="text-xs text-gray-600 space-y-0.5">
-                              <p>Lat: {simulatedPosition.lat.toFixed(6)}</p>
-                              <p>Lng: {simulatedPosition.lng.toFixed(6)}</p>
+                              <p>{t.flightPlans.lat}: {simulatedPosition.lat.toFixed(6)}</p>
+                              <p>{t.flightPlans.lng}: {simulatedPosition.lng.toFixed(6)}</p>
                               {simulatedPosition.alt !== undefined && (
-                                <p>Alt: {simulatedPosition.alt.toFixed(1)}m</p>
+                                <p>{t.flightPlans.alt}: {simulatedPosition.alt.toFixed(1)}m</p>
                               )}
-                              <p>Time: {simulatedPosition.time.toFixed(1)}s</p>
+                              <p>{t.flightPlans.timeLabel}: {simulatedPosition.time.toFixed(1)}s</p>
                             </div>
                           </div>
                         </Popup>
@@ -863,11 +864,11 @@ export function GeoawarenessViewer({
                         <div className="text-xs min-w-[160px]">
                           <div className="font-semibold text-purple-600 mb-1">{v.label}</div>
                           <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
-                            <span className="text-gray-500">Start:</span>
+                            <span className="text-gray-500">{t.flightPlans.startLabel}:</span>
                             <span>{fmtTime(v.timeBegin)}</span>
-                            <span className="text-gray-500">End:</span>
+                            <span className="text-gray-500">{t.flightPlans.endLabel}:</span>
                             <span>{fmtTime(v.timeEnd)}</span>
-                            <span className="text-gray-500">Alt:</span>
+                            <span className="text-gray-500">{t.flightPlans.alt}:</span>
                             <span>{v.minAlt} – {v.maxAlt}</span>
                           </div>
                         </div>
@@ -897,14 +898,14 @@ export function GeoawarenessViewer({
                     />
                     <span className="text-xs font-medium text-white">
                       {hasViolations
-                        ? `${violations.length} Violation${violations.length !== 1 ? 's' : ''}`
+                        ? `${violations.length} ${t.flightPlans.violationsDetected}`
                         : !wsLoading && !wsError
-                        ? `${allGeozones.length} Geozones${usingFallback ? ' (fallback)' : ''}`
+                        ? `${allGeozones.length} ${t.flightPlans.geozonesLabel}${usingFallback ? ' (fallback)' : ''}`
                         : wsLoading
-                        ? 'Loading...'
+                        ? t.common.loading
                         : !uspaceId
-                        ? 'No U-space'
-                        : 'Error'}
+                        ? t.flightPlans.noUspace
+                        : t.common.error}
                     </span>
                   </div>
                 </div>
@@ -920,7 +921,7 @@ export function GeoawarenessViewer({
                         className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
                       <span className="text-xs text-white">
-                        Show Geozones
+                        {t.flightPlans.showGeozones}
                       </span>
                     </label>
                   </div>
@@ -937,7 +938,7 @@ export function GeoawarenessViewer({
                 <button
                   onClick={togglePlayback}
                   className="w-10 h-10 flex items-center justify-center rounded-full bg-blue-600 hover:bg-blue-700 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
-                  title={isPlaying ? 'Pause simulation' : 'Play simulation'}
+                  title={isPlaying ? t.flightPlans.pauseSimulation : t.flightPlans.playSimulation}
                 >
                   {isPlaying ? (
                     <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -984,7 +985,7 @@ export function GeoawarenessViewer({
                           ? 'bg-blue-600 text-white'
                           : 'bg-gray-100 dark:bg-gray-800 text-[var(--text-secondary)] hover:bg-gray-200 dark:hover:bg-gray-700'
                       }`}
-                      title={`${speed}x speed`}
+                      title={`${speed}x`}
                     >
                       {speed}x
                     </button>
@@ -998,7 +999,7 @@ export function GeoawarenessViewer({
                     setSimulationTime(0)
                   }}
                   className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
-                  title="Reset to start"
+                  title={t.flightPlans.resetToStart}
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -1011,10 +1012,10 @@ export function GeoawarenessViewer({
                 <div className="mt-2 flex items-center justify-center gap-4 text-xs text-[var(--text-secondary)]">
                   <span className="flex items-center gap-1">
                     <span className="w-3 h-3 rounded-full bg-orange-500"></span>
-                    Drone: {simulatedPosition.lat.toFixed(5)}, {simulatedPosition.lng.toFixed(5)}
+                    {t.flightPlans.drone}: {simulatedPosition.lat.toFixed(5)}, {simulatedPosition.lng.toFixed(5)}
                   </span>
                   {simulatedPosition.alt !== undefined && (
-                    <span>Alt: {simulatedPosition.alt.toFixed(1)}m</span>
+                    <span>{t.flightPlans.alt}: {simulatedPosition.alt.toFixed(1)}m</span>
                   )}
                 </div>
               )}
@@ -1033,7 +1034,7 @@ export function GeoawarenessViewer({
                   />
                 </svg>
                 <span className="text-sm font-medium text-red-700 dark:text-red-300">
-                  Airspace Violations Detected
+                  {t.flightPlans.violationsDetected}
                 </span>
               </div>
               <ul className="space-y-1 max-h-24 overflow-y-auto">
@@ -1056,7 +1057,7 @@ export function GeoawarenessViewer({
               onClick={() => setShowLegend(!showLegend)}
               className="flex items-center justify-between w-full text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
             >
-              <span>Map Legend</span>
+              <span>{t.flightPlans.mapLegend}</span>
               <svg
                 className={`w-4 h-4 transition-transform ${showLegend ? 'rotate-180' : ''}`}
                 fill="none"
@@ -1072,30 +1073,30 @@ export function GeoawarenessViewer({
                 {/* Trajectory markers */}
                 <div className="flex items-center gap-2 text-xs">
                   <div className="w-4 h-0.5 bg-blue-500 rounded" />
-                  <span className="text-[var(--text-tertiary)]">Trajectory</span>
+                  <span className="text-[var(--text-tertiary)]">{t.flightPlans.trajectory}</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs">
                   <div className="w-3 h-3 bg-green-500 rounded-full border border-white shadow-sm" />
-                  <span className="text-[var(--text-tertiary)]">Takeoff</span>
+                  <span className="text-[var(--text-tertiary)]">{t.flightPlans.takeoff}</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs">
                   <div className="w-3 h-3 bg-blue-500 rounded-full border border-white shadow-sm" />
-                  <span className="text-[var(--text-tertiary)]">Waypoint</span>
+                  <span className="text-[var(--text-tertiary)]">{t.flightPlans.waypoint}</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs">
                   <div className="w-3 h-3 bg-red-500 rounded-full border border-white shadow-sm" />
-                  <span className="text-[var(--text-tertiary)]">Landing</span>
+                  <span className="text-[var(--text-tertiary)]">{t.flightPlans.landing}</span>
                 </div>
                 {/* TASK-077: Simulation marker */}
                 <div className="flex items-center gap-2 text-xs">
                   <div className="w-3 h-3 bg-orange-500 rounded-full border-2 border-white shadow-sm" />
-                  <span className="text-[var(--text-tertiary)]">Drone Position</span>
+                  <span className="text-[var(--text-tertiary)]">{t.flightPlans.dronePosition}</span>
                 </div>
                 {/* Task 3: Operation volume legend */}
                 {hasVolumes && (
                   <div className="flex items-center gap-2 text-xs">
                     <div className="w-3 h-3 rounded bg-purple-500/60 border border-purple-500" />
-                    <span className="text-[var(--text-tertiary)]">Operation Volume</span>
+                    <span className="text-[var(--text-tertiary)]">{t.flightPlans.operationVolume}</span>
                   </div>
                 )}
 
@@ -1115,7 +1116,7 @@ export function GeoawarenessViewer({
                 {/* Violation indicator */}
                 <div className="flex items-center gap-2 text-xs">
                   <div className="w-3 h-3 bg-red-500/30 border-2 border-red-500 rounded animate-pulse" />
-                  <span className="text-[var(--text-tertiary)]">Violation Zone</span>
+                  <span className="text-[var(--text-tertiary)]">{t.flightPlans.violationZone}</span>
                 </div>
               </div>
             )}

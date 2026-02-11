@@ -20,7 +20,7 @@
 | 14 | Scan Pattern — Draggable Markers on Map | ✅ Completed | Takeoff, landing, and vertex markers draggable on map |
 | 15 | FAS Cancellation on Individual Delete | ✅ Completed | FAS PUT cancellation sent before deleting approved plans |
 | 16 | FAS Cancellation on Bulk Delete | ✅ Completed | FAS cancellation sent for each approved plan in bulk delete |
-| 17 | Translations & i18n for All Features | ⬜ Not started | Depends on all |
+| 17 | Translations & i18n for All Features | ✅ Completed | Comprehensive i18n pass for all new features |
 
 ## Dependency Graph
 
@@ -144,3 +144,16 @@ _(Updated by subagent after each task completion)_
 - Modified `app/components/PlanMap.tsx` — Added `onScanOverlayDragEnd` prop to PlanMapProps. Modified `ScanOverlays` component to accept drag callback and make takeoff, landing, and polygon vertex markers draggable with `dragend` event handlers. Preview (generated scan) waypoints remain non-draggable.
 - Modified `app/components/PlanGenerator.tsx` — Added `scanDragHandlersRef` and `handleSetScanDragHandlers` callback to store update functions from ScanPatternGeneratorV2. Created `handleScanOverlayDragEnd` that dispatches drag events to the appropriate handler (updateTakeoff/updateLanding/updateVertex). Passed `onDragHandlers` to ScanPatternGeneratorV2 and `onScanOverlayDragEnd` to PlanMap in scan mode.
 - Modified `app/components/plan-generator/ScanPatternGeneratorV2.tsx` — Added `onDragHandlers` prop that exposes `updateTakeoff`, `updateLanding`, and `updateVertex` functions to the parent. Created stable handler functions using `useCallback` and registered them via `useEffect`. Reuses existing `handleVertexUpdate` for vertex updates.
+
+### Task 17 — Translations & i18n for All Features
+- Added ~130 new translation keys across auth, flightPlans, and planGenerator sections in `app/i18n/translations.ts` (interface + en + es values)
+- Updated `app/verify-email/page.tsx` — All hardcoded strings replaced with `t.auth.*` references
+- Updated `app/forgot-password/page.tsx` — All hardcoded strings replaced with `t.auth.*` references
+- Updated `app/reset-password/page.tsx` — All hardcoded strings replaced with `t.auth.*` references
+- Updated `app/login/page.tsx` — All hardcoded strings replaced; privacy policy link uses split/interpolation pattern
+- Updated `app/components/flight-plans/DenialMapModal.tsx` — Modal title, banner text, tooltip labels, legend, conflict status labels translated
+- Updated `app/components/flight-plans/FolderCard.tsx` — Drop zone strings, validation errors, buttons, plan count, delete confirmation dialog translated
+- Updated `app/components/flight-plans/FlightPlanCard.tsx` — Refactored tooltip helper functions to accept Translations parameter; all validation messages, buttons, labels translated
+- Updated `app/components/flight-plans/GeoawarenessViewer.tsx` — Loading/error states, map popup labels, legend, simulation controls, volume tooltips translated
+- Updated `app/components/PlanMap.tsx` — EditablePopupContent labels and ScanOverlays popup content translated
+- Updated `app/components/plan-generator/ScanPatternGeneratorV2.tsx` — All step labels, instructions, parameter labels, validation errors, statistics, buttons translated

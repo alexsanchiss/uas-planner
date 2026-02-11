@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
+import { useI18n } from "../i18n";
 import axios from "axios";
 
 type VerifyState = "idle" | "verifying" | "success" | "error";
@@ -11,6 +12,7 @@ type VerifyState = "idle" | "verifying" | "success" | "error";
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { t } = useI18n();
   const token = searchParams?.get("token");
   const initialEmail = searchParams?.get("email") || "";
 
@@ -33,7 +35,7 @@ function VerifyEmailContent() {
         .catch((err) => {
           setState("error");
           setErrorMessage(
-            err.response?.data?.error || "Verification failed. The link may have expired."
+            err.response?.data?.error || t.auth.verificationLinkExpired
           );
         });
     }
@@ -51,9 +53,9 @@ function VerifyEmailContent() {
     } catch (err) {
       setState("error");
       if (axios.isAxiosError(err)) {
-        setErrorMessage(err.response?.data?.error || "Invalid or expired code.");
+        setErrorMessage(err.response?.data?.error || t.auth.invalidOrExpiredCode);
       } else {
-        setErrorMessage("An error occurred.");
+        setErrorMessage(t.errors.generic);
       }
     }
   };
@@ -64,12 +66,12 @@ function VerifyEmailContent() {
     setResendMessage("");
     try {
       const resp = await axios.post("/api/auth/resend-verification", { email });
-      setResendMessage(resp.data.message || "A new code has been sent.");
+      setResendMessage(resp.data.message || t.auth.codeSent);
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 429) {
-        setResendMessage(err.response.data.error || "Please wait before requesting a new code.");
+        setResendMessage(err.response.data.error || t.auth.waitBeforeResend);
       } else {
-        setResendMessage("Error sending verification email.");
+        setResendMessage(t.auth.errorSendingVerification);
       }
     } finally {
       setResending(false);
@@ -83,18 +85,18 @@ function VerifyEmailContent() {
         <main className="flex items-center justify-center w-full py-20">
           <div className="bg-[var(--surface-primary)] p-6 rounded-lg shadow-md w-full max-w-sm">
             <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-4">
-              Email Verification
+              {t.auth.verifyEmail}
             </h1>
             {state === "verifying" && (
-              <p className="text-[var(--text-secondary)]">Verifying your email...</p>
+              <p className="text-[var(--text-secondary)]">{t.auth.verifying}</p>
             )}
             {state === "success" && (
               <>
                 <p className="text-green-400 mb-4">
-                  Your email has been verified successfully!
+                  {t.auth.emailVerifiedSuccess}
                 </p>
                 <Button className="w-full" onClick={() => router.push("/login")}>
-                  Go to Login
+                  {t.auth.goToLogin}
                 </Button>
               </>
             )}
@@ -106,7 +108,7 @@ function VerifyEmailContent() {
                   variant="outline"
                   onClick={() => router.push("/verify-email")}
                 >
-                  Enter code manually
+                  {t.auth.enterCodeManually}
                 </Button>
               </>
             )}
@@ -122,19 +124,19 @@ function VerifyEmailContent() {
       <main className="flex items-center justify-center w-full py-20">
         <div className="bg-[var(--surface-primary)] p-6 rounded-lg shadow-md w-full max-w-sm">
           <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-2">
-            Verify Your Email
+            {t.auth.verifyYourEmail}
           </h1>
           <p className="text-[var(--text-secondary)] text-sm mb-6">
-            Enter the 6-digit code sent to your email address.
+            {t.auth.enterVerificationCode}
           </p>
 
           {state === "success" ? (
             <>
               <p className="text-green-400 mb-4">
-                Your email has been verified successfully!
-              </p>
+                {t.auth.emailVerifiedSuccess}
+                </p>
               <Button className="w-full" onClick={() => router.push("/login")}>
-                Go to Login
+                {t.auth.goToLogin}
               </Button>
             </>
           ) : (
@@ -146,7 +148,7 @@ function VerifyEmailContent() {
               <form onSubmit={handleCodeSubmit} className="space-y-4">
                 <Input
                   type="email"
-                  placeholder="Email"
+                  placeholder={t.auth.email}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -156,7 +158,7 @@ function VerifyEmailContent() {
                   inputMode="numeric"
                   pattern="[0-9]{6}"
                   maxLength={6}
-                  placeholder="6-digit code"
+                  placeholder={t.auth.verificationCodePlaceholder}
                   value={code}
                   onChange={(e) => {
                     const val = e.target.value.replace(/\D/g, "").slice(0, 6);
@@ -169,7 +171,7 @@ function VerifyEmailContent() {
                   className="w-full"
                   disabled={state === "verifying"}
                 >
-                  {state === "verifying" ? "Verifying..." : "Verify Email"}
+                  {state === "verifying" ? t.auth.verifying : t.auth.verifyEmail}
                 </Button>
               </form>
 
@@ -179,7 +181,7 @@ function VerifyEmailContent() {
                   disabled={resending || !email}
                   className="text-[var(--color-primary)] hover:underline hover:text-[var(--color-primary-hover)] text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {resending ? "Sending..." : "Resend verification code"}
+                  {resending ? t.auth.resending : t.auth.resendCode}
                 </button>
                 {resendMessage && (
                   <p className="text-[var(--text-secondary)] text-xs mt-2">
@@ -193,7 +195,7 @@ function VerifyEmailContent() {
                   href="/login"
                   className="text-[var(--color-primary)] hover:underline hover:text-[var(--color-primary-hover)]"
                 >
-                  Back to Login
+                  {t.auth.backToLogin}
                 </a>
               </p>
             </>

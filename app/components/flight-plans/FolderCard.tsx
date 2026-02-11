@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, DragEvent } from 'react'
 import { FlightPlanList, type FlightPlanListProps } from './FlightPlanList'
 import { type FlightPlan, type FlightPlanDragData, type Waypoint, FLIGHT_PLAN_DRAG_TYPE } from './FlightPlanCard'
 import { ConfirmDialog } from '../ui/confirm-dialog'
+import { useI18n } from '@/app/i18n'
 
 export interface Folder {
   id: string
@@ -114,6 +115,7 @@ export function FolderCard({
   const [isDragOver, setIsDragOver] = useState(false)
   const [isFileDragOver, setIsFileDragOver] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const { t } = useI18n()
 
   // Focus input when entering edit mode
   useEffect(() => {
@@ -152,7 +154,7 @@ export function FolderCard({
     const trimmedName = name.trim()
     
     if (!trimmedName) {
-      return 'Folder name cannot be empty'
+      return t.flightPlans.folderNameEmpty
     }
     
     // Check uniqueness (exclude current folder's name)
@@ -160,7 +162,7 @@ export function FolderCard({
       n => n.toLowerCase() !== folder.name.toLowerCase()
     )
     if (otherFolderNames.some(n => n.toLowerCase() === trimmedName.toLowerCase())) {
-      return 'A folder with this name already exists'
+      return t.flightPlans.folderNameExists
     }
     
     return null
@@ -377,14 +379,14 @@ export function FolderCard({
         {/* Task 2: File drop indicator */}
         {isFileDragOver && (
           <span className="text-xs font-medium text-green-600 dark:text-green-400 animate-pulse">
-            Drop UPLAN .json here
+            {t.flightPlans.dropUplanHere}
           </span>
         )}
         
         {/* TASK-222: Drop indicator */}
         {isDragOver && !isFileDragOver && (
           <span className="text-xs font-medium text-blue-600 dark:text-blue-400 animate-pulse">
-            Drop here
+            {t.flightPlans.dropHere}
           </span>
         )}
 
@@ -415,14 +417,14 @@ export function FolderCard({
                   className="flex-1 sm:flex-none px-3 py-1.5 sm:py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={loadingStates.renaming || !editName.trim()}
                 >
-                  {loadingStates.renaming ? '...' : 'Save'}
+                  {loadingStates.renaming ? '...' : t.common.save}
                 </button>
                 <button
                   type="button"
                   onClick={handleRenameCancel}
                   className="flex-1 sm:flex-none px-3 py-1.5 sm:py-1 text-xs font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-600 rounded hover:bg-gray-200 dark:hover:bg-gray-500"
                 >
-                  Cancel
+                  {t.common.cancel}
                 </button>
               </div>
             </div>
@@ -443,7 +445,7 @@ export function FolderCard({
                 {folder.name}
               </h3>
               <p className="text-xs text-[var(--text-secondary)]">
-                {planCount} {planCount === 1 ? 'flight plan' : 'flight plans'}
+                {planCount} {planCount === 1 ? t.flightPlans.flightPlan.toLowerCase() : t.flightPlans.flightPlans.toLowerCase()}
               </p>
             </div>
 
@@ -486,7 +488,7 @@ export function FolderCard({
             onWaypointPreviewClick={onWaypointPreviewClick}
             onViewAuthorizationMessage={onViewAuthorizationMessage}
             loadingPlanIds={loadingPlanIds}
-            emptyMessage="This folder is empty"
+            emptyMessage={t.flightPlans.emptyFolder}
           />
         </div>
       )}
@@ -496,14 +498,14 @@ export function FolderCard({
         open={showDeleteConfirm}
         onClose={handleDeleteCancel}
         onConfirm={handleDeleteConfirm}
-        title="Delete folder"
-        message={`Are you sure you want to delete the folder "${folder.name}"? ${
+        title={t.flightPlans.deleteFolder}
+        message={`${t.flightPlans.confirmDeleteFolder}${
           planCount > 0
-            ? `This action will also delete ${planCount} ${planCount === 1 ? 'flight plan' : 'flight plans'}.`
+            ? ` (${planCount} ${planCount === 1 ? t.flightPlans.flightPlan.toLowerCase() : t.flightPlans.flightPlans.toLowerCase()})` 
             : ''
-        } This action cannot be undone.`}
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
+        } ${t.flightPlans.actionCannotBeUndone}`}
+        confirmLabel={t.common.delete}
+        cancelLabel={t.common.cancel}
         variant="danger"
         loading={loadingStates.deleting}
       />
