@@ -19,7 +19,7 @@
 | 13 | Scan Pattern — Editable Corner Coordinates | ⬜ Not started | |
 | 14 | Scan Pattern — Draggable Markers on Map | ⬜ Not started | Depends on Task 13 |
 | 15 | FAS Cancellation on Individual Delete | ✅ Completed | FAS PUT cancellation sent before deleting approved plans |
-| 16 | FAS Cancellation on Bulk Delete | ⬜ Not started | Depends on Task 15 |
+| 16 | FAS Cancellation on Bulk Delete | ✅ Completed | FAS cancellation sent for each approved plan in bulk delete |
 | 17 | Translations & i18n for All Features | ⬜ Not started | Depends on all |
 
 ## Dependency Graph
@@ -44,3 +44,9 @@ _(Updated by subagent after each task completion)_
 - DELETE handler now sends `PUT /uplan_cancelation/{externalResponseNumber}` to FAS before deleting approved plans
 - Cancellation is fire-and-forget: failures are logged but do not block deletion
 - FAS base URL derived from `FAS_API_URL` env var
+
+### Task 16 — FAS Cancellation on Bulk Delete
+- Modified `app/api/flightPlans/route.ts`
+- Bulk DELETE handler now filters approved plans with `externalResponseNumber` and sends FAS cancellation PUTs via `Promise.allSettled`
+- Cancellation results are logged (warnings for failures) but do not block deletion
+- Reuses same `getFasBaseUrl()` / `sendFasCancellation()` pattern from Task 15

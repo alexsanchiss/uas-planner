@@ -23,6 +23,47 @@ import {
 } from '@/lib/validators';
 import { z } from 'zod';
 
+/**
+ * FAS API URL - defaults to production server if not configured.
+ * The base URL (without /uplan path) is used for cancellation requests.
+ */
+const FAS_API_URL = process.env.FAS_API_URL || 'http://158.42.167.56:8000/uplan';
+
+/**
+ * Derive the FAS base URL by removing the /uplan path suffix.
+ */
+function getFasBaseUrl(): string {
+  try {
+    const url = new URL(FAS_API_URL);
+    return `${url.protocol}//${url.host}`;
+  } catch {
+    return FAS_API_URL.replace(/\/uplan\/?$/, '');
+  }
+}
+
+/**
+ * Send a cancellation request to the FAS for an approved flight plan.
+ * Fire-and-forget: failures are logged but do not block deletion.
+ */
+async function sendFasCancellation(externalResponseNumber: string): Promise<void> {
+  const baseUrl = getFasBaseUrl();
+  const cancelUrl = `${baseUrl}/uplan_cancelation/${encodeURIComponent(externalResponseNumber)}`;
+
+  try {
+    const response = await fetch(cancelUrl, { method: 'PUT' });
+    if (!response.ok) {
+      console.warn(
+        `[FAS Cancellation] Non-OK response for ${externalResponseNumber}: ${response.status} ${response.statusText}`
+      );
+    }
+  } catch (error) {
+    console.warn(
+      `[FAS Cancellation] Failed to cancel ${externalResponseNumber}:`,
+      error instanceof Error ? error.message : error
+    );
+  }
+}
+
 // Constants for bulk operation limits
 const MAX_BULK_IDS = 100000;
 const MAX_BULK_ITEMS = 2000;
@@ -422,7 +463,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
         id: { in: targetIds },
         userId,
       },
-      select: { id: true, csvResult: true, customName: true },
+      select: { id: true, csvResult: true, customName: true, authorizationStatus: true, externalResponseNumber: true },
     });
 
     const userPlanIds = userPlans.map((p) => p.id);
@@ -434,13 +475,24 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
       );
     }
 
+    // Send FAS cancellation for approved plans before deleting
+    const approvedPlans = userPlans.filter(
+      (p) => p.authorizationStatus === 'aprobado' && p.externalResponseNumber
+    );
+    if (approvedPlans.length > 0) {
+      const cancellationResults = await Promise.allSettled(
+        approvedPlans.map((p) => sendFasCancellation(p.externalResponseNumber!))
+      );
+      const failed = cancellationResults.filter((r) => r.status === 'rejected').length;
+      if (failed > 0) {
+        console.warn(`[FAS Cancellation] ${failed}/${approvedPlans.length} bulk cancellations failed`);
+      }
+    }
+
     // Extract the actual csvResult IDs from the flight plans (filter out nulls)
     const csvResultIds = userPlanIds;
 
-    // Log the deletion operation for audit purposes
-    
     // Delete in transaction: CSV results first, then flight plans
-    // Use the actual csvResult IDs from the flightPlan records, not the flightPlan IDs
     const [deletedCsvResult, deletedPlansResult] = await prisma.$transaction([
       prisma.csvResult.deleteMany({ where: { id: { in: csvResultIds } } }),
       prisma.flightPlan.deleteMany({ where: { id: { in: userPlanIds } } }),
