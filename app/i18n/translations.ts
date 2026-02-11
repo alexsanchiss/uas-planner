@@ -62,6 +62,23 @@ export interface Translations {
     backToLogin: string
     goToLogin: string
     enterCodeManually: string
+    // Password reset
+    forgotPasswordTitle: string
+    forgotPasswordDesc: string
+    sendResetLink: string
+    sending: string
+    resetLinkSent: string
+    resetLinkSentDesc: string
+    resetPassword: string
+    resetPasswordTitle: string
+    newPassword: string
+    confirmNewPassword: string
+    passwordsDoNotMatch: string
+    passwordResetSuccess: string
+    passwordResetSuccessDesc: string
+    invalidResetLink: string
+    requestNewResetLink: string
+    resettingPassword: string
   }
   
   // Navigation
@@ -346,6 +363,22 @@ export const translations: Record<Language, Translations> = {
       backToLogin: 'Back to Login',
       goToLogin: 'Go to Login',
       enterCodeManually: 'Enter code manually',
+      forgotPasswordTitle: 'Forgot Password',
+      forgotPasswordDesc: 'Enter your email address and we\'ll send you a link to reset your password.',
+      sendResetLink: 'Send Reset Link',
+      sending: 'Sending...',
+      resetLinkSent: 'Check Your Email',
+      resetLinkSentDesc: 'If an account with that email exists, we\'ve sent a password reset link. Please check your inbox.',
+      resetPassword: 'Reset Password',
+      resetPasswordTitle: 'Reset Password',
+      newPassword: 'New password',
+      confirmNewPassword: 'Confirm new password',
+      passwordsDoNotMatch: 'Passwords do not match.',
+      passwordResetSuccess: 'Password Reset',
+      passwordResetSuccessDesc: 'Your password has been reset successfully!',
+      invalidResetLink: 'This password reset link is invalid or has expired.',
+      requestNewResetLink: 'Request a new reset link',
+      resettingPassword: 'Resetting...',
     },
     nav: {
       home: 'Home',
@@ -605,6 +638,22 @@ export const translations: Record<Language, Translations> = {
       backToLogin: 'Volver a Iniciar Sesión',
       goToLogin: 'Ir a Iniciar Sesión',
       enterCodeManually: 'Introducir código manualmente',
+      forgotPasswordTitle: 'Olvidé mi Contraseña',
+      forgotPasswordDesc: 'Introduce tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.',
+      sendResetLink: 'Enviar Enlace',
+      sending: 'Enviando...',
+      resetLinkSent: 'Revisa tu Correo',
+      resetLinkSentDesc: 'Si existe una cuenta con ese correo, hemos enviado un enlace para restablecer tu contraseña. Revisa tu bandeja de entrada.',
+      resetPassword: 'Restablecer Contraseña',
+      resetPasswordTitle: 'Restablecer Contraseña',
+      newPassword: 'Nueva contraseña',
+      confirmNewPassword: 'Confirmar nueva contraseña',
+      passwordsDoNotMatch: 'Las contraseñas no coinciden.',
+      passwordResetSuccess: 'Contraseña Restablecida',
+      passwordResetSuccessDesc: '¡Tu contraseña ha sido restablecida correctamente!',
+      invalidResetLink: 'Este enlace de restablecimiento es inválido o ha expirado.',
+      requestNewResetLink: 'Solicitar un nuevo enlace',
+      resettingPassword: 'Restableciendo...',
     },
     nav: {
       home: 'Inicio',
