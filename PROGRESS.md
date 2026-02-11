@@ -11,7 +11,7 @@
 | 5 | MailerSend Email Service Library | ✅ Completed | mailersend package + lib/email.ts with 3 email functions |
 | 6 | Email Verification Flow — API Routes | ✅ Completed | Signup sends verification email, login checks emailVerified, verify-email + resend-verification routes |
 | 7 | Email Verification Flow — Frontend Pages | ✅ Completed | verify-email page + login redirect + useAuth requiresVerification handling + i18n |
-| 8 | Password Reset Flow | ⬜ Not started | Depends on Task 5, 6 |
+| 8 | Password Reset Flow | ✅ Completed | forgot-password + reset-password API routes & pages |
 | 9 | FAS Authorization Email Notifications | ⬜ Not started | Depends on Task 5 |
 | 10 | Denial Visualization Map — DenialMapModal | ✅ Completed | New DenialMapModal component with conflict highlighting |
 | 11 | Denial Visualization — Integration with UI | ✅ Completed | DenialMapModal integrated into FlightPlanCard, AuthorizationPanel, and FlightPlansUploader |
@@ -98,6 +98,14 @@ _(Updated by subagent after each task completion)_
 - Added `viewRawJson` and `viewDenialDetails` i18n keys (en + es) to translations
 
 ### Task 3 — External UPLAN Import — UI Button State & Display Adjustments
+
+### Task 8 — Password Reset Flow
+- Created `app/api/auth/forgot-password/route.ts` — POST route accepts `{ email }`, generates UUID token, stores SHA-256 hash with 1h expiry, sends reset email via MailerSend, always returns 200 (no email enumeration)
+- Created `app/api/auth/reset-password/route.ts` — POST route accepts `{ token, newPassword }`, hashes incoming token to look up user, validates expiry, hashes new password with bcrypt, clears reset fields
+- Created `app/forgot-password/page.tsx` — Email input form that POSTs to forgot-password API, shows "check your email" confirmation
+- Created `app/reset-password/page.tsx` — New password + confirm password form with token from URL query param, client-side match validation, redirects to login on success
+- Added `forgotPasswordSchema` and `resetPasswordSchema` to `lib/validators.ts`
+- Added 15 password reset i18n keys (en + es) to `app/i18n/translations.ts`
 
 ### Task 7 — Email Verification Flow — Frontend Pages
 - Created `app/verify-email/page.tsx` — New page with two modes: auto-verify via URL `?token=...` on mount, or manual 6-digit code entry form with email field. Shows verifying/success/error states. "Resend verification code" button with rate-limit feedback. "Back to Login" link

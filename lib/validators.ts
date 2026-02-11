@@ -236,6 +236,33 @@ export const resendVerificationSchema = z.object({
 export type ResendVerificationInput = z.infer<typeof resendVerificationSchema>;
 
 // ============================================================================
+// Password Reset Schemas
+// ============================================================================
+
+/**
+ * Schema for forgot-password request.
+ * Only requires a valid email address.
+ */
+export const forgotPasswordSchema = z.object({
+  email: z.string().email('Invalid email address'),
+});
+
+/** Type for validated forgot-password input */
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+
+/**
+ * Schema for reset-password request.
+ * Requires the reset token and a new password (min 8 chars).
+ */
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1, 'Token is required'),
+  newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+});
+
+/** Type for validated reset-password input */
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+
+// ============================================================================
 // Folder Schemas
 // ============================================================================
 
