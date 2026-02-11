@@ -8,12 +8,18 @@ datasource db {
 }
 
 model user {
-  id          Int          @id @default(autoincrement())
-  email       String       @unique @db.VarChar(255)
-  password    String       @db.VarChar(255)
-  createdAt   DateTime     @default(now()) @db.Timestamp(0)
-  flightPlans flightPlan[]
-  folders     folder[]
+  id                       Int          @id @default(autoincrement())
+  email                    String       @unique @db.VarChar(255)
+  password                 String       @db.VarChar(255)
+  createdAt                DateTime     @default(now()) @db.Timestamp(0)
+  emailVerified            Boolean      @default(false)
+  verificationToken        String?      @db.VarChar(255)
+  verificationCode         String?      @db.VarChar(6)
+  verificationTokenExpiry  DateTime?
+  passwordResetToken       String?      @db.VarChar(255)
+  passwordResetTokenExpiry DateTime?
+  flightPlans              flightPlan[]
+  folders                  folder[]
 }
 
 model machine {

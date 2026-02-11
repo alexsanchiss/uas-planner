@@ -7,7 +7,7 @@
 | 1 | External UPLAN Import — API & Validation | ✅ Completed | externalUplanSchema + POST handler variant |
 | 2 | External UPLAN Import — Folder Drag-and-Drop UI | ⬜ Not started | Depends on Task 1 |
 | 3 | External UPLAN Import — UI Button State & Display | ⬜ Not started | Depends on Task 2 |
-| 4 | Prisma Schema & SQL — Email Verification Fields | ⬜ Not started | |
+| 4 | Prisma Schema & SQL — Email Verification Fields | ✅ Completed | Added email verification and password reset fields to user model |
 | 5 | MailerSend Email Service Library | ⬜ Not started | Depends on Task 4 |
 | 6 | Email Verification Flow — API Routes | ⬜ Not started | Depends on Task 4, 5 |
 | 7 | Email Verification Flow — Frontend Pages | ⬜ Not started | Depends on Task 6 |
@@ -50,6 +50,11 @@ _(Updated by subagent after each task completion)_
 - Bulk DELETE handler now filters approved plans with `externalResponseNumber` and sends FAS cancellation PUTs via `Promise.allSettled`
 - Cancellation results are logged (warnings for failures) but do not block deletion
 - Reuses same `getFasBaseUrl()` / `sendFasCancellation()` pattern from Task 15
+
+### Task 4 — Prisma Schema & SQL — Email Verification Fields
+- Added `emailVerified`, `verificationToken`, `verificationCode`, `verificationTokenExpiry`, `passwordResetToken`, `passwordResetTokenExpiry` fields to `user` model in Prisma schema
+- Updated `.env.example` with `MAILERSEND_API_KEY` variable
+- SQL migration commands documented in TASKS.md
 
 ### Task 1 — External UPLAN Import — API & Validation
 - Added `externalUplanSchema` to `lib/validators.ts` — validates `type: 'external_uplan'`, `operationVolumes[]` (min 1), `folderId`, `customName`
