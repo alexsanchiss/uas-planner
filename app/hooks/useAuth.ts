@@ -268,11 +268,17 @@ export function useAuth() {
     }
   }, [fetchUser])
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<boolean | { requiresVerification: true; email: string }> => {
     try {
       const response = await axios.post('/api/auth/login', { email, password }, {
         withCredentials: true, // Include cookies for refresh token
       })
+
+      // Handle unverified email response
+      if (response.data.requiresVerification) {
+        return { requiresVerification: true, email: response.data.email }
+      }
+
       const { token } = response.data
       localStorage.setItem(AUTH_TOKEN_KEY, token)
       

@@ -10,7 +10,7 @@
 | 4 | Prisma Schema & SQL — Email Verification Fields | ✅ Completed | Added email verification and password reset fields to user model |
 | 5 | MailerSend Email Service Library | ✅ Completed | mailersend package + lib/email.ts with 3 email functions |
 | 6 | Email Verification Flow — API Routes | ✅ Completed | Signup sends verification email, login checks emailVerified, verify-email + resend-verification routes |
-| 7 | Email Verification Flow — Frontend Pages | ⬜ Not started | Depends on Task 6 |
+| 7 | Email Verification Flow — Frontend Pages | ✅ Completed | verify-email page + login redirect + useAuth requiresVerification handling + i18n |
 | 8 | Password Reset Flow | ⬜ Not started | Depends on Task 5, 6 |
 | 9 | FAS Authorization Email Notifications | ⬜ Not started | Depends on Task 5 |
 | 10 | Denial Visualization Map — DenialMapModal | ✅ Completed | New DenialMapModal component with conflict highlighting |
@@ -98,6 +98,13 @@ _(Updated by subagent after each task completion)_
 - Added `viewRawJson` and `viewDenialDetails` i18n keys (en + es) to translations
 
 ### Task 3 — External UPLAN Import — UI Button State & Display Adjustments
+
+### Task 7 — Email Verification Flow — Frontend Pages
+- Created `app/verify-email/page.tsx` — New page with two modes: auto-verify via URL `?token=...` on mount, or manual 6-digit code entry form with email field. Shows verifying/success/error states. "Resend verification code" button with rate-limit feedback. "Back to Login" link
+- Modified `app/login/page.tsx` — After signup, redirects to `/verify-email?email=...` instead of switching to login form. Login now handles `requiresVerification` response by redirecting to verify page. Added "Forgot password?" link below submit button
+- Modified `app/hooks/useAuth.ts` — `login()` return type updated to `boolean | { requiresVerification: true; email: string }`. Detects unverified-user API response and returns structured object instead of storing empty token
+- Modified `app/components/auth/auth-provider.tsx` — Updated `AuthContextType` interface to match new `login()` return type
+- Added 13 email verification i18n keys (en + es) to `app/i18n/translations.ts`: verifyEmail, verifyYourEmail, enterVerificationCode, verificationCodePlaceholder, verifying, emailVerified, emailVerifiedSuccess, verificationFailed, verificationLinkExpired, resendCode, resending, codeSent, backToLogin, goToLogin, enterCodeManually
 - Modified `app/components/flight-plans/FlightPlanCard.tsx` — Process and Download buttons now require `fileContent` to be enabled; new tooltips ("No trajectory to process", "No trajectory available") for external plans; waypoint mini-preview already hidden when no fileContent
 - Modified `app/components/flight-plans/GeoawarenessViewer.tsx` — When no trajectory data (no csvResult), renders UPLAN operation volumes as purple polygons on map with time/altitude tooltips; updated bounds calculation to include volumes; added legend entry for operation volumes
 - Modified `app/components/FlightPlansUploader.tsx` — "View U-Plan Map" button enabled for external plans with uplan data (not just fileContent); workflow steps already correctly skip datetime/process for external plans

@@ -30,22 +30,24 @@ function LoginContent() {
       }
       try {
         await axios.post("/api/auth/signup", { email, password });
-        setIsSignup(false); // Return to login screen
-      } catch (error) {
+        // After signup, redirect to verification page
+        router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+      } catch {
         setError("Error creating account");
       }
     } else {
       // Login
-      const success = await login(email, password);
-      if (success) {
+      const result = await login(email, password);
+      if (result === true) {
         // Check for redirect query param, otherwise go to home
         const redirectUrl = searchParams?.get('redirect');
         if (redirectUrl) {
-          // Decode and navigate to the original destination
           router.push(decodeURIComponent(redirectUrl));
         } else {
           router.push("/");
         }
+      } else if (typeof result === 'object' && result.requiresVerification) {
+        router.push(`/verify-email?email=${encodeURIComponent(result.email)}`);
       } else {
         setError("Invalid email or password");
       }
@@ -107,6 +109,16 @@ function LoginContent() {
               {isSignup ? "Sign Up" : "Login"}
             </Button>
           </form>
+          {!isSignup && (
+            <p className="text-sm mt-3 text-center">
+              <a
+                href="/forgot-password"
+                className="text-[var(--color-primary)] hover:underline hover:text-[var(--color-primary-hover)]"
+              >
+                Forgot password?
+              </a>
+            </p>
+          )}
           <p className="text-[var(--text-tertiary)] text-sm mt-4 text-center">
             {isSignup ? "Already have an account?" : "Don't have an account?"}{" "}
             <button

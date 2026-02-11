@@ -11,7 +11,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<boolean | { requiresVerification: true; email: string }>;
   logout: () => Promise<void>;
   refreshAccessToken: () => Promise<string | null>;
 }
