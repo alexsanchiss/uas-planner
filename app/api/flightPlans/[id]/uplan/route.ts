@@ -118,56 +118,75 @@ export async function POST(
       );
     }
 
-    if (!flightPlan.csvResult) {
+    // For external UPLANs: if uplan already exists, skip CSV requirement
+    let uplan: any;
+    let isExternalUplan = false;
+
+    if (flightPlan.uplan) {
+      // Parse existing uplan
+      try {
+        uplan = typeof flightPlan.uplan === 'string' 
+          ? JSON.parse(flightPlan.uplan) 
+          : flightPlan.uplan;
+        isExternalUplan = true;
+      } catch (error) {
+        console.error('Error parsing existing uplan:', error);
+      }
+    }
+
+    // Only require csvResult if we don't have a valid uplan already
+    if (!isExternalUplan && !flightPlan.csvResult) {
       return NextResponse.json(
         { error: 'No CSV result associated with this flight plan' },
         { status: 400 }
       );
     }
 
-    // 2. Get the CSV result (1:1 relationship via same ID)
-    // Note: flightPlan.csvResult is a boolean flag, not an ID
-    // The csvResult table uses the same ID as flightPlan (flightPlan.id = csvResult.id)
-    const csvResult = await prisma.csvResult.findUnique({
-      where: { id },
-    });
+    // 2. Generate or use existing U-Plan
+    if (!isExternalUplan) {
+      // Generate U-Plan from CSV result
+      const csvResult = await prisma.csvResult.findUnique({
+        where: { id },
+      });
 
-    if (!csvResult) {
-      return NextResponse.json(
-        { error: 'CSV no encontrado' },
-        { status: 404 }
-      );
-    }
-
-    if (!csvResult.csvResult) {
-      return NextResponse.json(
-        { error: 'CSV result data is empty' },
-        { status: 400 }
-      );
-    }
-
-    // 3. Generate the U-Plan
-    const scheduledAtPosix = Math.floor(
-      new Date(flightPlan.scheduledAt).getTime() / 1000
-    );
-
-    // Parse uplan details if stored as string
-    let uplanDetails: unknown;
-    if (typeof flightPlan.uplan === 'string') {
-      try {
-        uplanDetails = JSON.parse(flightPlan.uplan);
-      } catch {
-        uplanDetails = undefined;
+      if (!csvResult) {
+        return NextResponse.json(
+          { error: 'CSV no encontrado' },
+          { status: 404 }
+        );
       }
-    } else if (flightPlan.uplan && typeof flightPlan.uplan === 'object') {
-      uplanDetails = flightPlan.uplan;
-    }
 
-    const uplan = trayToUplan({
-      scheduledAt: scheduledAtPosix,
-      csv: csvResult.csvResult,
-      ...(uplanDetails ? { uplan: uplanDetails } : {}),
-    });
+      if (!csvResult.csvResult) {
+        return NextResponse.json(
+          { error: 'CSV result data is empty' },
+          { status: 400 }
+        );
+      }
+
+      // 3. Generate the U-Plan from CSV
+      const scheduledAtPosix = Math.floor(
+        new Date(flightPlan.scheduledAt).getTime() / 1000
+      );
+
+      // Parse uplan details if stored as string
+      let uplanDetails: unknown;
+      if (typeof flightPlan.uplan === 'string') {
+        try {
+          uplanDetails = JSON.parse(flightPlan.uplan);
+        } catch {
+          uplanDetails = undefined;
+        }
+      } else if (flightPlan.uplan && typeof flightPlan.uplan === 'object') {
+        uplanDetails = flightPlan.uplan;
+      }
+
+      uplan = trayToUplan({
+        scheduledAt: scheduledAtPosix,
+        csv: csvResult.csvResult,
+        ...(uplanDetails ? { uplan: uplanDetails } : {}),
+      });
+    }
+    // else: uplan already parsed from flightPlan.uplan above
 
     // Update creationTime and updateTime to current UTC time before sending to FAS
     const currentTime = new Date().toISOString();

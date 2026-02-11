@@ -38,7 +38,7 @@ export async function POST(request: Request) {
       const oneMinuteAgo = new Date(Date.now() - 60 * 1000)
       if (tokenIssuedAt > oneMinuteAgo) {
         return NextResponse.json(
-          { error: 'Please wait at least one minute before requesting a new code' },
+          { error: 'Please wait at least two minutes before requesting a new code' },
           { status: 429 },
         )
       }
