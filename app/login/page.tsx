@@ -5,9 +5,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "../hooks/useAuth";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
+import { useI18n } from "../i18n";
 import axios from "axios";
 
 function LoginContent() {
+  const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSignup, setIsSignup] = useState(false);
@@ -24,7 +26,7 @@ function LoginContent() {
       // Sign Up
       if (!acceptPolicy) {
         setError(
-          "You must accept the Privacy Policy and DEMO disclaimer to sign up."
+          t.auth.acceptPolicyRequired
         );
         return;
       }
@@ -33,7 +35,7 @@ function LoginContent() {
         // After signup, redirect to verification page
         router.push(`/verify-email?email=${encodeURIComponent(email)}`);
       } catch {
-        setError("Error creating account");
+        setError(t.auth.errorCreatingAccount);
       }
     } else {
       // Login
@@ -49,7 +51,7 @@ function LoginContent() {
       } else if (typeof result === 'object' && result.requiresVerification) {
         router.push(`/verify-email?email=${encodeURIComponent(result.email)}`);
       } else {
-        setError("Invalid email or password");
+        setError(t.auth.invalidCredentials);
       }
     }
   };
@@ -59,20 +61,20 @@ function LoginContent() {
       <main className="flex items-center justify-center w-full py-20">
         <div className="bg-[var(--surface-primary)] p-6 rounded-lg shadow-md w-full max-w-sm my-0">
           <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-6">
-            {isSignup ? "Sign Up" : "Login"}
+            {isSignup ? t.auth.signUp : t.auth.login}
           </h1>
           {error && <p className="text-[var(--status-error)] mb-4">{error}</p>}
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input
               type="email"
-              placeholder="Email"
+              placeholder={t.auth.email}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
             />
             <Input
               type="password"
-              placeholder="Password"
+              placeholder={t.auth.password}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -80,8 +82,7 @@ function LoginContent() {
             {isSignup && (
               <>
                 <div className="bg-[var(--status-warning-bg)] border border-[var(--status-warning-border)] rounded p-2 text-[var(--status-warning-text)] text-xs mb-2">
-                  <strong>Advice:</strong> This is a demonstration version and
-                  may include bugs or not work as expected.
+                  <strong>{t.auth.advice}:</strong> {t.auth.demoDisclaimer}
                 </div>
                 <label className="flex items-center text-xs text-[var(--text-secondary)]">
                   <input
@@ -92,21 +93,21 @@ function LoginContent() {
                     required
                   />
                   <span>
-                    I accept the{" "}
+                    {t.auth.acceptPrivacyPolicy.split('{link}')[0]}
                     <a
                       href="/privacy-policy"
                       className="text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] hover:underline"
                       target="_blank"
                     >
-                      Privacy Policy
-                    </a>{" "}
-                    and understand this is a DEMO version
+                      {t.nav.privacyPolicy}
+                    </a>
+                    {t.auth.acceptPrivacyPolicy.split('{link}')[1]}
                   </span>
                 </label>
               </>
             )}
             <Button type="submit" className="w-full">
-              {isSignup ? "Sign Up" : "Login"}
+              {isSignup ? t.auth.signUp : t.auth.login}
             </Button>
           </form>
           {!isSignup && (
@@ -115,17 +116,17 @@ function LoginContent() {
                 href="/forgot-password"
                 className="text-[var(--color-primary)] hover:underline hover:text-[var(--color-primary-hover)]"
               >
-                Forgot password?
+                {t.auth.forgotPassword}
               </a>
             </p>
           )}
           <p className="text-[var(--text-tertiary)] text-sm mt-4 text-center">
-            {isSignup ? "Already have an account?" : "Don't have an account?"}{" "}
+            {isSignup ? t.auth.alreadyHaveAccount : t.auth.dontHaveAccount}{" "}
             <button
               onClick={() => setIsSignup(!isSignup)}
               className="text-[var(--color-primary)] hover:underline hover:text-[var(--color-primary-hover)]"
             >
-              {isSignup ? "Login" : "Sign Up"}
+              {isSignup ? t.auth.login : t.auth.signUp}
             </button>
           </p>
         </div>

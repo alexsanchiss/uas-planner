@@ -79,6 +79,20 @@ export interface Translations {
     invalidResetLink: string
     requestNewResetLink: string
     resettingPassword: string
+    invalidLink: string
+    enterNewPasswordDesc: string
+    passwordMinLength: string
+    errorOccurredRetry: string
+    invalidOrExpiredCode: string
+    waitBeforeResend: string
+    errorSendingVerification: string
+    errorCreatingAccount: string
+    demoDisclaimer: string
+    acceptPolicyRequired: string
+    acceptPrivacyPolicy: string
+    alreadyHaveAccount: string
+    dontHaveAccount: string
+    advice: string
   }
   
   // Navigation
@@ -248,6 +262,53 @@ export interface Translations {
     folderRenameError: string
     folderDeleted: string
     folderDeleteError: string
+    
+    // Additional UI strings
+    dropHere: string
+    emptyFolder: string
+    folderNameEmpty: string
+    folderNameExists: string
+    planNameEmpty: string
+    planNameMaxLength: string
+    fasProcessing: string
+    trajectoryDataNotAvailable: string
+    noTrajectoryToProcess: string
+    planMustBeProcessed: string
+    scheduled: string
+    actionCannotBeUndone: string
+    
+    // Geoawareness viewer
+    loadingGeoawarenessData: string
+    loadingTrajectoryData: string
+    geoawarenessError: string
+    failedLoadGeoawareness: string
+    flightPlanNotFound: string
+    trajectoryDataNotFound: string
+    geoawarenessMapTitle: string
+    selectPlanToViewGeoawareness: string
+    mapLegend: string
+    violationsDetected: string
+    showGeozones: string
+    dronePosition: string
+    operationVolume: string
+    violationZone: string
+    noUspace: string
+    geozonesLabel: string
+    playSimulation: string
+    pauseSimulation: string
+    resetToStart: string
+    drone: string
+    pointLabel: string
+    lat: string
+    lng: string
+    alt: string
+    timeLabel: string
+    ordinal: string
+    startLabel: string
+    endLabel: string
+    typeLabel: string
+    conflictingStatus: string
+    okStatus: string
   }
   
   // Plan Generator
@@ -271,6 +332,56 @@ export interface Translations {
     serviceAreaBounds: string
     nearBoundary: string
     outsideServiceArea: string
+    latitude: string
+    longitude: string
+    pause: string
+    scanPatternGenerator: string
+    step1Takeoff: string
+    step2Polygon: string
+    step3Landing: string
+    step4Parameters: string
+    clickMapTakeoff: string
+    takeoffPointSet: string
+    continueToDraw: string
+    clickMapVertices: string
+    addAtLeast3: string
+    clickNearFirst: string
+    useCloseButton: string
+    polygonClosedMsg: string
+    vertices: string
+    closePolygon: string
+    editPolygon: string
+    continueText: string
+    clickMapLanding: string
+    landingDescription: string
+    landingPointSet: string
+    skipUseLastWaypoint: string
+    continueToParameters: string
+    configureGenerate: string
+    flightAltitude: string
+    lineSpacing: string
+    distanceBetweenLines: string
+    scanAngleLabel: string
+    advancedOptions: string
+    errorsLabel: string
+    warningsLabel: string
+    patternGenerated: string
+    scanLines: string
+    distanceLabel: string
+    estTime: string
+    coverageAreaLabel: string
+    startOver: string
+    applyPattern: string
+    vertex: string
+    takeoffPointLabel: string
+    landingPointLabel: string
+    clickNearToClose: string
+    area: string
+    clear: string
+    deleteVertex: string
+    invalidNumber: string
+    latRange: string
+    lngRange: string
   }
   
   // Settings
@@ -379,6 +490,20 @@ export const translations: Record<Language, Translations> = {
       invalidResetLink: 'This password reset link is invalid or has expired.',
       requestNewResetLink: 'Request a new reset link',
       resettingPassword: 'Resetting...',
+      invalidLink: 'Invalid Link',
+      enterNewPasswordDesc: 'Enter your new password below.',
+      passwordMinLength: 'Password must be at least 8 characters.',
+      errorOccurredRetry: 'An error occurred. Please try again.',
+      invalidOrExpiredCode: 'Invalid or expired code.',
+      waitBeforeResend: 'Please wait before requesting a new code.',
+      errorSendingVerification: 'Error sending verification email.',
+      errorCreatingAccount: 'Error creating account',
+      demoDisclaimer: 'This is a demonstration version and may include bugs or not work as expected.',
+      acceptPolicyRequired: 'You must accept the Privacy Policy and DEMO disclaimer to sign up.',
+      acceptPrivacyPolicy: 'I accept the {link} and understand this is a DEMO version',
+      alreadyHaveAccount: 'Already have an account?',
+      dontHaveAccount: "Don't have an account?",
+      advice: 'Advice',
     },
     nav: {
       home: 'Home',
@@ -532,6 +657,51 @@ export const translations: Record<Language, Translations> = {
       folderRenameError: 'Error renaming folder.',
       folderDeleted: 'Folder deleted.',
       folderDeleteError: 'Error deleting folder.',
+      
+      dropHere: 'Drop here',
+      emptyFolder: 'This folder is empty',
+      folderNameEmpty: 'Folder name cannot be empty',
+      folderNameExists: 'A folder with this name already exists',
+      planNameEmpty: 'Name cannot be empty',
+      planNameMaxLength: 'Name cannot exceed 100 characters',
+      fasProcessing: 'FAS is processing the request',
+      trajectoryDataNotAvailable: 'Trajectory data not available',
+      noTrajectoryToProcess: 'No trajectory to process',
+      planMustBeProcessed: 'Plan must be processed first',
+      scheduled: 'Scheduled',
+      actionCannotBeUndone: 'This action cannot be undone.',
+      
+      loadingGeoawarenessData: 'Loading geoawareness data...',
+      loadingTrajectoryData: 'Loading trajectory data...',
+      geoawarenessError: 'Geoawareness Error',
+      failedLoadGeoawareness: 'Failed to load geoawareness data',
+      flightPlanNotFound: 'Flight plan not found',
+      trajectoryDataNotFound: 'Trajectory data not found',
+      geoawarenessMapTitle: 'Geoawareness Map',
+      selectPlanToViewGeoawareness: 'Select a flight plan to view trajectory and geoawareness data',
+      mapLegend: 'Map Legend',
+      violationsDetected: 'Airspace Violations Detected',
+      showGeozones: 'Show Geozones',
+      dronePosition: 'Drone Position',
+      operationVolume: 'Operation Volume',
+      violationZone: 'Violation Zone',
+      noUspace: 'No U-space',
+      geozonesLabel: 'Geozones',
+      playSimulation: 'Play simulation',
+      pauseSimulation: 'Pause simulation',
+      resetToStart: 'Reset to start',
+      drone: 'Drone',
+      pointLabel: 'Point',
+      lat: 'Lat',
+      lng: 'Lng',
+      alt: 'Alt',
+      timeLabel: 'Time',
+      ordinal: 'Ordinal',
+      startLabel: 'Start',
+      endLabel: 'End',
+      typeLabel: 'Type',
+      conflictingStatus: 'CONFLICTING',
+      okStatus: 'OK',
     },
     planGenerator: {
       title: 'Plan Generator',
@@ -553,6 +723,56 @@ export const translations: Record<Language, Translations> = {
       serviceAreaBounds: 'Service area bounds',
       nearBoundary: 'Near boundary',
       outsideServiceArea: 'Outside service area',
+      latitude: 'Latitude',
+      longitude: 'Longitude',
+      pause: 'Pause',
+      scanPatternGenerator: 'SCAN Pattern Generator',
+      step1Takeoff: 'Set Takeoff Point',
+      step2Polygon: 'Draw Survey Area',
+      step3Landing: 'Set Landing Point',
+      step4Parameters: 'Configure & Generate',
+      clickMapTakeoff: 'Click on the map to set the takeoff/start location for your drone.',
+      takeoffPointSet: 'Takeoff point set',
+      continueToDraw: 'Continue to Draw Polygon',
+      clickMapVertices: 'Click on the map to add polygon vertices.',
+      addAtLeast3: 'Add at least 3 points to form a polygon',
+      clickNearFirst: 'Click near the first point to close the polygon',
+      useCloseButton: 'Or use the "Close Polygon" button below',
+      polygonClosedMsg: 'Polygon closed',
+      vertices: 'Vertices',
+      closePolygon: 'Close Polygon',
+      editPolygon: 'Edit Polygon',
+      continueText: 'Continue',
+      clickMapLanding: 'Click on the map to set the landing location.',
+      landingDescription: 'This is where the drone will land after completing the survey.',
+      landingPointSet: 'Landing point set',
+      skipUseLastWaypoint: 'Skip (Use Last Waypoint)',
+      continueToParameters: 'Continue to Parameters',
+      configureGenerate: 'Configure & Generate',
+      flightAltitude: 'Flight Altitude',
+      lineSpacing: 'Line Spacing',
+      distanceBetweenLines: 'distance between scan lines',
+      scanAngleLabel: 'Scan Angle',
+      advancedOptions: 'Advanced Options',
+      errorsLabel: 'Errors',
+      warningsLabel: 'Warnings',
+      patternGenerated: 'Pattern Generated Successfully',
+      scanLines: 'Scan Lines',
+      distanceLabel: 'Distance',
+      estTime: 'Est. Time',
+      coverageAreaLabel: 'Coverage Area',
+      startOver: 'Start Over',
+      applyPattern: 'Apply Pattern',
+      vertex: 'Vertex',
+      takeoffPointLabel: 'Takeoff Point',
+      landingPointLabel: 'Landing Point',
+      clickNearToClose: 'Click near here to close polygon',
+      area: 'Area',
+      clear: 'Clear',
+      deleteVertex: 'Delete vertex',
+      invalidNumber: 'Invalid number',
+      latRange: 'Lat must be -90..90',
+      lngRange: 'Lng must be -180..180',
     },
     settings: {
       title: 'Settings',
@@ -654,6 +874,20 @@ export const translations: Record<Language, Translations> = {
       invalidResetLink: 'Este enlace de restablecimiento es inválido o ha expirado.',
       requestNewResetLink: 'Solicitar un nuevo enlace',
       resettingPassword: 'Restableciendo...',
+      invalidLink: 'Enlace Inválido',
+      enterNewPasswordDesc: 'Introduce tu nueva contraseña.',
+      passwordMinLength: 'La contraseña debe tener al menos 8 caracteres.',
+      errorOccurredRetry: 'Ha ocurrido un error. Por favor, inténtelo de nuevo.',
+      invalidOrExpiredCode: 'Código inválido o expirado.',
+      waitBeforeResend: 'Espere antes de solicitar un nuevo código.',
+      errorSendingVerification: 'Error al enviar el correo de verificación.',
+      errorCreatingAccount: 'Error al crear la cuenta',
+      demoDisclaimer: 'Esta es una versión de demostración y puede incluir errores o no funcionar como se espera.',
+      acceptPolicyRequired: 'Debe aceptar la Política de Privacidad y el aviso de DEMO para registrarse.',
+      acceptPrivacyPolicy: 'Acepto la {link} y entiendo que es una versión DEMO',
+      alreadyHaveAccount: '¿Ya tienes una cuenta?',
+      dontHaveAccount: '¿No tienes una cuenta?',
+      advice: 'Aviso',
     },
     nav: {
       home: 'Inicio',
@@ -807,6 +1041,51 @@ export const translations: Record<Language, Translations> = {
       folderRenameError: 'Error al renombrar carpeta.',
       folderDeleted: 'Carpeta eliminada.',
       folderDeleteError: 'Error al eliminar carpeta.',
+      
+      dropHere: 'Soltar aquí',
+      emptyFolder: 'Esta carpeta está vacía',
+      folderNameEmpty: 'El nombre de la carpeta no puede estar vacío',
+      folderNameExists: 'Ya existe una carpeta con este nombre',
+      planNameEmpty: 'El nombre no puede estar vacío',
+      planNameMaxLength: 'El nombre no puede superar los 100 caracteres',
+      fasProcessing: 'FAS está procesando la solicitud',
+      trajectoryDataNotAvailable: 'Datos de trayectoria no disponibles',
+      noTrajectoryToProcess: 'Sin trayectoria para procesar',
+      planMustBeProcessed: 'El plan debe ser procesado primero',
+      scheduled: 'Programado',
+      actionCannotBeUndone: 'Esta acción no se puede deshacer.',
+      
+      loadingGeoawarenessData: 'Cargando datos de geoawareness...',
+      loadingTrajectoryData: 'Cargando datos de trayectoria...',
+      geoawarenessError: 'Error de GeoAwareness',
+      failedLoadGeoawareness: 'Error al cargar datos de geoawareness',
+      flightPlanNotFound: 'Plan de vuelo no encontrado',
+      trajectoryDataNotFound: 'Datos de trayectoria no encontrados',
+      geoawarenessMapTitle: 'Mapa de GeoAwareness',
+      selectPlanToViewGeoawareness: 'Seleccione un plan de vuelo para ver la trayectoria y datos de geoawareness',
+      mapLegend: 'Leyenda del Mapa',
+      violationsDetected: 'Violaciones de Espacio Aéreo Detectadas',
+      showGeozones: 'Mostrar Geozonas',
+      dronePosition: 'Posición del Dron',
+      operationVolume: 'Volumen de Operación',
+      violationZone: 'Zona de Violación',
+      noUspace: 'Sin U-space',
+      geozonesLabel: 'Geozonas',
+      playSimulation: 'Reproducir simulación',
+      pauseSimulation: 'Pausar simulación',
+      resetToStart: 'Volver al inicio',
+      drone: 'Dron',
+      pointLabel: 'Punto',
+      lat: 'Lat',
+      lng: 'Lng',
+      alt: 'Alt',
+      timeLabel: 'Tiempo',
+      ordinal: 'Ordinal',
+      startLabel: 'Inicio',
+      endLabel: 'Fin',
+      typeLabel: 'Tipo',
+      conflictingStatus: 'EN CONFLICTO',
+      okStatus: 'OK',
     },
     planGenerator: {
       title: 'Generador de Planes',
@@ -828,6 +1107,56 @@ export const translations: Record<Language, Translations> = {
       serviceAreaBounds: 'Límites del área de servicio',
       nearBoundary: 'Cerca del límite',
       outsideServiceArea: 'Fuera del área de servicio',
+      latitude: 'Latitud',
+      longitude: 'Longitud',
+      pause: 'Pausa',
+      scanPatternGenerator: 'Generador de Patrón SCAN',
+      step1Takeoff: 'Establecer Punto de Despegue',
+      step2Polygon: 'Dibujar Área de Inspección',
+      step3Landing: 'Establecer Punto de Aterrizaje',
+      step4Parameters: 'Configurar y Generar',
+      clickMapTakeoff: 'Haz clic en el mapa para establecer la ubicación de despegue de tu dron.',
+      takeoffPointSet: 'Punto de despegue establecido',
+      continueToDraw: 'Continuar a Dibujar Polígono',
+      clickMapVertices: 'Haz clic en el mapa para añadir vértices del polígono.',
+      addAtLeast3: 'Añade al menos 3 puntos para formar un polígono',
+      clickNearFirst: 'Haz clic cerca del primer punto para cerrar el polígono',
+      useCloseButton: 'O usa el botón "Cerrar Polígono" abajo',
+      polygonClosedMsg: 'Polígono cerrado',
+      vertices: 'Vértices',
+      closePolygon: 'Cerrar Polígono',
+      editPolygon: 'Editar Polígono',
+      continueText: 'Continuar',
+      clickMapLanding: 'Haz clic en el mapa para establecer la ubicación de aterrizaje.',
+      landingDescription: 'Aquí es donde el dron aterrizará tras completar la inspección.',
+      landingPointSet: 'Punto de aterrizaje establecido',
+      skipUseLastWaypoint: 'Omitir (Usar Último Waypoint)',
+      continueToParameters: 'Continuar a Parámetros',
+      configureGenerate: 'Configurar y Generar',
+      flightAltitude: 'Altitud de Vuelo',
+      lineSpacing: 'Espaciado de Líneas',
+      distanceBetweenLines: 'distancia entre líneas de escaneo',
+      scanAngleLabel: 'Ángulo de Escaneo',
+      advancedOptions: 'Opciones Avanzadas',
+      errorsLabel: 'Errores',
+      warningsLabel: 'Advertencias',
+      patternGenerated: 'Patrón Generado Correctamente',
+      scanLines: 'Líneas de Escaneo',
+      distanceLabel: 'Distancia',
+      estTime: 'Tiempo Est.',
+      coverageAreaLabel: 'Área de Cobertura',
+      startOver: 'Empezar de Nuevo',
+      applyPattern: 'Aplicar Patrón',
+      vertex: 'Vértice',
+      takeoffPointLabel: 'Punto de Despegue',
+      landingPointLabel: 'Punto de Aterrizaje',
+      clickNearToClose: 'Haz clic cerca para cerrar el polígono',
+      area: 'Área',
+      clear: 'Limpiar',
+      deleteVertex: 'Eliminar vértice',
+      invalidNumber: 'Número inválido',
+      latRange: 'Lat debe ser -90..90',
+      lngRange: 'Lng debe ser -180..180',
     },
     settings: {
       title: 'Configuración',

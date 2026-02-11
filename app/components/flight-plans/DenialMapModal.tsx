@@ -4,6 +4,7 @@ import React, { useMemo, useEffect } from 'react'
 import { MapContainer, TileLayer, Polygon, Tooltip, useMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import { Modal } from '../ui/modal'
+import { useI18n, interpolate } from '@/app/i18n'
 
 /**
  * Parsed denial information from FAS authorizationMessage.
@@ -155,6 +156,7 @@ function MapResizeHandler() {
 }
 
 export function DenialMapModal({ open, onClose, uplan, authorizationMessage }: DenialMapModalProps) {
+  const { t } = useI18n()
   const denial = useMemo(() => parseDenialMessage(authorizationMessage), [authorizationMessage])
 
   const operationVolumes = useMemo(() => {
@@ -231,7 +233,7 @@ export function DenialMapModal({ open, onClose, uplan, authorizationMessage }: D
   const conflictCount = operationVolumes.filter(v => v.isConflicting).length
 
   return (
-    <Modal open={open} onClose={onClose} title="Authorization Denial — Map View" maxWidth="4xl">
+    <Modal open={open} onClose={onClose} title={t.flightPlans.denialMapTitle} maxWidth="4xl">
       {/* Summary banner */}
       <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
         <div className="flex items-center gap-2">
@@ -240,13 +242,13 @@ export function DenialMapModal({ open, onClose, uplan, authorizationMessage }: D
           </svg>
           <div>
             <p className="text-sm font-semibold text-red-800 dark:text-red-300">
-              Authorization Denied
+              {t.flightPlans.denialAuthorization}
             </p>
             <p className="text-xs text-red-700 dark:text-red-400">
               {conflictCount > 0
-                ? `${conflictCount} conflicting volume${conflictCount !== 1 ? 's' : ''} detected`
-                : 'Review the denial details below'}
-              {geozonePolygons.length > 0 && ` — ${geozonePolygons.length} conflicting geozone${geozonePolygons.length !== 1 ? 's' : ''}`}
+                ? interpolate(t.flightPlans.conflictingVolumesDetected, { n: conflictCount })
+                : t.flightPlans.reviewDenialDetails}
+              {geozonePolygons.length > 0 && ` — ${geozonePolygons.length} ${geozonePolygons.length !== 1 ? t.flightPlans.conflictingGeozones.toLowerCase() : t.flightPlans.conflictingGeozone.toLowerCase()}`}
             </p>
           </div>
         </div>
@@ -284,24 +286,24 @@ export function DenialMapModal({ open, onClose, uplan, authorizationMessage }: D
                 <Tooltip direction="top" offset={[0, -10]} sticky>
                   <div className="text-xs min-w-[140px]">
                     <div className={`font-semibold mb-1 ${vol.isConflicting ? 'text-red-600' : 'text-gray-600'}`}>
-                      {vol.label} {vol.isConflicting ? '⚠ CONFLICTING' : '✓ OK'}
+                      {vol.label} {vol.isConflicting ? `⚠ ${t.flightPlans.conflictingStatus}` : `✓ ${t.flightPlans.okStatus}`}
                     </div>
                     <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
-                      <span className="text-gray-500">Ordinal:</span>
+                      <span className="text-gray-500">{t.flightPlans.ordinal}:</span>
                       <span>{vol.ordinal}</span>
                       {vol.timeBegin && (
                         <>
-                          <span className="text-gray-500">Start:</span>
+                          <span className="text-gray-500">{t.flightPlans.startLabel}:</span>
                           <span>{new Date(vol.timeBegin).toISOString().replace('T', ' ').slice(0, 19)} UTC</span>
                         </>
                       )}
                       {vol.timeEnd && (
                         <>
-                          <span className="text-gray-500">End:</span>
+                          <span className="text-gray-500">{t.flightPlans.endLabel}:</span>
                           <span>{new Date(vol.timeEnd).toISOString().replace('T', ' ').slice(0, 19)} UTC</span>
                         </>
                       )}
-                      <span className="text-gray-500">Alt:</span>
+                      <span className="text-gray-500">{t.flightPlans.alt}:</span>
                       <span>{vol.minAlt} — {vol.maxAlt}</span>
                     </div>
                   </div>
@@ -331,7 +333,7 @@ export function DenialMapModal({ open, onClose, uplan, authorizationMessage }: D
                       <div className="text-gray-600 mb-1">{gz.name}</div>
                     )}
                     <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
-                      <span className="text-gray-500">Type:</span>
+                      <span className="text-gray-500">{t.flightPlans.typeLabel}:</span>
                       <span>{gz.type}</span>
                     </div>
                   </div>
@@ -343,7 +345,7 @@ export function DenialMapModal({ open, onClose, uplan, authorizationMessage }: D
       ) : (
         <div className="w-full h-48 mb-4 flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-lg">
           <p className="text-sm text-[var(--text-secondary)]">
-            No spatial data available to display
+            {t.flightPlans.noSpatialData}
           </p>
         </div>
       )}
@@ -352,16 +354,16 @@ export function DenialMapModal({ open, onClose, uplan, authorizationMessage }: D
       <div className="mb-4 flex flex-wrap items-center justify-center gap-4 text-sm">
         <div className="flex items-center gap-2">
           <div className="w-4 h-3 rounded bg-red-500/50 border-2 border-red-600"></div>
-          <span className="text-[var(--text-secondary)]">Conflicting Volume</span>
+          <span className="text-[var(--text-secondary)]">{t.flightPlans.conflictingVolume}</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-4 h-3 rounded bg-gray-400/30 border border-gray-500" style={{ borderStyle: 'dashed' }}></div>
-          <span className="text-[var(--text-secondary)]">OK Volume</span>
+          <span className="text-[var(--text-secondary)]">{t.flightPlans.okVolume}</span>
         </div>
         {geozonePolygons.length > 0 && (
           <div className="flex items-center gap-2">
             <div className="w-4 h-3 rounded bg-red-400/40 border-2 border-red-700" style={{ borderStyle: 'dashed' }}></div>
-            <span className="text-[var(--text-secondary)]">Conflicting Geozone</span>
+            <span className="text-[var(--text-secondary)]">{t.flightPlans.conflictingGeozone}</span>
           </div>
         )}
       </div>
@@ -369,7 +371,7 @@ export function DenialMapModal({ open, onClose, uplan, authorizationMessage }: D
       {/* Conflicting geozones detail list */}
       {geozonePolygons.length > 0 && (
         <div className="mb-3">
-          <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-2">Conflicting Geozones</h4>
+          <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-2">{t.flightPlans.conflictingGeozones}</h4>
           <div className="space-y-2 max-h-40 overflow-y-auto">
             {geozonePolygons.map((gz, idx) => (
               <div key={idx} className="flex items-start gap-2 p-2 bg-red-50 dark:bg-red-900/10 rounded border border-red-200 dark:border-red-800">

@@ -44,6 +44,7 @@ import {
   polygonArea,
   normalizeAngle,
 } from "@/lib/scan-generator";
+import { useI18n } from "@/app/i18n";
 
 // ============================================================================
 // TYPES
@@ -131,6 +132,7 @@ function EditableCoord({
   onChange: (lat: number, lng: number) => void;
   serviceBounds?: [number, number, number, number];
 }) {
+  const { t } = useI18n();
   const [localLat, setLocalLat] = React.useState(lat.toFixed(6));
   const [localLng, setLocalLng] = React.useState(lng.toFixed(6));
   const [error, setError] = React.useState<string | null>(null);
@@ -146,19 +148,19 @@ function EditableCoord({
     const parsedLat = parseFloat(newLat);
     const parsedLng = parseFloat(newLng);
     if (isNaN(parsedLat) || isNaN(parsedLng)) {
-      setError("Invalid number");
+      setError(t.planGenerator.invalidNumber);
       return;
     }
     if (parsedLat < -90 || parsedLat > 90) {
-      setError("Lat must be -90..90");
+      setError(t.planGenerator.latRange);
       return;
     }
     if (parsedLng < -180 || parsedLng > 180) {
-      setError("Lng must be -180..180");
+      setError(t.planGenerator.lngRange);
       return;
     }
     if (!isWithinBounds(parsedLat, parsedLng, serviceBounds)) {
-      setError("Outside service area");
+      setError(t.planGenerator.outsideServiceArea);
       return;
     }
     setError(null);
@@ -208,6 +210,7 @@ export default function ScanPatternGeneratorV2({
   onOverlaysChange,
   onDragHandlers,
 }: ScanPatternGeneratorV2Props) {
+  const { t } = useI18n();
   // ---- State ----
   
   // Step-based workflow
@@ -494,7 +497,7 @@ export default function ScanPatternGeneratorV2({
       <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-700">
         <div className="flex items-center gap-2">
           <Grid3X3 className="w-5 h-5 text-purple-400" />
-          <h3 className="text-lg font-semibold text-white">SCAN Pattern Generator</h3>
+          <h3 className="text-lg font-semibold text-white">{t.planGenerator.scanPatternGenerator}</h3>
         </div>
         <button
           onClick={onCancel}
@@ -510,7 +513,7 @@ export default function ScanPatternGeneratorV2({
         <div className="flex items-center justify-between">
           {[1, 2, 3, 4].map((step) => {
             const status = getStepStatus(step as ScanStep);
-            const labels = ['Takeoff', 'Polygon', 'Landing', 'Parameters'];
+            const labels = [t.flightPlans.takeoff, t.planGenerator.step2Polygon.split(' ')[0], t.flightPlans.landing, t.planGenerator.step4Parameters.split(' ')[0]];
             const icons = [Target, Pencil, Flag, Grid3X3];
             const Icon = icons[step - 1];
             
@@ -562,12 +565,12 @@ export default function ScanPatternGeneratorV2({
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-purple-400">
               <Target className="w-5 h-5" />
-              <span className="font-medium">Step 1: Set Takeoff Point</span>
+              <span className="font-medium">{t.planGenerator.step1Takeoff}</span>
             </div>
             
             <div className="bg-purple-900/20 border border-purple-700/50 rounded-lg p-3">
               <p className="text-sm text-purple-200">
-                👆 <strong>Click on the map</strong> to set the takeoff/start location for your drone.
+                👆 {t.planGenerator.clickMapTakeoff}
               </p>
             </div>
             
@@ -576,7 +579,7 @@ export default function ScanPatternGeneratorV2({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-green-300">
                     <CheckCircle2 className="w-4 h-4" />
-                    <span className="text-sm">Takeoff point set</span>
+                    <span className="text-sm">{t.planGenerator.takeoffPointSet}</span>
                   </div>
                   <button
                     onClick={() => setTakeoffPoint(null)}
@@ -599,7 +602,7 @@ export default function ScanPatternGeneratorV2({
                 onClick={() => setCurrentStep(2)}
                 className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
               >
-                Continue to Draw Polygon
+                {t.planGenerator.continueToDraw}
                 <ChevronRight className="w-4 h-4" />
               </button>
             )}
@@ -611,28 +614,28 @@ export default function ScanPatternGeneratorV2({
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-purple-400">
               <Pencil className="w-5 h-5" />
-              <span className="font-medium">Step 2: Draw Survey Area</span>
+              <span className="font-medium">{t.planGenerator.step2Polygon}</span>
             </div>
             
             {!polygonClosed ? (
               <div className="bg-purple-900/20 border border-purple-700/50 rounded-lg p-3 space-y-2">
                 <p className="text-sm text-purple-200">
-                  👆 <strong>Click on the map</strong> to add polygon vertices.
+                  👆 {t.planGenerator.clickMapVertices}
                 </p>
                 <p className="text-xs text-zinc-400">
-                  • Add at least 3 points to form a polygon<br />
-                  • Click near the first point to close the polygon<br />
-                  • Or use the &quot;Close Polygon&quot; button below
+                  • {t.planGenerator.addAtLeast3}<br />
+                  • {t.planGenerator.clickNearFirst}<br />
+                  • {t.planGenerator.useCloseButton}
                 </p>
               </div>
             ) : (
               <div className="bg-green-900/30 border border-green-700 rounded-lg p-3">
                 <div className="flex items-center gap-2 text-green-300">
                   <CheckCircle2 className="w-4 h-4" />
-                  <span className="text-sm">Polygon closed ({polygonVertices.length} vertices)</span>
+                  <span className="text-sm">{t.planGenerator.polygonClosedMsg} ({polygonVertices.length} {t.planGenerator.vertices.toLowerCase()})</span>
                 </div>
                 <div className="text-xs text-zinc-400 mt-1">
-                  Area: {formatArea(areaValue)}
+                  {t.planGenerator.area}: {formatArea(areaValue)}
                 </div>
               </div>
             )}
@@ -642,14 +645,14 @@ export default function ScanPatternGeneratorV2({
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="text-sm font-medium text-zinc-300">
-                    Vertices ({polygonVertices.length})
+                    {t.planGenerator.vertices} ({polygonVertices.length})
                   </label>
                   <button
                     onClick={handleClearPolygon}
                     className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
                   >
                     <Trash2 className="w-3 h-3" />
-                    Clear
+                    {t.planGenerator.clear}
                   </button>
                 </div>
                 <div className="max-h-24 overflow-y-auto space-y-1 bg-zinc-800 rounded p-2">
@@ -663,7 +666,7 @@ export default function ScanPatternGeneratorV2({
                         <button
                           onClick={() => handleDeleteVertex(idx)}
                           className="p-1 rounded hover:bg-red-900/50 text-zinc-400 hover:text-red-400 transition-colors"
-                          title="Delete vertex"
+                          title={t.planGenerator.deleteVertex}
                         >
                           <Trash2 className="w-3 h-3" />
                         </button>
@@ -687,7 +690,7 @@ export default function ScanPatternGeneratorV2({
                 className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
               >
                 <CheckCircle2 className="w-4 h-4" />
-                Close Polygon ({polygonVertices.length} vertices)
+                {t.planGenerator.closePolygon} ({polygonVertices.length} {t.planGenerator.vertices.toLowerCase()})
               </button>
             )}
             
@@ -699,13 +702,13 @@ export default function ScanPatternGeneratorV2({
                   }}
                   className="flex-1 px-4 py-2 bg-zinc-700 text-zinc-200 rounded-lg hover:bg-zinc-600 transition-colors text-sm"
                 >
-                  Edit Polygon
+                  {t.planGenerator.editPolygon}
                 </button>
                 <button
                   onClick={() => setCurrentStep(3)}
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
                 >
-                  Continue
+                  {t.planGenerator.continueText}
                   <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
@@ -718,15 +721,15 @@ export default function ScanPatternGeneratorV2({
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-purple-400">
               <Flag className="w-5 h-5" />
-              <span className="font-medium">Step 3: Set Landing Point</span>
+              <span className="font-medium">{t.planGenerator.step3Landing}</span>
             </div>
             
             <div className="bg-purple-900/20 border border-purple-700/50 rounded-lg p-3 space-y-2">
               <p className="text-sm text-purple-200">
-                👆 <strong>Click on the map</strong> to set the landing location.
+                👆 {t.planGenerator.clickMapLanding}
               </p>
               <p className="text-xs text-zinc-400">
-                This is where the drone will land after completing the survey.
+                {t.planGenerator.landingDescription}
               </p>
             </div>
             
@@ -735,7 +738,7 @@ export default function ScanPatternGeneratorV2({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-green-300">
                     <CheckCircle2 className="w-4 h-4" />
-                    <span className="text-sm">Landing point set</span>
+                    <span className="text-sm">{t.planGenerator.landingPointSet}</span>
                   </div>
                   <button
                     onClick={() => setLandingPoint(null)}
@@ -762,7 +765,7 @@ export default function ScanPatternGeneratorV2({
                     : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'
                 }`}
               >
-                {landingPoint ? 'Continue to Parameters' : 'Skip (Use Last Waypoint)'}
+                {landingPoint ? t.planGenerator.continueToParameters : t.planGenerator.skipUseLastWaypoint}
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
@@ -774,7 +777,7 @@ export default function ScanPatternGeneratorV2({
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-purple-400">
               <Grid3X3 className="w-5 h-5" />
-              <span className="font-medium">Step 4: Configure & Generate</span>
+              <span className="font-medium">{t.planGenerator.step4Parameters}</span>
             </div>
 
             {/* Parameters */}
@@ -782,7 +785,7 @@ export default function ScanPatternGeneratorV2({
               {/* Altitude */}
               <div className="space-y-1">
                 <label className="block text-sm font-medium text-zinc-300">
-                  Flight Altitude
+                  {t.planGenerator.flightAltitude}
                   <span className="text-xs text-zinc-500 ml-2">(0-200m)</span>
                 </label>
                 <div className="flex items-center gap-2">
@@ -801,8 +804,8 @@ export default function ScanPatternGeneratorV2({
               {/* Spacing */}
               <div className="space-y-1">
                 <label className="block text-sm font-medium text-zinc-300">
-                  Line Spacing
-                  <span className="text-xs text-zinc-500 ml-2">(distance between scan lines)</span>
+                  {t.planGenerator.lineSpacing}
+                  <span className="text-xs text-zinc-500 ml-2">({t.planGenerator.distanceBetweenLines})</span>
                 </label>
                 <div className="flex items-center gap-2">
                   <input
@@ -821,7 +824,7 @@ export default function ScanPatternGeneratorV2({
               {/* Angle */}
               <div className="space-y-1">
                 <label className="block text-sm font-medium text-zinc-300">
-                  Scan Angle
+                  {t.planGenerator.scanAngleLabel}
                   <span className="text-xs text-zinc-500 ml-2">(0° = North)</span>
                 </label>
                 <div className="flex items-center gap-2">
@@ -869,7 +872,7 @@ export default function ScanPatternGeneratorV2({
                 className="flex items-center gap-1 text-sm text-zinc-400 hover:text-zinc-200 transition-colors"
               >
                 {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                Advanced Options
+                {t.planGenerator.advancedOptions}
               </button>
 
               {showAdvanced && (
@@ -901,7 +904,7 @@ export default function ScanPatternGeneratorV2({
               <div className="bg-red-900/30 border border-red-700 rounded p-3">
                 <div className="flex items-center gap-2 text-red-400 text-sm font-medium mb-1">
                   <AlertCircle className="w-4 h-4" />
-                  Errors
+                  {t.planGenerator.errorsLabel}
                 </div>
                 <ul className="text-xs text-red-300 space-y-1 list-disc list-inside">
                   {validation.errors.map((err, idx) => (
@@ -915,7 +918,7 @@ export default function ScanPatternGeneratorV2({
               <div className="bg-yellow-900/30 border border-yellow-700 rounded p-3">
                 <div className="flex items-center gap-2 text-yellow-400 text-sm font-medium mb-1">
                   <AlertCircle className="w-4 h-4" />
-                  Warnings
+                  {t.planGenerator.warningsLabel}
                 </div>
                 <ul className="text-xs text-yellow-300 space-y-1 list-disc list-inside">
                   {validation.warnings.map((warn, idx) => (
@@ -930,27 +933,27 @@ export default function ScanPatternGeneratorV2({
               <div className="bg-zinc-800 border border-zinc-700 rounded p-3 space-y-2">
                 <div className="flex items-center gap-2 text-sm font-medium text-green-400">
                   <CheckCircle2 className="w-4 h-4" />
-                  Pattern Generated Successfully
+                  {t.planGenerator.patternGenerated}
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div className="flex justify-between">
-                    <span className="text-zinc-400">Waypoints:</span>
+                    <span className="text-zinc-400">{t.planGenerator.waypoints}:</span>
                     <span className="text-white font-medium">{statistics.waypointCount}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-zinc-400">Scan Lines:</span>
+                    <span className="text-zinc-400">{t.planGenerator.scanLines}:</span>
                     <span className="text-white font-medium">{statistics.scanLineCount}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-zinc-400">Distance:</span>
+                    <span className="text-zinc-400">{t.planGenerator.distanceLabel}:</span>
                     <span className="text-white font-medium">{formatDistance(statistics.totalDistance)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-zinc-400">Est. Time:</span>
+                    <span className="text-zinc-400">{t.planGenerator.estTime}:</span>
                     <span className="text-white font-medium">{formatTime(statistics.estimatedFlightTime)}</span>
                   </div>
                   <div className="flex justify-between col-span-2">
-                    <span className="text-zinc-400">Coverage Area:</span>
+                    <span className="text-zinc-400">{t.planGenerator.coverageAreaLabel}:</span>
                     <span className="text-white font-medium">{formatArea(statistics.coverageArea)}</span>
                   </div>
                 </div>
@@ -967,7 +970,7 @@ export default function ScanPatternGeneratorV2({
           className="flex items-center gap-2 px-3 py-2 rounded text-sm font-medium bg-zinc-700 text-zinc-300 hover:bg-zinc-600 transition-colors"
         >
           <RotateCcw className="w-4 h-4" />
-          Start Over
+          {t.planGenerator.startOver}
         </button>
         
         <div className="flex gap-2">
@@ -975,7 +978,7 @@ export default function ScanPatternGeneratorV2({
             onClick={onCancel}
             className="px-4 py-2 rounded text-sm font-medium bg-zinc-700 text-zinc-200 hover:bg-zinc-600 transition-colors"
           >
-            Cancel
+            {t.common.cancel}
           </button>
           <button
             onClick={handleApply}
@@ -983,7 +986,7 @@ export default function ScanPatternGeneratorV2({
             className="flex items-center gap-2 px-4 py-2 rounded text-sm font-medium bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <Play className="w-4 h-4" />
-            Apply Pattern
+            {t.planGenerator.applyPattern}
           </button>
         </div>
       </div>

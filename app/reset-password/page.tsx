@@ -4,9 +4,11 @@ import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
+import { useI18n } from "../i18n";
 import axios from "axios";
 
 function ResetPasswordContent() {
+  const { t } = useI18n();
   const searchParams = useSearchParams();
   const router = useRouter();
   const token = searchParams?.get("token") || "";
@@ -22,12 +24,12 @@ function ResetPasswordContent() {
     setError("");
 
     if (newPassword !== confirmPassword) {
-      setError("Passwords do not match.");
+      setError(t.auth.passwordsDoNotMatch);
       return;
     }
 
     if (newPassword.length < 8) {
-      setError("Password must be at least 8 characters.");
+      setError(t.auth.passwordMinLength);
       return;
     }
 
@@ -41,10 +43,10 @@ function ResetPasswordContent() {
     } catch (err) {
       if (axios.isAxiosError(err)) {
         setError(
-          err.response?.data?.error || "An error occurred. Please try again."
+          err.response?.data?.error || t.auth.errorOccurredRetry
         );
       } else {
-        setError("An error occurred. Please try again.");
+        setError(t.auth.errorOccurredRetry);
       }
     } finally {
       setLoading(false);
@@ -57,16 +59,16 @@ function ResetPasswordContent() {
         <main className="flex items-center justify-center w-full py-20">
           <div className="bg-[var(--surface-primary)] p-6 rounded-lg shadow-md w-full max-w-sm">
             <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-4">
-              Invalid Link
+              {t.auth.invalidLink}
             </h1>
             <p className="text-[var(--text-secondary)] text-sm mb-4">
-              This password reset link is invalid or has expired.
+              {t.auth.invalidResetLink}
             </p>
             <a
               href="/forgot-password"
               className="text-[var(--color-primary)] hover:underline hover:text-[var(--color-primary-hover)] text-sm"
             >
-              Request a new reset link
+              {t.auth.requestNewResetLink}
             </a>
           </div>
         </main>
@@ -79,22 +81,22 @@ function ResetPasswordContent() {
       <main className="flex items-center justify-center w-full py-20">
         <div className="bg-[var(--surface-primary)] p-6 rounded-lg shadow-md w-full max-w-sm">
           <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-2">
-            Reset Password
+            {t.auth.resetPasswordTitle}
           </h1>
 
           {success ? (
             <>
               <p className="text-green-400 mb-4">
-                Your password has been reset successfully!
+                {t.auth.passwordResetSuccessDesc}
               </p>
               <Button className="w-full" onClick={() => router.push("/login")}>
-                Go to Login
+                {t.auth.goToLogin}
               </Button>
             </>
           ) : (
             <>
               <p className="text-[var(--text-secondary)] text-sm mb-6">
-                Enter your new password below.
+                {t.auth.enterNewPasswordDesc}
               </p>
               {error && (
                 <p className="text-[var(--status-error)] mb-4 text-sm">
@@ -104,7 +106,7 @@ function ResetPasswordContent() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <Input
                   type="password"
-                  placeholder="New password"
+                  placeholder={t.auth.newPassword}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   required
@@ -112,14 +114,14 @@ function ResetPasswordContent() {
                 />
                 <Input
                   type="password"
-                  placeholder="Confirm new password"
+                  placeholder={t.auth.confirmNewPassword}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                   minLength={8}
                 />
                 <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Resetting..." : "Reset Password"}
+                  {loading ? t.auth.resettingPassword : t.auth.resetPassword}
                 </Button>
               </form>
               <p className="text-[var(--text-tertiary)] text-sm mt-4 text-center">
@@ -127,7 +129,7 @@ function ResetPasswordContent() {
                   href="/login"
                   className="text-[var(--color-primary)] hover:underline hover:text-[var(--color-primary-hover)]"
                 >
-                  Back to Login
+                  {t.auth.backToLogin}
                 </a>
               </p>
             </>

@@ -9,6 +9,7 @@ import {
   DeleteIconButton,
 } from './ActionButtons'
 import { WaypointPreview, type Waypoint } from './WaypointPreview'
+import { useI18n, type Translations } from '@/app/i18n'
 
 // Re-export Waypoint type for convenience
 export type { Waypoint }
@@ -131,32 +132,25 @@ function parseWaypointsFromPlan(fileContent?: string): Waypoint[] {
 }
 
 // Helper to get the appropriate disabled tooltip for each button
-function getProcessDisabledTooltip(plan: FlightPlan): string | undefined {
-  // Task 3: External plans without fileContent cannot be processed
-  if (!plan.fileContent) return 'No trajectory to process'
-  // TASK-090: No scheduledAt
-  if (!plan.scheduledAt) return 'Select date/time first'
-  // TASK-091: Already processing (en proceso means in progress)
-  if (plan.status === 'en proceso') return 'Processing in progress'
-  // Already processed
-  if (plan.status !== 'sin procesar') return 'Already processed'
+function getProcessDisabledTooltip(plan: FlightPlan, fp: Translations['flightPlans']): string | undefined {
+  if (!plan.fileContent) return fp.noTrajectoryToProcess
+  if (!plan.scheduledAt) return fp.selectDateFirst
+  if (plan.status === 'en proceso') return fp.processingInProgress
+  if (plan.status !== 'sin procesar') return fp.alreadyProcessed
   return undefined
 }
 
-function getAuthorizeDisabledTooltip(plan: FlightPlan): string | undefined {
-  // TASK-092: Not processed yet
-  if (plan.status !== 'procesado') return 'Process trajectory first'
-  // TASK-093: Already authorized
+function getAuthorizeDisabledTooltip(plan: FlightPlan, fp: Translations['flightPlans']): string | undefined {
+  if (plan.status !== 'procesado') return fp.processFirst
   if (plan.authorizationStatus === 'aprobado' || plan.authorizationStatus === 'denegado') {
-    return 'Already authorized'
+    return fp.alreadyAuthorized
   }
-  // TASK-033: Detect FAS processing state
   if (plan.authorizationStatus === 'pendiente') {
     const messageStr = typeof plan.authorizationMessage === 'string' ? plan.authorizationMessage : ''
     if (messageStr === 'FAS procesando...') {
-      return 'FAS is processing the request'
+      return fp.fasProcessing
     }
-    return 'Authorization pending'
+    return fp.authorizationPending
   }
   return undefined
 }
@@ -169,19 +163,15 @@ function isFasProcessingPlan(plan: FlightPlan): boolean {
   return messageStr === 'FAS procesando...' || plan.authorizationStatus === 'pendiente'
 }
 
-function getDownloadDisabledTooltip(plan: FlightPlan): string | undefined {
-  // Task 3: External plans without fileContent have no trajectory
-  if (!plan.fileContent) return 'No trajectory available'
-  // TASK-001: Must be processed first
-  if (plan.status !== 'procesado') return 'Plan must be processed first'
-  // TASK-094: No CSV result
-  if (!plan.csvResult) return 'Trajectory data not available'
+function getDownloadDisabledTooltip(plan: FlightPlan, fp: Translations['flightPlans']): string | undefined {
+  if (!plan.fileContent) return fp.noTrajectoryAvailable
+  if (plan.status !== 'procesado') return fp.planMustBeProcessed
+  if (!plan.csvResult) return fp.trajectoryDataNotAvailable
   return undefined
 }
 
-function getResetDisabledTooltip(plan: FlightPlan): string | undefined {
-  // TASK-095: Unprocessed (nothing to reset)
-  if (plan.status === 'sin procesar') return 'Nothing to reset'
+function getResetDisabledTooltip(plan: FlightPlan, fp: Translations['flightPlans']): string | undefined {
+  if (plan.status === 'sin procesar') return fp.nothingToReset
   return undefined
 }
 
@@ -210,8 +200,8 @@ export function FlightPlanCard({
   const [validationError, setValidationError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   
-  // TASK-222: Drag state
   const [isDragging, setIsDragging] = useState(false)
+  const { t } = useI18n()
 
   // Focus input when entering edit mode
   useEffect(() => {
@@ -279,14 +269,13 @@ export function FlightPlanCard({
     }
   }
 
-  // TASK-221: Validate plan name
   const validateName = (name: string): string | null => {
     const trimmedName = name.trim()
     if (!trimmedName) {
-      return 'Name cannot be empty'
+      return t.flightPlans.planNameEmpty
     }
     if (trimmedName.length > 100) {
-      return 'Name cannot exceed 100 characters'
+      return t.flightPlans.planNameMaxLength
     }
     return null
   }
@@ -406,14 +395,14 @@ export function FlightPlanCard({
                   disabled={loadingStates.renaming || !editName.trim()}
                   className="flex-1 sm:flex-none px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                  {loadingStates.renaming ? '...' : 'Save'}
+                  {loadingStates.renaming ? '...' : t.common.save}
                 </button>
                 <button
                   type="button"
                   onClick={handleRenameCancel}
                   className="flex-1 sm:flex-none px-3 py-1.5 text-sm font-medium text-[var(--text-secondary)] bg-[var(--bg-tertiary)] rounded-md hover:bg-[var(--bg-hover)] transition-colors"
                 >
-                  Cancel
+                  {t.common.cancel}
                 </button>
               </div>
             </div>
@@ -450,7 +439,7 @@ export function FlightPlanCard({
 
         {plan.scheduledAt && (
           <p className="text-xs text-[var(--text-secondary)]">
-            <span className="font-medium">Scheduled:</span> {formatDate(plan.scheduledAt)}
+            <span className="font-medium">{t.flightPlans.scheduled}:</span> {formatDate(plan.scheduledAt)}
           </p>
         )}
       </div>
@@ -475,14 +464,14 @@ export function FlightPlanCard({
         <ProcessIconButton
           onClick={() => onProcess?.(plan.id)}
           disabled={!canProcess || loadingStates.processing}
-          disabledTooltip={loadingStates.processing ? 'Processing in progress' : getProcessDisabledTooltip(plan)}
+          disabledTooltip={loadingStates.processing ? t.flightPlans.processingInProgress : getProcessDisabledTooltip(plan, t.flightPlans)}
           loading={loadingStates.processing}
           aria-label="Process plan"
         />
         <DownloadIconButton
           onClick={() => onDownload?.(plan.id)}
           disabled={!canDownload}
-          disabledTooltip={getDownloadDisabledTooltip(plan)}
+          disabledTooltip={getDownloadDisabledTooltip(plan, t.flightPlans)}
           loading={loadingStates.downloading}
           aria-label="View trajectory"
         />
@@ -496,7 +485,7 @@ export function FlightPlanCard({
               : undefined
           }
           disabled={!canAuthorize && plan.authorizationStatus === 'sin autorización'}
-          disabledTooltip={getAuthorizeDisabledTooltip(plan)}
+          disabledTooltip={getAuthorizeDisabledTooltip(plan, t.flightPlans)}
           loading={loadingStates.authorizing}
           aria-label={
             plan.authorizationStatus === 'aprobado' 
@@ -511,7 +500,7 @@ export function FlightPlanCard({
         <ResetIconButton
           onClick={() => onReset?.(plan.id)}
           disabled={!canReset}
-          disabledTooltip={getResetDisabledTooltip(plan)}
+          disabledTooltip={getResetDisabledTooltip(plan, t.flightPlans)}
           loading={loadingStates.resetting}
           aria-label="Reset plan"
         />
