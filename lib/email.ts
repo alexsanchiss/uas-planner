@@ -30,16 +30,16 @@ export async function sendVerificationEmail(
   const emailParams = new EmailParams()
     .setFrom(new Sender(SENDER_EMAIL, SENDER_NAME))
     .setTo([new Recipient(to)])
-    .setSubject('Verify your email — UAS Planner')
+    .setSubject('Verify your email — SNA UPPS')
     .setHtml(
-      `<h2>Welcome to UAS Planner</h2>
+      `<h2>Welcome to SNA UPPS</h2>
 <p>Please verify your email by clicking the link below or entering the verification code.</p>
 <p><a href="${verifyUrl}">Verify my email</a></p>
 <p>Or enter this code: <strong>${code}</strong></p>
 <p>This link and code expire in 24 hours.</p>`,
     )
     .setText(
-      `Welcome to UAS Planner\n\nVerify your email: ${verifyUrl}\n\nOr enter code: ${code}\n\nExpires in 24 hours.`,
+      `Welcome to SNA UPPS\n\nVerify your email: ${verifyUrl}\n\nOr enter code: ${code}\n\nExpires in 24 hours.`,
     );
 
   try {
@@ -66,7 +66,7 @@ export async function sendPasswordResetEmail(
   const emailParams = new EmailParams()
     .setFrom(new Sender(SENDER_EMAIL, SENDER_NAME))
     .setTo([new Recipient(to)])
-    .setSubject('Reset your password — UAS Planner')
+    .setSubject('Reset your password — SNA UPPS')
     .setHtml(
       `<h2>Password Reset</h2>
 <p>You requested a password reset. Click the link below to set a new password:</p>
@@ -106,7 +106,7 @@ export async function sendAuthorizationResultEmail(
   const emailParams = new EmailParams()
     .setFrom(new Sender(SENDER_EMAIL, SENDER_NAME))
     .setTo([new Recipient(to)])
-    .setSubject(`Flight plan ${statusLabel}: ${planName} — UAS Planner`)
+    .setSubject(`Flight plan ${statusLabel}: ${planName} — SNA UPPS`)
     .setHtml(
       `<h2>Flight Plan Authorization Result</h2>
 <p>Your flight plan <strong>${planName}</strong> has been <strong>${statusLabel.toLowerCase()}</strong>.</p>

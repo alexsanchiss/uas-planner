@@ -25,6 +25,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useFlightPlans, type FlightPlan as FlightPlanData } from '../hooks/useFlightPlans'
 import { useFolders } from '../hooks/useFolders'
 import { useVolumeRegeneration } from '../hooks/useVolumeRegeneration'
+import { useUspaces, type USpace } from '../hooks/useUspaces'
 import { isUplanComplete } from '@/lib/validators/uplan-validator'
 import {
   FolderList,
@@ -53,6 +54,9 @@ const UplanViewModal = dynamic(() => import('./UplanViewModal'), { ssr: false })
 
 // Dynamic import for UplanFormModal (TASK-023: Wire Review U-Plan to form modal)
 const UplanFormModal = dynamic(() => import('./flight-plans/UplanFormModal'), { ssr: false })
+
+// Dynamic import for UspaceSelector (for external UPLANs without U-Space)
+const UspaceSelector = dynamic(() => import('./plan-generator/UspaceSelector'), { ssr: false })
 
 // TASK-076: Dynamic import for GeoawarenessViewer modal
 const GeoawarenessViewer = dynamic(() => import('./flight-plans/GeoawarenessViewer'), { ssr: false })
@@ -221,6 +225,20 @@ export function FlightPlansUploader() {
     missingFields?: string[]
     fieldErrors?: { [fieldName: string]: string }
   }>({ open: false, planId: '', uplan: null, name: '' })
+
+  // U-Space Selector Modal state (for external UPLANs without U-Space)
+  const [uspaceModal, setUspaceModal] = useState<{
+    open: boolean
+    planId: string | null
+    planName: string
+  }>({
+    open: false,
+    planId: null,
+    planName: '',
+  })
+
+  const { uspaces, loading: uspacesLoading } = useUspaces()
+
   // TASK-076: Geoawareness viewer modal state
   const [geoawarenessModal, setGeoawarenessModal] = useState<{
     open: boolean
@@ -585,7 +603,47 @@ export function FlightPlansUploader() {
     } finally {
       removeLoadingPlan('authorizing', planId)
     }
-  }, [flightPlans, refreshPlans, addLoadingPlan, removeLoadingPlan, toast, loadingPlanIds.authorizing])
+  }, [flightPlans, refreshPlans, addLoadingPlan, removeLoadingPlan, toast, loadingPlanIds.authorizing, authorizationConfirmDialog.planId])
+
+  // Handle U-Space selection for geoawareness
+  const handleUspaceSelect = useCallback(async (uspace: USpace) => {
+    const { planId } = uspaceModal
+    if (!planId) return
+
+    setUspaceModal(prev => ({ ...prev, open: false }))
+
+    try {
+      // Update the flight plan with the selected U-Space identifier
+      const token = localStorage.getItem('authToken')
+      const response = await fetch(`/api/flightPlans`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          id: planId,
+          data: {
+            geoawarenessData: {
+              uspace_identifier: uspace.id,
+              uspace_name: uspace.name,
+            },
+          },
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update U-Space identifier')
+      }
+
+      await refreshPlans()
+      toast.success(`U-Space selected: ${uspace.name}. Click "Check Geoawareness" again to proceed.`)
+
+    } catch (error) {
+      console.error('Error updating U-Space:', error)
+      toast.error('Failed to update U-Space. Please try again.')
+    }
+  }, [uspaceModal, refreshPlans, toast])
 
   // Handle geoawareness service call
   const handleGeoawareness = useCallback(async (planId: string) => {
@@ -621,7 +679,12 @@ export function FlightPlansUploader() {
     }
 
     if (!uspaceId) {
-      toast.error('This plan has no U-Space identifier. Was it created with a U-Space selected?')
+      // Open U-Space selector modal for external UPLANs
+      setUspaceModal({
+        open: true,
+        planId,
+        planName: plan.customName,
+      })
       return
     }
 
@@ -1771,6 +1834,34 @@ export function FlightPlansUploader() {
           handleAuthorizePlan(planId)
         }}
       />
+
+      {/* U-Space Selector Modal - for external UPLANs without U-Space identifier */}
+      <Modal
+        open={uspaceModal.open}
+        onClose={() => setUspaceModal({ open: false, planId: null, planName: '' })}
+        title={`Select U-Space for ${uspaceModal.planName}`}
+        maxWidth="4xl"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-[var(--text-secondary)]">
+            This flight plan was imported externally and does not have a U-Space assigned. 
+            Please select the U-Space where this flight will operate to check geoawareness data.
+          </p>
+          <div className="h-[60vh] rounded-lg overflow-hidden">
+            {!uspacesLoading && (
+              <UspaceSelector
+                onSelect={handleUspaceSelect}
+                selectedUspaceId={null}
+              />
+            )}
+            {uspacesLoading && (
+              <div className="flex items-center justify-center h-full">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+              </div>
+            )}
+          </div>
+        </div>
+      </Modal>
 
       {/* TASK-076: Geoawareness viewer modal - shows trajectory over geozones */}
       <Modal

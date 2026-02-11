@@ -127,9 +127,9 @@ export function useAuth() {
     const payload = decodeTokenPayload(token)
     if (!payload?.exp) return
 
-    // Calculate when to refresh (1 minute before expiration)
+    // Calculate when to refresh (2 minutes before expiration)
     const expiresAt = payload.exp * 1000
-    const refreshAt = expiresAt - 60 * 1000 // 1 minute before expiry
+    const refreshAt = expiresAt - 120 * 1000 // 2 minutes before expiry
     const delay = refreshAt - Date.now()
 
     if (delay > 0) {
