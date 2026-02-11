@@ -19,6 +19,49 @@ import { flightPlanUpdateDataSchema, safeParseBody } from '@/lib/validators';
 import type { Prisma } from '@prisma/client';
 
 /**
+ * FAS API URL - defaults to production server if not configured.
+ * The base URL (without /uplan path) is used for cancellation requests.
+ */
+const FAS_API_URL = process.env.FAS_API_URL || 'http://158.42.167.56:8000/uplan';
+
+/**
+ * Derive the FAS base URL by removing the /uplan path suffix.
+ * e.g. "http://158.42.167.56:8000/uplan" → "http://158.42.167.56:8000"
+ */
+function getFasBaseUrl(): string {
+  try {
+    const url = new URL(FAS_API_URL);
+    return `${url.protocol}//${url.host}`;
+  } catch {
+    // Fallback: strip trailing path segments
+    return FAS_API_URL.replace(/\/uplan\/?$/, '');
+  }
+}
+
+/**
+ * Send a cancellation request to the FAS for an approved flight plan.
+ * This is fire-and-forget: failures are logged but do not block deletion.
+ */
+async function sendFasCancellation(externalResponseNumber: string): Promise<void> {
+  const baseUrl = getFasBaseUrl();
+  const cancelUrl = `${baseUrl}/uplan_cancelation/${encodeURIComponent(externalResponseNumber)}`;
+  
+  try {
+    const response = await fetch(cancelUrl, { method: 'PUT' });
+    if (!response.ok) {
+      console.warn(
+        `[FAS Cancellation] Non-OK response for ${externalResponseNumber}: ${response.status} ${response.statusText}`
+      );
+    }
+  } catch (error) {
+    console.warn(
+      `[FAS Cancellation] Failed to cancel ${externalResponseNumber}:`,
+      error instanceof Error ? error.message : error
+    );
+  }
+}
+
+/**
  * Params type for dynamic route
  */
 interface RouteParams {
@@ -271,7 +314,13 @@ export async function DELETE(
     // First check if the flight plan exists, belongs to the user, and get its csvResult ID
     const existing = await prisma.flightPlan.findUnique({
       where: { id },
-      select: { userId: true, csvResult: true, customName: true },
+      select: {
+        userId: true,
+        csvResult: true,
+        customName: true,
+        authorizationStatus: true,
+        externalResponseNumber: true,
+      },
     });
 
     if (!existing) {
@@ -289,11 +338,13 @@ export async function DELETE(
       );
     }
 
+    // If the plan was approved by FAS, send a cancellation request before deleting
+    if (existing.authorizationStatus === 'aprobado' && existing.externalResponseNumber) {
+      await sendFasCancellation(existing.externalResponseNumber);
+    }
+
     // Get the actual csvResult ID from the flight plan (may be different from flightPlan.id)
     const csvResultId = existing.csvResult;
-
-    // Log the deletion operation for audit purposes
-    // console.log(`[DELETE] Flight plan id=${id} ("${existing.customName}") by userId=${userId}. Associated csvResult id=${csvResultId ?? 'none'}`);
 
     // Delete in transaction: CSV result first (if exists), then flight plan
     // Use the actual csvResult ID from the flightPlan record, not the flightPlan ID

@@ -438,9 +438,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     const csvResultIds = userPlanIds;
 
     // Log the deletion operation for audit purposes
-    console.log(`[BULK DELETE] userId=${userId} deleting ${userPlanIds.length} flight plans: [${userPlanIds.join(', ')}]`);
-    console.log(`[BULK DELETE] Associated csvResult IDs to delete: [${csvResultIds.length > 0 ? csvResultIds.join(', ') : 'none'}]`);
-
+    
     // Delete in transaction: CSV results first, then flight plans
     // Use the actual csvResult IDs from the flightPlan records, not the flightPlan IDs
     const [deletedCsvResult, deletedPlansResult] = await prisma.$transaction([
@@ -452,8 +450,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     const deletedPlans = deletedPlansResult.count;
 
     // Log successful deletion
-    console.log(`[BULK DELETE] Successfully deleted ${deletedPlans} flight plans and ${deletedCsvs} CSV results`);
-
+    
     return NextResponse.json({
       deletedPlans,
       deletedCsvs,
