@@ -15,7 +15,7 @@
 | 9 | FAS Authorization Email Notifications | ✅ Completed | Sends email with UPLAN attachment on FAS callback |
 | 10 | Denial Visualization Map — DenialMapModal | ✅ Completed | New DenialMapModal component with conflict highlighting |
 | 11 | Denial Visualization — Integration with UI | ✅ Completed | DenialMapModal integrated into FlightPlanCard, AuthorizationPanel, and FlightPlansUploader |
-| 12 | Scan Waypoint Editing — Editable Map Popup | ⬜ Not started | |
+| 12 | Scan Waypoint Editing — Editable Map Popup | ✅ Completed | Editable inputs for lat, lng, altitude, speed, pause, flyOverMode in map popup |
 | 13 | Scan Pattern — Editable Corner Coordinates | ⬜ Not started | |
 | 14 | Scan Pattern — Draggable Markers on Map | ⬜ Not started | Depends on Task 13 |
 | 15 | FAS Cancellation on Individual Delete | ✅ Completed | FAS PUT cancellation sent before deleting approved plans |
@@ -121,3 +121,11 @@ _(Updated by subagent after each task completion)_
 - Modified `app/components/flight-plans/FlightPlanCard.tsx` — Process and Download buttons now require `fileContent` to be enabled; new tooltips ("No trajectory to process", "No trajectory available") for external plans; waypoint mini-preview already hidden when no fileContent
 - Modified `app/components/flight-plans/GeoawarenessViewer.tsx` — When no trajectory data (no csvResult), renders UPLAN operation volumes as purple polygons on map with time/altitude tooltips; updated bounds calculation to include volumes; added legend entry for operation volumes
 - Modified `app/components/FlightPlansUploader.tsx` — "View U-Plan Map" button enabled for external plans with uplan data (not just fileContent); workflow steps already correctly skip datetime/process for external plans
+
+### Task 12 — Scan Waypoint Editing — Editable Map Popup
+- Modified `app/components/PlanMap.tsx` — Replaced read-only waypoint popup with inline editable inputs for lat, lng, altitude, speed, pauseDuration, and flyOverMode (checkbox)
+- Added `EditablePopupContent` component with styled inputs matching the popup context
+- Added `PopupWaypoint` interface and `WaypointField` type for type-safe editing callbacks
+- Added `onWaypointChange` prop to `PlanMapProps` and wired it through `WaypointMarkers`
+- Modified `app/components/PlanGenerator.tsx` — Passes `handleWaypointChange` to PlanMap as `onWaypointChange` prop
+- Works for both SCAN-generated and MANUAL waypoints (SCAN waypoints become manual after applying)

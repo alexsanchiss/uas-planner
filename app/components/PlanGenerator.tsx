@@ -2003,6 +2003,7 @@ export default function PlanGenerator() {
             waypoints={waypoints} 
             setSelectedIdx={setSelectedIdx} 
             handleMarkerDragEnd={handleMarkerDragEnd}
+            onWaypointChange={handleWaypointChange}
             scanMode={generatorMode === 'scan'}
             scanOverlays={scanOverlays || undefined}
             customClickHandler={scanMapClickHandlerRef.current}
