@@ -214,86 +214,115 @@ export async function POST(
 
     // console.log('Plan procesado');
 
-    // 4. Send U-Plan to external FAS API
+    // 4. Send U-Plan to external FAS API with retry logic for 500 errors
+    const MAX_RETRIES = 5;
+    let lastError: unknown = null;
     let externalResponseNumber = String(null);
     
-    try {
-      const response = await axios.post(
-        FAS_API_URL,
-        uplan,
-        { headers: { 'Content-Type': 'application/json' } }
-      );
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const response = await axios.post(
+          FAS_API_URL,
+          uplan,
+          { headers: { 'Content-Type': 'application/json' } }
+        );
 
-      externalResponseNumber =
-        typeof response.data === 'string'
-          ? response.data
-          : JSON.stringify(response.data);
+        externalResponseNumber =
+          typeof response.data === 'string'
+            ? response.data
+            : JSON.stringify(response.data);
 
-      // Convert uplan to JSON string for database storage
-      const uplanString = JSON.stringify(uplan);
-
-      // Save as processing (FAS will update status later)
-      await prisma.flightPlan.update({
-        where: { id },
-        data: {
-          uplan: uplanString,
-          authorizationStatus: 'pendiente',
-          authorizationMessage: 'FAS procesando...',
-          externalResponseNumber,
-        },
-      });
-
-      return NextResponse.json({
-        uplan,
-        authorizationMessage: externalResponseNumber,
-      });
-    } catch (err: unknown) {
-      console.error('Error enviando U-Plan a la API externa:', err);
-
-      // Handle axios errors with response data
-      if (axios.isAxiosError(err) && err.response?.data) {
         // Convert uplan to JSON string for database storage
         const uplanString = JSON.stringify(uplan);
 
+        // Save as processing (FAS will update status later)
+        await prisma.flightPlan.update({
+          where: { id },
+          data: {
+            uplan: uplanString,
+            authorizationStatus: 'pendiente',
+            authorizationMessage: 'FAS procesando...',
+            externalResponseNumber,
+          },
+        });
+
+        return NextResponse.json({
+          uplan,
+          authorizationMessage: externalResponseNumber,
+        });
+      } catch (err: unknown) {
+        lastError = err;
+        
+        // Check if it's a 500 error that we should retry
+        const is500Error = axios.isAxiosError(err) && err.response?.status === 500;
+        
+        if (is500Error && attempt < MAX_RETRIES) {
+          console.warn(`FAS returned 500 error. Retry ${attempt}/${MAX_RETRIES}`);
+          // Wait a bit before retrying (exponential backoff: 1s, 2s, 4s, 8s)
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt - 1) * 1000));
+          continue;
+        }
+        
+        // If we exhausted all retries with 500 errors, revert to 'sin autorización'
+        if (is500Error && attempt === MAX_RETRIES) {
+          console.error(`FAS returned 500 error after ${MAX_RETRIES} attempts. Reverting to 'sin autorización'`);
+          return NextResponse.json(
+            { error: 'FAS temporarily unavailable. Please try again later.' },
+            { status: 503 }
+          );
+        }
+        
+        // For non-500 errors, mark as denied
+        console.error('Error enviando U-Plan a la API externa:', err);
+
+        // Handle axios errors with response data (400, 404, etc.)
+        if (axios.isAxiosError(err) && err.response?.data) {
+          const uplanString = JSON.stringify(uplan);
+
+          await prisma.flightPlan.update({
+            where: { id },
+            data: {
+              uplan: uplanString,
+              authorizationStatus: 'denegado',
+              authorizationMessage: err.response.data,
+              externalResponseNumber: `error: ${err.message}`,
+            },
+          });
+
+          return NextResponse.json(
+            { error: 'denegado', message: err.response.data },
+            { status: err.response.status }
+          );
+        }
+
+        // Handle other errors (network, timeout, etc.)
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        const uplanString = JSON.stringify(uplan);
+        
         await prisma.flightPlan.update({
           where: { id },
           data: {
             uplan: uplanString,
             authorizationStatus: 'denegado',
-            authorizationMessage: err.response.data,
-            externalResponseNumber: `error: ${err.message}`,
+            authorizationMessage: err instanceof Error 
+              ? JSON.parse(JSON.stringify(err)) 
+              : String(err),
+            externalResponseNumber: `error: ${errorMessage}`,
           },
         });
 
         return NextResponse.json(
-          { error: 'denegado', message: err.response.data },
-          { status: 400 }
+          { error: 'denegado', message: errorMessage },
+          { status: 500 }
         );
       }
-
-      // Handle other errors
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-
-      // Convert uplan to JSON string for database storage
-      const uplanString = JSON.stringify(uplan);
-      
-      await prisma.flightPlan.update({
-        where: { id },
-        data: {
-          uplan: uplanString,
-          authorizationStatus: 'denegado',
-          authorizationMessage: err instanceof Error 
-            ? JSON.parse(JSON.stringify(err)) 
-            : String(err),
-          externalResponseNumber: `error: ${errorMessage}`,
-        },
-      });
-
-      return NextResponse.json(
-        { error: 'denegado', message: errorMessage },
-        { status: 500 }
-      );
     }
+    
+    // This should never be reached, but TypeScript requires a return statement
+    return NextResponse.json(
+      { error: 'Unexpected error during authorization' },
+      { status: 500 }
+    );
   } catch (error) {
     console.error('Error generando U-Plan:', error);
     return NextResponse.json(
