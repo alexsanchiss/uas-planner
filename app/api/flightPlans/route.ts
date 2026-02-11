@@ -164,7 +164,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       const { uplan, folderId, customName } = extResult.data;
 
       // Extract scheduledAt from first volume's timeBegin
-      const scheduledAt = uplan.operationVolumes[0]?.timeBegin ?? null;
+      const rawTimeBegin = uplan.operationVolumes[0]?.timeBegin ?? null;
+      const scheduledAt = rawTimeBegin
+        ? new Date(rawTimeBegin.endsWith('Z') || rawTimeBegin.includes('+') ? rawTimeBegin : rawTimeBegin + 'Z').toISOString()
+        : null;
 
       const created = await prisma.flightPlan.create({
         data: {

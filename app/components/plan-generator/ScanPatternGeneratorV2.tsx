@@ -170,7 +170,7 @@ function EditableCoord({
   return (
     <div className="mt-1 space-y-1">
       <div className="flex items-center gap-1">
-        <label className="text-[10px] text-zinc-500 w-6">Lat</label>
+        <label className="text-[10px] text-[var(--text-muted)] w-6">Lat</label>
         <input
           type="number"
           step="0.000001"
@@ -178,9 +178,9 @@ function EditableCoord({
           onChange={(e) => setLocalLat(e.target.value)}
           onBlur={() => commit(localLat, localLng)}
           onKeyDown={(e) => { if (e.key === "Enter") commit(localLat, localLng); }}
-          className="flex-1 px-1.5 py-0.5 bg-zinc-800 border border-zinc-600 rounded text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 w-24"
+          className="flex-1 px-1.5 py-0.5 bg-[var(--input-bg)] border border-[var(--input-border)] rounded text-[var(--text-primary)] text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 w-24"
         />
-        <label className="text-[10px] text-zinc-500 w-6">Lng</label>
+        <label className="text-[10px] text-[var(--text-muted)] w-6">Lng</label>
         <input
           type="number"
           step="0.000001"
@@ -188,7 +188,7 @@ function EditableCoord({
           onChange={(e) => setLocalLng(e.target.value)}
           onBlur={() => commit(localLat, localLng)}
           onKeyDown={(e) => { if (e.key === "Enter") commit(localLat, localLng); }}
-          className="flex-1 px-1.5 py-0.5 bg-zinc-800 border border-zinc-600 rounded text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 w-24"
+          className="flex-1 px-1.5 py-0.5 bg-[var(--input-bg)] border border-[var(--input-border)] rounded text-[var(--text-primary)] text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 w-24"
         />
       </div>
       {error && (
@@ -492,16 +492,16 @@ export default function ScanPatternGeneratorV2({
   // ---- Render ----
 
   return (
-    <div className="bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl">
+    <div className="bg-[var(--surface-primary)] border border-[var(--border-primary)] rounded-lg shadow-xl">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-700">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border-primary)]">
         <div className="flex items-center gap-2">
-          <Grid3X3 className="w-5 h-5 text-purple-400" />
-          <h3 className="text-lg font-semibold text-white">{t.planGenerator.scanPatternGenerator}</h3>
+          <Grid3X3 className="w-5 h-5 text-purple-500 dark:text-purple-400" />
+          <h3 className="text-lg font-semibold text-[var(--text-primary)]">{t.planGenerator.scanPatternGenerator}</h3>
         </div>
         <button
           onClick={onCancel}
-          className="p-1 rounded hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors"
+          className="p-1 rounded hover:bg-[var(--bg-hover)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors"
           title="Close"
         >
           <X className="w-5 h-5" />
@@ -509,7 +509,7 @@ export default function ScanPatternGeneratorV2({
       </div>
 
       {/* Step Indicator */}
-      <div className="px-4 py-3 border-b border-zinc-700 bg-zinc-800/50">
+      <div className="px-4 py-3 border-b border-[var(--border-primary)] bg-[var(--bg-secondary)]">
         <div className="flex items-center justify-between">
           {[1, 2, 3, 4].map((step) => {
             const status = getStepStatus(step as ScanStep);
@@ -526,7 +526,7 @@ export default function ScanPatternGeneratorV2({
                       ? 'text-purple-400' 
                       : status === 'completed'
                       ? 'text-green-400 cursor-pointer hover:text-green-300'
-                      : 'text-zinc-500 cursor-not-allowed'
+                      : 'text-[var(--text-muted)] cursor-not-allowed'
                   }`}
                   disabled={status === 'pending'}
                 >
@@ -535,7 +535,7 @@ export default function ScanPatternGeneratorV2({
                       ? 'border-purple-400 bg-purple-900/30' 
                       : status === 'completed'
                       ? 'border-green-400 bg-green-900/30'
-                      : 'border-zinc-600 bg-zinc-800'
+                      : 'border-[var(--border-secondary)] bg-[var(--bg-secondary)]'
                   }`}>
                     {status === 'completed' ? (
                       <Check className="w-4 h-4" />
@@ -549,7 +549,7 @@ export default function ScanPatternGeneratorV2({
                   <ChevronRight className={`w-4 h-4 ${
                     getStepStatus((step + 1) as ScanStep) !== 'pending' 
                       ? 'text-green-400' 
-                      : 'text-zinc-600'
+                      : 'text-[var(--border-secondary)]'
                   }`} />
                 )}
               </React.Fragment>
@@ -622,7 +622,7 @@ export default function ScanPatternGeneratorV2({
                 <p className="text-sm text-purple-200">
                   👆 {t.planGenerator.clickMapVertices}
                 </p>
-                <p className="text-xs text-zinc-400">
+                <p className="text-xs text-[var(--text-muted)]">
                   • {t.planGenerator.addAtLeast3}<br />
                   • {t.planGenerator.clickNearFirst}<br />
                   • {t.planGenerator.useCloseButton}
@@ -634,7 +634,7 @@ export default function ScanPatternGeneratorV2({
                   <CheckCircle2 className="w-4 h-4" />
                   <span className="text-sm">{t.planGenerator.polygonClosedMsg} ({polygonVertices.length} {t.planGenerator.vertices.toLowerCase()})</span>
                 </div>
-                <div className="text-xs text-zinc-400 mt-1">
+                <div className="text-xs text-[var(--text-muted)] mt-1">
                   {t.planGenerator.area}: {formatArea(areaValue)}
                 </div>
               </div>
@@ -644,7 +644,7 @@ export default function ScanPatternGeneratorV2({
             {polygonVertices.length > 0 && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium text-zinc-300">
+                  <label className="text-sm font-medium text-[var(--text-secondary)]">
                     {t.planGenerator.vertices} ({polygonVertices.length})
                   </label>
                   <button
@@ -655,17 +655,17 @@ export default function ScanPatternGeneratorV2({
                     {t.planGenerator.clear}
                   </button>
                 </div>
-                <div className="max-h-24 overflow-y-auto space-y-1 bg-zinc-800 rounded p-2">
+                <div className="max-h-24 overflow-y-auto space-y-1 bg-[var(--bg-secondary)] rounded p-2">
                   {polygonVertices.map((v, idx) => (
                     <div
                       key={idx}
-                      className="px-2 py-1.5 rounded hover:bg-zinc-700"
+                      className="px-2 py-1.5 rounded hover:bg-[var(--bg-hover)]"
                     >
                       <div className="flex items-center justify-between">
-                        <span className="text-zinc-500 font-mono text-xs">{idx + 1}</span>
+                        <span className="text-[var(--text-muted)] font-mono text-xs">{idx + 1}</span>
                         <button
                           onClick={() => handleDeleteVertex(idx)}
-                          className="p-1 rounded hover:bg-red-900/50 text-zinc-400 hover:text-red-400 transition-colors"
+                          className="p-1 rounded hover:bg-red-900/50 text-[var(--text-muted)] hover:text-red-400 transition-colors"
                           title={t.planGenerator.deleteVertex}
                         >
                           <Trash2 className="w-3 h-3" />
@@ -700,7 +700,7 @@ export default function ScanPatternGeneratorV2({
                   onClick={() => {
                     setPolygonClosed(false);
                   }}
-                  className="flex-1 px-4 py-2 bg-zinc-700 text-zinc-200 rounded-lg hover:bg-zinc-600 transition-colors text-sm"
+                  className="flex-1 px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-lg hover:bg-[var(--bg-hover)] transition-colors text-sm"
                 >
                   {t.planGenerator.editPolygon}
                 </button>
@@ -728,7 +728,7 @@ export default function ScanPatternGeneratorV2({
               <p className="text-sm text-purple-200">
                 👆 {t.planGenerator.clickMapLanding}
               </p>
-              <p className="text-xs text-zinc-400">
+              <p className="text-xs text-[var(--text-muted)]">
                 {t.planGenerator.landingDescription}
               </p>
             </div>
@@ -762,7 +762,7 @@ export default function ScanPatternGeneratorV2({
                 className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors ${
                   landingPoint 
                     ? 'bg-purple-600 text-white hover:bg-purple-700'
-                    : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'
+                    : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
                 }`}
               >
                 {landingPoint ? t.planGenerator.continueToParameters : t.planGenerator.skipUseLastWaypoint}
@@ -784,9 +784,9 @@ export default function ScanPatternGeneratorV2({
             <div className="space-y-3">
               {/* Altitude */}
               <div className="space-y-1">
-                <label className="block text-sm font-medium text-zinc-300">
+                <label className="block text-sm font-medium text-[var(--text-secondary)]">
                   {t.planGenerator.flightAltitude}
-                  <span className="text-xs text-zinc-500 ml-2">(0-200m)</span>
+                  <span className="text-xs text-[var(--text-muted)] ml-2">(0-200m)</span>
                 </label>
                 <div className="flex items-center gap-2">
                   <input
@@ -795,17 +795,17 @@ export default function ScanPatternGeneratorV2({
                     max={200}
                     value={altitude}
                     onChange={(e) => setAltitude(Math.max(0, Math.min(200, Number(e.target.value))))}
-                    className="flex-1 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="flex-1 px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
-                  <span className="text-xs text-zinc-400 w-8">m</span>
+                  <span className="text-xs text-[var(--text-muted)] w-8">m</span>
                 </div>
               </div>
 
               {/* Spacing */}
               <div className="space-y-1">
-                <label className="block text-sm font-medium text-zinc-300">
+                <label className="block text-sm font-medium text-[var(--text-secondary)]">
                   {t.planGenerator.lineSpacing}
-                  <span className="text-xs text-zinc-500 ml-2">({t.planGenerator.distanceBetweenLines})</span>
+                  <span className="text-xs text-[var(--text-muted)] ml-2">({t.planGenerator.distanceBetweenLines})</span>
                 </label>
                 <div className="flex items-center gap-2">
                   <input
@@ -815,17 +815,17 @@ export default function ScanPatternGeneratorV2({
                     step={1}
                     value={spacing}
                     onChange={(e) => setSpacing(Math.max(1, Math.min(500, Number(e.target.value))))}
-                    className="flex-1 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="flex-1 px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
-                  <span className="text-xs text-zinc-400 w-8">m</span>
+                  <span className="text-xs text-[var(--text-muted)] w-8">m</span>
                 </div>
               </div>
 
               {/* Angle */}
               <div className="space-y-1">
-                <label className="block text-sm font-medium text-zinc-300">
+                <label className="block text-sm font-medium text-[var(--text-secondary)]">
                   {t.planGenerator.scanAngleLabel}
-                  <span className="text-xs text-zinc-500 ml-2">(0° = North)</span>
+                  <span className="text-xs text-[var(--text-muted)] ml-2">(0° = North)</span>
                 </label>
                 <div className="flex items-center gap-2">
                   <input
@@ -835,7 +835,7 @@ export default function ScanPatternGeneratorV2({
                     step={5}
                     value={angle}
                     onChange={(e) => setAngle(Number(e.target.value))}
-                    className="flex-1 h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                    className="flex-1 h-2 bg-[var(--bg-tertiary)] rounded-lg appearance-none cursor-pointer accent-purple-500"
                   />
                   <input
                     type="number"
@@ -843,25 +843,25 @@ export default function ScanPatternGeneratorV2({
                     max={360}
                     value={angle}
                     onChange={(e) => setAngle(normalizeAngle(Number(e.target.value)))}
-                    className="w-16 px-2 py-1 bg-zinc-800 border border-zinc-700 rounded text-white text-sm text-center focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-16 px-2 py-1 bg-[var(--input-bg)] border border-[var(--input-border)] rounded text-[var(--text-primary)] text-sm text-center focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
-                  <span className="text-xs text-zinc-400 w-4">°</span>
+                  <span className="text-xs text-[var(--text-muted)] w-4">°</span>
                 </div>
                 
                 {/* Compass indicator */}
                 <div className="flex items-center justify-center mt-2">
-                  <div className="relative w-14 h-14 border-2 border-zinc-600 rounded-full">
-                    <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[9px] text-zinc-500">N</span>
-                    <span className="absolute top-1/2 -right-2.5 -translate-y-1/2 text-[9px] text-zinc-500">E</span>
-                    <span className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 text-[9px] text-zinc-500">S</span>
-                    <span className="absolute top-1/2 -left-2.5 -translate-y-1/2 text-[9px] text-zinc-500">W</span>
+                  <div className="relative w-14 h-14 border-2 border-[var(--border-secondary)] rounded-full">
+                    <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[9px] text-[var(--text-muted)]">N</span>
+                    <span className="absolute top-1/2 -right-2.5 -translate-y-1/2 text-[9px] text-[var(--text-muted)]">E</span>
+                    <span className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 text-[9px] text-[var(--text-muted)]">S</span>
+                    <span className="absolute top-1/2 -left-2.5 -translate-y-1/2 text-[9px] text-[var(--text-muted)]">W</span>
                     <div
                       className="absolute top-1/2 left-1/2 w-0.5 h-5 bg-purple-500 origin-bottom"
                       style={{ transform: `translate(-50%, -100%) rotate(${angle}deg)` }}
                     >
                       <div className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-purple-500 rotate-45" />
                     </div>
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-zinc-400 rounded-full" />
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-[var(--text-muted)] rounded-full" />
                   </div>
                 </div>
               </div>
@@ -869,18 +869,18 @@ export default function ScanPatternGeneratorV2({
               {/* Advanced Options */}
               <button
                 onClick={() => setShowAdvanced(!showAdvanced)}
-                className="flex items-center gap-1 text-sm text-zinc-400 hover:text-zinc-200 transition-colors"
+                className="flex items-center gap-1 text-sm text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
               >
                 {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 {t.planGenerator.advancedOptions}
               </button>
 
               {showAdvanced && (
-                <div className="space-y-3 pl-2 border-l-2 border-zinc-700">
+                <div className="space-y-3 pl-2 border-l-2 border-[var(--border-primary)]">
                   <div className="space-y-1">
-                    <label className="block text-sm font-medium text-zinc-300">
+                    <label className="block text-sm font-medium text-[var(--text-secondary)]">
                       Speed
-                      <span className="text-xs text-zinc-500 ml-2">(m/s)</span>
+                      <span className="text-xs text-[var(--text-muted)] ml-2">(m/s)</span>
                     </label>
                     <div className="flex items-center gap-2">
                       <input
@@ -890,9 +890,9 @@ export default function ScanPatternGeneratorV2({
                         step={0.5}
                         value={speed}
                         onChange={(e) => setSpeed(Math.max(1, Math.min(30, Number(e.target.value))))}
-                        className="flex-1 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        className="flex-1 px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                       />
-                      <span className="text-xs text-zinc-400 w-8">m/s</span>
+                      <span className="text-xs text-[var(--text-muted)] w-8">m/s</span>
                     </div>
                   </div>
                 </div>
@@ -930,31 +930,31 @@ export default function ScanPatternGeneratorV2({
 
             {/* Statistics Preview */}
             {statistics && (
-              <div className="bg-zinc-800 border border-zinc-700 rounded p-3 space-y-2">
+              <div className="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded p-3 space-y-2">
                 <div className="flex items-center gap-2 text-sm font-medium text-green-400">
                   <CheckCircle2 className="w-4 h-4" />
                   {t.planGenerator.patternGenerated}
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div className="flex justify-between">
-                    <span className="text-zinc-400">{t.planGenerator.waypoints}:</span>
-                    <span className="text-white font-medium">{statistics.waypointCount}</span>
+                    <span className="text-[var(--text-muted)]">{t.planGenerator.waypoints}:</span>
+                    <span className="text-[var(--text-primary)] font-medium">{statistics.waypointCount}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-zinc-400">{t.planGenerator.scanLines}:</span>
-                    <span className="text-white font-medium">{statistics.scanLineCount}</span>
+                    <span className="text-[var(--text-muted)]">{t.planGenerator.scanLines}:</span>
+                    <span className="text-[var(--text-primary)] font-medium">{statistics.scanLineCount}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-zinc-400">{t.planGenerator.distanceLabel}:</span>
-                    <span className="text-white font-medium">{formatDistance(statistics.totalDistance)}</span>
+                    <span className="text-[var(--text-muted)]">{t.planGenerator.distanceLabel}:</span>
+                    <span className="text-[var(--text-primary)] font-medium">{formatDistance(statistics.totalDistance)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-zinc-400">{t.planGenerator.estTime}:</span>
-                    <span className="text-white font-medium">{formatTime(statistics.estimatedFlightTime)}</span>
+                    <span className="text-[var(--text-muted)]">{t.planGenerator.estTime}:</span>
+                    <span className="text-[var(--text-primary)] font-medium">{formatTime(statistics.estimatedFlightTime)}</span>
                   </div>
                   <div className="flex justify-between col-span-2">
-                    <span className="text-zinc-400">{t.planGenerator.coverageAreaLabel}:</span>
-                    <span className="text-white font-medium">{formatArea(statistics.coverageArea)}</span>
+                    <span className="text-[var(--text-muted)]">{t.planGenerator.coverageAreaLabel}:</span>
+                    <span className="text-[var(--text-primary)] font-medium">{formatArea(statistics.coverageArea)}</span>
                   </div>
                 </div>
               </div>
@@ -964,10 +964,10 @@ export default function ScanPatternGeneratorV2({
       </div>
 
       {/* Footer Actions */}
-      <div className="flex items-center justify-between gap-2 px-4 py-3 border-t border-zinc-700 bg-zinc-800/50">
+      <div className="flex items-center justify-between gap-2 px-4 py-3 border-t border-[var(--border-primary)] bg-[var(--bg-secondary)]">
         <button
           onClick={handleClearAll}
-          className="flex items-center gap-2 px-3 py-2 rounded text-sm font-medium bg-zinc-700 text-zinc-300 hover:bg-zinc-600 transition-colors"
+          className="flex items-center gap-2 px-3 py-2 rounded text-sm font-medium bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors"
         >
           <RotateCcw className="w-4 h-4" />
           {t.planGenerator.startOver}
@@ -976,7 +976,7 @@ export default function ScanPatternGeneratorV2({
         <div className="flex gap-2">
           <button
             onClick={onCancel}
-            className="px-4 py-2 rounded text-sm font-medium bg-zinc-700 text-zinc-200 hover:bg-zinc-600 transition-colors"
+            className="px-4 py-2 rounded text-sm font-medium bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors"
           >
             {t.common.cancel}
           </button>

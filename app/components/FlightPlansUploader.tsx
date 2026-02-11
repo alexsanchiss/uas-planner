@@ -1339,6 +1339,29 @@ export function FlightPlansUploader() {
                     </>
                   )}
                 </button>
+                {/* Download U-Plan JSON button - always visible after processing */}
+                {selectedPlan.uplan ? (
+                  <button
+                    onClick={() => {
+                      const jsonStr = JSON.stringify(selectedPlan.uplan, null, 2)
+                      const blob = new Blob([jsonStr], { type: 'application/json' })
+                      const url = URL.createObjectURL(blob)
+                      const link = document.createElement('a')
+                      link.href = url
+                      link.download = `uplan_${selectedPlan.name.replace(/[^a-zA-Z0-9]/g, '_')}.json`
+                      document.body.appendChild(link)
+                      link.click()
+                      document.body.removeChild(link)
+                      URL.revokeObjectURL(url)
+                    }}
+                    className="px-4 py-2 text-sm font-medium text-[var(--text-primary)] bg-[var(--surface-tertiary)] border border-[var(--border-primary)] rounded-md hover:bg-[var(--bg-hover)] transition-colors btn-interactive flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Download U-Plan
+                  </button>
+                ) : null}
               </div>
 
               {/* TASK: Large authorization status button for approved/denied plans */}

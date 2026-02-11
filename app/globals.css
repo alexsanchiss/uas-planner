@@ -542,3 +542,28 @@ body {
 .toast-container > * {
   pointer-events: auto;
 }
+
+/* ============================================
+   Leaflet Popup Theme Integration
+   Ensures popup text is readable in dark theme
+   ============================================ */
+
+:root .leaflet-popup-content-wrapper,
+:root .leaflet-popup-tip {
+  background-color: #1f2937;
+  color: #f9fafb;
+}
+
+:root .leaflet-popup-content-wrapper a {
+  color: #93c5fd;
+}
+
+[data-theme="light"] .leaflet-popup-content-wrapper,
+[data-theme="light"] .leaflet-popup-tip {
+  background-color: #ffffff;
+  color: #111827;
+}
+
+[data-theme="light"] .leaflet-popup-content-wrapper a {
+  color: #2563eb;
+}
