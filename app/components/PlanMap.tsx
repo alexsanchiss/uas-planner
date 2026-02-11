@@ -114,7 +114,88 @@ function createWaypointIcon(wp: any, idx: number): L.DivIcon {
   });
 }
 
-function WaypointMarkers({ waypoints, onSelect, onDragEndMarker }: { waypoints: any[]; onSelect: (idx: number) => void; onDragEndMarker: (idx: number, lat: number, lng: number) => void; }) {
+// TASK-12: Editable popup content for waypoint markers
+// Waypoint field names for type-safe editing callbacks
+type WaypointField = 'lat' | 'lng' | 'altitude' | 'speed' | 'pauseDuration' | 'flyOverMode' | 'type';
+
+interface PopupWaypoint {
+  lat: number;
+  lng: number;
+  type: string;
+  altitude: number;
+  speed: number;
+  pauseDuration: number;
+  flyOverMode: boolean;
+}
+
+function EditablePopupContent({ wp, idx, onWaypointChange }: {
+  wp: PopupWaypoint;
+  idx: number;
+  onWaypointChange: (idx: number, field: WaypointField, value: number | boolean) => void;
+}) {
+  const inputStyle: React.CSSProperties = {
+    width: '100%', fontSize: '12px', padding: '2px 4px',
+    border: '1px solid #ccc', borderRadius: '3px', boxSizing: 'border-box',
+  };
+  const labelStyle: React.CSSProperties = {
+    fontSize: '11px', fontWeight: 'bold', display: 'block', marginBottom: '1px', color: '#555',
+  };
+  const rowStyle: React.CSSProperties = { marginBottom: '5px' };
+  const typeColor = wp.type === 'takeoff' ? '#22c55e' : wp.type === 'landing' ? '#ef4444' : '#3b82f6';
+
+  return (
+    <div style={{ minWidth: '190px' }}>
+      <div style={{ fontWeight: 'bold', marginBottom: '6px', fontSize: '13px', borderBottom: '1px solid #eee', paddingBottom: '4px' }}>
+        Waypoint {idx + 1} <span style={{ color: typeColor, textTransform: 'capitalize' }}>({wp.type})</span>
+      </div>
+      <div style={rowStyle}>
+        <label style={labelStyle}>Latitude</label>
+        <input type="number" step="any" value={wp.lat}
+          onChange={(e) => { const v = Number(e.target.value); if (!isNaN(v)) onWaypointChange(idx, 'lat', v); }}
+          style={inputStyle} />
+      </div>
+      <div style={rowStyle}>
+        <label style={labelStyle}>Longitude</label>
+        <input type="number" step="any" value={wp.lng}
+          onChange={(e) => { const v = Number(e.target.value); if (!isNaN(v)) onWaypointChange(idx, 'lng', v); }}
+          style={inputStyle} />
+      </div>
+      <div style={rowStyle}>
+        <label style={labelStyle}>Altitude (m)</label>
+        <input type="number" min={0} value={wp.altitude}
+          onChange={(e) => { const v = Number(e.target.value); if (!isNaN(v)) onWaypointChange(idx, 'altitude', v); }}
+          disabled={wp.type === 'landing'}
+          style={{ ...inputStyle, ...(wp.type === 'landing' ? { opacity: 0.5, cursor: 'not-allowed' } : {}) }} />
+      </div>
+      <div style={rowStyle}>
+        <label style={labelStyle}>Speed (m/s)</label>
+        <input type="number" min={0} step="0.1" value={wp.speed}
+          onChange={(e) => { const v = Number(e.target.value); if (!isNaN(v)) onWaypointChange(idx, 'speed', v); }}
+          style={inputStyle} />
+      </div>
+      <div style={rowStyle}>
+        <label style={labelStyle}>Pause (s)</label>
+        <input type="number" min={0} max={3600} value={wp.pauseDuration || 0}
+          onChange={(e) => { const v = Number(e.target.value); if (!isNaN(v)) onWaypointChange(idx, 'pauseDuration', v); }}
+          style={inputStyle} />
+      </div>
+      {wp.type === 'cruise' && (
+        <div style={{ marginTop: '4px' }}>
+          <label style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+            <input type="checkbox" checked={wp.flyOverMode || false}
+              onChange={(e) => onWaypointChange(idx, 'flyOverMode', e.target.checked)} />
+            <span style={{ fontWeight: 'bold', color: '#555' }}>Fly-Over</span>
+            <span style={{ color: wp.flyOverMode ? '#a855f7' : '#3b82f6', fontSize: '12px' }}>
+              {wp.flyOverMode ? '⊙ Over' : '∽ By'}
+            </span>
+          </label>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function WaypointMarkers({ waypoints, onSelect, onDragEndMarker, onWaypointChange }: { waypoints: PopupWaypoint[]; onSelect: (idx: number) => void; onDragEndMarker: (idx: number, lat: number, lng: number) => void; onWaypointChange?: (idx: number, field: WaypointField, value: number | boolean) => void; }) {
   return waypoints.map((wp, idx) => (
     <Marker
       key={idx}
@@ -130,40 +211,8 @@ function WaypointMarkers({ waypoints, onSelect, onDragEndMarker }: { waypoints: 
       }}
       draggable
     >
-      <Popup>
-        <div>
-          <div>
-            <b>Type:</b> {wp.type}
-          </div>
-          <div>
-            <b>Altitude:</b> {wp.altitude} m
-          </div>
-          <div>
-            <b>Speed:</b> {wp.speed} m/s
-          </div>
-          {/* TASK-125: Display pause duration in popup */}
-          {wp.pauseDuration > 0 && (
-            <div>
-              <b>Pause:</b> {formatPauseDuration(wp.pauseDuration)}
-            </div>
-          )}
-          {/* TASK-129 & TASK-130: Display fly-over mode with explanation */}
-          {wp.type === "cruise" && (
-            <div>
-              <b>Mode:</b>{" "}
-              <span
-                style={{ color: wp.flyOverMode ? "#a855f7" : "#3b82f6" }}
-                title={
-                  wp.flyOverMode
-                    ? "Drone must pass directly over this waypoint (more precise)"
-                    : "Drone smoothly curves past this waypoint (faster)"
-                }
-              >
-                {wp.flyOverMode ? "⊙ Fly-Over" : "∽ Fly-By"}
-              </span>
-            </div>
-          )}
-        </div>
+      <Popup minWidth={200}>
+        <EditablePopupContent wp={wp} idx={idx} onWaypointChange={onWaypointChange || (() => {})} />
       </Popup>
     </Marker>
   ));
@@ -462,6 +511,8 @@ interface PlanMapProps {
   waypoints: any[];
   setSelectedIdx: (idx: number) => void;
   handleMarkerDragEnd: (idx: number, lat: number, lng: number) => void;
+  // TASK-12: Waypoint editing in map popup
+  onWaypointChange?: (idx: number, field: WaypointField, value: number | boolean) => void;
   // SCAN mode props
   scanMode?: boolean;
   scanOverlays?: {
@@ -578,7 +629,7 @@ const PlanMap = (props: PlanMapProps) => {
             />
           ) : null}
           {/* Waypoint markers with selection and drag */}
-          <WaypointMarkers waypoints={props.waypoints} onSelect={props.setSelectedIdx} onDragEndMarker={props.handleMarkerDragEnd} />
+          <WaypointMarkers waypoints={props.waypoints} onSelect={props.setSelectedIdx} onDragEndMarker={props.handleMarkerDragEnd} onWaypointChange={props.onWaypointChange} />
         </>
       )}
       
