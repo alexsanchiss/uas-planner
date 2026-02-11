@@ -27,6 +27,7 @@
     "jszip": "^3.10.1",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.465.0",
+    "mailersend": "^2.6.0",
     "next": "^14.2.21",
     "novnc-core": "^0.3.0",
     "papaparse": "^5.5.3",

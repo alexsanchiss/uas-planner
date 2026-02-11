@@ -8,7 +8,7 @@
 | 2 | External UPLAN Import — Folder Drag-and-Drop UI | ⬜ Not started | Depends on Task 1 |
 | 3 | External UPLAN Import — UI Button State & Display | ⬜ Not started | Depends on Task 2 |
 | 4 | Prisma Schema & SQL — Email Verification Fields | ✅ Completed | Added email verification and password reset fields to user model |
-| 5 | MailerSend Email Service Library | ⬜ Not started | Depends on Task 4 |
+| 5 | MailerSend Email Service Library | ✅ Completed | mailersend package + lib/email.ts with 3 email functions |
 | 6 | Email Verification Flow — API Routes | ⬜ Not started | Depends on Task 4, 5 |
 | 7 | Email Verification Flow — Frontend Pages | ⬜ Not started | Depends on Task 6 |
 | 8 | Password Reset Flow | ⬜ Not started | Depends on Task 5, 6 |
@@ -57,8 +57,13 @@ _(Updated by subagent after each task completion)_
 - SQL migration commands documented in TASKS.md
 
 ### Task 1 — External UPLAN Import — API & Validation
-- Added `externalUplanSchema` to `lib/validators.ts` — validates `type: 'external_uplan'`, `operationVolumes[]` (min 1), `folderId`, `customName`
-- Modified `app/api/flightPlans/route.ts` POST handler to detect `type: 'external_uplan'` requests
-- Creates flight plan with `fileContent: null`, `status: 'procesado'`, `csvResult: 0`, `authorizationStatus: 'sin autorización'`
-- Extracts `scheduledAt` from first volume's `timeBegin`
-- Added comprehensive tests for the new schema in `lib/__tests__/validators.test.ts`
+
+### Task 5 — MailerSend Email Service Library
+- Installed `mailersend` npm package
+- Created `lib/email.ts` with three email functions:
+  - `sendVerificationEmail(to, token, code)` — sends verification link + 6-digit code
+  - `sendPasswordResetEmail(to, token)` — sends password reset link (1 hour validity)
+  - `sendAuthorizationResultEmail(to, planName, status, message, uplanJson)` — sends authorization result with UPLAN JSON attachment
+- Graceful error handling: logs errors but never throws (fire-and-forget for notifications)
+- Handles missing/placeholder `MAILERSEND_API_KEY` gracefully
+- Added 8 tests in `lib/__tests__/email.test.ts`
