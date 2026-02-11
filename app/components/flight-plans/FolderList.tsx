@@ -27,6 +27,8 @@ export interface FolderListProps {
   onDragEnd?: (e: DragEvent<HTMLDivElement>) => void
   /** TASK-222: Called when a plan is dropped onto a folder */
   onDropPlan?: (planId: string, targetFolderId: string | null) => void
+  /** Task 2: Called when an external UPLAN .json file is dropped onto a folder */
+  onImportExternalUplan?: (uplan: object, folderId: string, customName: string) => void
   /** Callback when clicking on waypoint preview to open map */
   onWaypointPreviewClick?: (planId: string, waypoints: Waypoint[]) => void
   /** Callback to view authorization message */
@@ -74,6 +76,7 @@ export function FolderList({
   onDragStart,
   onDragEnd,
   onDropPlan,
+  onImportExternalUplan,
   onWaypointPreviewClick,
   onViewAuthorizationMessage,
   loadingPlanIds,
@@ -204,6 +207,7 @@ export function FolderList({
                 onDragStart={onDragStart}
                 onDragEnd={onDragEnd}
                 onDropPlan={onDropPlan}
+                onImportExternalUplan={onImportExternalUplan}
                 onWaypointPreviewClick={onWaypointPreviewClick}
                 onViewAuthorizationMessage={onViewAuthorizationMessage}
                 loadingPlanIds={loadingPlanIds}

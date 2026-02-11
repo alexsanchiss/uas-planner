@@ -144,6 +144,7 @@ export function FlightPlansUploader() {
     isRefreshing,
     errorCount: pollingErrorCount,
     resetErrors: resetPollingErrors,
+    importExternalUplan,
   } = useFlightPlans({ pollingEnabled: true, pollingInterval: 5000 })
   
   const {
@@ -756,6 +757,16 @@ export function FlightPlansUploader() {
     }
   }, [updateFlightPlan, addLoadingPlan, removeLoadingPlan, toast])
   
+  // Task 2: Handle external UPLAN file import via drag-and-drop
+  const handleImportExternalUplan = useCallback(async (uplan: object, folderId: string, customName: string) => {
+    try {
+      await importExternalUplan(uplan, Number(folderId), customName)
+      toast.success('External UPLAN imported successfully.')
+    } catch {
+      toast.error('Error importing external UPLAN.')
+    }
+  }, [importExternalUplan, toast])
+
   // TASK-222: Handle drag start
   const handleDragStart = useCallback((_e: DragEvent<HTMLDivElement>, _data: FlightPlanDragData) => {
     // Optional: Could add visual feedback during drag
@@ -1441,6 +1452,7 @@ export function FlightPlansUploader() {
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
           onDropPlan={handleMovePlan}
+          onImportExternalUplan={handleImportExternalUplan}
           onWaypointPreviewClick={handleWaypointPreviewClick}
           onViewAuthorizationMessage={handleViewAuthorizationMessage}
           loadingPlanIds={loadingPlanIds}

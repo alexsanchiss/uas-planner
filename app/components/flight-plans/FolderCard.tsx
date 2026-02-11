@@ -37,6 +37,8 @@ export interface FolderCardProps {
   onDragEnd?: (e: DragEvent<HTMLDivElement>) => void
   /** TASK-222: Called when a plan is dropped onto this folder */
   onDropPlan?: (planId: string, targetFolderId: string) => void
+  /** Task 2: Called when an external UPLAN .json file is dropped onto this folder */
+  onImportExternalUplan?: (uplan: object, folderId: string, customName: string) => void
   /** Callback when clicking on waypoint preview to open map */
   onWaypointPreviewClick?: (planId: string, waypoints: Waypoint[]) => void
   /** Callback to view authorization message */
@@ -97,6 +99,7 @@ export function FolderCard({
   onDragStart,
   onDragEnd,
   onDropPlan,
+  onImportExternalUplan,
   onWaypointPreviewClick,
   onViewAuthorizationMessage,
   loadingPlanIds,
@@ -109,6 +112,7 @@ export function FolderCard({
   const [validationError, setValidationError] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
+  const [isFileDragOver, setIsFileDragOver] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   // Focus input when entering edit mode
@@ -217,9 +221,20 @@ export function FolderCard({
     setIsEditing(true)
   }
 
+  // Helper: check if drag event contains external files (not flight plan cards)
+  const isFileDrag = (e: DragEvent<HTMLDivElement>): boolean => {
+    return e.dataTransfer.types.includes('Files') && !e.dataTransfer.types.includes(FLIGHT_PLAN_DRAG_TYPE)
+  }
+
   // TASK-222: Handle drag over
   const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault()
+    
+    if (isFileDrag(e)) {
+      e.dataTransfer.dropEffect = 'copy'
+      setIsFileDragOver(true)
+      return
+    }
     
     // Only allow drops from flight plans
     if (!e.dataTransfer.types.includes(FLIGHT_PLAN_DRAG_TYPE)) {
@@ -234,6 +249,11 @@ export function FolderCard({
   const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault()
     
+    if (isFileDrag(e)) {
+      setIsFileDragOver(true)
+      return
+    }
+    
     if (!e.dataTransfer.types.includes(FLIGHT_PLAN_DRAG_TYPE)) {
       return
     }
@@ -245,13 +265,40 @@ export function FolderCard({
   const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault()
     
-    // Only set isDragOver to false if we're leaving the folder card entirely
+    // Only set drag state to false if we're leaving the folder card entirely
     const rect = e.currentTarget.getBoundingClientRect()
     const x = e.clientX
     const y = e.clientY
     
     if (x < rect.left || x >= rect.right || y < rect.top || y >= rect.bottom) {
       setIsDragOver(false)
+      setIsFileDragOver(false)
+    }
+  }
+
+  // Task 2: Handle external UPLAN file drop
+  const handleFileDrop = async (files: FileList) => {
+    const file = files[0]
+    if (!file) return
+
+    // Accept only .json files
+    if (!file.name.toLowerCase().endsWith('.json')) {
+      return
+    }
+
+    try {
+      const text = await file.text()
+      const parsed = JSON.parse(text)
+
+      // Validate it has operationVolumes
+      if (!parsed.operationVolumes || !Array.isArray(parsed.operationVolumes) || parsed.operationVolumes.length === 0) {
+        return
+      }
+
+      onImportExternalUplan?.(parsed, folder.id, file.name)
+      setExpanded(true)
+    } catch {
+      // JSON parse error — invalid file
     }
   }
 
@@ -259,7 +306,14 @@ export function FolderCard({
   const handleDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault()
     setIsDragOver(false)
+    setIsFileDragOver(false)
     
+    // Task 2: Check for external file drops first
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0 && !e.dataTransfer.types.includes(FLIGHT_PLAN_DRAG_TYPE)) {
+      handleFileDrop(e.dataTransfer.files)
+      return
+    }
+
     const dragDataStr = e.dataTransfer.getData(FLIGHT_PLAN_DRAG_TYPE)
     if (!dragDataStr) return
     
@@ -286,9 +340,11 @@ export function FolderCard({
   return (
     <div 
       className={`rounded-lg border bg-[var(--surface-primary)] shadow-sm transition-all ${className} ${
-        isDragOver
-          ? 'border-blue-500 dark:border-blue-400 border-2 bg-[var(--surface-secondary)] ring-2 ring-blue-500/30'
-          : 'border-[var(--border-primary)]'
+        isFileDragOver
+          ? 'border-green-500 dark:border-green-400 border-2 bg-green-50 dark:bg-green-900/20 ring-2 ring-green-500/30'
+          : isDragOver
+            ? 'border-blue-500 dark:border-blue-400 border-2 bg-[var(--surface-secondary)] ring-2 ring-blue-500/30'
+            : 'border-[var(--border-primary)]'
       }`}
       onDragOver={handleDragOver}
       onDragEnter={handleDragEnter}
@@ -298,9 +354,11 @@ export function FolderCard({
       {/* Folder header */}
       <div
         className={`flex items-center gap-2 sm:gap-3 p-3 sm:p-4 cursor-pointer transition-colors ${
-          isDragOver
-            ? 'bg-[var(--surface-tertiary)]'
-            : 'hover:bg-[var(--bg-hover)]'
+          isFileDragOver
+            ? 'bg-green-50 dark:bg-green-900/20'
+            : isDragOver
+              ? 'bg-[var(--surface-tertiary)]'
+              : 'hover:bg-[var(--bg-hover)]'
         }`}
         onClick={handleToggle}
         role="button"
@@ -316,8 +374,15 @@ export function FolderCard({
         <ChevronIcon expanded={expanded} />
         <FolderIcon />
         
+        {/* Task 2: File drop indicator */}
+        {isFileDragOver && (
+          <span className="text-xs font-medium text-green-600 dark:text-green-400 animate-pulse">
+            Drop UPLAN .json here
+          </span>
+        )}
+        
         {/* TASK-222: Drop indicator */}
-        {isDragOver && (
+        {isDragOver && !isFileDragOver && (
           <span className="text-xs font-medium text-blue-600 dark:text-blue-400 animate-pulse">
             Drop here
           </span>
