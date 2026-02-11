@@ -150,6 +150,18 @@ export interface Translations {
     authResponse: string
     viewAuthResponse: string
     
+    // Denial map
+    denialMapTitle: string
+    denialAuthorization: string
+    conflictingVolume: string
+    okVolume: string
+    conflictingGeozone: string
+    conflictingGeozones: string
+    conflictingVolumesDetected: string
+    reviewDenialDetails: string
+    noSpatialData: string
+    viewDenialMap: string
+    
     // Trajectory viewer
     trajectoryViewer: string
     trajectory: string
@@ -387,6 +399,17 @@ export const translations: Record<Language, Translations> = {
       authResponse: 'Authorization Response',
       viewAuthResponse: 'View response',
       
+      denialMapTitle: 'Authorization Denial — Map View',
+      denialAuthorization: 'Authorization Denied',
+      conflictingVolume: 'Conflicting Volume',
+      okVolume: 'OK Volume',
+      conflictingGeozone: 'Conflicting Geozone',
+      conflictingGeozones: 'Conflicting Geozones',
+      conflictingVolumesDetected: '{n} conflicting volume(s) detected',
+      reviewDenialDetails: 'Review the denial details below',
+      noSpatialData: 'No spatial data available to display',
+      viewDenialMap: 'View denial on map',
+      
       trajectoryViewer: 'Trajectory Viewer',
       trajectory: 'Trajectory',
       points: 'points',
@@ -610,6 +633,17 @@ export const translations: Record<Language, Translations> = {
       
       authResponse: 'Respuesta de Autorización',
       viewAuthResponse: 'Ver respuesta',
+      
+      denialMapTitle: 'Denegación de Autorización — Vista de Mapa',
+      denialAuthorization: 'Autorización Denegada',
+      conflictingVolume: 'Volumen en Conflicto',
+      okVolume: 'Volumen OK',
+      conflictingGeozone: 'Geozona en Conflicto',
+      conflictingGeozones: 'Geozonas en Conflicto',
+      conflictingVolumesDetected: '{n} volumen(es) en conflicto detectado(s)',
+      reviewDenialDetails: 'Revise los detalles de la denegación abajo',
+      noSpatialData: 'No hay datos espaciales disponibles para mostrar',
+      viewDenialMap: 'Ver denegación en mapa',
       
       trajectoryViewer: 'Visor de Trayectoria',
       trajectory: 'Trayectoria',

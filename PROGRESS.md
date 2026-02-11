@@ -13,7 +13,7 @@
 | 7 | Email Verification Flow — Frontend Pages | ⬜ Not started | Depends on Task 6 |
 | 8 | Password Reset Flow | ⬜ Not started | Depends on Task 5, 6 |
 | 9 | FAS Authorization Email Notifications | ⬜ Not started | Depends on Task 5 |
-| 10 | Denial Visualization Map — DenialMapModal | ⬜ Not started | |
+| 10 | Denial Visualization Map — DenialMapModal | ✅ Completed | New DenialMapModal component with conflict highlighting |
 | 11 | Denial Visualization — Integration with UI | ⬜ Not started | Depends on Task 10 |
 | 12 | Scan Waypoint Editing — Editable Map Popup | ⬜ Not started | |
 | 13 | Scan Pattern — Editable Corner Coordinates | ⬜ Not started | |
@@ -74,3 +74,12 @@ _(Updated by subagent after each task completion)_
 - Created `app/api/auth/verify-email/route.ts` — POST route accepting `{ token }` or `{ email, code }`; validates token/code not expired, sets `emailVerified: true`, clears verification fields
 - Created `app/api/auth/resend-verification/route.ts` — POST route accepting `{ email }`; regenerates token + code, resends email; rate limited to 1 per minute
 - Added `verifyEmailSchema` and `resendVerificationSchema` to `lib/validators.ts`
+
+### Task 10 — Denial Visualization Map — DenialMapModal
+- Created `app/components/flight-plans/DenialMapModal.tsx` — Leaflet map modal that parses FAS denial authorizationMessage JSON
+- Renders all UPLAN operationVolumes: gray/dashed for OK, red/solid for conflicting indices
+- Renders conflicting geozones as red dashed polygons with popups (identifier, name, type)
+- Includes color-coded legend, summary banner with conflict count, and scrollable geozone detail list
+- Auto-fits map bounds to all displayed polygons
+- Exported from barrel file `app/components/flight-plans/index.ts`
+- Added denial map i18n keys (en + es) to `app/i18n/translations.ts`
