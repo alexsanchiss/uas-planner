@@ -69,6 +69,12 @@ export interface ScanPatternGeneratorV2Props {
     previewWaypoints: ScanWaypoint[];
     scanAngle: number;
   }) => void;
+  /** Callback to register drag handlers for external updates (e.g. map marker drag) */
+  onDragHandlers?: (handlers: {
+    updateTakeoff: (lat: number, lng: number) => void;
+    updateLanding: (lat: number, lng: number) => void;
+    updateVertex: (index: number, lat: number, lng: number) => void;
+  } | null) => void;
 }
 
 // ============================================================================
@@ -200,6 +206,7 @@ export default function ScanPatternGeneratorV2({
   serviceBounds,
   onMapClick,
   onOverlaysChange,
+  onDragHandlers,
 }: ScanPatternGeneratorV2Props) {
   // ---- State ----
   
@@ -413,6 +420,25 @@ export default function ScanPatternGeneratorV2({
   const handleVertexUpdate = useCallback((index: number, lat: number, lng: number) => {
     setPolygonVertices(prev => prev.map((v, i) => (i === index ? { lat, lng } : v)));
   }, []);
+
+  // ---- Expose drag handlers to parent for map marker drag events ----
+  const handleExternalTakeoffUpdate = useCallback((lat: number, lng: number) => {
+    setTakeoffPoint({ lat, lng });
+  }, []);
+
+  const handleExternalLandingUpdate = useCallback((lat: number, lng: number) => {
+    setLandingPoint({ lat, lng });
+  }, []);
+
+  useEffect(() => {
+    if (!onDragHandlers) return;
+    onDragHandlers({
+      updateTakeoff: handleExternalTakeoffUpdate,
+      updateLanding: handleExternalLandingUpdate,
+      updateVertex: handleVertexUpdate,
+    });
+    return () => { onDragHandlers(null); };
+  }, [onDragHandlers, handleExternalTakeoffUpdate, handleExternalLandingUpdate, handleVertexUpdate]);
 
   const handleClearPolygon = useCallback(() => {
     setPolygonVertices([]);
