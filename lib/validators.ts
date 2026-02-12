@@ -1,5 +1,5 @@
 /**
- * Zod Validation Schemas for UAS Planner API
+ * Zod Validation Schemas for UPPS API
  * 
  * This module provides type-safe validation schemas for all API inputs
  * including request bodies, query parameters, and path parameters.

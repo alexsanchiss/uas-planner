@@ -1,6 +1,6 @@
-# Contributing to UAS Planner
+# Contributing to UPPS
 
-Thank you for your interest in contributing to UAS Planner! This document provides guidelines and instructions for contributing to the project.
+Thank you for your interest in contributing to UPPS! This document provides guidelines and instructions for contributing to the project.
 
 ## Table of Contents
 
@@ -388,4 +388,4 @@ If you have questions about contributing:
 
 ---
 
-Thank you for contributing to UAS Planner! 🚀
+Thank you for contributing to UPPS! 🚀

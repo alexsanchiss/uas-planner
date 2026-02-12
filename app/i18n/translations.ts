@@ -1,7 +1,7 @@
 /**
  * Internationalization (i18n) System
  * 
- * Translations for the UAS Planner application.
+ * Translations for the UPPS application.
  * Default language: English (en)
  * Supported languages: English (en), Spanish (es)
  */

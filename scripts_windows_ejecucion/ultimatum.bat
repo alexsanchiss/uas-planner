@@ -34,7 +34,7 @@ taskkill /F /IM node.exe >nul 2>&1
 
 echo.
 echo ---------- Apagando WSL ----------
-wsl --shutdown
+wsl --terminate docker-desktop
 	
 echo.
 echo ---------- Cerrando Docker Desktop ----------

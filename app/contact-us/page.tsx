@@ -16,7 +16,7 @@ export default function ContactUsPage() {
         .
       </p>
       <p>
-        This is a DEMO version of UAS Planner. Your input is crucial to help us
+        This is a DEMO version of UPPS. Your input is crucial to help us
         improve the app. Thank you for testing and sharing your experience!
       </p>
     </main>

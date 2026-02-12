@@ -1,8 +1,8 @@
-# UAS Planner - API Documentation
+# UPPS - API Documentation
 
 ## Overview
 
-The UAS Planner uses a **unified API architecture** built on Next.js App Router, consolidating all operations into standardized endpoints with JWT authentication, Zod validation, and bulk operation support.
+The UPPS uses a **unified API architecture** built on Next.js App Router, consolidating all operations into standardized endpoints with JWT authentication, Zod validation, and bulk operation support.
 
 ## 🔐 Authentication
 
