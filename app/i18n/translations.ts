@@ -1,7 +1,7 @@
 /**
  * Internationalization (i18n) System
  * 
- * Translations for the UAS Planner application.
+ * Translations for the UPPS application.
  * Default language: English (en)
  * Supported languages: English (en), Spanish (es)
  */
@@ -87,6 +87,7 @@ export interface Translations {
     waitBeforeResend: string
     errorSendingVerification: string
     errorCreatingAccount: string
+    invalidEmailDomain: string
     demoDisclaimer: string
     acceptPolicyRequired: string
     acceptPrivacyPolicy: string
@@ -210,6 +211,8 @@ export interface Translations {
     viewDenialMap: string
     viewRawJson: string
     viewDenialDetails: string
+    fasReason: string
+    contactDifferentFAS: string
     
     // Trajectory viewer
     trajectoryViewer: string
@@ -498,6 +501,7 @@ export const translations: Record<Language, Translations> = {
       waitBeforeResend: 'Please wait before requesting a new code.',
       errorSendingVerification: 'Error sending verification email.',
       errorCreatingAccount: 'Error creating account',
+      invalidEmailDomain: 'The email domain does not exist or does not accept emails',
       demoDisclaimer: 'This is a demonstration version and may include bugs or not work as expected.',
       acceptPolicyRequired: 'You must accept the Privacy Policy and DEMO disclaimer to sign up.',
       acceptPrivacyPolicy: 'I accept the {link} and understand this is a DEMO version',
@@ -610,6 +614,8 @@ export const translations: Record<Language, Translations> = {
       viewDenialMap: 'View denial on map',
       viewRawJson: 'View raw JSON',
       viewDenialDetails: 'View conflicting volumes and geozones on an interactive map',
+      fasReason: 'FAS Reason',
+      contactDifferentFAS: 'This operation must be authorized by a different FAS',
       
       trajectoryViewer: 'Trajectory Viewer',
       trajectory: 'Trajectory',
@@ -882,6 +888,7 @@ export const translations: Record<Language, Translations> = {
       waitBeforeResend: 'Espere antes de solicitar un nuevo código.',
       errorSendingVerification: 'Error al enviar el correo de verificación.',
       errorCreatingAccount: 'Error al crear la cuenta',
+      invalidEmailDomain: 'El dominio del correo no existe o no acepta emails',
       demoDisclaimer: 'Esta es una versión de demostración y puede incluir errores o no funcionar como se espera.',
       acceptPolicyRequired: 'Debe aceptar la Política de Privacidad y el aviso de DEMO para registrarse.',
       acceptPrivacyPolicy: 'Acepto la {link} y entiendo que es una versión DEMO',
@@ -994,6 +1001,8 @@ export const translations: Record<Language, Translations> = {
       viewDenialMap: 'Ver denegación en mapa',
       viewRawJson: 'Ver JSON sin procesar',
       viewDenialDetails: 'Ver volúmenes en conflicto y geozonas en un mapa interactivo',
+      fasReason: 'Motivo del FAS',
+      contactDifferentFAS: 'Esta operación debe ser autorizada por un FAS diferente',
       
       trajectoryViewer: 'Visor de Trayectoria',
       trajectory: 'Trayectoria',

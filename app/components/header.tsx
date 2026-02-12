@@ -40,7 +40,7 @@ function ThemedLogo({ width, height, className }: { width: number; height: numbe
   return (
     <Image
       src={isLightTheme ? "/images/logo_black.png" : "/images/logo.jpg"}
-      alt="UAS PLANNER Logo"
+      alt="UPPS Logo"
       width={width}
       height={height}
       className={`object-contain ${className || ''}`}

@@ -68,7 +68,9 @@ export async function PUT(
       },
     });
 
-    // Send authorization result email notification (fire-and-forget)
+    // ALWAYS send authorization result email notification on every FAS update
+    // This ensures users are notified of all status changes, including
+    // scenarios where a previously approved plan may be denied later
     try {
       if (flightPlan.userId) {
         const user = await prisma.user.findUnique({

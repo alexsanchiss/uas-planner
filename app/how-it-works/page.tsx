@@ -104,10 +104,10 @@ export default function HowItWorksPage() {
           <span className="font-semibold text-[var(--color-primary)]">Read more in our published papers:</span>
           <ul className="list-disc ml-6 mt-2 text-base">
             <li>
-              <a href="/docs/A. Sanchis - Realistic Trajectory Generation in Simulated Environments for U-space Systems Assessment - IEEE.pdf" target="_blank" className="underline text-[var(--color-primary)] hover:text-[var(--color-primary-hover)]">Realistic Trajectory Generation in Simulated Environments for U-space Systems Assessment</a> (ICNS 2025, Brussels)
+              <a href="https://ieeexplore.ieee.org/document/10976773" target="_blank" className="underline text-[var(--color-primary)] hover:text-[var(--color-primary-hover)]">Realistic Trajectory Generation in Simulated Environments for U-space Systems Assessment</a> (ICNS 2025, Brussels)
             </li>
             <li>
-              <a href="/docs/S. Amarillo - Proposal of UAS Strategic Conflict Detection concept with a centralised service in multi-USSP environment using an octree data structure.pdf" target="_blank" className="underline text-[var(--color-primary)] hover:text-[var(--color-primary-hover)]">Proposal of UAS Strategic Conflict Detection concept with a centralised service in multi-USSP environment using an octree data structure</a> (ICNS 2025, Brussels)
+              <a href="https://ieeexplore.ieee.org/document/10976940" target="_blank" className="underline text-[var(--color-primary)] hover:text-[var(--color-primary-hover)]">Proposal of UAS Strategic Conflict Detection concept with a centralised service in multi-USSP environment using an octree data structure</a> (ICNS 2025, Brussels)
             </li>
           </ul>
         </div>

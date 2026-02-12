@@ -17,7 +17,7 @@ if %errorLevel% neq 0 (
 
 echo.
 echo ---------- Apagando WSL ----------
-wsl --shutdown
+wsl --terminate docker-desktop
 
 echo.
 echo ---------- Verificando estado de WSL ----------

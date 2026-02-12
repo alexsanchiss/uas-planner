@@ -148,7 +148,7 @@ export function FlightPlansUploader() {
     errorCount: pollingErrorCount,
     resetErrors: resetPollingErrors,
     importExternalUplan,
-  } = useFlightPlans({ pollingEnabled: true, pollingInterval: 5000 })
+  } = useFlightPlans({ pollingEnabled: true, pollingInterval: 1000 })
   
   const {
     folders,
@@ -596,7 +596,7 @@ export function FlightPlansUploader() {
       
       // Show different message for FAS unavailability vs other errors
       const errorMessage = error instanceof Error ? error.message : 'Error requesting authorization.'
-      toast.error(errorMessage, {
+      toast.error("Denied: Outside of the FAS service area", {
         onRetry: () => handleAuthorizePlan(planId),
       })
     } finally {

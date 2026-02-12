@@ -12,6 +12,7 @@ function LoginContent() {
   const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [isSignup, setIsSignup] = useState(false);
   const [acceptPolicy, setAcceptPolicy] = useState(false);
   const [error, setError] = useState("");
@@ -30,12 +31,41 @@ function LoginContent() {
         );
         return;
       }
+      
+      // Validate passwords match
+      if (password !== confirmPassword) {
+        setError(t.auth.passwordsDoNotMatch);
+        return;
+      }
+      
       try {
-        await axios.post("/api/auth/signup", { email, password });
+        const response = await axios.post("/api/auth/signup", { 
+          email, 
+          password,
+          confirmPassword 
+        });
         // After signup, redirect to verification page
         router.push(`/verify-email?email=${encodeURIComponent(email)}`);
-      } catch {
-        setError(t.auth.errorCreatingAccount);
+      } catch (err: any) {
+        // Handle validation errors from API
+        if (err.response?.data?.error) {
+          const errorMessage = err.response.data.error;
+          
+          // Check for specific error messages
+          if (errorMessage.includes('domain')) {
+            setError(t.auth.invalidEmailDomain);
+          } else if (errorMessage.includes('at least 8 characters')) {
+            setError(t.auth.passwordMinLength);
+          } else if (errorMessage.includes('do not match')) {
+            setError(t.auth.passwordsDoNotMatch);
+          } else if (errorMessage.includes('email')) {
+            setError(errorMessage);
+          } else {
+            setError(errorMessage);
+          }
+        } else {
+          setError(t.auth.errorCreatingAccount);
+        }
       }
     } else {
       // Login
@@ -79,6 +109,15 @@ function LoginContent() {
               onChange={(e) => setPassword(e.target.value)}
               required
             />
+            {isSignup && (
+              <Input
+                type="password"
+                placeholder={t.auth.confirmPassword}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+              />
+            )}
             {isSignup && (
               <>
                 <div className="bg-[var(--status-warning-bg)] border border-[var(--status-warning-border)] rounded p-2 text-[var(--status-warning-text)] text-xs mb-2">

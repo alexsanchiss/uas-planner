@@ -70,6 +70,7 @@ import { useGeoawarenessWebSocket, type GeozoneData } from '@/app/hooks/useGeoaw
 // Plan generator modes
 type GeneratorMode = 'manual' | 'scan';
 
+
 const waypointTypes = [
   { value: "takeoff", label: "Takeoff" },
   { value: "cruise", label: "Cruise" },
@@ -289,11 +290,21 @@ function generateQGCPlan(waypoints: Waypoint[]): any {
 }
 
 export default function PlanGenerator() {
+              const [customAreaModalOpen, setCustomAreaModalOpen] = useState(false);
+            const [customAreaId, setCustomAreaId] = useState("");
+            const [customAreaName, setCustomAreaName] = useState("");
+            const [latMin, setLatMin] = useState("");
+            const [latMax, setLatMax] = useState("");
+            const [lonMin, setLonMin] = useState("");
+            const [lonMax, setLonMax] = useState("");
+            const [customAreaError, setCustomAreaError] = useState("");
+            
   const [waypoints, setWaypoints] = useState<Waypoint[]>([]);
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
   const [planInfo, setPlanInfo] = useState<PlanInfo>({ date: "", time: "" });
   const [planName, setPlanName] = useState("");
   const [loading, setLoading] = useState(false);
+
   const toast = useToast();
   // Create a wrapper for PlanMap to show toast messages
   const showToast = useCallback((message: string) => {
@@ -838,9 +849,163 @@ export default function PlanGenerator() {
                 };
                 handleUspaceSelect(defaultUspace);
               }}
-              className="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-hover)] transition-colors text-sm font-medium"
+              className="m-2 px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-hover)] transition-colors text-sm font-medium"
             >
               Use Default Service Area
+            </button>
+            <button
+              onClick={() => setCustomAreaModalOpen(true)}
+              className="m-2 px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-hover)] transition-colors text-sm font-medium"
+            >
+              Define a Custom Area
+            </button>
+            {/* Custom Area Modal */}
+            {customAreaModalOpen && (
+              <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-40">
+                <div className="bg-[var(--surface-primary)] rounded-lg shadow-lg p-6 w-full max-w-xs border border-[var(--border-primary)]">
+                  <h2 className="text-xl font-bold mb-4 text-[var(--text-primary)]">Define Custom Area</h2>
+                  <form
+                    onSubmit={e => {
+                      e.preventDefault();
+                      // Validate values
+                      const latMinNum = parseFloat(latMin);
+                      const latMaxNum = parseFloat(latMax);
+                      const lonMinNum = parseFloat(lonMin);
+                      const lonMaxNum = parseFloat(lonMax);
+                      if (
+                        isNaN(latMinNum) || isNaN(latMaxNum) || isNaN(lonMinNum) || isNaN(lonMaxNum) ||
+                        latMinNum >= latMaxNum || lonMinNum >= lonMaxNum
+                      ) {
+                        setCustomAreaError('Please provide valid min/max values. Min must be less than Max.');
+                        return;
+                      }
+                      if (!customAreaId.trim() || !customAreaName.trim()) {
+                        setCustomAreaError('ID and Name are required.');
+                        return;
+                      }
+                      // Generate square boundaries
+                      const boundary = [
+                        { latitude: latMinNum, longitude: lonMinNum }, // SW
+                        { latitude: latMinNum, longitude: lonMaxNum }, // SE
+                        { latitude: latMaxNum, longitude: lonMaxNum }, // NE
+                        { latitude: latMaxNum, longitude: lonMinNum }, // NW
+                        { latitude: latMinNum, longitude: lonMinNum }, // Close
+                      ];
+                      const customUspace: USpace = {
+                        id: customAreaId.trim(),
+                        name: customAreaName.trim(),
+                        boundary,
+                      };
+                      handleUspaceSelect(customUspace);
+                      setCustomAreaModalOpen(false);
+                      setCustomAreaError('');
+                    }}
+                  >
+                    <div className="mb-3">
+                      <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Area ID</label>
+                      <input
+                        type="text"
+                        value={customAreaId}
+                        onChange={e => setCustomAreaId(e.target.value)}
+                        className="input w-full"
+                        required
+                      />
+                    </div>
+                    <div className="mb-3">
+                      <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Area Name</label>
+                      <input
+                        type="text"
+                        value={customAreaName}
+                        onChange={e => setCustomAreaName(e.target.value)}
+                        className="input w-full"
+                        required
+                      />
+                    </div>
+                    <div className="mb-3">
+                      <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Square Area Limits</label>
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="flex gap-2 mb-2">
+                          <input
+                            type="number"
+                            step="any"
+                            placeholder="Latitude Min"
+                            value={latMin}
+                            onChange={e => setLatMin(e.target.value)}
+                            className="input w-32 text-xs"
+                            required
+                          />
+                          <input
+                            type="number"
+                            step="any"
+                            placeholder="Latitude Max"
+                            value={latMax}
+                            onChange={e => setLatMax(e.target.value)}
+                            className="input w-32 text-xs"
+                            required
+                          />
+                        </div>
+                        <div className="flex gap-2 mb-2">
+                          <input
+                            type="number"
+                            step="any"
+                            placeholder="Longitude Min"
+                            value={lonMin}
+                            onChange={e => setLonMin(e.target.value)}
+                            className="input w-32 text-xs"
+                            required
+                          />
+                          <input
+                            type="number"
+                            step="any"
+                            placeholder="Longitude Max"
+                            value={lonMax}
+                            onChange={e => setLonMax(e.target.value)}
+                            className="input w-32 text-xs"
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    {customAreaError && <div className="text-[var(--status-error)] mb-2 text-xs">{customAreaError}</div>}
+                    <div className="flex justify-between items-center mt-4">
+                      <button
+                        type="button"
+                        className="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-hover)] text-sm font-medium"
+                        onClick={() => {
+                          setCustomAreaModalOpen(false);
+                          setCustomAreaError('');
+                        }}
+                        style={{ minWidth: '100px' }}
+                      >Cancel</button>
+                      <button
+                        type="submit"
+                        className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-md hover:bg-blue-800 text-sm font-medium"
+                        style={{ minWidth: '100px' }}
+                      >Create Area</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+            <button
+              onClick={() => {
+                // Create a U-space for VLCUspace (default area)
+                const globalUspace: USpace = {
+                  id: 'GLOBAL_U_SPACE',
+                  name: 'Global Coverage',
+                  boundary: [
+                    { latitude: -90.0000, longitude: -180.0000 },
+                    { latitude: -90.0000, longitude: 180.0000 },
+                    { latitude: 90.0000, longitude: 180.0000 },
+                    { latitude: 90.0000, longitude: -180.0000 },
+                    { latitude: -90.0000, longitude: -180.0000 },
+                  ],
+                };
+                handleUspaceSelect(globalUspace);
+              }}
+              className="m-2 px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-hover)] transition-colors text-sm font-medium"
+            >
+              Don't Use a Pre-Defined Area
             </button>
           </div>
         </div>
@@ -952,7 +1117,11 @@ export default function PlanGenerator() {
                   <div className="text-xs text-[var(--text-tertiary)] mb-2 font-medium">Generation Mode</div>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => setGeneratorMode('manual')}
+                      onClick={() => {
+                        setGeneratorMode('manual');
+                        setScanOverlays(null);
+                        handleSetScanMapClickHandler(null);
+                      }}
                       className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded text-sm font-medium transition-colors ${
                         generatorMode === 'manual'
                           ? 'bg-[var(--color-primary)] text-white'
@@ -1951,32 +2120,42 @@ export default function PlanGenerator() {
                                     Lat:
                                   </label>
                                   <input
-                                    type="number"
-                                    step="any"
-                                    value={Number(wp.lat).toFixed(7)}
-                                    onChange={(e) =>
-                                      handleWaypointChange(
-                                        idx,
-                                        "lat",
-                                        Number(e.target.value)
-                                      )
-                                    }
+                                    type="text"
+                                    defaultValue={Number(wp.lat).toFixed(7)}
+                                    onBlur={(e) => {
+                                      const val = parseFloat(e.target.value);
+                                      if (!isNaN(val)) {
+                                        handleWaypointChange(idx, "lat", val);
+                                      } else {
+                                        e.target.value = Number(wp.lat).toFixed(7);
+                                      }
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        e.currentTarget.blur();
+                                      }
+                                    }}
                                     className="input w-28 text-xs py-0.5"
                                   />
                                   <label className="text-xs text-[var(--text-tertiary)]">
                                     Lon:
                                   </label>
                                   <input
-                                    type="number"
-                                    step="any"
-                                    value={Number(wp.lng).toFixed(7)}
-                                    onChange={(e) =>
-                                      handleWaypointChange(
-                                        idx,
-                                        "lng",
-                                        Number(e.target.value)
-                                      )
-                                    }
+                                    type="text"
+                                    defaultValue={Number(wp.lng).toFixed(7)}
+                                    onBlur={(e) => {
+                                      const val = parseFloat(e.target.value);
+                                      if (!isNaN(val)) {
+                                        handleWaypointChange(idx, "lng", val);
+                                      } else {
+                                        e.target.value = Number(wp.lng).toFixed(7);
+                                      }
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        e.currentTarget.blur();
+                                      }
+                                    }}
                                     className="input w-28 text-xs py-0.5"
                                   />
                                 </div>

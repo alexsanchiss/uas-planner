@@ -1,8 +1,8 @@
-# PLAN.md — UAS Planner v2: External UPLANs, Email Service, Denial Visualization, Scan Editing & FAS Cancellation
+# PLAN.md — UPPS v2: External UPLANs, Email Service, Denial Visualization, Scan Editing & FAS Cancellation
 
 ## TL;DR
 
-Five major features to implement on the UAS Planner interface:
+Five major features to implement on the UPPS interface:
 
 1. **External UPLAN Import** — Drag-and-drop `.json` UPLAN files into folders. These plans have no trajectory or `.plan` file; they come pre-built with volumes and scheduling. Buttons for trajectory/waypoint viewing are disabled; geoawareness shows volumes on the map instead of a trajectory.
 2. **MailerSend Email Service** — Email verification after signup (link + 6-digit code), password reset flow, and automatic notifications on FAS approval/denial (with UPLAN JSON attached).
@@ -136,8 +136,8 @@ UPDATE `user` SET `emailVerified` = 1;
 
 ### Email Templates
 
-1. **Verification Email**: Subject: "Verify your UAS Planner account". Body: "Click the link below to verify your account: {link}. Or enter this code: {code}. Valid for 24 hours."
-2. **Password Reset**: Subject: "Reset your UAS Planner password". Body: "Click the link to reset: {link}. Valid for 1 hour. Ignore if you didn't request this."
+1. **Verification Email**: Subject: "Verify your UPPS account". Body: "Click the link below to verify your account: {link}. Or enter this code: {code}. Valid for 24 hours."
+2. **Password Reset**: Subject: "Reset your UPPS password". Body: "Click the link to reset: {link}. Valid for 1 hour. Ignore if you didn't request this."
 3. **Authorization Result**: Subject: "Your flight plan {name} has been {approved/denied}". Body: "{approval/denial message}. Check UPPS for more information." Attachment: `uplan.json`
 
 ### Auth Flow Changes

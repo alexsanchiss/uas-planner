@@ -1,4 +1,4 @@
-# Justfile for UAS Planner
+# Justfile for UPPS
 
 # Run all preflight checks (build + lint + test)
 preflight:
