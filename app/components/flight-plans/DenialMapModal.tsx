@@ -78,6 +78,22 @@ function parseDenialMessage(authorizationMessage?: string | null): ParsedDenial 
       ? JSON.parse(authorizationMessage)
       : authorizationMessage
 
+    // Handle FAS 400 WITHDRAWN format with service volume errors
+    // Format: { "status": "WITHDRAWN", "message": { "reason": "The operation volumes [0, 1, 2, ...] are outside of the service volume." } }
+    if (parsed.status === 'WITHDRAWN' && parsed.message?.reason) {
+      const reason = parsed.message.reason
+      // Extract volume indices from reason string (e.g., "[0, 1, 2, 3]")
+      const volumeMatch = reason.match(/\[(\d+(?:,\s*\d+)*)\]/)
+      if (volumeMatch) {
+        const indices = volumeMatch[1].split(',').map((s: string) => parseInt(s.trim(), 10))
+        const conflictingIndices = new Set<number>(indices)
+        const volumes = indices.map((idx: number) => ({ ordinal: idx, status: 'CONFLICTING' }))
+        return { volumes, conflictingIndices, conflictingGeozones: [] }
+      }
+      // If we can't parse indices but have a WITHDRAWN message, mark all as conflicting
+      return empty
+    }
+
     // Handle multiple FAS response formats for volumes:
     // Format A: { "volumes": [{ "ordinal": 0, "status": "CONFLICTING" }, ...] }
     // Format B: { "volumes": [0, 1, 2] }  (just conflicting indices)
@@ -176,6 +192,19 @@ function MapResizeHandler() {
 export function DenialMapModal({ open, onClose, uplan, authorizationMessage }: DenialMapModalProps) {
   const { t } = useI18n()
   const denial = useMemo(() => parseDenialMessage(authorizationMessage), [authorizationMessage])
+  
+  // Extract the raw denial message for display
+  const denialMessageData = useMemo(() => {
+    if (!authorizationMessage) return null
+    try {
+      const parsed = typeof authorizationMessage === 'string'
+        ? JSON.parse(authorizationMessage)
+        : authorizationMessage
+      return parsed
+    } catch {
+      return null
+    }
+  }, [authorizationMessage])
 
   const operationVolumes = useMemo(() => {
     if (!uplan?.operationVolumes || !Array.isArray(uplan.operationVolumes)) return []
@@ -261,7 +290,7 @@ export function DenialMapModal({ open, onClose, uplan, authorizationMessage }: D
           <svg className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
-          <div>
+          <div className="flex-1">
             <p className="text-sm font-semibold text-red-800 dark:text-red-300">
               {t.flightPlans.denialAuthorization}
             </p>
@@ -271,6 +300,22 @@ export function DenialMapModal({ open, onClose, uplan, authorizationMessage }: D
                 : t.flightPlans.reviewDenialDetails}
               {geozonePolygons.length > 0 && ` — ${geozonePolygons.length} ${geozonePolygons.length !== 1 ? t.flightPlans.conflictingGeozones.toLowerCase() : t.flightPlans.conflictingGeozone.toLowerCase()}`}
             </p>
+            {/* Show FAS reason if available */}
+            {denialMessageData?.status === 'WITHDRAWN' && denialMessageData?.message?.reason && (
+              <div className="mt-2 pt-2 border-t border-red-300 dark:border-red-700">
+                <p className="text-xs font-semibold text-red-800 dark:text-red-300 mb-1">
+                  {t.flightPlans.fasReason || 'FAS Reason'}:
+                </p>
+                <p className="text-xs text-red-700 dark:text-red-400">
+                  {denialMessageData.message.reason}
+                </p>
+                {denialMessageData.message.reason.includes('outside of the service volume') && (
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-1 font-medium">
+                    ⚠️ {t.flightPlans.contactDifferentFAS || 'This operation must be authorized by a different FAS'}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

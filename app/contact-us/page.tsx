@@ -8,15 +8,15 @@ export default function ContactUsPage() {
         We value your feedback! If you have any requirements, suggestions, bug
         reports, or just want to get in touch, please email us at{" "}
         <a
-          href="mailto:alex@upv.edu.es"
+          href="mailto:UPPS@sna-upv.com"
           className="text-blue-400 hover:underline hover:text-blue-300"
         >
-          info@uas-planner.com
+          UPPS@sna-upv.com
         </a>
         .
       </p>
       <p>
-        This is a DEMO version of UAS Planner. Your input is crucial to help us
+        This is a DEMO version of UPPS. Your input is crucial to help us
         improve the app. Thank you for testing and sharing your experience!
       </p>
     </main>

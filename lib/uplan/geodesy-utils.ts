@@ -1,5 +1,5 @@
 /**
- * Geodesy utilities for UAS Planner
+ * Geodesy utilities for UPPS
  * 
  * This module provides geodetic calculation functions using the Vincenty formulae
  * for high-accuracy distance and bearing calculations on the WGS84 ellipsoid.

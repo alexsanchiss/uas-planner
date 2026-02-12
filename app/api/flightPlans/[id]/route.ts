@@ -47,7 +47,7 @@ async function sendFasCancellation(externalResponseNumber: string): Promise<void
   const cancelUrl = `${baseUrl}/uplan_cancelation/${encodeURIComponent(externalResponseNumber)}`;
   
   try {
-    const response = await fetch(cancelUrl, { method: 'PUT' });
+    const response = await fetch(cancelUrl, { method: 'DELETE' });
     if (!response.ok) {
       console.warn(
         `[FAS Cancellation] Non-OK response for ${externalResponseNumber}: ${response.status} ${response.statusText}`

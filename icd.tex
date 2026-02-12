@@ -21,7 +21,7 @@
 % Used inside tables to avoid overflow when showing endpoints.
 \newcommand{\icdendpoint}[1]{\begingroup\small\path{#1}\endgroup}
 
-\title{ SPIRIT \\ \small{ICD - V\_{2.0.0}}}
+\title{ SPIRIT \\ \small{ICD - V\_{2.1.0}}}
 \author{U-Plan Preparation Service (UPPS) \\ Álex Sanchis}
 \date{\today}
 
@@ -29,7 +29,7 @@
 \maketitle
 
 \section*{Resumen}
-Este documento describe la(s) interfaz(ces) del sistema \textbf{UAS Planner} (parte de \textbf{U-Plan Preparation Service, UPPS}) dentro del contexto del proyecto \textbf{SPIRIT}. En particular, especifica:
+Este documento describe la(s) interfaz(ces) del sistema \textbf{UPPS} (parte de \textbf{U-Plan Preparation Service, UPPS}) dentro del contexto del proyecto \textbf{SPIRIT}. En particular, especifica:
 \begin{itemize}
     \item La interfaz entre el \textbf{cliente web} (operador UAS) y el \textbf{backend UPPS} (API HTTP de Next.js).
     \item La integración del backend con servicios externos: \textbf{FAS} (\textit{Flight Authorization Service}) y \textbf{Geoawareness Service}.
@@ -63,6 +63,86 @@ El objetivo de la interfaz es permitir que un usuario cargue planes de vuelo (t�
     \item \textbf{Timestamps dinámicos en U-Plan}: Los campos \texttt{creationTime} y \texttt{updateTime} se actualizan automáticamente al momento del envío a FAS.
     \item \textbf{Workflow optimizado}: Interfaz guiada de 5 pasos con indicadores de progreso, bloqueo de edición post-procesamiento y validaciones mejoradas.
     \item \textbf{Arquitectura modular mejorada}: Componentes reutilizables organizados por funcionalidad con hooks especializados.
+\end{itemize}
+
+\subsection*{Novedades en V2.1.0}
+\begin{itemize}
+    \item \textbf{Sistema de gestión de emails con MailerSend}:
+    \begin{itemize}
+        \item Verificación de email con código de 6 dígitos y link de activación (24h validez).
+        \item Reset de contraseña con token seguro (1h validez).
+        \item Notificaciones automáticas de resultado de autorización FAS con UPLAN adjunto.
+        \item Configuración mediante variables de entorno: \texttt{MAILERSEND\_API\_KEY}, \texttt{MAILERSEND\_SENDER\_EMAIL}.
+    \end{itemize}
+    \item \textbf{Importación de UPLANs externos}:
+    \begin{itemize}
+        \item Drag-and-drop de archivos .json con formato UPLAN directamente en carpetas.
+        \item Botón de upload visible con icono de subida (verde) en cabecera de carpetas.
+        \item Validación automática de estructura UPLAN (operationVolumes requeridos).
+        \item Sin regeneración de volúmenes: UPLANs externos se envían directamente al FAS.
+        \item Detección automática basada en ausencia de \texttt{csvResult}.
+    \end{itemize}
+    \item \textbf{Selector de U-Space para UPLANs externos}:
+    \begin{itemize}
+        \item Modal interactivo con mapa Leaflet mostrando todos los U-Spaces disponibles.
+        \item Click en mapa selecciona el U-Space más pequeño que contiene el punto.
+        \item Visualización de polígonos con colores: azul (disponible), naranja (seleccionado).
+        \item Tooltip con nombre del U-Space al pasar el ratón.
+        \item Asignación automática de \texttt{uspace\_identifier} en \texttt{geoawarenessData}.
+    \end{itemize}
+    \item \textbf{Visualización de denegaciones en mapa}:
+    \begin{itemize}
+        \item Modal específico para mostrar por qué un plan fue denegado.
+        \item Volúmenes conflictivos en rojo, volúmenes válidos en verde.
+        \item Geozonas conflictivas resaltadas en el mapa.
+        \item Parsing robusto de múltiples formatos de respuesta FAS:
+        \begin{itemize}
+            \item Formato A: objetos con \texttt{\{ordinal, status\}}.
+            \item Formato B: arrays de índices numéricos directos.
+            \item Formato C: sin campo volumes, todos los volúmenes marcados como conflictivos.
+        \end{itemize}
+        \item Botón "View Denial on Map" visible cuando \texttt{authorizationStatus="denegado"}.
+    \end{itemize}
+    \item \textbf{Edición de waypoints en SCAN patterns}:
+    \begin{itemize}
+        \item Popups editables en puntos de takeoff, landing y vértices del polígono.
+        \item Campos de input para latitud y longitud con actualización en tiempo real.
+        \item Estilos compatibles con tema claro/oscuro usando CSS variables.
+        \item Actualización bidireccional: drag-and-drop o edición manual de coordenadas.
+    \end{itemize}
+    \item \textbf{Mejoras en tema oscuro}:
+    \begin{itemize}
+        \item Popups de Leaflet con estilos globales para tema oscuro/claro.
+        \item ScanPatternGeneratorV2 completamente adaptado con CSS variables (40+ reemplazos).
+        \item Eliminación de clases hardcoded \texttt{bg-zinc-*}, \texttt{text-zinc-*}, \texttt{border-zinc-*}.
+        \item Uso consistente de \texttt{var(--bg-primary)}, \texttt{var(--text-primary)}, etc.
+    \end{itemize}
+    \item \textbf{Botón de descarga de U-Plan}:
+    \begin{itemize}
+        \item Botón "Download U-Plan" visible después de procesamiento si existe \texttt{uplan}.
+        \item Descarga directa del JSON con nombre \texttt{uplan\_<planname>.json}.
+        \item Ubicado junto a los botones de acción (Process, Geoawareness, Authorize).
+    \end{itemize}
+    \item \textbf{Manejo robusto de errores 500 del FAS}:
+    \begin{itemize}
+        \item Sistema de reintentos automático: hasta 5 intentos con backoff exponencial (1s, 2s, 4s, 8s, 16s).
+        \item Diferenciación de errores: 500 (reintento), 400/404 (marcar como denegado).
+        \item Si todos los reintentos fallan con 500: plan vuelve a estado \texttt{"sin autorización"}.
+        \item Respuesta HTTP 503 (Service Unavailable) al cliente para distinguir de errores reales.
+        \item Toast informativo: "FAS temporarily unavailable. Please try again later."
+    \end{itemize}
+    \item \textbf{Correcciones de formato para UPLANs externos}:
+    \begin{itemize}
+        \item \texttt{scheduledAt} convertido a ISO-8601 con timezone (añade 'Z' si falta).
+        \item Validación de \texttt{timeBegin} en operationVolumes antes de inserción en BD.
+        \item Prevención de errores de Prisma DateTime al importar UPLANs externos.
+    \end{itemize}
+    \item \textbf{Mejora en flujo de selección de U-Space}:
+    \begin{itemize}
+        \item Apertura inmediata del viewer de geoawareness tras selección (sin segundo click).
+        \item Llamada directa a API de geoawareness sin depender de actualización de estado React.
+        \item Reducción de timing issues en flujo de usuario.
+    \end{itemize}
 \end{itemize}
 
 \section{Alcance de la Interfaz}
@@ -305,11 +385,16 @@ El U-Plan se genera a partir del CSV y \texttt{scheduledAt} y contiene una lista
         \item \texttt{404}: recurso no encontrado.
         \item \texttt{405}: método no permitido.
         \item \texttt{500}: error interno (BD/red/errores no controlados).
+        \item \texttt{503} (v2.1): servicio temporalmente no disponible (FAS no responde después de 5 reintentos).
     \end{itemize}
     \item \textbf{Errores en integración FAS}:
     \begin{itemize}
-        \item Si el \texttt{POST} a FAS falla con respuesta HTTP, el sistema marca \texttt{authorizationStatus="denegado"} y devuelve \texttt{400} con \texttt{\{error:"denegado", message: ...\}}.
-        \item Si falla sin respuesta (timeout/red), marca \texttt{denegado} y devuelve \texttt{500} con mensaje.
+        \item \textbf{Error 500 (Internal Server Error)}: Sistema reintenta automáticamente hasta 5 veces con backoff exponencial (1s, 2s, 4s, 8s, 16s).
+        \item Si todos los reintentos fallan con 500: Plan permanece en estado \texttt{"sin autorización"} y la API devuelve \texttt{503 Service Unavailable}.
+        \item \textbf{Errores 400/404/otros}: Marcan el plan como \texttt{authorizationStatus="denegado"} inmediatamente sin reintentos.
+        \item Si el \texttt{POST} a FAS falla sin respuesta (timeout/red), marca \texttt{denegado} y devuelve \texttt{500} con mensaje.
+        \item Callback FAS actualiza estado final: \texttt{aprobado} si \texttt{state=ACCEPTED}, \texttt{denegado} en caso contrario.
+        \item Envío automático de email con resultado de autorización y UPLAN adjunto (v2.1).
     \end{itemize}
     \item \textbf{Geoawareness fallback}:
     \begin{itemize}
@@ -321,12 +406,36 @@ El U-Plan se genera a partir del CSV y \texttt{scheduledAt} y contiene una lista
         \item \texttt{traj-assigner.js} reencola automáticamente planes procesados cuyo CSV asociado es menor a 2 KB (criterio implementado en BD).
         \item \texttt{machine-cleaner.js} borra todas las máquinas y reencola planes en \texttt{procesando} a \texttt{en cola}.
     \end{itemize}
+    \item \textbf{Validación de emails (v2.1)}:
+    \begin{itemize}
+        \item Código de verificación: 6 dígitos, válido por 24 horas.
+        \item Token de reset: válido por 1 hora desde generación.
+        \item Errores de formato detectados con Zod schemas antes de persistencia.
+    \end{itemize}
 \end{itemize}
 
 \section{Versionado y Control de Cambios}
 \begin{itemize}
-    \item \textbf{Versión del ICD}: \texttt{V\_2.0.0}.
-    \item \textbf{Versión de la aplicación}: \texttt{v2.0.0 SPIRIT} (versión de producción con mejoras significativas de UX y arquitectura).
+    \item \textbf{Versión del ICD}: \texttt{V\_2.1.0}.
+    \item \textbf{Versión de la aplicación}: \texttt{v2.1.0 SPIRIT} (versión de producción con gestión de emails, importación de UPLANs externos y mejoras de robustez).
+    \item \textbf{Cambios en v2.1.0 SPIRIT}:
+    \begin{itemize}
+        \item \textbf{Sistema de emails completo}: Integración con MailerSend para verificación de email, reset de contraseña y notificaciones de autorización FAS.
+        \item \textbf{Importación de UPLANs externos}: Soporte completo para drag-and-drop y upload de archivos .json con UPLANs pregenerados.
+        \item \textbf{Selector de U-Space interactivo}: Modal con mapa para asignar U-Space a UPLANs externos antes de verificación de geoawareness.
+        \item \textbf{Visualización de denegaciones}: Modal de mapa especializado para mostrar volúmenes conflictivos y razones de denegación.
+        \item \textbf{Edición de waypoints SCAN}: Popups editables en mapas con campos para coordenadas (lat/lng).
+        \item \textbf{Mejoras de tema UI}: Tema oscuro completo en popups Leaflet y componente ScanPatternGenerator.
+        \item \textbf{Descarga de U-Plan}: Botón para descargar JSON del U-Plan procesado.
+        \item \textbf{Reintentos FAS 500}: Lógica de reintentos con backoff exponencial para errores internos del FAS.
+        \item \textbf{Correcciones de formato}: Conversión automática de scheduledAt a ISO-8601 con timezone para UPLANs externos.
+        \item \textbf{Nuevos endpoints}:
+        \begin{itemize}
+            \item \texttt{POST /api/auth/verify-email} -- Verificación de email con código
+            \item \texttt{POST /api/auth/request-password-reset} -- Solicitud de reset de contraseña
+            \item \texttt{POST /api/auth/reset-password} -- Reset de contraseña con token
+        \end{itemize}
+    \end{itemize}
     \item \textbf{Cambios en v2.0.0 SPIRIT}:
     \begin{itemize}
         \item \textbf{UI/UX Mejorado}: Sistema de temas dinámico (claro/oscuro) con CSS variables y persistencia.
@@ -640,32 +749,43 @@ Si la conexión WebSocket falla después de 5 intentos de reconexión, el sistem
 \subsection*{A. Variables de entorno (según \texttt{.env.example} y código)}
 \begin{itemize}
     \item \texttt{DATABASE\_URL}: conexión MySQL (ejemplo: \texttt{mysql://USER@HOST:3306/upps}).
-    \item \texttt{FAS\_IP}: host:puerto del servicio FAS.
-    \item \texttt{FAS\_ENDPOINT} (opcional): path del endpoint en FAS (por defecto \texttt{uplan}).
+    \item \texttt{FAS\_API\_URL}: URL completa del servicio FAS (incluye protocolo, host, puerto y path).
     \item \texttt{GEOAWARENESS\_SERVICE\_IP}: host:puerto del servicio geoawareness (usado para conexiones WebSocket).
     \item \texttt{NEXT\_PUBLIC\_GEOAWARENESS\_SERVICE\_IP}: misma IP pero accesible desde el cliente web para conexiones WebSocket directas.
+    \item \texttt{MAILERSEND\_API\_KEY}: API key de MailerSend para envío de emails (verificación, reset, notificaciones).
+    \item \texttt{MAILERSEND\_SENDER\_EMAIL} (opcional): Email del remitente (por defecto: \texttt{UPPS@sna-upv.com}).
+    \item \texttt{MAILERSEND\_SENDER\_NAME} (opcional): Nombre del remitente (por defecto: \texttt{UPPS}).
+    \item \texttt{NEXT\_PUBLIC\_APP\_URL}: URL base de la aplicación para links en emails (por defecto: \texttt{http://localhost:3001}).
     \item \texttt{JWT\_SECRET} (opcional, recomendado): secreto para JWT (si no existe, el sistema usa un valor por defecto en código).
+    \item \texttt{NEXT\_PUBLIC\_GENERATE\_RANDOM\_UPLAN\_DATA} (opcional): Si es 'true', genera datos aleatorios para campos faltantes en U-Plan (solo desarrollo).
 \end{itemize}
 
 \subsection*{B. Endpoints HTTP implementados (resumen)}
 \begin{itemize}
     \item \texttt{GET }\icdendpoint{/api/flightPlans?userId=<id>}
-    \item \texttt{POST }\icdendpoint{/api/flightPlans} (individual o bulk \texttt{items})
+    \item \texttt{POST }\icdendpoint{/api/flightPlans} (individual o bulk \texttt{items}; soporta importación UPLAN externo con \texttt{type="external\_uplan"})
     \item \texttt{PUT }\icdendpoint{/api/flightPlans} (\texttt{\{id,data\}} o bulk \texttt{\{ids,data\}} / \texttt{\{items\}})
-    \item \texttt{DELETE }\icdendpoint{/api/flightPlans} (\texttt{\{id\}} o bulk \texttt{\{ids\}}; elimina también CSV asociado)
+    \item \texttt{DELETE }\icdendpoint{/api/flightPlans} (\texttt{\{id\}} o bulk \texttt{\{ids\}}; elimina también CSV asociado; envía cancelación a FAS si aprobado)
     \item \texttt{POST }\icdendpoint{/api/flightPlans/regenerate-volumes} (v2.0: regeneración automática de volúmenes)
     \item \texttt{POST }\icdendpoint{/api/flightPlans/<id>/reset} (v2.0: reset completo de plan a estado inicial)
+    \item \texttt{POST }\icdendpoint{/api/flightPlans/<id>/generate-volumes} (generación bajo demanda de volúmenes desde CSV)
     \item \texttt{GET }\icdendpoint{/api/csvResult?id=<id>}
     \item \texttt{POST }\icdendpoint{/api/csvResult} (bulk \texttt{\{ids\}})
     \item \texttt{DELETE }\icdendpoint{/api/csvResult} (\texttt{\{id\}} o bulk \texttt{\{ids\}})
     \item \texttt{POST }\icdendpoint{/api/flightPlans/<id>/geoawareness} (verifica plan contra geozonas)
-    \item \texttt{POST }\icdendpoint{/api/flightPlans/<id>/uplan} (genera y envía U-Plan a FAS)
-    \item \texttt{PUT }\icdendpoint{/api/fas/<externalResponseNumber>} (callback de FAS)
+    \item \texttt{POST }\icdendpoint{/api/flightPlans/<id>/uplan} (genera y envía U-Plan a FAS; detección automática de UPLAN externo; reintentos en error 500)
+    \item \texttt{PUT }\icdendpoint{/api/fas/<externalResponseNumber>} (callback de FAS; envía email de notificación con UPLAN adjunto)
+    \item \texttt{DELETE }\icdendpoint{/api/uplan_cancelation/<externalResponseNumber>} (cancelación de UPLAN aprobado en FAS)
     \item \texttt{GET/POST }\icdendpoint{/api/folders?userId=<id>}
     \item \texttt{GET/PUT/DELETE }\icdendpoint{/api/folders/<id>}
     \item \texttt{POST }\icdendpoint{/api/machines} y \texttt{GET }\icdendpoint{/api/machines?name=<name>}
     \item \texttt{PUT }\icdendpoint{/api/machines/<id>}
-    \item \texttt{POST }\icdendpoint{/api/auth/signup}, \texttt{POST }\icdendpoint{/api/auth/login}, \texttt{GET }\icdendpoint{/api/user}
+    \item \texttt{POST }\icdendpoint{/api/auth/signup} (registro con envío de email de verificación)
+    \item \texttt{POST }\icdendpoint{/api/auth/login}
+    \item \texttt{GET }\icdendpoint{/api/user}
+    \item \texttt{POST }\icdendpoint{/api/auth/verify-email} (v2.1: verificación de email con código de 6 dígitos o token)
+    \item \texttt{POST }\icdendpoint{/api/auth/request-password-reset} (v2.1: solicitud de reset con envío de email)
+    \item \texttt{POST }\icdendpoint{/api/auth/reset-password} (v2.1: reset de contraseña con token)
     \item \texttt{GET }\icdendpoint{/api/geoawareness/uspaces} (proxy para lista de U-spaces)
     \item \texttt{GET }\icdendpoint{/api/deprecated/geoawareness-geozones} (fallback HTTP, deprecated)
 \end{itemize}

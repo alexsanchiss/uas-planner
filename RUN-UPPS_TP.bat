@@ -30,7 +30,7 @@ node "%NODE_MACHINE_SCRIPT%" >> "%LOG_FILE%" 2>&1
 taskkill /FI "WINDOWTITLE eq TRAJ_ASSIGNER_PROC*" /F /T >nul 2>&1
 
 :: 4. Reset Docker/WSL
-wsl --shutdown >> "%LOG_FILE%" 2>&1
+wsl --terminate docker-desktop >> "%LOG_FILE%" 2>&1
 taskkill /F /IM "Docker Desktop.exe" /FI "STATUS eq RUNNING" >nul 2>&1
 timeout /t 5 /nobreak >nul
 

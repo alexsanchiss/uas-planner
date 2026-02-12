@@ -28,7 +28,7 @@ export default function MainPage() {
   const handleLaunchApp = (appName: string) => {
     // Implement app launch logic here
     console.log(`Launching ${appName}`);
-    // For example, navigate to the trajectory-generator page when launching UAS Planner
+    // For example, navigate to the trajectory-generator page when launching UPPS
     if (appName === "4D Trajectory Generator") {
       router.push("/trajectory-generator");
     }

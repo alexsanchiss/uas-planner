@@ -271,6 +271,9 @@ export default function ScanPatternGeneratorV2({
     serviceBoundsRef.current = serviceBounds;
   }, [serviceBounds]);
 
+  // Track last click for double-click detection on polygon closing
+  const lastClickRef = useRef<{ lat: number; lng: number; timestamp: number } | null>(null);
+
   // ---- TASK-216: Single stable map click handler using refs ----
   // This handler is created once and uses refs to access current state,
   // avoiding stale closure issues that occur with callback props
@@ -305,12 +308,27 @@ export default function ScanPatternGeneratorV2({
           Math.pow((lng - firstVertex.lng) * 111320 * Math.cos(lat * Math.PI / 180), 2)
         );
         
-        // If within 30 meters of first vertex, close the polygon
-        if (distance < 30) {
+        // Check for double-click on first vertex (within 400ms and close proximity)
+        const now = Date.now();
+        const lastClick = lastClickRef.current;
+        const isDoubleClick = lastClick && 
+          (now - lastClick.timestamp) < 400 &&
+          Math.abs(lat - lastClick.lat) < 0.0001 && // ~11 meters
+          Math.abs(lng - lastClick.lng) < 0.0001;
+        
+        // Close polygon if:
+        // 1. Very close to first vertex (< 10m) - single click is enough
+        // 2. Within 100 meters and double-clicking
+        // 3. Within 100 meters of first vertex (generous threshold)
+        if (distance < 10 || (isDoubleClick && distance < 150) || distance < 100) {
           setPolygonClosed(true);
           setCurrentStep(3);
+          lastClickRef.current = null; // Reset double-click tracking
           return;
         }
+        
+        // Track this click for double-click detection
+        lastClickRef.current = { lat, lng, timestamp: now };
       }
       
       setPolygonVertices(prev => [...prev, newVertex]);

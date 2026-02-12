@@ -135,6 +135,14 @@ function EditablePopupContent({ wp, idx, onWaypointChange }: {
   onWaypointChange: (idx: number, field: WaypointField, value: number | boolean) => void;
 }) {
   const { t } = useI18n();
+  const [localLat, setLocalLat] = React.useState(wp.lat.toString());
+  const [localLng, setLocalLng] = React.useState(wp.lng.toString());
+  
+  React.useEffect(() => {
+    setLocalLat(wp.lat.toFixed(7));
+    setLocalLng(wp.lng.toFixed(7));
+  }, [wp.lat, wp.lng]);
+  
   const inputStyle: React.CSSProperties = {
     width: '100%', fontSize: '12px', padding: '2px 4px',
     border: '1px solid var(--border-primary, #ccc)', borderRadius: '3px', boxSizing: 'border-box',
@@ -153,14 +161,18 @@ function EditablePopupContent({ wp, idx, onWaypointChange }: {
       </div>
       <div style={rowStyle}>
         <label style={labelStyle}>{t.planGenerator.latitude}</label>
-        <input type="number" step="any" value={wp.lat}
-          onChange={(e) => { const v = Number(e.target.value); if (!isNaN(v)) onWaypointChange(idx, 'lat', v); }}
+        <input type="text" value={localLat}
+          onChange={(e) => setLocalLat(e.target.value)}
+          onBlur={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v)) { onWaypointChange(idx, 'lat', v); } else { setLocalLat(wp.lat.toFixed(7)); } }}
+          onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
           style={inputStyle} />
       </div>
       <div style={rowStyle}>
         <label style={labelStyle}>{t.planGenerator.longitude}</label>
-        <input type="number" step="any" value={wp.lng}
-          onChange={(e) => { const v = Number(e.target.value); if (!isNaN(v)) onWaypointChange(idx, 'lng', v); }}
+        <input type="text" value={localLng}
+          onChange={(e) => setLocalLng(e.target.value)}
+          onBlur={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v)) { onWaypointChange(idx, 'lng', v); } else { setLocalLng(wp.lng.toFixed(7)); } }}
+          onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
           style={inputStyle} />
       </div>
       <div style={rowStyle}>

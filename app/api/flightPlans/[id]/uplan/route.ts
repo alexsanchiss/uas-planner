@@ -278,13 +278,18 @@ export async function POST(
         // Handle axios errors with response data (400, 404, etc.)
         if (axios.isAxiosError(err) && err.response?.data) {
           const uplanString = JSON.stringify(uplan);
+          
+          // Serialize the error response data to JSON string for Prisma
+          const authMessageString = typeof err.response.data === 'string'
+            ? err.response.data
+            : JSON.stringify(err.response.data);
 
           await prisma.flightPlan.update({
             where: { id },
             data: {
               uplan: uplanString,
               authorizationStatus: 'denegado',
-              authorizationMessage: err.response.data,
+              authorizationMessage: authMessageString,
               externalResponseNumber: `error: ${err.message}`,
             },
           });

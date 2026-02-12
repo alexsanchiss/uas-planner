@@ -14,7 +14,7 @@ if %errorLevel% neq 0 (
 
 echo.
 echo [1/3] 🔻 Apagando WSL...
-wsl --shutdown
+wsl --terminate docker-desktop
 echo.
 echo Unregister docker-desktop
 wsl --unregister docker-desktop

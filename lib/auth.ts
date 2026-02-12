@@ -1,5 +1,5 @@
 /**
- * Authentication Utilities for UAS Planner
+ * Authentication Utilities for UPPS
  * 
  * This module provides JWT-based authentication utilities including:
  * - Password hashing with bcrypt
