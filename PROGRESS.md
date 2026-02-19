@@ -13,5 +13,5 @@
 | 9 | F9 | User Profile Fields (Name, Surname, Phone) | Completed |
 | 10 | F10 | Email Notification on Approved Plan Deletion | Completed |
 | 11 | F11 | Cesium 3D U-Plan Viewer | Not Started |
-| 12 | F12 | Improved FAS Denial Visualization | Not Started |
+| 12 | F12 | Improved FAS Denial Visualization | Completed |
 | 13 | F13 | UAS Class/Weight/Dimension Regulatory Constraints | Not Started |
