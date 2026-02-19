@@ -191,18 +191,156 @@ ALTER TABLE user ADD COLUMN phone VARCHAR(50) DEFAULT NULL;
 
 ---
 
-## Recommended Implementation Order
+## Recommended Implementation Order (Sprint 1 — Completed)
 
-1. Feature 1 (trivial, high impact)
-2. Feature 2 (auth fix)
-3. Feature 7 (theme, affects all UI)
-4. Feature 8 (error visibility)
-5. Feature 9 (schema change, foundational)
-6. Feature 4 (UX)
-7. Feature 5 (UX)
-8. Feature 3 (map zoom fix)
-9. Feature 6 (volume generation)
-10. Feature 10 (email notification)
-11. Feature 12 (denial visualization)
-12. Feature 13 (regulatory validation)
-13. Feature 11 (Cesium 3D — largest)
+1–13: All completed.
+
+---
+
+# Sprint 2 — New Features
+
+## Feature 14: Move Profile Editing to /profile Page
+
+**Problem:** Profile editing (firstName, lastName, phone) is on /settings but should be on /profile. The /profile page is currently read-only.
+
+**Solution:**
+1. Move the profile editing form (firstName, lastName, phone + Save button) from `/settings` to `/profile`.
+2. Remove the Account section from settings (keep theme, language, notifications, quick links).
+3. The profile page uses `GET /api/user/profile` on load and `PATCH /api/user/profile` to save. Persist to database.
+
+**Files to modify:**
+- `app/profile/page.tsx` — Add editable inputs + save button
+- `app/settings/page.tsx` — Remove Account/profile editing section
+
+---
+
+## Feature 15: AGL Altitude Correction for Trajectory Processing
+
+**Problem:** Generated trajectories assume AMSL altitude, but the `plannedHomePosition[2]` (currently hardcoded to 15m) represents ground elevation offset. All waypoint altitudes in the csvResult need to have this offset subtracted so trajectories are in AGL (Above Ground Level), starting/ending at 0m AGL. This must happen exactly once during CSV result generation.
+
+**Design:**
+- Extract the hardcoded `15` from `PlanGenerator.tsx` (line 284) into env var `PLANNED_HOME_ALTITUDE` (default `15`).
+- When CSV result data is used to build a U-plan (in `tray_to_uplan.ts`), read `plannedHomePosition[2]` from the flight plan's `fileContent` JSON and subtract it from all waypoint `Alt` values in the CSV data.
+- This correction happens once during trajectory-to-uplan conversion — the corrected CSV is what feeds volume generation.
+- For 2D/3D visualization: display altitudes as AGL. In the 3D Cesium viewer, set `heightReference` to `RELATIVE_TO_GROUND` so volumes render above terrain at AGL altitudes.
+- For future-proofing: the system reads `plannedHomePosition[2]` dynamically from the flight plan, not a hardcoded value. The env var `PLANNED_HOME_ALTITUDE` is used only for `.plan` file generation.
+
+**Files to modify:**
+- `app/components/PlanGenerator.tsx` — Use env var for `plannedHomePosition` altitude
+- `lib/uplan/tray_to_uplan.ts` — Subtract `plannedHomePosition[2]` from all CSV Alt values
+- `app/components/flight-plans/Cesium3DModal.tsx` — Use `RELATIVE_TO_GROUND` height reference
+- `.env.example` — Add `PLANNED_HOME_ALTITUDE=15`
+
+---
+
+## Feature 16: 4D Time Slider for 3D U-Plan Viewer
+
+**Problem:** The 3D U-plan viewer shows all volumes statically. Need a time slider (like the 2D `UplanViewModal` already has) to show which volumes are active at each moment.
+
+**Solution:**
+- Add a time slider bar to `Cesium3DModal` with play/pause controls.
+- Parse `timeBegin`/`timeEnd` from each operation volume.
+- At each time step, highlight the active volume(s) brightly and dim inactive ones.
+- Animate time progression when playing.
+
+**Files to modify:**
+- `app/components/flight-plans/Cesium3DModal.tsx` — Add time slider UI + volume highlight logic
+
+---
+
+## Feature 17: 3D Denial Map with Geozone Volumes
+
+**Problem:** The denial visualization is 2D-only. A 3D view with geozone altitude volumes (from geoawareness service) would help users understand airspace conflicts.
+
+**Solution:**
+1. Create `Denial3DModal` component or extend `DenialMapModal` to support a 3D mode.
+2. Add two buttons in the denial view: "View 2D Map" and "View 3D Map".
+3. In 3D mode: render operational volumes as extruded polygons + geozone volumes as red semi-transparent 3D prisms using their altitude data (`verticalReference.upper/lower` from geoawareness).
+4. Show conflicting volumes in red, OK volumes in gray, geozones in semi-transparent red.
+
+**Files to create:**
+- `app/components/flight-plans/Denial3DModal.tsx`
+
+**Files to modify:**
+- `app/components/FlightPlansUploader.tsx` — Add 3D denial view button
+- `app/components/flight-plans/DenialMapModal.tsx` — May need to expose data for 3D modal
+
+---
+
+## Feature 18: FAS Approval Modal with 2D/3D Map and Parsed Reason
+
+**Problem:** When a plan is approved by FAS, clicking the status button shows raw JSON. Need a proper modal with:
+- 2D and 3D map views of the approved volumes
+- Parsed FAS response message (both for approved and denied)
+- Better formatting: "Conflicting volumes: X, Y" / "No conflicting volumes" / "Conflicting geozones: X, Y" / "No conflicting geozones"
+
+**FAS response format for denied plans:**
+```json
+{"volumes":[0,1,2,3,4,5,6],"geozones_information":{"number_conflicting_geozones":0,"conflicting_geozones":[]}}
+```
+
+**Solution:**
+1. Replace the raw JSON modal for approved plans with a proper `AuthorizationResultModal` that shows:
+   - 2D map (reuse UplanViewModal principles) and 3D map (reuse Cesium3DModal) with tabs/buttons
+   - Parsed FAS reason section: "Conflicting volumes: none" / "Conflicting geozones: none" for approved, or listing them for denied
+2. Use the same modal for denied plans too (unifying the approval/denial display).
+3. Parse the FAS message properly and display a human-readable summary.
+
+**Files to create:**
+- `app/components/flight-plans/AuthorizationResultModal.tsx`
+
+**Files to modify:**
+- `app/components/FlightPlansUploader.tsx` — Use new modal for both approved and denied
+
+---
+
+## Feature 19: Contact Us Page with Ticket System
+
+**Problem:** Contact page is a static email link. Need a proper ticket submission form.
+
+**Solution:**
+1. Add a contact form to `/contact-us` with fields: Subject, Category (Bug Report, Feature Request, Support, Other), Description, optional attachment reference.
+2. On submit, create a ticket (generate ticket number, e.g., `UPPS-YYYYMMDD-XXXX`).
+3. Send email to the user: "Your ticket #UPPS-... has been created. We'll review it and contact you soon."
+4. Send email to `upps@sna-upv.com`: full ticket details (subject, category, description, user email) so support can reply in the same thread.
+5. Both emails use MailerSend via existing `lib/email.ts` patterns.
+
+**Files to create:**
+- `app/api/contact/route.ts` — Ticket creation endpoint
+
+**Files to modify:**
+- `app/contact-us/page.tsx` — Add form UI
+- `lib/email.ts` — Add `sendContactTicketEmail` and `sendContactNotificationEmail` functions
+
+---
+
+## Feature 20: 3D Trajectory Viewer with Drone Animation
+
+**Problem:** Current `TrajectoryMapViewer` only shows 2D points on a Leaflet map. Need a 3D viewer where a drone model follows the trajectory in time.
+
+**Solution:**
+1. Replace TrajectoryMapViewer with a 3D Cesium-based viewer.
+2. Load a 3D drone model (glTF/GLB — can use a simple quad-rotor model file or a Cesium primitive shape).
+3. Show the full trajectory as a semi-transparent 3D polyline.
+4. Time slider + play/pause: the drone model moves along the trajectory path at each time step.
+5. Camera follows the drone or allows free orbit.
+6. Waypoint markers at key points (takeoff, cruise, landing).
+
+**Files to create:**
+- `app/components/flight-plans/Trajectory3DViewer.tsx`
+
+**Files to modify:**
+- `app/components/FlightPlansUploader.tsx` — Replace TrajectoryMapViewer with Trajectory3DViewer
+- `public/models/` — Add a drone 3D model (glTF)
+
+---
+
+## Sprint 2 Recommended Implementation Order
+
+1. Feature 14 (trivial, quick UI move)
+2. Feature 15 (foundational altitude fix, affects all visualizers)
+3. Feature 16 (extends existing Cesium3DModal)
+4. Feature 18 (FAS modal unification, needs Cesium)
+5. Feature 17 (3D denial — builds on Cesium patterns)
+6. Feature 19 (contact form, standalone)
+7. Feature 20 (3D trajectory — largest, most isolated)

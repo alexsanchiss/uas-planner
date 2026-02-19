@@ -1,68 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { useTheme } from "../hooks/useTheme";
 import { useI18n, Language } from "../i18n";
-import { useAuth } from "../hooks/useAuth";
-import { useToast } from "../hooks/useToast";
 import { ProtectedRoute } from "../components/auth/protected-route";
-import { Input } from "../components/ui/input";
-import { Button } from "../components/ui/button";
-import { Settings, Sun, Moon, Mail, HelpCircle, Shield, Bell, Globe, User } from "lucide-react";
+import { Settings, Sun, Moon, Mail, HelpCircle, Shield, Bell, Globe } from "lucide-react";
 import Link from "next/link";
 
 export default function SettingsPage() {
   const { theme, setTheme, isDark } = useTheme();
   const { language, setLanguage } = useI18n();
-  const { user } = useAuth();
-  const toast = useToast();
-
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [profileLoaded, setProfileLoaded] = useState(false);
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    const token = localStorage.getItem("authToken");
-    if (!token) return;
-    fetch("/api/user/profile", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => {
-        if (data) {
-          setFirstName(data.firstName || "");
-          setLastName(data.lastName || "");
-          setPhone(data.phone || "");
-          setProfileLoaded(true);
-        }
-      })
-      .catch(() => {});
-  }, []);
-
-  const handleSaveProfile = async () => {
-    const token = localStorage.getItem("authToken");
-    if (!token) return;
-    setSaving(true);
-    try {
-      const res = await fetch("/api/user/profile", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ firstName, lastName, phone }),
-      });
-      if (!res.ok) throw new Error("Failed to update profile");
-      toast.success("Profile updated successfully");
-      window.dispatchEvent(new Event("auth:changed"));
-    } catch {
-      toast.error("Failed to update profile");
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const themeOptions = [
     { value: "dark" as const, label: "Dark", icon: Moon, description: "Dark theme for low-light environments" },
@@ -85,52 +31,6 @@ export default function SettingsPage() {
               Settings
             </h1>
             <p className="text-[var(--text-muted)] mt-1">Customize your experience</p>
-          </div>
-
-          {/* Account Section */}
-          <div className="bg-[var(--surface-primary)] border border-[var(--border-primary)] rounded-xl p-6 shadow-lg mb-6">
-            <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4 flex items-center gap-2">
-              <User className="w-5 h-5" />
-              Account
-            </h2>
-            <p className="text-sm text-[var(--text-muted)] mb-4">
-              Manage your profile information
-            </p>
-
-            <div className="grid gap-4">
-              <div>
-                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">First Name</label>
-                <Input
-                  type="text"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  placeholder="Enter your first name"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Last Name</label>
-                <Input
-                  type="text"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  placeholder="Enter your last name"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Phone</label>
-                <Input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="Enter your phone number"
-                />
-              </div>
-              <div>
-                <Button onClick={handleSaveProfile} disabled={saving || !profileLoaded}>
-                  {saving ? "Saving..." : "Save Profile"}
-                </Button>
-              </div>
-            </div>
           </div>
 
           {/* Theme Section */}

@@ -136,3 +136,122 @@ ALTER TABLE user ADD COLUMN phone VARCHAR(50) DEFAULT NULL;
 3. `app/components/flight-plans/UplanFormModal.tsx`: Same constraints on UAS fields.
 4. C1: Also constrain max speed to 19 m/s.
 5. Run `just preflight`.
+
+---
+
+# Sprint 2 Tasks
+
+---
+
+## Task 14: Move Profile Editing to /profile Page
+**Feature:** 14 | **Priority:** High | **Scope:** Small
+
+1. Read `app/settings/page.tsx` — find the Account/Profile section with firstName, lastName, phone inputs and Save button.
+2. Read `app/profile/page.tsx` — currently read-only display.
+3. Move the profile editing form (inputs + save logic + `PATCH /api/user/profile` call) from settings to the profile page. Make the fields editable inline (replace the read-only cards with input fields + Save button).
+4. Remove the Account section from settings page (keep Appearance, Language, Notifications, Quick Links).
+5. Keep using `GET /api/user/profile` to fetch and `PATCH /api/user/profile` to save. Show success/error toasts.
+6. Run `just preflight`.
+
+---
+
+## Task 15: AGL Altitude Correction for Trajectory Processing
+**Feature:** 15 | **Priority:** High | **Scope:** Medium
+
+1. Add `PLANNED_HOME_ALTITUDE=15` to `.env.example`.
+2. In `app/components/PlanGenerator.tsx` (~line 284): Replace hardcoded `15` in `plannedHomePosition` with `Number(process.env.NEXT_PUBLIC_PLANNED_HOME_ALTITUDE || '15')`. Also add `NEXT_PUBLIC_PLANNED_HOME_ALTITUDE` to `.env.example`.
+3. In `lib/uplan/tray_to_uplan.ts` in the `trayToUplan` function: After parsing csv with Papa Parse, read `plannedHomePosition[2]` from the flight plan's `fileContent` (passed as parameter or extracted). Subtract this altitude offset from every waypoint's `Alt` value in the parsed CSV data. This normalizes all altitudes to AGL. **Only do this once** — the corrected values feed into volume generation.
+4. Add `fileContent` parameter to `trayToUplan` if needed, or extract `plannedHomePosition` from the uplan/plan data passed to it.
+5. In `app/components/flight-plans/Cesium3DModal.tsx`: When creating volume entities, use `Cesium.HeightReference.RELATIVE_TO_GROUND` for polygon height so volumes render above terrain at AGL altitudes. Set `polygon.height` and `polygon.extrudedHeight` with `heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND`.
+6. Also ensure 2D viewers (UplanViewModal) display altitudes labeled as "AGL" in tooltips.
+7. Run `just preflight`.
+
+---
+
+## Task 16: 4D Time Slider for 3D U-Plan Viewer
+**Feature:** 16 | **Priority:** Medium | **Scope:** Medium
+
+1. Read `app/components/flight-plans/Cesium3DModal.tsx` — understand current volume rendering.
+2. Read `app/components/UplanViewModal.tsx` — study the existing 4D time slider implementation (play/pause, time range, active volume highlighting).
+3. Add to Cesium3DModal:
+   - Parse `timeBegin`/`timeEnd` from each operation volume (ISO 8601 strings → Date objects).
+   - Compute global time range (earliest timeBegin to latest timeEnd).
+   - Add a time slider bar at the bottom of the modal: range input, play/pause button, current time display, speed control.
+   - When time changes: iterate volumes, set active ones to bright blue + opacity 0.7, inactive to gray + opacity 0.15. Use Cesium.Entity `show` property or material color changes.
+   - Play mode: animate time using requestAnimationFrame or setInterval, advancing by 1 second per tick (adjustable speed).
+4. Run `just preflight`.
+
+---
+
+## Task 17: 3D Denial Map with Geozone Volumes
+**Feature:** 17 | **Priority:** Medium | **Scope:** Large
+
+1. Create `app/components/flight-plans/Denial3DModal.tsx`:
+   - Same modal pattern as Cesium3DModal (Cesium viewer, world terrain, OSM buildings).
+   - Props: `isOpen`, `onClose`, `operationVolumes`, `conflictingIndices`, `geozonesData`, `geoawarenessData`.
+   - Render operation volumes as extruded polygons: conflicting ones in red, OK ones in gray semi-transparent.
+   - Render geozone volumes from geoawareness data as semi-transparent red 3D prisms using `verticalReference.upper/lower` altitude data. If altitude reference is AGL, use `RELATIVE_TO_GROUND`.
+   - Camera flies to encompass all volumes.
+2. In `app/components/FlightPlansUploader.tsx`:
+   - Where denial is shown, add two buttons: "View 2D Denial Map" (existing DenialMapModal) and "View 3D Denial Map" (new Denial3DModal).
+   - Pass same data to both modals.
+   - Dynamic import Denial3DModal with `ssr: false`.
+3. Run `just preflight`.
+
+---
+
+## Task 18: FAS Approval Modal with 2D/3D Map and Parsed Reason
+**Feature:** 18 | **Priority:** Medium | **Scope:** Large
+
+1. Create `app/components/flight-plans/AuthorizationResultModal.tsx`:
+   - Modal with tabs/buttons: "2D Map" | "3D Map" | "Details".
+   - **2D Map tab**: Leaflet map showing operation volumes (like UplanViewModal) — colored by authorization (green=approved, red=denied).
+   - **3D Map tab**: Cesium viewer showing volumes (like Cesium3DModal) — colored by status.
+   - **Details tab**: Parsed FAS message:
+     - For `{"volumes":[0,1,2],"geozones_information":{"number_conflicting_geozones":0,"conflicting_geozones":[]}}`:
+       - "Conflicting volumes: 0, 1, 2" or "No conflicting volumes"
+       - "Conflicting geozones: none" or list them
+     - For approved: "Status: Approved" + volume/geozone summary
+   - "FAS Reason" section always visible regardless of tab.
+   - Props: `isOpen`, `onClose`, `uplanData`, `authorizationStatus`, `authorizationMessage`, `fileContent`, `geoawarenessData`.
+2. In `app/components/FlightPlansUploader.tsx`:
+   - Replace the current raw JSON modal for approved plans AND the DenialMapModal for denied plans with this unified `AuthorizationResultModal`.
+   - Both "View Authorization Details" (approved) and "View Denial on Map" (denied) open the same modal with different status.
+3. Run `just preflight`.
+
+---
+
+## Task 19: Contact Us Page with Ticket System
+**Feature:** 19 | **Priority:** Medium | **Scope:** Medium
+
+1. In `lib/email.ts`, add two functions:
+   - `sendContactTicketEmail(userEmail, ticketNumber, subject, category)` — confirmation to user
+   - `sendContactNotificationEmail(ticketNumber, subject, category, description, userEmail)` — notification to upps@sna-upv.com with Reply-To set to user's email
+2. Create `app/api/contact/route.ts`:
+   - POST, auth-protected. Body: `{ subject, category, description }`.
+   - Generate ticket number: `UPPS-YYYYMMDD-XXXX` (date + random 4-digit).
+   - Send both emails. Return `{ ticketNumber }`.
+3. In `app/contact-us/page.tsx`:
+   - Replace static content with a form: Subject (text), Category (select: Bug Report, Feature Request, Support, Other), Description (textarea).
+   - Submit calls `POST /api/contact`. Show success toast with ticket number. Show error toast on failure.
+   - Keep the UPPS branding and support email reference.
+4. Run `just preflight`.
+
+---
+
+## Task 20: 3D Trajectory Viewer with Drone Animation
+**Feature:** 20 | **Priority:** Medium | **Scope:** Large
+
+1. Create `app/components/flight-plans/Trajectory3DViewer.tsx`:
+   - Cesium-based modal (same Cesium loading pattern as Cesium3DModal).
+   - Fetches trajectory CSV (same data as TrajectoryMapViewer: `/api/csvResult?id=${planId}`).
+   - Parses CSV to array of `{ lat, lng, alt, time }` points.
+   - Shows full trajectory as a semi-transparent 3D polyline (Cesium.PolylineCollection or Entity with polyline, slight blue color, low opacity).
+   - Drone representation: Use a Cesium point billboard or a simple 3D shape (box/sphere primitive) at the current trajectory position. If a GLB model is available in `public/models/drone.glb`, use `Cesium.ModelGraphics`. Otherwise, use a large point entity or billboard with a drone icon.
+   - Time slider + play/pause: slider covers trajectory time range. Drone moves to the interpolated position at each time step. Full trajectory always visible but semi-transparent.
+   - Waypoint markers: takeoff (green), cruise (blue), landing (red) as point entities.
+   - Camera: default view encompasses full trajectory, user can orbit freely.
+2. In `app/components/FlightPlansUploader.tsx`:
+   - Replace `TrajectoryMapViewer` usage with `Trajectory3DViewer` (dynamic import, ssr: false).
+   - Pass same props (planId at minimum).
+3. Run `just preflight`.
