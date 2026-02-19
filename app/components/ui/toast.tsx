@@ -65,28 +65,28 @@ const variantIcons: Record<ToastVariant, React.FC> = {
 
 const variantStyles: Record<ToastVariant, { container: string; icon: string; title: string; message: string }> = {
   success: {
-    container: 'bg-[var(--status-success-bg)] border-[var(--status-success-border)]',
-    icon: 'text-[var(--status-success)]',
-    title: 'text-[var(--status-success-text)]',
-    message: 'text-[var(--text-secondary)]',
+    container: 'bg-green-600 border-green-700',
+    icon: 'text-white',
+    title: 'text-white',
+    message: 'text-green-50',
   },
   error: {
-    container: 'bg-[var(--status-error-bg)] border-[var(--status-error-border)]',
-    icon: 'text-[var(--status-error)]',
-    title: 'text-[var(--status-error-text)]',
-    message: 'text-[var(--text-secondary)]',
+    container: 'bg-red-600 border-red-700',
+    icon: 'text-white',
+    title: 'text-white',
+    message: 'text-red-50',
   },
   warning: {
-    container: 'bg-[var(--status-warning-bg)] border-[var(--status-warning-border)]',
-    icon: 'text-[var(--status-warning)]',
-    title: 'text-[var(--status-warning-text)]',
-    message: 'text-[var(--text-secondary)]',
+    container: 'bg-amber-500 border-amber-600',
+    icon: 'text-white',
+    title: 'text-white',
+    message: 'text-amber-50',
   },
   info: {
-    container: 'bg-[var(--status-info-bg)] border-[var(--status-info-border)]',
-    icon: 'text-[var(--status-info)]',
-    title: 'text-[var(--status-info-text)]',
-    message: 'text-[var(--text-secondary)]',
+    container: 'bg-blue-600 border-blue-700',
+    icon: 'text-white',
+    title: 'text-white',
+    message: 'text-blue-50',
   },
 }
 
@@ -154,7 +154,7 @@ export function Toast({
       role="alert"
       aria-live="polite"
       className={`
-        relative w-80 max-w-full overflow-hidden rounded-lg border shadow-lg
+        relative w-80 max-w-full overflow-hidden rounded-lg border shadow-[0_4px_12px_rgba(0,0,0,0.3)]
         ${styles.container}
         ${isExiting ? 'toast-exit' : 'toast-enter'}
         transition-all duration-300 ease-out
@@ -182,7 +182,7 @@ export function Toast({
           {variant === 'error' && onRetry && (
             <button
               onClick={handleRetry}
-              className="mt-2 text-sm font-medium text-[var(--status-error)] hover:text-[var(--status-error-hover)] underline focus:outline-none focus:ring-2 focus:ring-[var(--status-error)] focus:ring-offset-2 rounded"
+              className="mt-2 text-sm font-medium text-white underline hover:text-red-100 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 rounded"
             >
               Reintentar
             </button>
@@ -193,7 +193,7 @@ export function Toast({
         <div className="ml-4 flex-shrink-0">
           <button
             onClick={handleDismiss}
-            className="inline-flex rounded-md p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition-colors"
+            className="inline-flex rounded-md p-1.5 text-white/80 hover:text-white hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 transition-colors"
             aria-label="Dismiss"
           >
             <CloseIcon />
@@ -203,14 +203,9 @@ export function Toast({
 
       {/* Progress bar (TASK-196) */}
       {duration > 0 && (
-        <div className="absolute bottom-0 left-0 right-0 h-1 bg-[var(--bg-tertiary)]">
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/20">
           <div
-            className={`h-full transition-all duration-100 ease-linear ${
-              variant === 'success' ? 'bg-[var(--status-success)]' :
-              variant === 'error' ? 'bg-[var(--status-error)]' :
-              variant === 'warning' ? 'bg-[var(--status-warning)]' :
-              'bg-[var(--status-info)]'
-            }`}
+            className="h-full transition-all duration-100 ease-linear bg-white/70"
             style={{ width: `${progress}%` }}
           />
         </div>

@@ -8,7 +8,7 @@
 | 4 | F4 | Add OK Button & Enter Key to Waypoint Editing | Not Started |
 | 5 | F5 | Add "Add Waypoint" Button to Sidebar | Not Started |
 | 6 | F6 | Generate Volumes Before U-Plan Download | Not Started |
-| 7 | F7 | Fix Theme System and Toast Visibility | Not Started |
+| 7 | F7 | Fix Theme System and Toast Visibility | Completed |
 | 8 | F8 | Toast Error on Invalid U-Plan File Upload | Not Started |
 | 9 | F9 | User Profile Fields (Name, Surname, Phone) | Not Started |
 | 10 | F10 | Email Notification on Approved Plan Deletion | Not Started |

@@ -28,8 +28,7 @@ function getSystemPreference(): Theme {
 }
 
 /**
- * Get the stored theme preference or fall back to dark (default)
- * NOTE: We default to dark theme, NOT system preference
+ * Get the stored theme preference or fall back to system preference
  */
 function getStoredTheme(): Theme {
   if (typeof window === "undefined") return "dark";
@@ -39,8 +38,8 @@ function getStoredTheme(): Theme {
     return stored;
   }
   
-  // Default to dark theme (NOT system preference)
-  return "dark";
+  // No saved preference — detect system preference
+  return getSystemPreference();
 }
 
 /**
