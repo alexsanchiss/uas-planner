@@ -41,7 +41,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const { email, password } = parseResult.data
+    const { email, password, firstName, lastName, phone } = parseResult.data
 
     const existingUser = await prisma.user.findUnique({ where: { email } })
     if (existingUser) {
@@ -61,6 +61,9 @@ export async function POST(request: Request) {
         verificationToken,
         verificationCode,
         verificationTokenExpiry,
+        firstName: firstName || null,
+        lastName: lastName || null,
+        phone: phone || null,
       },
     })
 

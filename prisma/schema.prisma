@@ -18,6 +18,9 @@ model user {
   verificationTokenExpiry  DateTime?
   passwordResetToken       String?      @db.VarChar(255)
   passwordResetTokenExpiry DateTime?
+  firstName                String?      @db.VarChar(255)
+  lastName                 String?      @db.VarChar(255)
+  phone                    String?      @db.VarChar(50)
   flightPlans              flightPlan[]
   folders                  folder[]
 }

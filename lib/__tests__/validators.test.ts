@@ -140,6 +140,7 @@ describe('Validators', () => {
         const result = signupSchema.parse({
           email: 'test@example.com',
           password: 'password123',
+          confirmPassword: 'password123',
         });
         expect(result.email).toBe('test@example.com');
       });
@@ -155,6 +156,7 @@ describe('Validators', () => {
         const result = signupSchema.parse({
           email: 'test@example.com',
           password: '12345678',
+          confirmPassword: '12345678',
         });
         expect(result.password).toBe('12345678');
       });
