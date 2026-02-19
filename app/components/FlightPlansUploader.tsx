@@ -64,6 +64,9 @@ const DenialMapModal = dynamic(() => import('./flight-plans/DenialMapModal'), { 
 // U-Space selector for external UPLANs (uses Leaflet, requires SSR disabled)
 const UspaceSelector = dynamic(() => import('./plan-generator/UspaceSelector').then(mod => ({ default: mod.UspaceSelector })), { ssr: false })
 
+// Task 11: Dynamic import for Cesium 3D U-Plan viewer (requires browser APIs)
+const Cesium3DModal = dynamic(() => import('./flight-plans/Cesium3DModal'), { ssr: false })
+
 /**
  * Transform API flight plan data to component flight plan format
  * TASK-220: Include fileContent for waypoint preview extraction
@@ -246,6 +249,12 @@ export function FlightPlansUploader() {
   }>({ open: false, planId: '' })
   // TASK-003: State for on-demand volume generation
   const [generatingVolumes, setGeneratingVolumes] = useState<string | null>(null) // planId or null
+  // Task 11: Cesium 3D viewer state
+  const [cesium3DModal, setCesium3DModal] = useState<{
+    open: boolean
+    uplanData: any
+  }>({ open: false, uplanData: null })
+  const [generatingVolumes3D, setGeneratingVolumes3D] = useState<string | null>(null)
   
   const [loadingPlanIds, setLoadingPlanIds] = useState<{
     processing: Set<string>
@@ -1055,6 +1064,61 @@ export function FlightPlansUploader() {
     }
   }, [flightPlans, refreshPlans, toast])
 
+  // Task 11: Handle viewing 3D U-Plan - generates volumes on demand if not present
+  const handleView3DUplan = useCallback(async (planId: string) => {
+    const plan = flightPlans.find(p => String(p.id) === planId)
+    if (!plan) return
+
+    setGeneratingVolumes3D(planId)
+
+    try {
+      const token = localStorage.getItem('authToken')
+      const response = await fetch(`/api/flightPlans/${planId}`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      })
+
+      if (!response.ok) throw new Error('Failed to fetch plan data')
+
+      const freshPlan = await response.json()
+
+      let uplanData: any = freshPlan.uplan
+      if (typeof uplanData === 'string') {
+        try { uplanData = JSON.parse(uplanData) } catch { uplanData = null }
+      }
+
+      const hasVolumes = Array.isArray(uplanData?.operationVolumes) && uplanData.operationVolumes.length > 0
+
+      if (!hasVolumes && freshPlan.csvResult) {
+        const volumeResponse = await fetch(`/api/flightPlans/${planId}/generate-volumes`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        })
+
+        if (!volumeResponse.ok) throw new Error('Failed to generate volumes')
+
+        const result = await volumeResponse.json()
+        refreshPlans().catch(err => console.error('[View3DUplan] Refresh error:', err))
+        uplanData = result.uplan
+        toast.success(`Generated ${result.volumesGenerated} operation volumes`)
+      }
+
+      if (!uplanData?.operationVolumes?.length) {
+        toast.warning('No operation volumes available for 3D view.')
+        return
+      }
+
+      setCesium3DModal({ open: true, uplanData })
+    } catch (error) {
+      toast.error('Failed to load 3D U-Plan data.')
+      console.error('[View3DUplan] Error:', error)
+    } finally {
+      setGeneratingVolumes3D(null)
+    }
+  }, [flightPlans, refreshPlans, toast])
+
   // Handle viewing authorization message - opens DenialMapModal for denied plans, otherwise raw JSON modal
   const handleViewAuthorizationMessage = useCallback((planId: string, message: unknown) => {
     const plan = flightPlans.find(p => String(p.id) === planId)
@@ -1441,6 +1505,29 @@ export function FlightPlansUploader() {
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                       </svg>
                       View U-Plan Map
+                    </>
+                  )}
+                </button>
+                {/* Task 11: View 3D U-Plan button - opens Cesium 3D viewer */}
+                <button
+                  onClick={() => handleView3DUplan(selectedPlan.id)}
+                  disabled={(!selectedPlan.fileContent && !selectedPlan.uplan) || generatingVolumes3D === selectedPlan.id}
+                  className="px-4 py-2 text-sm font-medium text-[var(--text-primary)] bg-[var(--surface-tertiary)] border border-[var(--border-primary)] rounded-md hover:bg-[var(--bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors btn-interactive flex items-center gap-2"
+                >
+                  {generatingVolumes3D === selectedPlan.id ? (
+                    <>
+                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Loading 3D...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                      </svg>
+                      View 3D U-Plan
                     </>
                   )}
                 </button>
@@ -1949,6 +2036,13 @@ export function FlightPlansUploader() {
           />
         </div>
       </Modal>
+
+      {/* Task 11: Cesium 3D U-Plan viewer */}
+      <Cesium3DModal
+        isOpen={cesium3DModal.open}
+        onClose={() => setCesium3DModal({ open: false, uplanData: null })}
+        uplanData={cesium3DModal.uplanData}
+      />
     </div>
   )
 }

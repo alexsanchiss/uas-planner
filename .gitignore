@@ -41,3 +41,6 @@ next-env.d.ts
 
 log.csv
 .github
+
+# Cesium static assets (copied from node_modules by postinstall)
+/public/cesium
