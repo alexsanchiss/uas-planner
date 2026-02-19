@@ -6,7 +6,7 @@
 | 2 | F2 | Reduce Verification Code Expiry to 3 Minutes | Completed |
 | 3 | F3 | Fix Map Zoom During SCAN Phase Transitions | Not Started |
 | 4 | F4 | Add OK Button & Enter Key to Waypoint Editing | Completed |
-| 5 | F5 | Add "Add Waypoint" Button to Sidebar | Not Started |
+| 5 | F5 | Add "Add Waypoint" Button to Sidebar | Completed |
 | 6 | F6 | Generate Volumes Before U-Plan Download | Not Started |
 | 7 | F7 | Fix Theme System and Toast Visibility | Completed |
 | 8 | F8 | Toast Error on Invalid U-Plan File Upload | Completed |

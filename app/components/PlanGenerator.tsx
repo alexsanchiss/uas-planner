@@ -57,7 +57,7 @@ import {
   Draggable,
   DropResult,
 } from "@hello-pangea/dnd";
-import { HelpCircle, Grid3X3, MousePointer2, ChevronRight, Edit2 } from "lucide-react";
+import { HelpCircle, Grid3X3, MousePointer2, ChevronRight, Edit2, Plus } from "lucide-react";
 import dynamic from 'next/dynamic';
 
 const PlanMap = dynamic(() => import('./PlanMap'), { ssr: false });
@@ -361,6 +361,11 @@ export default function PlanGenerator() {
   
   // Generator mode: manual waypoint placement vs SCAN pattern generation
   const [generatorMode, setGeneratorMode] = useState<GeneratorMode>('manual');
+  
+  // Add Waypoint form state
+  const [addWaypointFormOpen, setAddWaypointFormOpen] = useState(false);
+  const [addWaypointLat, setAddWaypointLat] = useState('');
+  const [addWaypointLng, setAddWaypointLng] = useState('');
   
 
   
@@ -2168,6 +2173,95 @@ export default function PlanGenerator() {
                     )}
                   </Droppable>
                 </DragDropContext>
+                {/* Add Waypoint Button and Inline Form */}
+                <div className="mt-3">
+                  {!addWaypointFormOpen ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // Pre-fill with last waypoint's coords or map center
+                        if (waypoints.length > 0) {
+                          const last = waypoints[waypoints.length - 1];
+                          setAddWaypointLat(last.lat.toFixed(7));
+                          setAddWaypointLng(last.lng.toFixed(7));
+                        } else {
+                          setAddWaypointLat(center[0].toFixed(7));
+                          setAddWaypointLng(center[1].toFixed(7));
+                        }
+                        setAddWaypointFormOpen(true);
+                      }}
+                      className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded border border-dashed border-[var(--border-primary)] text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:border-[var(--color-primary)] transition-colors"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add Waypoint
+                    </button>
+                  ) : (
+                    <div className="p-3 rounded border border-[var(--border-primary)] bg-[var(--bg-secondary)] space-y-2">
+                      <div className="text-xs font-semibold text-[var(--text-secondary)] mb-1">New Waypoint</div>
+                      <div className="flex items-center gap-2">
+                        <label className="text-xs text-[var(--text-tertiary)]">Lat:</label>
+                        <input
+                          type="text"
+                          value={addWaypointLat}
+                          onChange={(e) => setAddWaypointLat(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); (document.getElementById('add-wp-confirm-btn') as HTMLButtonElement)?.click(); } }}
+                          className="input flex-1 text-xs py-0.5"
+                          placeholder="Latitude"
+                          autoFocus
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <label className="text-xs text-[var(--text-tertiary)]">Lon:</label>
+                        <input
+                          type="text"
+                          value={addWaypointLng}
+                          onChange={(e) => setAddWaypointLng(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); (document.getElementById('add-wp-confirm-btn') as HTMLButtonElement)?.click(); } }}
+                          className="input flex-1 text-xs py-0.5"
+                          placeholder="Longitude"
+                        />
+                      </div>
+                      <div className="flex gap-2 mt-2">
+                        <button
+                          id="add-wp-confirm-btn"
+                          type="button"
+                          onClick={() => {
+                            const lat = parseFloat(addWaypointLat);
+                            const lng = parseFloat(addWaypointLng);
+                            if (isNaN(lat) || isNaN(lng)) {
+                              toast.error('Please enter valid latitude and longitude values.');
+                              return;
+                            }
+                            if (!isWithinEffectiveBounds(lat, lng)) {
+                              toast.error('Coordinates are outside the service area.');
+                              return;
+                            }
+                            handleAddWaypoint({
+                              lat,
+                              lng,
+                              type: 'cruise',
+                              altitude: 100,
+                              speed: 5,
+                              pauseDuration: 0,
+                              flyOverMode: false,
+                            });
+                            setAddWaypointFormOpen(false);
+                          }}
+                          className="flex-1 px-3 py-1.5 rounded text-xs font-medium bg-[var(--color-primary)] text-white hover:bg-blue-800 transition-colors"
+                        >
+                          Add
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAddWaypointFormOpen(false)}
+                          className="flex-1 px-3 py-1.5 rounded text-xs font-medium bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
               )}
               {/* Bottom buttons (now scroll with sidebar) */}
