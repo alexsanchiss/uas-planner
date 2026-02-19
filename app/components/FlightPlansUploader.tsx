@@ -70,6 +70,9 @@ const Cesium3DModal = dynamic(() => import('./flight-plans/Cesium3DModal'), { ss
 // Task 17: Dynamic import for 3D Denial viewer (requires browser APIs)
 const Denial3DModal = dynamic(() => import('./flight-plans/Denial3DModal'), { ssr: false })
 
+// Task 18: Dynamic import for unified Authorization Result modal (uses Leaflet + Cesium)
+const AuthorizationResultModal = dynamic(() => import('./flight-plans/AuthorizationResultModal'), { ssr: false })
+
 /**
  * Transform API flight plan data to component flight plan format
  * TASK-220: Include fileContent for waypoint preview extraction
@@ -265,6 +268,15 @@ export function FlightPlansUploader() {
     geoawarenessData: unknown
   }>({ open: false, uplan: null, authorizationMessage: null, geoawarenessData: null })
   const [generatingVolumes3D, setGeneratingVolumes3D] = useState<string | null>(null)
+  // Task 18: Unified Authorization Result modal state
+  const [authResultModal, setAuthResultModal] = useState<{
+    open: boolean
+    uplanData: unknown
+    status: string
+    reason: string | null
+    geoawarenessData: unknown
+    planName: string
+  }>({ open: false, uplanData: null, status: '', reason: null, geoawarenessData: null, planName: '' })
   
   const [loadingPlanIds, setLoadingPlanIds] = useState<{
     processing: Set<string>
@@ -1129,32 +1141,21 @@ export function FlightPlansUploader() {
     }
   }, [flightPlans, refreshPlans, toast])
 
-  // Handle viewing authorization message - opens DenialMapModal for denied plans, otherwise raw JSON modal
+  // Handle viewing authorization message - opens unified AuthorizationResultModal for both approved and denied plans
   const handleViewAuthorizationMessage = useCallback((planId: string, message: unknown) => {
     const plan = flightPlans.find(p => String(p.id) === planId)
     if (plan) {
-      // Parse uplan for download
       const uplanData = plan.uplan ? (typeof plan.uplan === 'string' ? JSON.parse(plan.uplan) : plan.uplan) : null
+      const messageStr = typeof message === 'string' ? message : (message != null ? JSON.stringify(message) : null)
 
-      // Task 11: For denied plans, open DenialMapModal directly
-      if (plan.authorizationStatus === 'denegado') {
-        const messageStr = typeof message === 'string' ? message : JSON.stringify(message)
-        setDenialMapModal({
-          open: true,
-          uplan: uplanData,
-          authorizationMessage: messageStr,
-          geoawarenessData: plan.geoawarenessData ?? null,
-        })
-        return
-      }
-
-      setAuthorizationMessageModal({
+      // Task 18: Open unified AuthorizationResultModal for both approved and denied
+      setAuthResultModal({
         open: true,
-        planId,
+        uplanData,
+        status: plan.authorizationStatus === 'aprobado' ? 'aprobado' : 'denegado',
+        reason: messageStr,
+        geoawarenessData: plan.geoawarenessData ?? null,
         planName: plan.customName,
-        message,
-        status: plan.authorizationStatus === 'aprobado' ? 'aprobado' : null,
-        uplan: uplanData,
       })
     }
   }, [flightPlans])
@@ -1620,14 +1621,14 @@ export function FlightPlansUploader() {
                         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        View Authorization Details (Approved)
+                        View Authorization Result (Approved)
                       </>
                     ) : (
                       <>
                         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                         </svg>
-                        View Denial on Map
+                        View Authorization Result (Denied)
                       </>
                     )}
                   </button>
@@ -2084,9 +2085,20 @@ export function FlightPlansUploader() {
       <Denial3DModal
         isOpen={denial3DModal.open}
         onClose={() => setDenial3DModal({ open: false, uplan: null, authorizationMessage: null, geoawarenessData: null })}
-        uplan={denial3DModal.uplan as { operationVolumes?: unknown[] } | null}
+        uplan={denial3DModal.uplan as { operationVolumes?: { geometry: { type: string; coordinates: number[][][] }; [key: string]: unknown }[] } | null}
         authorizationMessage={denial3DModal.authorizationMessage}
         geoawarenessData={denial3DModal.geoawarenessData}
+      />
+
+      {/* Task 18: Unified Authorization Result modal (approved + denied) */}
+      <AuthorizationResultModal
+        isOpen={authResultModal.open}
+        onClose={() => setAuthResultModal({ open: false, uplanData: null, status: '', reason: null, geoawarenessData: null, planName: '' })}
+        uplanData={authResultModal.uplanData as any}
+        status={authResultModal.status}
+        reason={authResultModal.reason}
+        geoawarenessData={authResultModal.geoawarenessData}
+        planName={authResultModal.planName}
       />
     </div>
   )
