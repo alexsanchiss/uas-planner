@@ -206,6 +206,24 @@ function EditablePopupContent({ wp, idx, onWaypointChange }: {
           </label>
         </div>
       )}
+      <div style={{ marginTop: '8px', borderTop: '1px solid var(--border-primary, #eee)', paddingTop: '6px' }}>
+        <button
+          type="button"
+          onClick={() => {
+            const lat = parseFloat(localLat);
+            const lng = parseFloat(localLng);
+            if (!isNaN(lat)) onWaypointChange(idx, 'lat', lat);
+            if (!isNaN(lng)) onWaypointChange(idx, 'lng', lng);
+          }}
+          style={{
+            width: '100%', padding: '4px 0', fontSize: '12px', fontWeight: 'bold',
+            background: 'var(--color-primary, #3b82f6)', color: '#fff', border: 'none',
+            borderRadius: '4px', cursor: 'pointer',
+          }}
+        >
+          OK
+        </button>
+      </div>
     </div>
   );
 }
