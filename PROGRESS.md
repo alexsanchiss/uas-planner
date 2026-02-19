@@ -1,5 +1,7 @@
 # UAS Planner — Implementation Progress
 
+## Sprint 1 (Completed)
+
 | Task | Feature | Description | Status |
 |------|---------|-------------|--------|
 | 1 | F1 | Remove Email Domain Validation | Completed |
@@ -15,3 +17,15 @@
 | 11 | F11 | Cesium 3D U-Plan Viewer | Completed |
 | 12 | F12 | Improved FAS Denial Visualization | Completed |
 | 13 | F13 | UAS Class/Weight/Dimension Regulatory Constraints | Completed |
+
+## Sprint 2
+
+| Task | Feature | Description | Status |
+|------|---------|-------------|--------|
+| 14 | F14 | Move profile editing to /profile page | Completed |
+| 15 | F15 | AGL altitude correction for trajectory processing | Not Started |
+| 16 | F16 | 4D time slider for 3D U-Plan viewer | Not Started |
+| 17 | F17 | 3D denial visualization with geozone volumes | Not Started |
+| 18 | F18 | FAS approval modal with 2D/3D map and parsed reason | Not Started |
+| 19 | F19 | Contact Us page with ticket system | Not Started |
+| 20 | F20 | 3D trajectory viewer with drone animation | Not Started |

@@ -1,11 +1,63 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useAuth } from "../hooks/useAuth";
+import { useToast } from "../hooks/useToast";
 import { ProtectedRoute } from "../components/auth/protected-route";
+import { Input } from "../components/ui/input";
+import { Button } from "../components/ui/button";
 import { User, Mail, Calendar, Shield, Phone } from "lucide-react";
 
 export default function ProfilePage() {
   const { user } = useAuth();
+  const toast = useToast();
+
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [profileLoaded, setProfileLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem("authToken");
+    if (!token) return;
+    fetch("/api/user/profile", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data) {
+          setFirstName(data.firstName || "");
+          setLastName(data.lastName || "");
+          setPhone(data.phone || "");
+          setProfileLoaded(true);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleSaveProfile = async () => {
+    const token = localStorage.getItem("authToken");
+    if (!token) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/user/profile", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ firstName, lastName, phone }),
+      });
+      if (!res.ok) throw new Error("Failed to update profile");
+      toast.success("Profile updated successfully");
+      window.dispatchEvent(new Event("auth:changed"));
+    } catch {
+      toast.error("Failed to update profile");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <ProtectedRoute>
@@ -37,28 +89,45 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Account Details */}
+            {/* Editable Profile Fields */}
             <div className="space-y-4">
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-[var(--bg-secondary)]">
-                <div className="w-10 h-10 rounded-full bg-[var(--color-primary-light)] flex items-center justify-center">
-                  <User className="w-5 h-5 text-[var(--color-primary)]" />
-                </div>
-                <div>
-                  <p className="text-xs text-[var(--text-muted)]">First Name</p>
-                  <p className="text-[var(--text-primary)] font-medium">{user?.firstName || "Not set"}</p>
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">First Name</label>
+                <Input
+                  type="text"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="Enter your first name"
+                />
               </div>
 
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-[var(--bg-secondary)]">
-                <div className="w-10 h-10 rounded-full bg-[var(--color-primary-light)] flex items-center justify-center">
-                  <User className="w-5 h-5 text-[var(--color-primary)]" />
-                </div>
-                <div>
-                  <p className="text-xs text-[var(--text-muted)]">Last Name</p>
-                  <p className="text-[var(--text-primary)] font-medium">{user?.lastName || "Not set"}</p>
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Last Name</label>
+                <Input
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Enter your last name"
+                />
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Phone</label>
+                <Input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="Enter your phone number"
+                />
+              </div>
+
+              <div>
+                <Button onClick={handleSaveProfile} disabled={saving || !profileLoaded}>
+                  {saving ? "Saving..." : "Save Profile"}
+                </Button>
+              </div>
+
+              {/* Read-only fields */}
               <div className="flex items-center gap-3 p-3 rounded-lg bg-[var(--bg-secondary)]">
                 <div className="w-10 h-10 rounded-full bg-[var(--color-primary-light)] flex items-center justify-center">
                   <Mail className="w-5 h-5 text-[var(--color-primary)]" />
@@ -71,16 +140,6 @@ export default function ProfilePage() {
 
               <div className="flex items-center gap-3 p-3 rounded-lg bg-[var(--bg-secondary)]">
                 <div className="w-10 h-10 rounded-full bg-[var(--color-primary-light)] flex items-center justify-center">
-                  <Phone className="w-5 h-5 text-[var(--color-primary)]" />
-                </div>
-                <div>
-                  <p className="text-xs text-[var(--text-muted)]">Phone</p>
-                  <p className="text-[var(--text-primary)] font-medium">{user?.phone || "Not set"}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-[var(--bg-secondary)]">
-                <div className="w-10 h-10 rounded-full bg-[var(--color-primary-light)] flex items-center justify-center">
                   <Calendar className="w-5 h-5 text-[var(--color-primary)]" />
                 </div>
                 <div>
@@ -88,19 +147,6 @@ export default function ProfilePage() {
                   <p className="text-[var(--text-primary)] font-medium">#{user?.id || "—"}</p>
                 </div>
               </div>
-            </div>
-
-            {/* Actions */}
-            <div className="mt-6 pt-6 border-t border-[var(--border-primary)]">
-              <p className="text-sm text-[var(--text-muted)] mb-4">
-                Account management features coming soon. Contact support for assistance.
-              </p>
-              <a
-                href="/contact-us"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-medium transition-colors"
-              >
-                Contact Support
-              </a>
             </div>
           </div>
         </div>
