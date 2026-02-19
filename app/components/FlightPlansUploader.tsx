@@ -1118,21 +1118,62 @@ export function FlightPlansUploader() {
     }
   }, [flightPlans, denialMapModal])
 
-  // Download U-Plan as JSON file
-  const handleDownloadUplan = useCallback(() => {
-    if (!authorizationMessageModal.uplan || !authorizationMessageModal.planName) return
-    
-    const jsonStr = JSON.stringify(authorizationMessageModal.uplan, null, 2)
+  // Task 6: Download U-Plan as JSON — generates volumes first if missing
+  const handleDownloadUplanJson = useCallback(async (planId: string, uplanData: unknown, planName: string) => {
+    if (!uplanData || !planName) return
+
+    const uplanObj = uplanData as { operationVolumes?: unknown[] } | null
+    const hasVolumes = Array.isArray(uplanObj?.operationVolumes) && uplanObj.operationVolumes.length > 0
+
+    let finalUplan = uplanData
+
+    if (!hasVolumes) {
+      addLoadingPlan('downloading', planId)
+      try {
+        const token = localStorage.getItem('authToken')
+        const response = await fetch(`/api/flightPlans/${planId}/generate-volumes`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+
+        if (!response.ok) {
+          throw new Error('Failed to generate volumes')
+        }
+
+        const result = await response.json()
+        finalUplan = result.uplan
+
+        refreshPlans().catch(err => console.error('[DownloadUplan] Refresh error:', err))
+        toast.success(`Generated ${result.volumesGenerated} operation volumes`)
+      } catch (error) {
+        console.error('[DownloadUplan] Volume generation error:', error)
+        toast.error('Failed to generate volumes. Cannot download U-Plan.')
+        return
+      } finally {
+        removeLoadingPlan('downloading', planId)
+      }
+    }
+
+    const jsonStr = JSON.stringify(finalUplan, null, 2)
     const blob = new Blob([jsonStr], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `uplan_${authorizationMessageModal.planName.replace(/[^a-zA-Z0-9]/g, '_')}.json`
+    link.download = `uplan_${planName.replace(/[^a-zA-Z0-9]/g, '_')}.json`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
-  }, [authorizationMessageModal.uplan, authorizationMessageModal.planName])
+  }, [addLoadingPlan, removeLoadingPlan, refreshPlans, toast])
+
+  // Download U-Plan from authorization message modal (delegates to handleDownloadUplanJson)
+  const handleDownloadUplan = useCallback(() => {
+    if (!authorizationMessageModal.uplan || !authorizationMessageModal.planName || !authorizationMessageModal.planId) return
+    handleDownloadUplanJson(authorizationMessageModal.planId, authorizationMessageModal.uplan, authorizationMessageModal.planName)
+  }, [authorizationMessageModal.uplan, authorizationMessageModal.planName, authorizationMessageModal.planId, handleDownloadUplanJson])
 
   // Loading state
   if (!user) {
@@ -1439,26 +1480,29 @@ export function FlightPlansUploader() {
                   )}
                 </button>
                 {/* Download U-Plan JSON button - always visible after processing */}
+                {/* Task 6: Auto-generates volumes before download if missing */}
                 {selectedPlan.uplan ? (
                   <button
-                    onClick={() => {
-                      const jsonStr = JSON.stringify(selectedPlan.uplan, null, 2)
-                      const blob = new Blob([jsonStr], { type: 'application/json' })
-                      const url = URL.createObjectURL(blob)
-                      const link = document.createElement('a')
-                      link.href = url
-                      link.download = `uplan_${selectedPlan.name.replace(/[^a-zA-Z0-9]/g, '_')}.json`
-                      document.body.appendChild(link)
-                      link.click()
-                      document.body.removeChild(link)
-                      URL.revokeObjectURL(url)
-                    }}
-                    className="px-4 py-2 text-sm font-medium text-[var(--text-primary)] bg-[var(--surface-tertiary)] border border-[var(--border-primary)] rounded-md hover:bg-[var(--bg-hover)] transition-colors btn-interactive flex items-center gap-2"
+                    onClick={() => handleDownloadUplanJson(selectedPlan.id, selectedPlan.uplan, selectedPlan.name)}
+                    disabled={loadingPlanIds.downloading.has(selectedPlan.id)}
+                    className="px-4 py-2 text-sm font-medium text-[var(--text-primary)] bg-[var(--surface-tertiary)] border border-[var(--border-primary)] rounded-md hover:bg-[var(--bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors btn-interactive flex items-center gap-2"
                   >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    Download U-Plan
+                    {loadingPlanIds.downloading.has(selectedPlan.id) ? (
+                      <>
+                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        Generating Volumes...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Download U-Plan
+                      </>
+                    )}
                   </button>
                 ) : null}
               </div>
