@@ -16,6 +16,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { withAuth, isAuthError } from '@/lib/auth-middleware';
 import { flightPlanUpdateDataSchema, safeParseBody } from '@/lib/validators';
+import { sendPlanDeletionEmail } from '@/lib/email';
+import { logger } from '@/lib/logger';
 import type { Prisma } from '@prisma/client';
 
 /**
@@ -338,9 +340,25 @@ export async function DELETE(
       );
     }
 
-    // If the plan was approved by FAS, send a cancellation request before deleting
-    if (existing.authorizationStatus === 'aprobado' && existing.externalResponseNumber) {
-      await sendFasCancellation(existing.externalResponseNumber);
+    // If the plan was approved by FAS, send a cancellation request and notify user
+    if (existing.authorizationStatus === 'aprobado') {
+      if (existing.externalResponseNumber) {
+        await sendFasCancellation(existing.externalResponseNumber);
+      }
+
+      // Notify user via email (fire-and-forget)
+      const owner = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { email: true },
+      });
+      if (owner?.email) {
+        sendPlanDeletionEmail(owner.email, existing.customName)
+          .catch(err => logger.error('Failed to send plan deletion email', {
+            userId,
+            planId: id,
+            error: err instanceof Error ? err.message : String(err),
+          }));
+      }
     }
 
     // Get the actual csvResult ID from the flight plan (may be different from flightPlan.id)
