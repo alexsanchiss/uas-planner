@@ -18,6 +18,7 @@ export interface TrayToUplanParams {
   Alpha_V?: number; // Default: 1.0 (new: vertical dominance threshold)
   tbuf?: number; // Default: 5.0s (time buffer)
   uplan?: any; // user-provided uplan details (optional)
+  groundElevation?: number; // AMSL ground elevation (m) to subtract from trajectory altitudes for AGL normalization. Default: 0
 }
 
 // Helper functions for filling uplan fields
@@ -101,10 +102,12 @@ export function trayToUplan({
   Alpha_V = DEFAULT_UPLAN_CONFIG.Alpha_V, // 1.0 (new parameter)
   tbuf = DEFAULT_UPLAN_CONFIG.tbuf, // 5.0s
   uplan,
+  groundElevation = 0,
 }: TrayToUplanParams) {
   // Parse CSV
   const { data } = Papa.parse(csv, { header: true, dynamicTyping: true });
   // Filtra y mapea a waypoints válidos
+  // Subtract groundElevation (AMSL) from altitude so all values become AGL
   const rawWaypoints: Waypoint[] = (data as unknown as {
     SimTime: string;
     Lat: string;
@@ -122,7 +125,7 @@ export function trayToUplan({
       time: Number(row.SimTime),
       lat: Number(row.Lat),
       lon: Number(row.Lon),
-      h: Number(row.Alt),
+      h: Number(row.Alt) - groundElevation,
     }));
   
   // Normalize times to start at 0 - subtract the initial time offset

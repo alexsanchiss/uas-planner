@@ -271,6 +271,7 @@ function generateQGCPlan(waypoints: Waypoint[]): any {
   }
 
   const plannedHome = waypoints[0];
+  const homeAltitude = Number(process.env.NEXT_PUBLIC_PLANNED_HOME_ALTITUDE || '15');
   return {
     fileType: "Plan",
     geoFence: { circles: [], polygons: [], version: 2 },
@@ -281,7 +282,7 @@ function generateQGCPlan(waypoints: Waypoint[]): any {
       globalPlanAltitudeMode: 1,
       hoverSpeed: 5,
       items,
-      plannedHomePosition: [plannedHome.lat, plannedHome.lng, 15],
+      plannedHomePosition: [plannedHome.lat, plannedHome.lng, homeAltitude],
       vehicleType: 2,
       version: 2,
     },
