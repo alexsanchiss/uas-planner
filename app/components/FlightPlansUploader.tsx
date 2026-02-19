@@ -20,6 +20,7 @@
 
 import React, { useState, useCallback, useMemo, DragEvent } from 'react'
 import dynamic from 'next/dynamic'
+import axios from 'axios'
 import { HelpCircle } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useFlightPlans, type FlightPlan as FlightPlanData } from '../hooks/useFlightPlans'
@@ -848,13 +849,20 @@ export function FlightPlansUploader() {
     }
   }, [updateFlightPlan, addLoadingPlan, removeLoadingPlan, toast])
   
-  // Task 2: Handle external UPLAN file import via drag-and-drop
+  // Task 2 + Task 8: Handle external UPLAN file import via drag-and-drop
   const handleImportExternalUplan = useCallback(async (uplan: object, folderId: string, customName: string) => {
     try {
       await importExternalUplan(uplan, Number(folderId), customName)
       toast.success('External UPLAN imported successfully.')
-    } catch {
-      toast.error('Error importing external UPLAN.')
+    } catch (error) {
+      // Task 8: Show specific server error message
+      if (axios.isAxiosError(error) && error.response?.data?.error) {
+        toast.error(error.response.data.error)
+      } else if (error instanceof Error) {
+        toast.error(error.message)
+      } else {
+        toast.error('Error importing external UPLAN.')
+      }
     }
   }, [importExternalUplan, toast])
 

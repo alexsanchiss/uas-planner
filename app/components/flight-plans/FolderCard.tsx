@@ -3,6 +3,7 @@ import { FlightPlanList, type FlightPlanListProps } from './FlightPlanList'
 import { type FlightPlan, type FlightPlanDragData, type Waypoint, FLIGHT_PLAN_DRAG_TYPE } from './FlightPlanCard'
 import { ConfirmDialog } from '../ui/confirm-dialog'
 import { useI18n } from '@/app/i18n'
+import { useToast } from '@/app/hooks/useToast'
 
 export interface Folder {
   id: string
@@ -279,30 +280,36 @@ export function FolderCard({
     }
   }
 
-  // Task 2: Handle external UPLAN file drop
+  // Task 2 + Task 8: Handle external UPLAN file drop with validation toasts
+  const toast = useToast()
   const handleFileDrop = async (files: FileList) => {
     const file = files[0]
     if (!file) return
 
-    // Accept only .json files
+    // Task 8: Validate file extension
     if (!file.name.toLowerCase().endsWith('.json')) {
+      toast.error('Invalid file format. Only .json files are accepted.')
       return
     }
 
+    let parsed: Record<string, unknown>
     try {
       const text = await file.text()
-      const parsed = JSON.parse(text)
-
-      // Validate it has operationVolumes
-      if (!parsed.operationVolumes || !Array.isArray(parsed.operationVolumes) || parsed.operationVolumes.length === 0) {
-        return
-      }
-
-      onImportExternalUplan?.(parsed, folder.id, file.name)
-      setExpanded(true)
+      parsed = JSON.parse(text)
     } catch {
-      // JSON parse error — invalid file
+      // Task 8: JSON parse error
+      toast.error('Invalid JSON format. The file could not be parsed.')
+      return
     }
+
+    // Task 8: Validate structure has operationVolumes
+    if (!parsed.operationVolumes || !Array.isArray(parsed.operationVolumes)) {
+      toast.error('Invalid U-Plan structure. Missing operationVolumes field.')
+      return
+    }
+
+    onImportExternalUplan?.(parsed, folder.id, file.name)
+    setExpanded(true)
   }
 
   // TASK-222: Handle drop
