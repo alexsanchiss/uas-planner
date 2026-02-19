@@ -109,10 +109,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           uplanDetails = plan.uplan
         }
 
+        // Extract ground elevation from the .plan file's plannedHomePosition
+        let groundElevation = 0;
+        if (plan.fileContent) {
+          try {
+            const planJson = JSON.parse(plan.fileContent);
+            const homeAlt = planJson?.mission?.plannedHomePosition?.[2];
+            if (typeof homeAlt === 'number' && isFinite(homeAlt)) {
+              groundElevation = homeAlt;
+            }
+          } catch { /* ignore parse errors */ }
+        }
+
         // Generate new U-Plan with volumes
         const newUplan = trayToUplan({
           scheduledAt: scheduledAtPosix,
           csv: csvResultRecord.csvResult,
+          groundElevation,
           ...(uplanDetails ? { uplan: uplanDetails } : {}),
         })
 

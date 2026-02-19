@@ -258,7 +258,7 @@ const UplanViewModal = ({ open, onClose, uplan, name, fileContent }: UplanViewMo
                         <div className="font-semibold">{label}</div>
                         <div>Lat: {wp.lat.toFixed(6)}</div>
                         <div>Lng: {wp.lng.toFixed(6)}</div>
-                        <div>Alt: {wp.alt}m</div>
+                        <div>Alt: {wp.alt}m AGL</div>
                       </div>
                     </Tooltip>
                   </CircleMarker>
@@ -337,7 +337,7 @@ const UplanViewModal = ({ open, onClose, uplan, name, fileContent }: UplanViewMo
                       <span>{timeBegin}</span>
                       <span className="text-gray-500">End:</span>
                       <span>{timeEnd}</span>
-                      <span className="text-gray-500">Alt:</span>
+                      <span className="text-gray-500">Alt (AGL):</span>
                       <span>{minAlt} - {maxAlt}</span>
                       {dimensions && (
                         <>
@@ -361,7 +361,7 @@ const UplanViewModal = ({ open, onClose, uplan, name, fileContent }: UplanViewMo
             >
               <Tooltip permanent direction="top" className="text-center">
                 {name}<br />
-                {minHeight !== null && maxHeight !== null ? `Alt: ${typeof minHeight === 'number' ? minHeight.toFixed(2) : minHeight} - ${typeof maxHeight === 'number' ? maxHeight.toFixed(2) : maxHeight} m` : ''}
+                {minHeight !== null && maxHeight !== null ? `Alt: ${typeof minHeight === 'number' ? minHeight.toFixed(2) : minHeight} - ${typeof maxHeight === 'number' ? maxHeight.toFixed(2) : maxHeight} m AGL` : ''}
               </Tooltip>
             </Marker>
           )}

@@ -141,9 +141,22 @@ export async function POST(
       new Date(flightPlan.scheduledAt).getTime() / 1000
     );
 
+    // Extract ground elevation from the .plan file's plannedHomePosition
+    let groundElevation = 0;
+    if (flightPlan.fileContent) {
+      try {
+        const planJson = JSON.parse(flightPlan.fileContent);
+        const homeAlt = planJson?.mission?.plannedHomePosition?.[2];
+        if (typeof homeAlt === 'number' && isFinite(homeAlt)) {
+          groundElevation = homeAlt;
+        }
+      } catch { /* ignore parse errors */ }
+    }
+
     const newUplan = trayToUplan({
       scheduledAt: scheduledAtPosix,
       csv: csvResultRecord.csvResult,
+      groundElevation,
       ...(existingUplan ? { uplan: existingUplan } : {}),
     });
 
