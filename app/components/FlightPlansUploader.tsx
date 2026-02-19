@@ -67,6 +67,9 @@ const UspaceSelector = dynamic(() => import('./plan-generator/UspaceSelector').t
 // Task 11: Dynamic import for Cesium 3D U-Plan viewer (requires browser APIs)
 const Cesium3DModal = dynamic(() => import('./flight-plans/Cesium3DModal'), { ssr: false })
 
+// Task 17: Dynamic import for 3D Denial viewer (requires browser APIs)
+const Denial3DModal = dynamic(() => import('./flight-plans/Denial3DModal'), { ssr: false })
+
 /**
  * Transform API flight plan data to component flight plan format
  * TASK-220: Include fileContent for waypoint preview extraction
@@ -254,6 +257,13 @@ export function FlightPlansUploader() {
     open: boolean
     uplanData: any
   }>({ open: false, uplanData: null })
+  // Task 17: 3D Denial viewer state
+  const [denial3DModal, setDenial3DModal] = useState<{
+    open: boolean
+    uplan: unknown
+    authorizationMessage: string | null
+    geoawarenessData: unknown
+  }>({ open: false, uplan: null, authorizationMessage: null, geoawarenessData: null })
   const [generatingVolumes3D, setGeneratingVolumes3D] = useState<string | null>(null)
   
   const [loadingPlanIds, setLoadingPlanIds] = useState<{
@@ -1596,30 +1606,56 @@ export function FlightPlansUploader() {
 
               {/* TASK: Large authorization status button for approved/denied plans */}
               {(selectedPlan.authorizationStatus === 'aprobado' || selectedPlan.authorizationStatus === 'denegado') && (
-                <button
-                  onClick={() => handleViewAuthorizationMessage(selectedPlan.id, selectedPlan.authorizationMessage)}
-                  className={`w-full mt-4 px-6 py-3 text-base font-semibold rounded-lg transition-all transform hover:scale-[1.02] shadow-md hover:shadow-lg flex items-center justify-center gap-3 ${
-                    selectedPlan.authorizationStatus === 'aprobado'
-                      ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
-                      : 'bg-red-500 hover:bg-red-600 text-white'
-                  }`}
-                >
-                  {selectedPlan.authorizationStatus === 'aprobado' ? (
-                    <>
+                <div className="mt-4 flex flex-col gap-2">
+                  <button
+                    onClick={() => handleViewAuthorizationMessage(selectedPlan.id, selectedPlan.authorizationMessage)}
+                    className={`w-full px-6 py-3 text-base font-semibold rounded-lg transition-all transform hover:scale-[1.02] shadow-md hover:shadow-lg flex items-center justify-center gap-3 ${
+                      selectedPlan.authorizationStatus === 'aprobado'
+                        ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
+                        : 'bg-red-500 hover:bg-red-600 text-white'
+                    }`}
+                  >
+                    {selectedPlan.authorizationStatus === 'aprobado' ? (
+                      <>
+                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        View Authorization Details (Approved)
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                        </svg>
+                        View Denial on Map
+                      </>
+                    )}
+                  </button>
+                  {/* Task 17: 3D Denial view button for denied plans */}
+                  {selectedPlan.authorizationStatus === 'denegado' && !!selectedPlan.uplan && (
+                    <button
+                      onClick={() => {
+                        const messageStr = typeof selectedPlan.authorizationMessage === 'string'
+                          ? selectedPlan.authorizationMessage
+                          : typeof selectedPlan.authorizationMessage === 'object' && selectedPlan.authorizationMessage !== null
+                            ? JSON.stringify(selectedPlan.authorizationMessage)
+                            : null
+                        setDenial3DModal({
+                          open: true,
+                          uplan: selectedPlan.uplan,
+                          authorizationMessage: messageStr,
+                          geoawarenessData: selectedPlan.geoawarenessData ?? null,
+                        })
+                      }}
+                      className="w-full px-6 py-3 text-base font-semibold rounded-lg transition-all transform hover:scale-[1.02] shadow-md hover:shadow-lg flex items-center justify-center gap-3 bg-red-700 hover:bg-red-800 text-white"
+                    >
                       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
                       </svg>
-                      View Authorization Details (Approved)
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                      </svg>
-                      View Denial on Map
-                    </>
+                      View Denial 3D
+                    </button>
                   )}
-                </button>
+                </div>
               )}
 
               {/* Only show authorization prompt when not yet authorized */}
@@ -2042,6 +2078,15 @@ export function FlightPlansUploader() {
         isOpen={cesium3DModal.open}
         onClose={() => setCesium3DModal({ open: false, uplanData: null })}
         uplanData={cesium3DModal.uplanData}
+      />
+
+      {/* Task 17: 3D Denial viewer */}
+      <Denial3DModal
+        isOpen={denial3DModal.open}
+        onClose={() => setDenial3DModal({ open: false, uplan: null, authorizationMessage: null, geoawarenessData: null })}
+        uplan={denial3DModal.uplan as { operationVolumes?: unknown[] } | null}
+        authorizationMessage={denial3DModal.authorizationMessage}
+        geoawarenessData={denial3DModal.geoawarenessData}
       />
     </div>
   )
