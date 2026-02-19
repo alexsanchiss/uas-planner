@@ -510,3 +510,118 @@ export async function sendAuthorizationResultEmail(
     }
   }
 }
+
+/**
+ * Notify the user that their approved flight plan authorization has been cancelled
+ * because they deleted the plan. Fire-and-forget — errors are logged but never thrown.
+ */
+export async function sendPlanDeletionEmail(
+  to: string,
+  planName: string,
+): Promise<void> {
+  const client = getMailerSendClient();
+  if (!client) return;
+
+  const timestamp = new Date().toISOString();
+
+  const emailParams = new EmailParams()
+    .setFrom(new Sender(SENDER_EMAIL, SENDER_NAME))
+    .setTo([new Recipient(to)])
+    .setSubject('Flight Plan Authorization Cancelled — UPPS Platform')
+    .setHtml(
+      `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td style="padding: 20px 0;">
+        <table role="presentation" style="width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="padding: 40px 40px 30px; text-align: center; border-bottom: 3px solid #1e3a8a;">
+              <h1 style="margin: 0; color: #1e3a8a; font-size: 28px; font-weight: bold;">Flight Plan Authorization Cancelled</h1>
+            </td>
+          </tr>
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px;">
+              <p style="margin: 0 0 20px; font-size: 16px; line-height: 1.6; color: #333;">
+                Dear valued customer,
+              </p>
+              <p style="margin: 0 0 25px; font-size: 16px; line-height: 1.6; color: #333;">
+                This is to inform you that the authorization for your flight plan <strong>${planName}</strong> has been <strong>cancelled</strong> because the flight plan was deleted from the UPPS Platform.
+              </p>
+
+              <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 20px; margin: 25px 0;">
+                <p style="margin: 0 0 10px; font-size: 14px; color: #92400e;">
+                  <strong>Cancellation Details:</strong>
+                </p>
+                <p style="margin: 0 0 5px; font-size: 14px; color: #92400e;">
+                  <strong>Plan:</strong> ${planName}
+                </p>
+                <p style="margin: 0 0 5px; font-size: 14px; color: #92400e;">
+                  <strong>Reason:</strong> Flight plan deleted by user
+                </p>
+                <p style="margin: 0; font-size: 14px; color: #92400e;">
+                  <strong>Date:</strong> ${timestamp}
+                </p>
+              </div>
+
+              <p style="margin: 25px 0 0; font-size: 14px; line-height: 1.6; color: #666;">
+                The corresponding FAS authorization has also been revoked. If you wish to fly this mission, you will need to create and submit a new flight plan for authorization.
+              </p>
+            </td>
+          </tr>
+          <!-- Signature -->
+          <tr>
+            <td style="padding: 30px 40px; border-top: 1px solid #e5e7eb;">
+              <table role="presentation" style="width: 100%;">
+                <tr>
+                  <td style="width: 70%; vertical-align: top;">
+                    <p style="margin: 0 0 5px; font-size: 15px; color: #333; font-weight: bold;">Best regards,</p>
+                    <p style="margin: 0 0 3px; font-size: 15px; color: #1e3a8a; font-weight: bold;">Alex Sanchis</p>
+                    <p style="margin: 0 0 3px; font-size: 13px; color: #666;">UPPS Service Manager</p>
+                    <p style="margin: 0 0 3px; font-size: 13px; color: #666;">Phone: +34 609 33 22 55</p>
+                    <p style="margin: 0; font-size: 13px; color: #1e3a8a;"><a href="mailto:asanmar4@upv.edu.es" style="color: #1e3a8a; text-decoration: none;">asanmar4@upv.edu.es</a></p>
+                  </td>
+                  <td style="width: 30%; text-align: right; vertical-align: middle;">
+                    <img src="${APP_URL}/images/SNA_DEEPBLUE.png" alt="SNA Logo" style="max-width: 120px; height: auto;">
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 20px 40px; background-color: #f9fafb; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0 0 10px; font-size: 11px; line-height: 1.5; color: #999; text-align: center;">
+                <strong>Important:</strong> This email and any attachments are confidential and intended solely for the addressee. If you are not the intended recipient, please delete this email immediately.
+              </p>
+              <p style="margin: 0; font-size: 11px; line-height: 1.5; color: #999; text-align: center;">
+                Please do not reply to this email address. For inquiries or support, contact us directly at <a href="mailto:asanmar4@upv.edu.es" style="color: #1e3a8a;">asanmar4@upv.edu.es</a>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`,
+    )
+    .setText(
+      `Flight Plan Authorization Cancelled\n\nDear valued customer,\n\nThe authorization for your flight plan "${planName}" has been cancelled because the flight plan was deleted from the UPPS Platform.\n\nCancellation Details:\n- Plan: ${planName}\n- Reason: Flight plan deleted by user\n- Date: ${timestamp}\n\nThe corresponding FAS authorization has also been revoked. If you wish to fly this mission, you will need to create and submit a new flight plan for authorization.\n\n---\nBest regards,\nAlex Sanchis\nUPPS Service Manager\n+34 609 33 22 55\nasanmar4@upv.edu.es\n\n---\nThis email is confidential and intended solely for the addressee. Please do not reply to this email address. For inquiries, contact asanmar4@upv.edu.es`,
+    );
+
+  try {
+    await client.email.send(emailParams);
+    logger.info('Plan deletion notification email sent', { to, planName });
+  } catch (error: unknown) {
+    const detail = error instanceof Error ? error.message : JSON.stringify(error);
+    logger.error('Failed to send plan deletion notification email', { to, planName, error: detail });
+  }
+}
