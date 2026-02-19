@@ -213,6 +213,8 @@ export interface Translations {
     viewDenialDetails: string
     fasReason: string
     contactDifferentFAS: string
+    fasDenialReasonHeader: string
+    geozoneConflictDetails: string
     
     // Trajectory viewer
     trajectoryViewer: string
@@ -616,6 +618,8 @@ export const translations: Record<Language, Translations> = {
       viewDenialDetails: 'View conflicting volumes and geozones on an interactive map',
       fasReason: 'FAS Reason',
       contactDifferentFAS: 'This operation must be authorized by a different FAS',
+      fasDenialReasonHeader: 'FAS Denial Reason',
+      geozoneConflictDetails: 'Geozone Conflict Details',
       
       trajectoryViewer: 'Trajectory Viewer',
       trajectory: 'Trajectory',
@@ -1003,6 +1007,8 @@ export const translations: Record<Language, Translations> = {
       viewDenialDetails: 'Ver volúmenes en conflicto y geozonas en un mapa interactivo',
       fasReason: 'Motivo del FAS',
       contactDifferentFAS: 'Esta operación debe ser autorizada por un FAS diferente',
+      fasDenialReasonHeader: 'Motivo de Denegación FAS',
+      geozoneConflictDetails: 'Detalles de Conflicto de Geozona',
       
       trajectoryViewer: 'Visor de Trayectoria',
       trajectory: 'Trayectoria',

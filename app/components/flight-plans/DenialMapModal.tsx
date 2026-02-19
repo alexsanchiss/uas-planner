@@ -34,6 +34,8 @@ interface ConflictingGeozone {
   id?: string | number
   name?: string
   type?: string
+  info?: string
+  conflict?: boolean
   geometry?: {
     type: string
     coordinates: number[][][] | number[][]
@@ -45,6 +47,74 @@ interface ParsedDenial {
   volumes: DenialVolume[]
   conflictingIndices: Set<number>
   conflictingGeozones: ConflictingGeozone[]
+}
+
+/** Point-in-polygon test using ray casting */
+function pointInPolygon(point: [number, number], polygon: [number, number][]): boolean {
+  const [px, py] = point
+  let inside = false
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const [xi, yi] = polygon[i]
+    const [xj, yj] = polygon[j]
+    if ((yi > py) !== (yj > py) && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) {
+      inside = !inside
+    }
+  }
+  return inside
+}
+
+/** Check if line segments (p1-p2) and (p3-p4) intersect */
+function segmentsIntersect(
+  p1: [number, number], p2: [number, number],
+  p3: [number, number], p4: [number, number]
+): boolean {
+  const d1 = cross(p3, p4, p1)
+  const d2 = cross(p3, p4, p2)
+  const d3 = cross(p1, p2, p3)
+  const d4 = cross(p1, p2, p4)
+  if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) &&
+      ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) return true
+  if (d1 === 0 && onSegment(p3, p4, p1)) return true
+  if (d2 === 0 && onSegment(p3, p4, p2)) return true
+  if (d3 === 0 && onSegment(p1, p2, p3)) return true
+  if (d4 === 0 && onSegment(p1, p2, p4)) return true
+  return false
+}
+
+function cross(a: [number, number], b: [number, number], c: [number, number]): number {
+  return (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
+}
+
+function onSegment(a: [number, number], b: [number, number], c: [number, number]): boolean {
+  return Math.min(a[0], b[0]) <= c[0] && c[0] <= Math.max(a[0], b[0]) &&
+         Math.min(a[1], b[1]) <= c[1] && c[1] <= Math.max(a[1], b[1])
+}
+
+/** Check if two 2D polygons intersect (vertex containment + edge crossing) */
+function polygonsIntersect(polyA: [number, number][], polyB: [number, number][]): boolean {
+  // Check if any vertex of A is inside B
+  for (const pt of polyA) {
+    if (pointInPolygon(pt, polyB)) return true
+  }
+  // Check if any vertex of B is inside A
+  for (const pt of polyB) {
+    if (pointInPolygon(pt, polyA)) return true
+  }
+  // Check edge intersections
+  for (let i = 0; i < polyA.length - 1; i++) {
+    for (let j = 0; j < polyB.length - 1; j++) {
+      if (segmentsIntersect(polyA[i], polyA[i + 1], polyB[j], polyB[j + 1])) return true
+    }
+  }
+  return false
+}
+
+/** Extract polygon ring as [lon, lat] pairs from GeoJSON coordinates */
+function extractRing(coords: number[][][] | number[][], geoType: string): [number, number][] {
+  if (geoType === 'Polygon' && Array.isArray(coords[0]?.[0])) {
+    return (coords[0] as number[][]).map(c => [c[0], c[1]])
+  }
+  return (coords as number[][]).map(c => [c[0], c[1]])
 }
 
 interface OperationVolume {
@@ -189,7 +259,7 @@ function MapResizeHandler() {
   return null
 }
 
-export function DenialMapModal({ open, onClose, uplan, authorizationMessage }: DenialMapModalProps) {
+export function DenialMapModal({ open, onClose, uplan, authorizationMessage, geoawarenessData }: DenialMapModalProps) {
   const { t } = useI18n()
   const denial = useMemo(() => parseDenialMessage(authorizationMessage), [authorizationMessage])
   
@@ -206,16 +276,74 @@ export function DenialMapModal({ open, onClose, uplan, authorizationMessage }: D
     }
   }, [authorizationMessage])
 
+  // Parse FAS denial reasons from geozones_information
+  const fasDenialReasons = useMemo(() => {
+    if (!denialMessageData) return null
+    const geozonesInfo = denialMessageData.geozones_information || denialMessageData.geozonesInformation
+    if (!geozonesInfo) return null
+    const conflicting = geozonesInfo.conflicting_geozones || geozonesInfo.conflictingGeozones
+    if (!Array.isArray(conflicting) || conflicting.length === 0) return null
+    return {
+      count: geozonesInfo.number_conflicting_geozones ?? conflicting.length,
+      geozones: conflicting as Array<{ id?: string; identifier?: string; type?: string; info?: string; conflict?: boolean }>,
+    }
+  }, [denialMessageData])
+
+  // Look up geozone geometries from geoawarenessData by matching conflicting geozone IDs
+  const geozoneGeometryLookup = useMemo(() => {
+    const lookup = new Map<string, { type: string; coordinates: number[][][] | number[][] }>()
+    if (!geoawarenessData || typeof geoawarenessData !== 'object') return lookup
+    const data = geoawarenessData as { features?: Array<{ properties?: { identifier?: string; name?: string }; geometry?: { type: string; coordinates: number[][][] | number[][] } }> }
+    if (!Array.isArray(data.features)) return lookup
+    for (const feature of data.features) {
+      const id = feature.properties?.identifier || feature.properties?.name
+      if (id && feature.geometry?.coordinates) {
+        lookup.set(id, feature.geometry)
+      }
+    }
+    return lookup
+  }, [geoawarenessData])
+
   const operationVolumes = useMemo(() => {
     if (!uplan?.operationVolumes || !Array.isArray(uplan.operationVolumes)) return []
-    // If no specific conflicting indices were identified but plan was denied,
-    // mark all volumes as conflicting
-    const allConflicting = denial.conflictingIndices.size === 0 && denial.volumes.length === 0
+
+    // Determine if we should use 2D polygon intersection for selective marking
+    const hasSpecificIndices = denial.conflictingIndices.size > 0 || denial.volumes.length > 0
+    const hasConflictingGeozones = denial.conflictingGeozones.length > 0
+
+    // Build geozone polygons for intersection testing (from FAS response or geoawarenessData)
+    const geozoneRings: [number, number][][] = []
+    if (!hasSpecificIndices && hasConflictingGeozones) {
+      for (const gz of denial.conflictingGeozones) {
+        const gzId = gz.identifier || gz.id?.toString() || ''
+        // Try geozone geometry from FAS response first, then from geoawarenessData
+        const geometry = gz.geometry || (gzId ? geozoneGeometryLookup.get(gzId) : undefined)
+        if (geometry?.coordinates) {
+          geozoneRings.push(extractRing(geometry.coordinates, geometry.type))
+        }
+      }
+    }
+
+    const useIntersectionTest = !hasSpecificIndices && geozoneRings.length > 0
+    // If no specific indices AND no geometry available, fall back to all-red
+    const allConflicting = !hasSpecificIndices && !useIntersectionTest
+
     return uplan.operationVolumes.map((vol, idx) => {
       const coords = vol.geometry?.coordinates?.[0]
       if (!coords || !Array.isArray(coords)) return null
       const leafletCoords = toLeafletCoords(coords)
-      const isConflicting = allConflicting || denial.conflictingIndices.has(vol.ordinal ?? idx)
+
+      let isConflicting: boolean
+      if (hasSpecificIndices) {
+        isConflicting = denial.conflictingIndices.has(vol.ordinal ?? idx)
+      } else if (useIntersectionTest) {
+        // Check 2D polygon intersection between this volume and each geozone
+        const volRing = coords.map((c: number[]) => [c[0], c[1]] as [number, number])
+        isConflicting = geozoneRings.some(gzRing => polygonsIntersect(volRing, gzRing))
+      } else {
+        isConflicting = allConflicting
+      }
+
       return {
         coords: leafletCoords,
         idx,
@@ -238,25 +366,37 @@ export function DenialMapModal({ open, onClose, uplan, authorizationMessage }: D
       minAlt: string
       maxAlt: string
     }[]
-  }, [uplan, denial.conflictingIndices])
+  }, [uplan, denial.conflictingIndices, denial.volumes.length, denial.conflictingGeozones, geozoneGeometryLookup])
 
   const geozonePolygons = useMemo(() => {
     return denial.conflictingGeozones
-      .filter(gz => gz.geometry?.coordinates)
       .map((gz, idx) => {
-        const rawCoords = gz.geometry!.type === 'Polygon'
-          ? gz.geometry!.coordinates[0] as number[][]
-          : gz.geometry!.coordinates as unknown as number[][]
+        const gzId = gz.identifier || gz.id?.toString() || ''
+        // Use geometry from FAS response first, then from geoawarenessData
+        const geometry = gz.geometry || (gzId ? geozoneGeometryLookup.get(gzId) : undefined)
+        if (!geometry?.coordinates) return null
+        const rawCoords = geometry.type === 'Polygon'
+          ? geometry.coordinates[0] as number[][]
+          : geometry.coordinates as unknown as number[][]
         const leafletCoords = toLeafletCoords(rawCoords)
         return {
           coords: leafletCoords,
           identifier: gz.identifier || gz.id?.toString() || `Geozone ${idx + 1}`,
           name: gz.name || '',
           type: gz.type || 'Unknown',
+          info: gz.info || '',
           raw: gz,
         }
       })
-  }, [denial.conflictingGeozones])
+      .filter(Boolean) as {
+        coords: [number, number][]
+        identifier: string
+        name: string
+        type: string
+        info: string
+        raw: ConflictingGeozone
+      }[]
+  }, [denial.conflictingGeozones, geozoneGeometryLookup])
 
   // Collect all coords for bounds fitting
   const allCoords = useMemo(() => {
@@ -319,6 +459,47 @@ export function DenialMapModal({ open, onClose, uplan, authorizationMessage }: D
           </div>
         </div>
       </div>
+
+      {/* FAS Denial Reason — geozone conflict details */}
+      {fasDenialReasons && (
+        <div className="mb-4 p-3 bg-orange-50 dark:bg-orange-900/15 border border-orange-200 dark:border-orange-800 rounded-lg">
+          <h4 className="text-sm font-semibold text-orange-800 dark:text-orange-300 mb-2">
+            {t.flightPlans.fasDenialReasonHeader}
+          </h4>
+          <p className="text-xs text-orange-700 dark:text-orange-400 mb-2">
+            {fasDenialReasons.count} {fasDenialReasons.count !== 1 ? t.flightPlans.conflictingGeozones.toLowerCase() : t.flightPlans.conflictingGeozone.toLowerCase()}
+          </p>
+          <div className="space-y-2 max-h-40 overflow-y-auto">
+            {fasDenialReasons.geozones.map((gz, idx) => (
+              <div key={idx} className="p-2 bg-white dark:bg-gray-800 rounded border border-orange-200 dark:border-orange-700">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xs font-mono font-semibold text-orange-800 dark:text-orange-300">
+                    {gz.id || gz.identifier || `Geozone ${idx + 1}`}
+                  </span>
+                  <span className="text-xs px-1.5 py-0.5 rounded bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-400 font-medium">
+                    {gz.type || 'Unknown'}
+                  </span>
+                </div>
+                {gz.info && (
+                  <p className="text-xs text-[var(--text-secondary)]">{gz.info}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Non-geozone raw denial message fallback */}
+      {!fasDenialReasons && denialMessageData && denialMessageData.status !== 'WITHDRAWN' && (
+        <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+          <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-2">
+            {t.flightPlans.fasReason}
+          </h4>
+          <pre className="text-xs text-[var(--text-secondary)] whitespace-pre-wrap break-words max-h-32 overflow-y-auto">
+            {typeof authorizationMessage === 'string' ? authorizationMessage : JSON.stringify(denialMessageData, null, 2)}
+          </pre>
+        </div>
+      )}
 
       {/* Map */}
       {hasContent ? (
@@ -447,6 +628,7 @@ export function DenialMapModal({ open, onClose, uplan, authorizationMessage }: D
                 <div className="text-xs text-[var(--text-secondary)]">
                   {gz.name && <span className="font-medium">{gz.name} — </span>}
                   <span className="text-red-600 dark:text-red-400">{gz.type}</span>
+                  {gz.info && <p className="mt-0.5 text-[var(--text-muted)]">{gz.info}</p>}
                 </div>
               </div>
             ))}
