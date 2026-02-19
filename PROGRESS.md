@@ -28,4 +28,4 @@
 | 17 | F17 | 3D denial visualization with geozone volumes | Completed |
 | 18 | F18 | FAS approval modal with 2D/3D map and parsed reason | Completed |
 | 19 | F19 | Contact Us page with ticket system | Completed |
-| 20 | F20 | 3D trajectory viewer with drone animation | Not Started |
+| 20 | F20 | 3D trajectory viewer with drone animation | Completed |

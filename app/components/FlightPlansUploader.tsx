@@ -73,6 +73,9 @@ const Denial3DModal = dynamic(() => import('./flight-plans/Denial3DModal'), { ss
 // Task 18: Dynamic import for unified Authorization Result modal (uses Leaflet + Cesium)
 const AuthorizationResultModal = dynamic(() => import('./flight-plans/AuthorizationResultModal'), { ssr: false })
 
+// Task 20: Dynamic import for 3D Trajectory viewer with drone animation (requires Cesium)
+const Trajectory3DViewer = dynamic(() => import('./flight-plans/Trajectory3DViewer'), { ssr: false })
+
 /**
  * Transform API flight plan data to component flight plan format
  * TASK-220: Include fileContent for waypoint preview extraction
@@ -277,6 +280,12 @@ export function FlightPlansUploader() {
     geoawarenessData: unknown
     planName: string
   }>({ open: false, uplanData: null, status: '', reason: null, geoawarenessData: null, planName: '' })
+  // Task 20: 3D Trajectory viewer state
+  const [trajectory3DViewer, setTrajectory3DViewer] = useState<{
+    open: boolean
+    planId: string | null
+    planName: string
+  }>({ open: false, planId: null, planName: '' })
   
   const [loadingPlanIds, setLoadingPlanIds] = useState<{
     processing: Set<string>
@@ -1554,6 +1563,26 @@ export function FlightPlansUploader() {
                   </svg>
                   View Trajectory
                 </button>
+                {/* Task 20: View trajectory in 3D with drone animation */}
+                <button
+                  onClick={() => {
+                    const plan = flightPlans.find(p => String(p.id) === String(selectedPlan.id))
+                    if (!plan?.csvResult) return
+                    setTrajectory3DViewer({
+                      open: true,
+                      planId: String(plan.id),
+                      planName: plan.customName,
+                    })
+                  }}
+                  disabled={selectedPlan.status !== 'procesado' || !selectedPlan.csvResult}
+                  title={selectedPlan.status !== 'procesado' ? 'Plan must be processed first' : !selectedPlan.csvResult ? 'Trajectory data not available' : undefined}
+                  className="px-4 py-2 text-sm font-medium text-[var(--text-primary)] bg-[var(--surface-tertiary)] border border-[var(--border-primary)] rounded-md hover:bg-[var(--bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors btn-interactive flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                  </svg>
+                  View Trajectory 3D
+                </button>
                 {/* Check Geoawareness button */}
                 <button
                   onClick={() => handleGeoawareness(selectedPlan.id)}
@@ -2100,6 +2129,16 @@ export function FlightPlansUploader() {
         geoawarenessData={authResultModal.geoawarenessData}
         planName={authResultModal.planName}
       />
+
+      {/* Task 20: 3D Trajectory viewer with drone animation */}
+      {trajectory3DViewer.planId && (
+        <Trajectory3DViewer
+          isOpen={trajectory3DViewer.open}
+          onClose={() => setTrajectory3DViewer({ open: false, planId: null, planName: '' })}
+          planId={trajectory3DViewer.planId}
+          planName={trajectory3DViewer.planName}
+        />
+      )}
     </div>
   )
 }
