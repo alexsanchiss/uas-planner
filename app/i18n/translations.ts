@@ -404,6 +404,25 @@ export interface Translations {
     deleteAccount: string
   }
   
+  // Contact Page
+  contactPage: {
+    title: string
+    subtitle: string
+    subject: string
+    subjectPlaceholder: string
+    category: string
+    description: string
+    descriptionPlaceholder: string
+    submit: string
+    submitting: string
+    loginRequired: string
+    ticketSuccess: string
+    ticketNumber: string
+    confirmationSent: string
+    submitAnother: string
+    demoNote: string
+  }
+
   // Errors
   errors: {
     generic: string
@@ -797,6 +816,23 @@ export const translations: Record<Language, Translations> = {
       changePassword: 'Change password',
       deleteAccount: 'Delete account',
     },
+    contactPage: {
+      title: 'Contact Us',
+      subtitle: 'Submit a support ticket and we\'ll get back to you.',
+      subject: 'Subject',
+      subjectPlaceholder: 'Brief summary of your issue',
+      category: 'Category',
+      description: 'Description',
+      descriptionPlaceholder: 'Describe your issue or request in detail...',
+      submit: 'Submit Ticket',
+      submitting: 'Submitting...',
+      loginRequired: 'Please log in to submit a support ticket.',
+      ticketSuccess: 'Ticket submitted successfully!',
+      ticketNumber: 'Your ticket number is',
+      confirmationSent: 'A confirmation email has been sent.',
+      submitAnother: 'Submit another ticket',
+      demoNote: 'This is a DEMO version of UPPS. Your input is crucial to help us improve the app. Thank you for testing and sharing your experience!',
+    },
     errors: {
       generic: 'An error occurred',
       network: 'Network error',
@@ -1185,6 +1221,23 @@ export const translations: Record<Language, Translations> = {
       account: 'Cuenta',
       changePassword: 'Cambiar contraseña',
       deleteAccount: 'Eliminar cuenta',
+    },
+    contactPage: {
+      title: 'Contáctenos',
+      subtitle: 'Envíe un ticket de soporte y le responderemos.',
+      subject: 'Asunto',
+      subjectPlaceholder: 'Resumen breve de su problema',
+      category: 'Categoría',
+      description: 'Descripción',
+      descriptionPlaceholder: 'Describa su problema o solicitud en detalle...',
+      submit: 'Enviar Ticket',
+      submitting: 'Enviando...',
+      loginRequired: 'Inicie sesión para enviar un ticket de soporte.',
+      ticketSuccess: '¡Ticket enviado correctamente!',
+      ticketNumber: 'Su número de ticket es',
+      confirmationSent: 'Se ha enviado un correo de confirmación.',
+      submitAnother: 'Enviar otro ticket',
+      demoNote: 'Esta es una versión DEMO de UPPS. Su opinión es crucial para mejorar la aplicación. ¡Gracias por probar y compartir su experiencia!',
     },
     errors: {
       generic: 'Ha ocurrido un error',
