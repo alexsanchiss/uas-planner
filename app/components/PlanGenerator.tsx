@@ -384,15 +384,11 @@ export default function PlanGenerator() {
   // preventing unnecessary cleanup/re-registration cycles
   const scanMapClickHandlerRef = useRef<((lat: number, lng: number) => void) | null>(null);
   
-  // State to trigger re-render when handler changes (for PlanMap to pick up changes)
-  const [scanHandlerVersion, setScanHandlerVersion] = useState(0);
-  
   // Stable callback for setting the SCAN map click handler
   // This function identity never changes, preventing useEffect cleanup issues
+  // PlanMap reads the handler via a ref, so no remount is needed
   const handleSetScanMapClickHandler = useCallback((handler: ((lat: number, lng: number) => void) | null) => {
     scanMapClickHandlerRef.current = handler;
-    // Increment version to force PlanMap to see the change
-    setScanHandlerVersion(v => v + 1);
   }, []);
 
   // TASK-14: Drag handlers from ScanPatternGeneratorV2 for map marker drag events
@@ -2305,7 +2301,7 @@ export default function PlanGenerator() {
             scanMode={generatorMode === 'scan'}
             scanOverlays={scanOverlays || undefined}
             customClickHandler={scanMapClickHandlerRef.current}
-            key={`planmap-${scanHandlerVersion}`} // Force re-render when handler changes
+            key={`planmap-${selectedUspace?.id || 'default'}`}
             // TASK-051: Pass geozone data to PlanMap
             geozonesData={geozonesData}
             // TASK-052: Control geozone visibility via toggle

@@ -4,7 +4,7 @@
 |------|---------|-------------|--------|
 | 1 | F1 | Remove Email Domain Validation | Completed |
 | 2 | F2 | Reduce Verification Code Expiry to 3 Minutes | Completed |
-| 3 | F3 | Fix Map Zoom During SCAN Phase Transitions | Not Started |
+| 3 | F3 | Fix Map Zoom During SCAN Phase Transitions | Completed |
 | 4 | F4 | Add OK Button & Enter Key to Waypoint Editing | Completed |
 | 5 | F5 | Add "Add Waypoint" Button to Sidebar | Completed |
 | 6 | F6 | Generate Volumes Before U-Plan Download | Not Started |

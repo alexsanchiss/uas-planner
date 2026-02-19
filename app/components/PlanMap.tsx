@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { MapContainer, TileLayer, Polyline, Rectangle, Polygon } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { Marker, Popup, useMapEvents } from "react-leaflet";
@@ -266,6 +266,13 @@ function MapClickHandler({
   scanMode?: boolean;
   areaName?: string;
 }) {
+  // Use a ref so the map click handler always sees the latest customClickHandler
+  // without requiring a MapContainer remount
+  const customClickHandlerRef = useRef(customClickHandler);
+  useEffect(() => {
+    customClickHandlerRef.current = customClickHandler;
+  }, [customClickHandler]);
+
   useMapEvents({
     click(e: L.LeafletMouseEvent) {
       // Check if point is within service bounds
@@ -280,9 +287,10 @@ function MapClickHandler({
       
       // TASK-215: When in SCAN mode, only use custom handler - NEVER add manual waypoints
       if (scanMode) {
-        if (customClickHandler) {
+        const handler = customClickHandlerRef.current;
+        if (handler) {
           if (isWithinBounds) {
-            customClickHandler(e.latlng.lat, e.latlng.lng);
+            handler(e.latlng.lat, e.latlng.lng);
           } else {
             onToast(`Point must be within the ${displayName}.`);
           }
