@@ -512,6 +512,144 @@ export async function sendAuthorizationResultEmail(
 }
 
 /**
+ * Send confirmation email to user who submitted a contact/support ticket.
+ */
+export async function sendContactTicketEmail(
+  userEmail: string,
+  ticketNumber: string,
+  subject: string,
+  category: string,
+): Promise<void> {
+  const client = getMailerSendClient();
+  if (!client) return;
+
+  const emailParams = new EmailParams()
+    .setFrom(new Sender(SENDER_EMAIL, SENDER_NAME))
+    .setTo([new Recipient(userEmail)])
+    .setSubject(`Support Ticket Received - ${ticketNumber}`)
+    .setHtml(
+      `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#f4f4f4;">
+  <table role="presentation" style="width:100%;border-collapse:collapse;">
+    <tr><td style="padding:20px 0;">
+      <table role="presentation" style="width:600px;margin:0 auto;background-color:#ffffff;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+        <tr><td style="padding:40px 40px 30px;text-align:center;border-bottom:3px solid #1e3a8a;">
+          <h1 style="margin:0;color:#1e3a8a;font-size:28px;font-weight:bold;">Support Ticket Received</h1>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 20px;font-size:16px;line-height:1.6;color:#333;">Thank you for contacting the <strong>UPPS Platform</strong> support team.</p>
+          <div style="background-color:#f0f4ff;border-left:4px solid #1e3a8a;padding:20px;margin:25px 0;">
+            <p style="margin:0 0 10px;font-size:14px;color:#555;"><strong>Ticket Number:</strong></p>
+            <p style="margin:0;font-size:24px;font-weight:bold;color:#1e3a8a;text-align:center;">${ticketNumber}</p>
+          </div>
+          <div style="background-color:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:20px;margin:25px 0;">
+            <p style="margin:0 0 8px;font-size:14px;color:#333;"><strong>Subject:</strong> ${subject}</p>
+            <p style="margin:0;font-size:14px;color:#333;"><strong>Category:</strong> ${category}</p>
+          </div>
+          <p style="margin:25px 0 0;font-size:14px;line-height:1.6;color:#666;">We will review your request and get back to you as soon as possible. Please keep your ticket number for reference.</p>
+        </td></tr>
+        <tr><td style="padding:30px 40px;border-top:1px solid #e5e7eb;">
+          <table role="presentation" style="width:100%;"><tr>
+            <td style="width:70%;vertical-align:top;">
+              <p style="margin:0 0 5px;font-size:15px;color:#333;font-weight:bold;">Best regards,</p>
+              <p style="margin:0 0 3px;font-size:15px;color:#1e3a8a;font-weight:bold;">Alex Sanchis</p>
+              <p style="margin:0 0 3px;font-size:13px;color:#666;">UPPS Service Manager</p>
+              <p style="margin:0;font-size:13px;color:#1e3a8a;"><a href="mailto:asanmar4@upv.edu.es" style="color:#1e3a8a;text-decoration:none;">asanmar4@upv.edu.es</a></p>
+            </td>
+            <td style="width:30%;text-align:right;vertical-align:middle;">
+              <img src="${APP_URL}/images/SNA_DEEPBLUE.png" alt="SNA Logo" style="max-width:120px;height:auto;">
+            </td>
+          </tr></table>
+        </td></tr>
+        <tr><td style="padding:20px 40px;background-color:#f9fafb;border-top:1px solid #e5e7eb;">
+          <p style="margin:0;font-size:11px;line-height:1.5;color:#999;text-align:center;">Please do not reply to this email. For inquiries, contact us at <a href="mailto:asanmar4@upv.edu.es" style="color:#1e3a8a;">asanmar4@upv.edu.es</a></p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`,
+    )
+    .setText(
+      `Support Ticket Received\n\nThank you for contacting UPPS Platform support.\n\nTicket Number: ${ticketNumber}\nSubject: ${subject}\nCategory: ${category}\n\nWe will review your request and get back to you as soon as possible.\n\n---\nBest regards,\nAlex Sanchis\nUPPS Service Manager\nasanmar4@upv.edu.es`,
+    );
+
+  try {
+    await client.email.send(emailParams);
+    logger.info('Contact ticket confirmation email sent', { to: userEmail, ticketNumber });
+  } catch (error: unknown) {
+    const detail = error instanceof Error ? error.message : JSON.stringify(error);
+    logger.error('Failed to send contact ticket confirmation email', { to: userEmail, ticketNumber, error: detail });
+  }
+}
+
+/**
+ * Send notification email to support team about a new contact ticket.
+ */
+export async function sendContactNotificationEmail(
+  ticketNumber: string,
+  subject: string,
+  category: string,
+  description: string,
+  userEmail: string,
+): Promise<void> {
+  const client = getMailerSendClient();
+  if (!client) return;
+
+  const supportEmail = process.env.SUPPORT_EMAIL || 'UPPS@sna-upv.com';
+
+  const emailParams = new EmailParams()
+    .setFrom(new Sender(SENDER_EMAIL, SENDER_NAME))
+    .setTo([new Recipient(supportEmail)])
+    .setReplyTo(new Recipient(userEmail))
+    .setSubject(`New Support Ticket - ${ticketNumber}`)
+    .setHtml(
+      `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#f4f4f4;">
+  <table role="presentation" style="width:100%;border-collapse:collapse;">
+    <tr><td style="padding:20px 0;">
+      <table role="presentation" style="width:600px;margin:0 auto;background-color:#ffffff;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+        <tr><td style="padding:40px 40px 30px;text-align:center;border-bottom:3px solid #1e3a8a;">
+          <h1 style="margin:0;color:#1e3a8a;font-size:28px;font-weight:bold;">New Support Ticket</h1>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <div style="background-color:#f0f4ff;border-left:4px solid #1e3a8a;padding:20px;margin:0 0 25px;">
+            <p style="margin:0;font-size:20px;font-weight:bold;color:#1e3a8a;text-align:center;">${ticketNumber}</p>
+          </div>
+          <div style="background-color:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:20px;margin:0 0 25px;">
+            <p style="margin:0 0 8px;font-size:14px;color:#333;"><strong>From:</strong> ${userEmail}</p>
+            <p style="margin:0 0 8px;font-size:14px;color:#333;"><strong>Subject:</strong> ${subject}</p>
+            <p style="margin:0;font-size:14px;color:#333;"><strong>Category:</strong> ${category}</p>
+          </div>
+          <div style="background-color:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:20px;">
+            <p style="margin:0 0 10px;font-size:14px;color:#666;font-weight:bold;">Description:</p>
+            <div style="font-size:14px;color:#333;line-height:1.6;white-space:pre-wrap;word-wrap:break-word;">${description}</div>
+          </div>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`,
+    )
+    .setText(
+      `New Support Ticket\n\nTicket: ${ticketNumber}\nFrom: ${userEmail}\nSubject: ${subject}\nCategory: ${category}\n\nDescription:\n${description}`,
+    );
+
+  try {
+    await client.email.send(emailParams);
+    logger.info('Contact notification email sent to support', { ticketNumber, userEmail });
+  } catch (error: unknown) {
+    const detail = error instanceof Error ? error.message : JSON.stringify(error);
+    logger.error('Failed to send contact notification email', { ticketNumber, error: detail });
+  }
+}
+
+/**
  * Notify the user that their approved flight plan authorization has been cancelled
  * because they deleted the plan. Fire-and-forget — errors are logged but never thrown.
  */
