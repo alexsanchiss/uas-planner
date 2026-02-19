@@ -1,24 +1,38 @@
 'use client'
 
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
+
+interface OperationVolume {
+  geometry: {
+    type: string
+    coordinates: number[][][]
+  }
+  minAltitude?: { value: number; reference?: string; uom?: string }
+  maxAltitude?: { value: number; reference?: string; uom?: string }
+  name?: string
+  ordinal?: number
+  timeBegin?: string
+  timeEnd?: string
+}
 
 interface Cesium3DModalProps {
   isOpen: boolean
   onClose: () => void
   uplanData: {
-    operationVolumes?: {
-      geometry: {
-        type: string
-        coordinates: number[][][]
-      }
-      minAltitude?: { value: number; reference?: string; uom?: string }
-      maxAltitude?: { value: number; reference?: string; uom?: string }
-      name?: string
-      ordinal?: number
-      timeBegin?: string
-      timeEnd?: string
-    }[]
+    operationVolumes?: OperationVolume[]
   } | null
+}
+
+/** Parsed time range for a volume */
+interface VolumeTimeRange {
+  index: number
+  beginMs: number
+  endMs: number
+}
+
+function formatDateTime(ms: number): string {
+  const date = new Date(ms)
+  return date.toISOString().replace('T', ' ').slice(0, 19) + ' UTC'
 }
 
 /** Load Cesium from the pre-built UMD bundle via script tag */
@@ -49,11 +63,98 @@ function loadCesiumScript(): Promise<any> {
   })
 }
 
+const SPEED_OPTIONS = [1, 2, 5, 10] as const
+
 const Cesium3DModal: React.FC<Cesium3DModalProps> = ({ isOpen, onClose, uplanData }) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewerRef = useRef<any>(null)
+  const entitiesRef = useRef<any[]>([])
+  const cesiumRef = useRef<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // 4D time slider state
+  const [currentTimeMs, setCurrentTimeMs] = useState(0)
+  const [playing, setPlaying] = useState(false)
+  const [speed, setSpeed] = useState<number>(1)
+  const lastFrameRef = useRef<number>(0)
+  const animFrameRef = useRef<number>(0)
+
+  // Parse volume time ranges
+  const volumeTimeRanges = useMemo<VolumeTimeRange[]>(() => {
+    const volumes = uplanData?.operationVolumes
+    if (!volumes) return []
+    const ranges: VolumeTimeRange[] = []
+    volumes.forEach((vol, idx) => {
+      if (vol.timeBegin && vol.timeEnd) {
+        const beginMs = new Date(vol.timeBegin).getTime()
+        const endMs = new Date(vol.timeEnd).getTime()
+        if (!isNaN(beginMs) && !isNaN(endMs)) {
+          ranges.push({ index: idx, beginMs, endMs })
+        }
+      }
+    })
+    return ranges
+  }, [uplanData])
+
+  const hasTimeData = volumeTimeRanges.length > 0
+  const globalStartMs = hasTimeData ? Math.min(...volumeTimeRanges.map(r => r.beginMs)) : 0
+  const globalEndMs = hasTimeData ? Math.max(...volumeTimeRanges.map(r => r.endMs)) : 0
+
+  // Initialize currentTimeMs to globalStartMs when time data changes
+  useEffect(() => {
+    if (hasTimeData) setCurrentTimeMs(globalStartMs)
+  }, [hasTimeData, globalStartMs])
+
+  // Play animation loop
+  useEffect(() => {
+    if (!playing || !hasTimeData) return
+
+    lastFrameRef.current = performance.now()
+
+    const tick = (now: number) => {
+      const deltaMs = (now - lastFrameRef.current) * speed
+      lastFrameRef.current = now
+
+      setCurrentTimeMs(prev => {
+        const next = prev + deltaMs
+        if (next >= globalEndMs) {
+          setPlaying(false)
+          return globalEndMs
+        }
+        return next
+      })
+
+      animFrameRef.current = requestAnimationFrame(tick)
+    }
+
+    animFrameRef.current = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(animFrameRef.current)
+  }, [playing, speed, hasTimeData, globalEndMs])
+
+  // Update entity colors based on current time
+  const updateVolumeColors = useCallback((timeMs: number) => {
+    const Cesium = cesiumRef.current
+    const entities = entitiesRef.current
+    if (!Cesium || entities.length === 0) return
+
+    entities.forEach(({ entity, beginMs, endMs }) => {
+      const isActive = timeMs >= beginMs && timeMs <= endMs
+      if (entity.polygon) {
+        entity.polygon.material = isActive
+          ? Cesium.Color.fromCssColorString('rgba(51, 148, 255, 0.65)')
+          : Cesium.Color.fromCssColorString('rgba(160, 160, 160, 0.12)')
+        entity.polygon.outlineColor = isActive
+          ? Cesium.Color.fromCssColorString('rgba(51, 148, 255, 0.9)')
+          : Cesium.Color.fromCssColorString('rgba(160, 160, 160, 0.3)')
+      }
+    })
+  }, [])
+
+  // Sync entity colors when currentTimeMs changes
+  useEffect(() => {
+    if (hasTimeData) updateVolumeColors(currentTimeMs)
+  }, [currentTimeMs, hasTimeData, updateVolumeColors])
 
   useEffect(() => {
     if (!isOpen || !containerRef.current) return
@@ -63,6 +164,7 @@ const Cesium3DModal: React.FC<Cesium3DModalProps> = ({ isOpen, onClose, uplanDat
     const init = async () => {
       setLoading(true)
       setError(null)
+      entitiesRef.current = []
 
       try {
         // 1. Fetch Cesium Ion token
@@ -79,6 +181,7 @@ const Cesium3DModal: React.FC<Cesium3DModalProps> = ({ isOpen, onClose, uplanDat
 
         // 2. Load Cesium from pre-built bundle
         const Cesium = await loadCesiumScript()
+        cesiumRef.current = Cesium
 
         if (destroyed) return
 
@@ -122,6 +225,7 @@ const Cesium3DModal: React.FC<Cesium3DModalProps> = ({ isOpen, onClose, uplanDat
         const volumes = uplanData?.operationVolumes
         if (volumes && volumes.length > 0) {
           const allPositions: any[] = []
+          const trackedEntities: any[] = []
 
           volumes.forEach((vol, idx) => {
             const coords = vol.geometry?.coordinates?.[0]
@@ -140,7 +244,7 @@ const Cesium3DModal: React.FC<Cesium3DModalProps> = ({ isOpen, onClose, uplanDat
             const material = Cesium.Color.fromCssColorString('rgba(51, 128, 255, 0.35)')
             const outlineColor = Cesium.Color.fromCssColorString('rgba(51, 128, 255, 0.8)')
 
-            viewer.entities.add({
+            const entity = viewer.entities.add({
               name: vol.name || `Volume ${idx + 1}`,
               polygon: {
                 hierarchy: Cesium.Cartesian3.fromDegreesArray(degreesArray),
@@ -163,7 +267,16 @@ const Cesium3DModal: React.FC<Cesium3DModalProps> = ({ isOpen, onClose, uplanDat
                 '</table>',
               ].join(''),
             })
+
+            // Track entity with its time range for 4D coloring
+            const beginMs = vol.timeBegin ? new Date(vol.timeBegin).getTime() : NaN
+            const endMs = vol.timeEnd ? new Date(vol.timeEnd).getTime() : NaN
+            if (!isNaN(beginMs) && !isNaN(endMs)) {
+              trackedEntities.push({ entity, beginMs, endMs })
+            }
           })
+
+          entitiesRef.current = trackedEntities
 
           // 7. Camera - fly to all volumes
           if (allPositions.length > 0) {
@@ -192,6 +305,9 @@ const Cesium3DModal: React.FC<Cesium3DModalProps> = ({ isOpen, onClose, uplanDat
 
     return () => {
       destroyed = true
+      cancelAnimationFrame(animFrameRef.current)
+      setPlaying(false)
+      entitiesRef.current = []
       if (viewerRef.current && !viewerRef.current.isDestroyed()) {
         viewerRef.current.destroy()
         viewerRef.current = null
@@ -265,6 +381,64 @@ const Cesium3DModal: React.FC<Cesium3DModalProps> = ({ isOpen, onClose, uplanDat
             </div>
           )}
         </div>
+
+        {/* 4D Time Slider Controls */}
+        {hasTimeData && !loading && !error && (
+          <div className="px-6 py-3 border-t border-gray-700">
+            <div className="flex items-center gap-3 mb-2">
+              {/* Play/Pause */}
+              <button
+                onClick={() => {
+                  if (currentTimeMs >= globalEndMs) setCurrentTimeMs(globalStartMs)
+                  setPlaying(p => !p)
+                }}
+                className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-colors"
+                aria-label={playing ? 'Pause' : 'Play'}
+              >
+                {playing ? (
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <rect x="6" y="4" width="4" height="16" />
+                    <rect x="14" y="4" width="4" height="16" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                )}
+              </button>
+
+              {/* Time slider */}
+              <input
+                type="range"
+                min={globalStartMs}
+                max={globalEndMs}
+                value={currentTimeMs}
+                onChange={e => {
+                  setPlaying(false)
+                  setCurrentTimeMs(Number(e.target.value))
+                }}
+                className="flex-1 h-1.5 accent-blue-500 cursor-pointer"
+                step={1000}
+              />
+
+              {/* Speed control */}
+              <select
+                value={speed}
+                onChange={e => setSpeed(Number(e.target.value))}
+                className="flex-shrink-0 bg-gray-700 text-gray-200 text-xs rounded px-2 py-1.5 border border-gray-600 focus:outline-none focus:border-blue-500"
+              >
+                {SPEED_OPTIONS.map(s => (
+                  <option key={s} value={s}>{s}x</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Current time display */}
+            <div className="text-center text-xs text-gray-300 font-mono">
+              {formatDateTime(currentTimeMs)}
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <div className="px-6 py-3 border-t border-gray-700 text-xs text-gray-400 flex items-center justify-between">

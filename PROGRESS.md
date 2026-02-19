@@ -24,7 +24,7 @@
 |------|---------|-------------|--------|
 | 14 | F14 | Move profile editing to /profile page | Completed |
 | 15 | F15 | AGL altitude correction for trajectory processing | Completed |
-| 16 | F16 | 4D time slider for 3D U-Plan viewer | Not Started |
+| 16 | F16 | 4D time slider for 3D U-Plan viewer | Completed |
 | 17 | F17 | 3D denial visualization with geozone volumes | Not Started |
 | 18 | F18 | FAS approval modal with 2D/3D map and parsed reason | Not Started |
 | 19 | F19 | Contact Us page with ticket system | Not Started |
