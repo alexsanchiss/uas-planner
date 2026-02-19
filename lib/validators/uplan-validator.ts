@@ -906,6 +906,27 @@ export function mergeWithDefaults(existing: unknown): UplanFormDataPartial {
 }
 
 // ============================================================================
+// EU Regulatory Constraints per UAS Class
+// ============================================================================
+
+/**
+ * EU regulation constraints for each UAS class.
+ * - maxMTOM: Maximum takeoff mass in kg (null = no limit)
+ * - allowedDimensions: Allowed dimension values (null = all allowed)
+ * - maxSpeed: Maximum speed in m/s (undefined = no limit)
+ */
+export const UAS_CLASS_CONSTRAINTS: Record<string, { maxMTOM: number | null; allowedDimensions: string[] | null; maxSpeed?: number }> = {
+  NONE: { maxMTOM: null, allowedDimensions: null },
+  C0: { maxMTOM: 0.25, allowedDimensions: null },
+  C1: { maxMTOM: 0.9, allowedDimensions: null, maxSpeed: 19 },
+  C2: { maxMTOM: 4, allowedDimensions: null },
+  C3: { maxMTOM: 25, allowedDimensions: ['LT_1', 'LT_3'] },
+  C4: { maxMTOM: 25, allowedDimensions: null },
+  C5: { maxMTOM: 25, allowedDimensions: null },
+  C6: { maxMTOM: 25, allowedDimensions: null },
+};
+
+// ============================================================================
 // Dropdown Options for UI
 // ============================================================================
 

@@ -28,6 +28,7 @@ import {
   mergeWithDefaults,
   createEmptyUplanFormData,
   UplanDropdownOptions,
+  UAS_CLASS_CONSTRAINTS,
   type UplanFormDataPartial,
   type UplanValidationErrors,
   type FlightMode,
@@ -844,7 +845,16 @@ export default function UplanFormModal({
                       step="0.01"
                       min="0"
                       value={formData.uas?.flightCharacteristics?.uasMTOM ?? ''}
-                      onChange={(e) => updateField('uas.flightCharacteristics.uasMTOM', e.target.value ? parseFloat(e.target.value) : undefined)}
+                      onChange={(e) => {
+                        let val: number | undefined = e.target.value ? parseFloat(e.target.value) : undefined;
+                        const selectedClass = formData.uas?.generalCharacteristics?.uasClass;
+                        const constraints = selectedClass ? UAS_CLASS_CONSTRAINTS[selectedClass] : null;
+                        if (constraints?.maxMTOM !== null && constraints?.maxMTOM !== undefined && val !== undefined && !isNaN(val) && val > constraints.maxMTOM) {
+                          val = constraints.maxMTOM;
+                          toast.warning(`MTOM capped to ${constraints.maxMTOM} kg for class ${selectedClass}`);
+                        }
+                        updateField('uas.flightCharacteristics.uasMTOM', val);
+                      }}
                       placeholder="e.g., 2.5"
                       hasValidationError={hasFieldError('uas.flightCharacteristics.uasMTOM')}
                     />
@@ -860,7 +870,16 @@ export default function UplanFormModal({
                       step="0.1"
                       min="0"
                       value={formData.uas?.flightCharacteristics?.uasMaxSpeed ?? ''}
-                      onChange={(e) => updateField('uas.flightCharacteristics.uasMaxSpeed', e.target.value ? parseFloat(e.target.value) : undefined)}
+                      onChange={(e) => {
+                        let val: number | undefined = e.target.value ? parseFloat(e.target.value) : undefined;
+                        const selectedClass = formData.uas?.generalCharacteristics?.uasClass;
+                        const constraints = selectedClass ? UAS_CLASS_CONSTRAINTS[selectedClass] : null;
+                        if (constraints?.maxSpeed !== undefined && val !== undefined && !isNaN(val) && val > constraints.maxSpeed) {
+                          val = constraints.maxSpeed;
+                          toast.warning(`Max speed capped to ${constraints.maxSpeed} m/s for class ${selectedClass}`);
+                        }
+                        updateField('uas.flightCharacteristics.uasMaxSpeed', val);
+                      }}
                       placeholder="e.g., 15"
                       hasValidationError={hasFieldError('uas.flightCharacteristics.uasMaxSpeed')}
                     />
@@ -977,7 +996,41 @@ export default function UplanFormModal({
                   >
                     <SelectField
                       value={formData.uas?.generalCharacteristics?.uasClass}
-                      onChange={(v) => updateField('uas.generalCharacteristics.uasClass', v as UasClass)}
+                      onChange={(v) => {
+                        const newClass = v as UasClass;
+                        updateField('uas.generalCharacteristics.uasClass', newClass);
+                        const constraints = UAS_CLASS_CONSTRAINTS[newClass];
+                        if (constraints) {
+                          // Cap MTOM
+                          const currentMTOM = formData.uas?.flightCharacteristics?.uasMTOM;
+                          if (constraints.maxMTOM !== null && currentMTOM !== undefined && currentMTOM !== null) {
+                            const mtomNum = typeof currentMTOM === 'number' ? currentMTOM : parseFloat(String(currentMTOM));
+                            if (!isNaN(mtomNum) && mtomNum > constraints.maxMTOM) {
+                              updateField('uas.flightCharacteristics.uasMTOM', constraints.maxMTOM);
+                              toast.warning(`MTOM capped to ${constraints.maxMTOM} kg for class ${newClass}`);
+                            }
+                          }
+                          // Cap max speed
+                          if (constraints.maxSpeed !== undefined) {
+                            const currentSpeed = formData.uas?.flightCharacteristics?.uasMaxSpeed;
+                            if (currentSpeed !== undefined && currentSpeed !== null) {
+                              const speedNum = typeof currentSpeed === 'number' ? currentSpeed : parseFloat(String(currentSpeed));
+                              if (!isNaN(speedNum) && speedNum > constraints.maxSpeed) {
+                                updateField('uas.flightCharacteristics.uasMaxSpeed', constraints.maxSpeed);
+                                toast.warning(`Max speed capped to ${constraints.maxSpeed} m/s for class ${newClass}`);
+                              }
+                            }
+                          }
+                          // Filter dimension
+                          if (constraints.allowedDimensions) {
+                            const currentDim = formData.uas?.generalCharacteristics?.uasDimension;
+                            if (currentDim && !constraints.allowedDimensions.includes(currentDim)) {
+                              updateField('uas.generalCharacteristics.uasDimension', constraints.allowedDimensions[0]);
+                              toast.warning(`Dimension reset to ${constraints.allowedDimensions[0]} for class ${newClass}`);
+                            }
+                          }
+                        }
+                      }}
                       options={UplanDropdownOptions.uasClass}
                       placeholder="Select..."
                       hasValidationError={hasFieldError('uas.generalCharacteristics.uasClass')}
@@ -992,7 +1045,14 @@ export default function UplanFormModal({
                     <SelectField
                       value={formData.uas?.generalCharacteristics?.uasDimension}
                       onChange={(v) => updateField('uas.generalCharacteristics.uasDimension', v as UasDimension)}
-                      options={UplanDropdownOptions.uasDimension}
+                      options={(() => {
+                        const selectedClass = formData.uas?.generalCharacteristics?.uasClass;
+                        const constraints = selectedClass ? UAS_CLASS_CONSTRAINTS[selectedClass] : null;
+                        const allowed = constraints?.allowedDimensions;
+                        return allowed
+                          ? UplanDropdownOptions.uasDimension.filter(opt => allowed.includes(opt.value))
+                          : UplanDropdownOptions.uasDimension;
+                      })()}
                       placeholder="Select..."
                       hasValidationError={hasFieldError('uas.generalCharacteristics.uasDimension')}
                     />

@@ -32,6 +32,7 @@ import "leaflet/dist/leaflet.css";
 import { useToast } from "../hooks/useToast";
 import { generateOrientedBBox, Waypoint as UplanWaypoint, DEFAULT_UPLAN_CONFIG } from "@/lib/uplan/generate_oriented_volumes";
 import { generateJSON } from "@/lib/uplan/generate_json";
+import { UAS_CLASS_CONSTRAINTS } from "@/lib/validators/uplan-validator";
 
 // Fix for leaflet icons in Next.js
 import L from "leaflet";
@@ -1572,18 +1573,28 @@ export default function PlanGenerator() {
                           value={
                             flightPlanDetails.uas.flightCharacteristics.uasMTOM
                           }
-                          onChange={(e) =>
+                          onChange={(e) => {
+                            let val = e.target.value;
+                            const selectedClass = flightPlanDetails.uas.generalCharacteristics.uasClass;
+                            const constraints = selectedClass ? UAS_CLASS_CONSTRAINTS[selectedClass] : null;
+                            if (constraints?.maxMTOM !== null && constraints?.maxMTOM !== undefined && val) {
+                              const num = parseFloat(val);
+                              if (!isNaN(num) && num > constraints.maxMTOM) {
+                                val = String(constraints.maxMTOM);
+                                toast.warning(`MTOM capped to ${constraints.maxMTOM} kg for class ${selectedClass}`);
+                              }
+                            }
                             setFlightPlanDetails((d) => ({
                               ...d,
                               uas: {
                                 ...d.uas,
                                 flightCharacteristics: {
                                   ...d.uas.flightCharacteristics,
-                                  uasMTOM: e.target.value,
+                                  uasMTOM: val,
                                 },
                               },
-                            }))
-                          }
+                            }));
+                          }}
                           className="input w-24 text-xs"
                         />
                         <input
@@ -1593,18 +1604,28 @@ export default function PlanGenerator() {
                             flightPlanDetails.uas.flightCharacteristics
                               .uasMaxSpeed
                           }
-                          onChange={(e) =>
+                          onChange={(e) => {
+                            let val = e.target.value;
+                            const selectedClass = flightPlanDetails.uas.generalCharacteristics.uasClass;
+                            const constraints = selectedClass ? UAS_CLASS_CONSTRAINTS[selectedClass] : null;
+                            if (constraints?.maxSpeed !== undefined && val) {
+                              const num = parseFloat(val);
+                              if (!isNaN(num) && num > constraints.maxSpeed) {
+                                val = String(constraints.maxSpeed);
+                                toast.warning(`Max speed capped to ${constraints.maxSpeed} m/s for class ${selectedClass}`);
+                              }
+                            }
                             setFlightPlanDetails((d) => ({
                               ...d,
                               uas: {
                                 ...d.uas,
                                 flightCharacteristics: {
                                   ...d.uas.flightCharacteristics,
-                                  uasMaxSpeed: e.target.value,
+                                  uasMaxSpeed: val,
                                 },
                               },
-                            }))
-                          }
+                            }));
+                          }}
                           className="input w-28 text-xs"
                         />
                         <select
@@ -1776,18 +1797,48 @@ export default function PlanGenerator() {
                             flightPlanDetails.uas.generalCharacteristics
                               .uasClass
                           }
-                          onChange={(e) =>
-                            setFlightPlanDetails((d) => ({
-                              ...d,
-                              uas: {
-                                ...d.uas,
-                                generalCharacteristics: {
-                                  ...d.uas.generalCharacteristics,
-                                  uasClass: e.target.value,
+                          onChange={(e) => {
+                            const newClass = e.target.value;
+                            setFlightPlanDetails((d) => {
+                              const updated = {
+                                ...d,
+                                uas: {
+                                  ...d.uas,
+                                  generalCharacteristics: {
+                                    ...d.uas.generalCharacteristics,
+                                    uasClass: newClass,
+                                  },
                                 },
-                              },
-                            }))
-                          }
+                              };
+                              const constraints = UAS_CLASS_CONSTRAINTS[newClass];
+                              if (constraints) {
+                                // Cap MTOM
+                                if (constraints.maxMTOM !== null && d.uas.flightCharacteristics.uasMTOM) {
+                                  const currentMTOM = parseFloat(d.uas.flightCharacteristics.uasMTOM);
+                                  if (!isNaN(currentMTOM) && currentMTOM > constraints.maxMTOM) {
+                                    updated.uas.flightCharacteristics = { ...updated.uas.flightCharacteristics, uasMTOM: String(constraints.maxMTOM) };
+                                    toast.warning(`MTOM capped to ${constraints.maxMTOM} kg for class ${newClass}`);
+                                  }
+                                }
+                                // Cap max speed for C1
+                                if (constraints.maxSpeed !== undefined && d.uas.flightCharacteristics.uasMaxSpeed) {
+                                  const currentSpeed = parseFloat(d.uas.flightCharacteristics.uasMaxSpeed);
+                                  if (!isNaN(currentSpeed) && currentSpeed > constraints.maxSpeed) {
+                                    updated.uas.flightCharacteristics = { ...updated.uas.flightCharacteristics, uasMaxSpeed: String(constraints.maxSpeed) };
+                                    toast.warning(`Max speed capped to ${constraints.maxSpeed} m/s for class ${newClass}`);
+                                  }
+                                }
+                                // Filter dimension
+                                if (constraints.allowedDimensions && d.uas.generalCharacteristics.uasDimension) {
+                                  if (!constraints.allowedDimensions.includes(d.uas.generalCharacteristics.uasDimension)) {
+                                    updated.uas.generalCharacteristics = { ...updated.uas.generalCharacteristics, uasDimension: constraints.allowedDimensions[0] };
+                                    toast.warning(`Dimension reset to ${constraints.allowedDimensions[0]} for class ${newClass}`);
+                                  }
+                                }
+                              }
+                              return updated;
+                            });
+                          }}
                           className="input select text-xs py-1"
                         >
                           <option value="">UAS Class</option>
@@ -1817,11 +1868,16 @@ export default function PlanGenerator() {
                           className="input select text-xs py-1"
                         >
                           <option value="">UAS Dimension</option>
-                          {UAS_DIMENSION.map((opt) => (
-                            <option key={opt} value={opt}>
-                              {opt}
-                            </option>
-                          ))}
+                          {(() => {
+                            const selectedClass = flightPlanDetails.uas.generalCharacteristics.uasClass;
+                            const constraints = selectedClass ? UAS_CLASS_CONSTRAINTS[selectedClass] : null;
+                            const allowed = constraints?.allowedDimensions;
+                            return (allowed ? UAS_DIMENSION.filter(d => allowed.includes(d)) : UAS_DIMENSION).map((opt) => (
+                              <option key={opt} value={opt}>
+                                {opt}
+                              </option>
+                            ));
+                          })()}
                         </select>
                       </div>
                     </div>
