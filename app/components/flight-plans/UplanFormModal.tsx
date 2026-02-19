@@ -339,9 +339,39 @@ export default function UplanFormModal({
       } else {
         setValidationErrors(null);
       }
+
+      // Pre-fill contact details from user profile if empty
+      if (authToken) {
+        fetch('/api/user/profile', {
+          headers: { Authorization: `Bearer ${authToken}` },
+        })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((profile) => {
+            if (!profile) return;
+            setFormData((prev) => {
+              const next = JSON.parse(JSON.stringify(prev));
+              if (!next.contactDetails) next.contactDetails = {};
+              if (!next.contactDetails.firstName && profile.firstName) {
+                next.contactDetails.firstName = profile.firstName;
+              }
+              if (!next.contactDetails.lastName && profile.lastName) {
+                next.contactDetails.lastName = profile.lastName;
+              }
+              const phones: string[] = Array.isArray(next.contactDetails.phones)
+                ? next.contactDetails.phones
+                : [''];
+              if ((!phones[0] || phones[0] === '') && profile.phone) {
+                phones[0] = profile.phone;
+                next.contactDetails.phones = phones;
+              }
+              return next;
+            });
+          })
+          .catch(() => {});
+      }
     }
     wasOpenRef.current = open;
-  }, [open, existingUplan, fieldErrors]);
+  }, [open, existingUplan, fieldErrors, authToken]);
 
   // Helper to get field error
   const getFieldError = useCallback((path: string): string[] | undefined => {

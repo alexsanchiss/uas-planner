@@ -4,6 +4,10 @@ import axios from 'axios'
 interface User {
   id: number
   username: string
+  email?: string
+  firstName?: string | null
+  lastName?: string | null
+  phone?: string | null
 }
 
 // LocalStorage keys for sensitive data

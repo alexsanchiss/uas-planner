@@ -13,6 +13,9 @@ function LoginContent() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
   const [isSignup, setIsSignup] = useState(false);
   const [acceptPolicy, setAcceptPolicy] = useState(false);
   const [error, setError] = useState("");
@@ -42,7 +45,10 @@ function LoginContent() {
         const response = await axios.post("/api/auth/signup", { 
           email, 
           password,
-          confirmPassword 
+          confirmPassword,
+          firstName: firstName || undefined,
+          lastName: lastName || undefined,
+          phone: phone || undefined,
         });
         // After signup, redirect to verification page
         router.push(`/verify-email?email=${encodeURIComponent(email)}`);
@@ -117,6 +123,28 @@ function LoginContent() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
               />
+            )}
+            {isSignup && (
+              <>
+                <Input
+                  type="text"
+                  placeholder="First Name (optional)"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                />
+                <Input
+                  type="text"
+                  placeholder="Last Name (optional)"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                />
+                <Input
+                  type="tel"
+                  placeholder="Phone (optional)"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                />
+              </>
             )}
             {isSignup && (
               <>

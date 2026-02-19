@@ -2,7 +2,7 @@
 
 import { useAuth } from "../hooks/useAuth";
 import { ProtectedRoute } from "../components/auth/protected-route";
-import { User, Mail, Calendar, Shield } from "lucide-react";
+import { User, Mail, Calendar, Shield, Phone } from "lucide-react";
 
 export default function ProfilePage() {
   const { user } = useAuth();
@@ -22,11 +22,13 @@ export default function ProfilePage() {
             {/* Avatar and Name */}
             <div className="flex items-center gap-4 mb-6 pb-6 border-b border-[var(--border-primary)]">
               <div className="w-20 h-20 rounded-full bg-[var(--color-primary)] flex items-center justify-center text-white text-2xl font-bold">
-                {user?.username?.charAt(0)?.toUpperCase() || "U"}
+                {user?.firstName?.charAt(0)?.toUpperCase() || user?.username?.charAt(0)?.toUpperCase() || "U"}
               </div>
               <div>
                 <h2 className="text-xl font-semibold text-[var(--text-primary)]">
-                  {user?.username || "User"}
+                  {user?.firstName && user?.lastName
+                    ? `${user.firstName} ${user.lastName}`
+                    : user?.username || "User"}
                 </h2>
                 <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--status-success-bg)] text-[var(--status-success-text)] border border-[var(--status-success-border)]">
                   <Shield className="w-3 h-3" />
@@ -42,8 +44,18 @@ export default function ProfilePage() {
                   <User className="w-5 h-5 text-[var(--color-primary)]" />
                 </div>
                 <div>
-                  <p className="text-xs text-[var(--text-muted)]">Username</p>
-                  <p className="text-[var(--text-primary)] font-medium">{user?.username || "Not set"}</p>
+                  <p className="text-xs text-[var(--text-muted)]">First Name</p>
+                  <p className="text-[var(--text-primary)] font-medium">{user?.firstName || "Not set"}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-[var(--bg-secondary)]">
+                <div className="w-10 h-10 rounded-full bg-[var(--color-primary-light)] flex items-center justify-center">
+                  <User className="w-5 h-5 text-[var(--color-primary)]" />
+                </div>
+                <div>
+                  <p className="text-xs text-[var(--text-muted)]">Last Name</p>
+                  <p className="text-[var(--text-primary)] font-medium">{user?.lastName || "Not set"}</p>
                 </div>
               </div>
 
@@ -53,7 +65,17 @@ export default function ProfilePage() {
                 </div>
                 <div>
                   <p className="text-xs text-[var(--text-muted)]">Email</p>
-                  <p className="text-[var(--text-primary)] font-medium">{user?.username || "Not set"}</p>
+                  <p className="text-[var(--text-primary)] font-medium">{user?.email || "Not set"}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-[var(--bg-secondary)]">
+                <div className="w-10 h-10 rounded-full bg-[var(--color-primary-light)] flex items-center justify-center">
+                  <Phone className="w-5 h-5 text-[var(--color-primary)]" />
+                </div>
+                <div>
+                  <p className="text-xs text-[var(--text-muted)]">Phone</p>
+                  <p className="text-[var(--text-primary)] font-medium">{user?.phone || "Not set"}</p>
                 </div>
               </div>
 

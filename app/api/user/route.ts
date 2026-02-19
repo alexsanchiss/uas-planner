@@ -18,7 +18,7 @@ export async function GET(request: Request) {
   try {
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
-      select: { id: true, email: true }
+      select: { id: true, email: true, firstName: true, lastName: true, phone: true }
     })
 
     if (!user) {
@@ -28,7 +28,14 @@ export async function GET(request: Request) {
     // Extract username from email (everything before @)
     const username = user.email.split('@')[0]
 
-    return NextResponse.json({ id : user.id , username })
+    return NextResponse.json({
+      id: user.id,
+      username,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phone: user.phone,
+    })
   } catch (error) {
     console.error('Error fetching user data:', error)
     return NextResponse.json({ error: 'An error occurred while fetching user data' }, { status: 500 })
