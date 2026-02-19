@@ -7,7 +7,7 @@
 | 3 | F3 | Fix Map Zoom During SCAN Phase Transitions | Completed |
 | 4 | F4 | Add OK Button & Enter Key to Waypoint Editing | Completed |
 | 5 | F5 | Add "Add Waypoint" Button to Sidebar | Completed |
-| 6 | F6 | Generate Volumes Before U-Plan Download | Not Started |
+| 6 | F6 | Generate Volumes Before U-Plan Download | Completed |
 | 7 | F7 | Fix Theme System and Toast Visibility | Completed |
 | 8 | F8 | Toast Error on Invalid U-Plan File Upload | Completed |
 | 9 | F9 | User Profile Fields (Name, Surname, Phone) | Completed |
