@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     const hashedPassword = await hashPassword(password)
     const verificationToken = crypto.randomUUID()
     const verificationCode = generateVerificationCode()
-    const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000)
+    const verificationTokenExpiry = new Date(Date.now() + 3 * 60 * 1000)
 
     await prisma.user.create({
       data: {

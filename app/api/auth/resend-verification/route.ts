@@ -34,11 +34,11 @@ export async function POST(request: Request) {
 
     // Rate limit: 1 per minute — check if token was issued less than 60s ago
     if (user.verificationTokenExpiry) {
-      const tokenIssuedAt = new Date(user.verificationTokenExpiry.getTime() - 24 * 60 * 60 * 1000)
+      const tokenIssuedAt = new Date(user.verificationTokenExpiry.getTime() - 3 * 60 * 1000)
       const oneMinuteAgo = new Date(Date.now() - 60 * 1000)
       if (tokenIssuedAt > oneMinuteAgo) {
         return NextResponse.json(
-          { error: 'Please wait at least two minutes before requesting a new code' },
+          { error: 'Please wait at least one minute before requesting a new code' },
           { status: 429 },
         )
       }
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
 
     const verificationToken = crypto.randomUUID()
     const verificationCode = generateVerificationCode()
-    const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000)
+    const verificationTokenExpiry = new Date(Date.now() + 3 * 60 * 1000)
 
     await prisma.user.update({
       where: { id: user.id },

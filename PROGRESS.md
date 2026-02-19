@@ -3,7 +3,7 @@
 | Task | Feature | Description | Status |
 |------|---------|-------------|--------|
 | 1 | F1 | Remove Email Domain Validation | Completed |
-| 2 | F2 | Reduce Verification Code Expiry to 3 Minutes | Not Started |
+| 2 | F2 | Reduce Verification Code Expiry to 3 Minutes | Completed |
 | 3 | F3 | Fix Map Zoom During SCAN Phase Transitions | Not Started |
 | 4 | F4 | Add OK Button & Enter Key to Waypoint Editing | Not Started |
 | 5 | F5 | Add "Add Waypoint" Button to Sidebar | Not Started |

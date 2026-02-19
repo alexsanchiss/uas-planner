@@ -23,6 +23,7 @@ export async function POST(request: Request) {
         where: {
           verificationToken: data.token,
           verificationTokenExpiry: { gte: new Date() },
+          emailVerified: false,
         },
       })
     } else {
@@ -31,6 +32,7 @@ export async function POST(request: Request) {
           email: data.email,
           verificationCode: data.code,
           verificationTokenExpiry: { gte: new Date() },
+          emailVerified: false,
         },
       })
     }
