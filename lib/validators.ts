@@ -23,47 +23,6 @@
  */
 
 import { z } from 'zod'
-import dns from 'dns'
-import { promisify } from 'util'
-
-const resolveMx = promisify(dns.resolveMx)
-
-// ============================================================================
-// Email Domain Validation
-// ============================================================================
-
-/**
- * Validates that an email domain exists and accepts emails.
- * Checks for MX records in DNS to ensure the domain can receive mail.
- * 
- * @param email - The email address to validate
- * @returns true if domain has valid MX records, false otherwise
- * 
- * @example
- * ```typescript
- * const isValid = await validateEmailDomain('user@gmail.com')
- * if (!isValid) {
- *   throw new Error('Email domain does not exist or does not accept emails')
- * }
- * ```
- */
-export async function validateEmailDomain(email: string): Promise<boolean> {
-  try {
-    // 1. Extract domain (e.g., gmail.com)
-    const domain = email.split('@')[1]
-    
-    if (!domain) return false
-
-    // 2. Look up MX records
-    const addresses = await resolveMx(domain)
-
-    // 3. If there are records with priority, the domain accepts emails
-    return addresses && addresses.length > 0
-  } catch (error) {
-    // If DNS resolution fails (domain doesn't exist), return false
-    return false
-  }
-}
 
 // ============================================================================
 // Common Schemas & Utilities

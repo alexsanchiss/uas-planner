@@ -3,7 +3,7 @@ import crypto from 'crypto'
 import prisma from '@/lib/prisma'
 import { hashPassword } from '@/lib/auth'
 import { sendVerificationEmail } from '@/lib/email'
-import { signupSchema, validateEmailDomain, isValidationError } from '@/lib/validators'
+import { signupSchema, isValidationError } from '@/lib/validators'
 
 function generateVerificationCode(): string {
   return String(crypto.randomInt(100000, 999999))
@@ -42,15 +42,6 @@ export async function POST(request: Request) {
     }
 
     const { email, password } = parseResult.data
-
-    // Validate email domain exists and accepts mail
-    const isValidDomain = await validateEmailDomain(email)
-    if (!isValidDomain) {
-      return NextResponse.json(
-        { error: 'The email domain does not exist or does not accept emails' }, 
-        { status: 400 }
-      )
-    }
 
     const existingUser = await prisma.user.findUnique({ where: { email } })
     if (existingUser) {
