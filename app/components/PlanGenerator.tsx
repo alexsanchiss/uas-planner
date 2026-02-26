@@ -1,6 +1,6 @@
 // app/components/PlanGenerator.tsx
 //
-// PLAN GENERATOR COMPONENT - Unified API Integration
+// Plan Definition COMPONENT - Unified API Integration
 // =================================================
 //
 // This component creates individual flight plans using the unified API
@@ -64,13 +64,13 @@ import { FieldHelp } from './ui/field-help';
 import dynamic from 'next/dynamic';
 
 const PlanMap = dynamic(() => import('./PlanMap'), { ssr: false });
-const UspaceSelector = dynamic(() => import('./plan-generator/UspaceSelector'), { ssr: false });
-import ScanPatternGeneratorV2 from './plan-generator/ScanPatternGeneratorV2';
+const UspaceSelector = dynamic(() => import('./plan-definition/UspaceSelector'), { ssr: false });
+import ScanPatternGeneratorV2 from './plan-definition/ScanPatternGeneratorV2';
 import { Point, ScanWaypoint } from '@/lib/scan-generator';
 import { useUspaces, USpace } from '@/app/hooks/useUspaces';
 import { useGeoawarenessWebSocket, type GeozoneData } from '@/app/hooks/useGeoawarenessWebSocket';
 
-// Plan generator modes
+// Plan Definition modes
 type GeneratorMode = 'manual' | 'scan';
 
 
@@ -716,18 +716,18 @@ export default function PlanGenerator() {
     setLoading(true);
     try {
       const headers = getAuthHeaders();
-      // 1. Find or create "Plan Generator" folder
+      // 1. Find or create "Plan Definition" folder
       let folderId: number | null = null;
       const foldersRes = await axios.get(`/api/folders`, { headers });
       const planGenFolder = foldersRes.data.find(
-        (f: any) => f.name === "Plan Generator"
+        (f: any) => f.name === "Plan Definition"
       );
       if (planGenFolder) {
         folderId = planGenFolder.id;
       } else {
         // Create folder
         const folderRes = await axios.post("/api/folders", {
-          name: "Plan Generator",
+          name: "Plan Definition",
         }, { headers });
         folderId = folderRes.data.id;
       }
@@ -759,8 +759,8 @@ export default function PlanGenerator() {
       }, { headers });
       const createdPlanId = createRes.data?.id;
       setPlanName("");
-      toast.success(`Plan "${planName}" saved. Redirecting to Trajectory Generator...`);
-      router.push(`/trajectory-generator?selectPlan=${createdPlanId}`);
+      toast.success(`Plan "${planName}" saved. Redirecting to Plan Authorization...`);
+      router.push(`/plan-authorization?selectPlan=${createdPlanId}`);
     } catch (err: any) {
       showToast(
         "Error uploading the plan: " +
@@ -777,7 +777,7 @@ export default function PlanGenerator() {
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-[var(--bg-primary)]">
-        <div className="text-2xl text-[var(--text-primary)] font-semibold">You must be logged in to access the Plan Generator.</div>
+        <div className="text-2xl text-[var(--text-primary)] font-semibold">You must be logged in to access the Plan Definition.</div>
       </div>
     );
   }
@@ -788,10 +788,10 @@ export default function PlanGenerator() {
       <div className="w-full bg-[var(--bg-primary)] overflow-x-hidden min-h-screen">
         {/* Help Button */}
         <a
-          href="/how-it-works#plan-generator-help"
+          href="/how-it-works#plan-definition-help"
           target="_self"
           className="fixed top-24 right-4 sm:right-8 z-[9999] bg-blue-700 hover:bg-blue-800 text-white rounded-full p-2 sm:p-3 shadow-lg flex items-center gap-2 transition-all duration-200"
-          title="Need help with Plan Generator?"
+          title="Need help with Plan Definition?"
         >
           <HelpCircle className="w-5 h-5 sm:w-6 sm:h-6" />
         </a>
@@ -1023,10 +1023,10 @@ export default function PlanGenerator() {
     <div className="w-full bg-[var(--bg-primary)] overflow-x-hidden">
       {/* Help Button */}
       <a
-        href="/how-it-works#plan-generator-help"
+        href="/how-it-works#plan-definition-help"
         target="_self"
         className="fixed top-24 right-4 sm:right-8 z-[9999] bg-blue-700 hover:bg-blue-800 text-white rounded-full p-2 sm:p-3 shadow-lg flex items-center gap-2 transition-all duration-200"
-        title="Need help with Plan Generator?"
+        title="Need help with Plan Definition?"
       >
         <HelpCircle className="w-5 h-5 sm:w-6 sm:h-6" />
       </a>
@@ -2346,7 +2346,7 @@ export default function PlanGenerator() {
                   type="button"
                   disabled={loading}
                 >
-                  {loading ? "Uploading..." : "Upload to Trajectory Generator"}
+                  {loading ? "Uploading..." : "Upload to Plan Authorization"}
                 </button>
                 <button
                   className="btn btn-danger w-full py-2 font-semibold"

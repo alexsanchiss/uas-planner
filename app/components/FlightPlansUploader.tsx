@@ -62,7 +62,7 @@ const GeoawarenessViewer = dynamic(() => import('./flight-plans/GeoawarenessView
 const DenialMapModal = dynamic(() => import('./flight-plans/DenialMapModal'), { ssr: false })
 
 // U-Space selector for external UPLANs (uses Leaflet, requires SSR disabled)
-const UspaceSelector = dynamic(() => import('./plan-generator/UspaceSelector').then(mod => ({ default: mod.UspaceSelector })), { ssr: false })
+const UspaceSelector = dynamic(() => import('./plan-definition/UspaceSelector').then(mod => ({ default: mod.UspaceSelector })), { ssr: false })
 
 // Task 11: Dynamic import for Cesium 3D U-Plan viewer (requires browser APIs)
 const Cesium3DModal = dynamic(() => import('./flight-plans/Cesium3DModal'), { ssr: false })
@@ -319,7 +319,7 @@ export function FlightPlansUploader() {
   // TASK-222: Drag state for orphan plans drop zone
   const [isDraggingOverOrphans, setIsDraggingOverOrphans] = useState(false)
 
-  // Task 21: Auto-select plan from query parameter (Plan Generator redirect)
+  // Task 21: Auto-select plan from query parameter (Plan Definition redirect)
   useEffect(() => {
     if (selectPlanHandled.current) return
     if (plansLoading || flightPlans.length === 0) return
@@ -332,10 +332,10 @@ export function FlightPlansUploader() {
     const plan = flightPlans.find(p => String(p.id) === selectPlanParam)
     if (plan) {
       setSelectedPlanId(selectPlanParam)
-      toast.success(`Plan "${plan.customName}" imported from Plan Generator`)
+      toast.success(`Plan "${plan.customName}" imported from Plan Definition`)
     }
     // Clean up URL
-    window.history.replaceState(null, '', '/trajectory-generator')
+    window.history.replaceState(null, '', '/plan-authorization')
   }, [plansLoading, flightPlans, toast])
 
   // Transform folders with their flight plans
@@ -1327,10 +1327,10 @@ export function FlightPlansUploader() {
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
       {/* Help Button */}
       <a
-        href="/how-it-works#trajectory-generator-help"
+        href="/how-it-works#plan-authorization-help"
         target="_self"
         className="fixed top-24 right-4 sm:right-8 z-[9999] bg-blue-700 hover:bg-blue-800 text-white rounded-full p-2 sm:p-3 shadow-lg flex items-center gap-2 transition-all duration-200"
-        title="Need help with Trajectory Generator?"
+        title="Need help with Plan Authorization?"
       >
         <HelpCircle className="w-5 h-5 sm:w-6 sm:h-6" />
       </a>

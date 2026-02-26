@@ -39,11 +39,11 @@ const MapTooltip = dynamic(
 
 // Dynamically import GeozoneLayer
 const GeozoneLayer = dynamic(
-  () => import('@/app/components/plan-generator/GeozoneLayer').then((mod) => mod.GeozoneLayer),
+  () => import('@/app/components/plan-definition/GeozoneLayer').then((mod) => mod.GeozoneLayer),
   { ssr: false }
 )
 const GeozoneInfoPopup = dynamic(
-  () => import('@/app/components/plan-generator/GeozoneInfoPopup').then((mod) => mod.GeozoneInfoPopup),
+  () => import('@/app/components/plan-definition/GeozoneInfoPopup').then((mod) => mod.GeozoneInfoPopup),
   { ssr: false }
 )
 

@@ -349,14 +349,14 @@ ALTER TABLE user ADD COLUMN phone VARCHAR(50) DEFAULT NULL;
 
 # Sprint 3 — UI Polish, Bug Fixes & UX Improvements
 
-## Feature 21: Direct Navigation from Plan Generator to Trajectory Generator
+## Feature 21: Direct Navigation from Plan Definition to Plan Authorization
 
-**Problem:** After "Upload to Trajectory Generator", the user stays on Plan Generator with a toast message. They must manually navigate to `/trajectory-generator` and find their plan. This creates unnecessary friction.
+**Problem:** After "Upload to Plan Authorization", the user stays on Plan Definition with a toast message. They must manually navigate to `/plan-authorization` and find their plan. This creates unnecessary friction.
 
 **Solution:**
-1. After successful plan upload in `handleUploadPlan`, use `router.push('/trajectory-generator?selectPlan=<planId>')` to navigate directly.
-2. On the Trajectory Generator page (`FlightPlansUploader`), read `selectPlan` query param and auto-select that plan, scrolling it into view.
-3. Show a brief success toast on the trajectory generator page confirming the imported plan.
+1. After successful plan upload in `handleUploadPlan`, use `router.push('/plan-authorization?selectPlan=<planId>')` to navigate directly.
+2. On the Plan Authorization page (`FlightPlansUploader`), read `selectPlan` query param and auto-select that plan, scrolling it into view.
+3. Show a brief success toast on the Plan Authorization page confirming the imported plan.
 
 **Files to modify:**
 - `app/components/PlanGenerator.tsx` — Add router.push after upload success
@@ -471,5 +471,5 @@ ALTER TABLE user ADD COLUMN phone VARCHAR(50) DEFAULT NULL;
 2. Feature 25 (WebSocket HTTPS, small change + documentation)
 3. Feature 24 (Trajectory 3D fixes — play + height reference)
 4. Feature 23 (3D InfoBox + play reliability + UI/UX)
-5. Feature 21 (Plan Generator → Trajectory Generator navigation)
+5. Feature 21 (Plan Definition → Plan Authorization navigation)
 6. Feature 26 (Form tooltips, standalone UI work)

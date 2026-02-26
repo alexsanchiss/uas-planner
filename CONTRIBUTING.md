@@ -355,7 +355,7 @@ uas-planner/
 │   ├── components/           # React components
 │   │   ├── auth/             # Auth components
 │   │   ├── flight-plans/     # Flight plan UI
-│   │   ├── plan-generator/   # Plan generator UI
+│   │   ├── plan-definition/   # Plan Definition UI
 │   │   └── ui/               # Shared UI components
 │   ├── hooks/                # Custom React hooks
 │   └── styles/               # CSS files

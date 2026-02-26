@@ -6,13 +6,13 @@ import { HelpCircle } from "lucide-react";
 
 const apps = [
   {
-    name: "Plan Generator",
-    description: "Generate your QGC plan file",
+    name: "Plan Definition",
+    description: "Define your flight plan on our interactive map interface.",
     image: "/images/flight-tracker.jpg",
   },
   {
-    name: "4D Trajectory Generator",
-    description: "Generate trajectories from QGC plan file.",
+    name: "Plan Authorization",
+    description: "Process, complete and authorize your defined flight plan.",
     image: "/images/uas-planner.jpg",
   },
     {
@@ -28,12 +28,12 @@ export default function MainPage() {
   const handleLaunchApp = (appName: string) => {
     // Implement app launch logic here
     console.log(`Launching ${appName}`);
-    // For example, navigate to the trajectory-generator page when launching UPPS
-    if (appName === "4D Trajectory Generator") {
-      router.push("/trajectory-generator");
+    // For example, navigate to the plan-authorization page when launching UPPS
+    if (appName === "Plan Authorization") {
+      router.push("/plan-authorization");
     }
-    if (appName === "Plan Generator") {
-      router.push("/plan-generator");
+    if (appName === "Plan Definition") {
+      router.push("/plan-definition");
     }
     if (appName === "Plan Activation") {
       router.push("/plan-activation");

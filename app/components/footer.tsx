@@ -129,16 +129,16 @@ export function Footer() {
         <div className="flex flex-col items-center justify-center space-y-2">
           <div className="font-semibold mb-2">Apps</div>
           <Link
-            href="/plan-generator"
+            href="/plan-definition"
             className="hover:text-[var(--color-primary)] transition"
           >
-            Plan Generator
+            Plan Definition
           </Link>
           <Link
-            href="/trajectory-generator"
+            href="/plan-authorization"
             className="hover:text-[var(--color-primary)] transition"
           >
-            Trajectory Generator
+            Plan Authorization
           </Link>
           <Link
             href="/plan-activation"

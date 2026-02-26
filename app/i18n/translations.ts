@@ -109,7 +109,7 @@ export interface Translations {
     privacyPolicy: string
   }
   
-  // Flight Plans / Trajectory Generator
+  // Flight Plans / Plan Authorization
   flightPlans: {
     title: string
     subtitle: string
@@ -316,7 +316,7 @@ export interface Translations {
     okStatus: string
   }
   
-  // Plan Generator
+  // Plan Definition
   planGenerator: {
     title: string
     waypoints: string
@@ -532,8 +532,8 @@ export const translations: Record<Language, Translations> = {
     },
     nav: {
       home: 'Home',
-      planGenerator: 'Plan Generator',
-      trajectoryGenerator: 'Trajectory Generator',
+      planGenerator: 'Plan Definition',
+      trajectoryGenerator: 'Plan Authorization',
       planActivation: 'Plan Activation',
       profile: 'Profile',
       settings: 'Settings',
@@ -542,7 +542,7 @@ export const translations: Record<Language, Translations> = {
       privacyPolicy: 'Privacy Policy',
     },
     flightPlans: {
-      title: 'Trajectory Generator',
+      title: 'Plan Authorization',
       subtitle: 'Manage and process your flight plans',
       flightPlan: 'Flight Plan',
       flightPlans: 'Flight Plans',
@@ -733,7 +733,7 @@ export const translations: Record<Language, Translations> = {
       okStatus: 'OK',
     },
     planGenerator: {
-      title: 'Plan Generator',
+      title: 'Plan Definition',
       waypoints: 'Waypoints',
       addWaypoint: 'Add waypoint',
       removeWaypoint: 'Remove waypoint',
