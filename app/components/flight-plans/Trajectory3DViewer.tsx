@@ -127,6 +127,7 @@ const Trajectory3DViewer: React.FC<Trajectory3DViewerProps> = ({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [points, setPoints] = useState<TrajectoryPoint[]>([])
+  const [csvContent, setCsvContent] = useState<string>('')
 
   // Animation state
   const [currentTime, setCurrentTime] = useState(0)
@@ -209,6 +210,7 @@ const Trajectory3DViewer: React.FC<Trajectory3DViewerProps> = ({
       setLoading(true)
       setError(null)
       setPoints([])
+      setCsvContent('')
       setCurrentTime(0)
       setPlaying(false)
 
@@ -239,9 +241,10 @@ const Trajectory3DViewer: React.FC<Trajectory3DViewerProps> = ({
         const csvRes = await fetch(`/api/csvResult?id=${plan.id}`, { headers })
         if (!csvRes.ok) throw new Error('Failed to load trajectory CSV')
         const data = await csvRes.json()
-        const csvContent = data.csvResult || data.content || data.csvContent || ''
+        const csvContentStr = data.csvResult || data.content || data.csvContent || ''
+        setCsvContent(csvContentStr)
 
-        const parsedPoints = parseCSVToTrajectory(csvContent)
+        const parsedPoints = parseCSVToTrajectory(csvContentStr)
         if (parsedPoints.length === 0) throw new Error('No valid trajectory points found in CSV')
         if (destroyed) return
 
@@ -267,8 +270,8 @@ const Trajectory3DViewer: React.FC<Trajectory3DViewerProps> = ({
           sceneModePicker: false,
           navigationHelpButton: false,
           fullscreenButton: false,
-          selectionIndicator: false,
-          infoBox: false,
+          selectionIndicator: true,
+          infoBox: true,
         })
         viewerRef.current = viewer
         if (destroyed) { viewer.destroy(); return }
@@ -302,6 +305,7 @@ const Trajectory3DViewer: React.FC<Trajectory3DViewerProps> = ({
         })
 
         // 8. Waypoint markers: takeoff (green), landing (red), cruise (blue)
+        // All waypoints are clickable via infoBox
         parsedPoints.forEach((p, idx) => {
           const isTakeoff = idx === 0
           const isLanding = idx === parsedPoints.length - 1
@@ -321,7 +325,7 @@ const Trajectory3DViewer: React.FC<Trajectory3DViewerProps> = ({
               color,
               outlineColor: Cesium.Color.WHITE,
               outlineWidth: 1,
-              heightReference: Cesium.HeightReference.NONE,
+              heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND,
             },
             label: isTakeoff || isLanding
               ? {
@@ -360,7 +364,7 @@ const Trajectory3DViewer: React.FC<Trajectory3DViewerProps> = ({
             heightReference: Cesium.HeightReference.NONE,
           },
           label: {
-            text: '✈ Drone',
+            text: 'Drone',
             font: 'bold 13px sans-serif',
             fillColor: Cesium.Color.YELLOW,
             outlineColor: Cesium.Color.BLACK,
@@ -436,15 +440,40 @@ const Trajectory3DViewer: React.FC<Trajectory3DViewerProps> = ({
             </svg>
             3D Trajectory: {planName || 'Unnamed'}
           </h2>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-            aria-label="Close"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Download CSV button */}
+            <button
+              onClick={() => {
+                if (!csvContent) return
+                const blob = new Blob([csvContent], { type: 'text/csv' })
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url
+                a.download = `${planName || 'trajectory'}.csv`
+                document.body.appendChild(a)
+                a.click()
+                document.body.removeChild(a)
+                URL.revokeObjectURL(url)
+              }}
+              disabled={!csvContent}
+              className="px-3 py-2 rounded-lg text-gray-300 hover:text-white hover:bg-gray-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 text-sm"
+              title="Download CSV"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              CSV
+            </button>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+              aria-label="Close"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         {/* Cesium container */}
