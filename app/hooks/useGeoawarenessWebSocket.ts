@@ -344,46 +344,16 @@ export interface UseGeoawarenessWebSocketReturn {
 }
 
 /**
- * Get the WebSocket URL for a given U-space
+ * Get the SSE proxy URL for a given U-space.
  *
- * When deploying over HTTPS, the geoawareness service must support TLS (WSS),
- * either directly or via a reverse proxy that terminates TLS.
+ * The browser connects to our own Next.js backend via SSE (works over HTTPS).
+ * The backend then opens a plain ws:// connection to the geoawareness service
+ * on the internal network — no TLS needed there.
+ *
+ * See /api/geoawareness/stream/[uspaceId]/route.ts for the proxy implementation.
  */
-function getWebSocketUrl(uspaceId: string): string | null {
-  const serviceIp = process.env.NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP
-  
-  if (!serviceIp) {
-    console.warn('[useGeoawarenessWebSocket] NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP not configured. Make sure the env var is set and the Next.js dev server was restarted after adding it.')
-    return null
-  }
-  
-  // Add ws:// prefix if not present, handle both http and https cases
-  let wsUrl = serviceIp
-  if (wsUrl.startsWith('http://')) {
-    wsUrl = wsUrl.replace('http://', 'ws://')
-  } else if (wsUrl.startsWith('https://')) {
-    wsUrl = wsUrl.replace('https://', 'wss://')
-  } else if (!wsUrl.startsWith('ws://') && !wsUrl.startsWith('wss://')) {
-    wsUrl = `ws://${wsUrl}`
-  }
-
-  // Auto-upgrade to wss:// when the page is served over HTTPS to avoid
-  // mixed-content errors ("An insecure WebSocket connection may not be
-  // initiated from a page loaded over HTTPS").
-  if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
-    if (wsUrl.startsWith('ws://')) {
-      console.warn(
-        '[useGeoawarenessWebSocket] Page is loaded over HTTPS but NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP resolved to ws://. ' +
-        'Auto-upgrading to wss:// to prevent mixed-content blocking. ' +
-        'Consider setting the env var with a wss:// or https:// prefix for production.'
-      )
-      wsUrl = wsUrl.replace('ws://', 'wss://')
-    }
-  }
-  
-  const fullUrl = `${wsUrl}/ws/gas/${uspaceId}`
-  // console.log(`[useGeoawarenessWebSocket] WebSocket URL: ${fullUrl}`)
-  return fullUrl
+function getSSEUrl(uspaceId: string): string {
+  return `/api/geoawareness/stream/${encodeURIComponent(uspaceId)}`
 }
 
 /**
@@ -546,7 +516,7 @@ export function useGeoawarenessWebSocket({
   const [loadingFallback, setLoadingFallback] = useState(false)
 
   // Refs for cleanup and reconnection management
-  const wsRef = useRef<WebSocket | null>(null)
+  const esRef = useRef<EventSource | null>(null)
   const mountedRef = useRef(true)
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const manualDisconnectRef = useRef(false)
@@ -627,7 +597,7 @@ export function useGeoawarenessWebSocket({
   }, [uspaceId, enableFallback, fallbackEndpoint])
 
   /**
-   * Close any existing WebSocket connection
+   * Close any existing SSE connection
    */
   const closeConnection = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -635,16 +605,21 @@ export function useGeoawarenessWebSocket({
       reconnectTimeoutRef.current = null
     }
 
-    if (wsRef.current) {
+    if (esRef.current) {
       // Prevent reconnection on manual close
       manualDisconnectRef.current = true
-      wsRef.current.close(1000, 'Client disconnect')
-      wsRef.current = null
+      esRef.current.close()
+      esRef.current = null
     }
   }, [])
 
   /**
-   * Connect to the WebSocket
+   * Connect via the backend SSE proxy.
+   *
+   * The browser opens an EventSource to /api/geoawareness/stream/{uspaceId}.
+   * The Next.js backend creates an internal ws:// connection to the geoawareness
+   * service and relays each message back as an SSE event — so the browser never
+   * has to deal with WebSocket protocol or mixed-content restrictions.
    */
   const connect = useCallback(() => {
     // Don't connect if disabled or no uspaceId
@@ -653,9 +628,9 @@ export function useGeoawarenessWebSocket({
     }
 
     // Close existing connection
-    if (wsRef.current) {
-      wsRef.current.close()
-      wsRef.current = null
+    if (esRef.current) {
+      esRef.current.close()
+      esRef.current = null
     }
 
     // Clear any pending reconnection
@@ -664,126 +639,109 @@ export function useGeoawarenessWebSocket({
       reconnectTimeoutRef.current = null
     }
 
-    const wsUrl = getWebSocketUrl(uspaceId)
-    if (!wsUrl) {
-      console.error('[WS] Geoawareness service not configured (NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP missing)')
-      const envError = new Error('Geoawareness service not configured. Please set NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP environment variable')
-      setError(envError)
-      setStatus('error')
-      onErrorRef.current?.(envError)
-      
-      // TASK-086: Only trigger fallback if enabled - but log warning about deprecated usage
-      if (enableFallback && !fallbackLoadedRef.current) {
-        console.warn('[WS] Using deprecated HTTP fallback due to missing WebSocket configuration')
-        fetchFallbackData()
-      } else {
-        // console.log('[WS] Fallback disabled - no geoawareness data will be loaded')
-      }
-      return
-    }
-
     manualDisconnectRef.current = false
     setStatus('connecting')
     setError(null)
 
-    // console.log(`[WS] Connecting to: ${wsUrl}`)
+    const sseUrl = getSSEUrl(uspaceId)
 
     try {
-      const ws = new WebSocket(wsUrl)
-      wsRef.current = ws
+      const es = new EventSource(sseUrl)
+      esRef.current = es
 
-      ws.onopen = () => {
+      // ── server confirmed it opened the WS to geoawareness ───────────────
+      es.addEventListener('connected', () => {
         if (!mountedRef.current) return
-
-        // console.log(`[WS] Connected to ${uspaceId}`)
         setStatus('connected')
-        // Reset retry count on successful connection
         retryCountRef.current = 0
         setRetryCount(0)
         setError(null)
-        // Reset fallback state on successful WebSocket connection
         setUsingFallback(false)
         fallbackLoadedRef.current = false
         onConnectRef.current?.()
-      }
+      })
 
-      ws.onmessage = (event) => {
+      // ── geoawareness data message ───────────────────────────────────────
+      es.onmessage = (event) => {
         if (!mountedRef.current) return
-
         try {
           const rawData = JSON.parse(event.data)
-          
-          // Normalize the data to support both new 3-block format and legacy format
           const normalizedData = normalizeGeoawarenessMessage(rawData)
-          
-          // console.log(`[WS] Received ${normalizedData.geozones_data?.length || 0} geozones for ${normalizedData.uspace_identifier}`)
-          
           setData(normalizedData)
           setLastMessageTime(Date.now())
           setError(null)
           onMessageRef.current?.(normalizedData)
         } catch (parseError) {
-          const err = new Error(`Failed to parse WebSocket message: ${parseError}`)
-          console.error('[WS] Parse error:', parseError)
+          const err = new Error(`Failed to parse SSE message: ${parseError}`)
+          console.error('[SSE] Parse error:', parseError)
           setError(err)
           onErrorRef.current?.(err)
         }
       }
 
-      ws.onerror = (event) => {
+      // ── server closed the upstream WS (geoawareness disconnected) ───────
+      es.addEventListener('close', () => {
         if (!mountedRef.current) return
-
-        console.error('[WS] Connection error')
-        const err = new Error('WebSocket connection error')
-        setError(err)
-        setStatus('error')
-        onErrorRef.current?.(event)
-      }
-
-      ws.onclose = (event) => {
-        if (!mountedRef.current) return
-
-        // console.log(`[WS] Closed (code: ${event.code})`)
-        wsRef.current = null
+        es.close()
+        esRef.current = null
         setStatus('disconnected')
         onCloseRef.current?.()
+        scheduleReconnect()
+      })
 
-        // Auto-reconnect with exponential backoff if not manually disconnected
-        const currentRetryCount = retryCountRef.current
-        if (!manualDisconnectRef.current && enabled && currentRetryCount < maxRetries) {
-          const delay = calculateBackoffDelay(currentRetryCount, baseDelay, maxDelay)
-          // console.log(`[WS] Reconnecting in ${delay}ms (${currentRetryCount + 1}/${maxRetries})`)
-          
-          retryCountRef.current = currentRetryCount + 1
-          setRetryCount(currentRetryCount + 1)
-          
-          reconnectTimeoutRef.current = setTimeout(() => {
-            if (mountedRef.current) {
-              connect()
-            }
-          }, delay)
-        } else if (currentRetryCount >= maxRetries) {
-          console.error(`[WS] Max retries reached. Service: ${process.env.GEOAWARENESS_SERVICE_IP}`)
-          const maxRetryError = new Error(`Connection failed after ${maxRetries} attempts`)
-          setError(maxRetryError)
-          setStatus('error')
-          
-          // TASK-086: Trigger fallback to HTTP API when WebSocket fails
-          if (enableFallback && !fallbackLoadedRef.current) {
-            // console.log('[WS] Loading fallback geozones...')
-            fetchFallbackData()
-          }
-        }
+      // ── server reported a WS error ───────────────────────────────────────
+      es.addEventListener('error', (event) => {
+        if (!mountedRef.current) return
+        const msg = (event as MessageEvent).data
+          ? JSON.parse((event as MessageEvent).data)?.error ?? 'SSE error'
+          : 'SSE error'
+        const err = new Error(msg)
+        console.error('[SSE] Server error event:', msg)
+        setError(err)
+        setStatus('error')
+        onErrorRef.current?.(err)
+      })
+
+      // ── network-level error or SSE connection dropped ────────────────────
+      // EventSource.onerror fires when the SSE stream breaks.
+      // We close manually to prevent EventSource's built-in auto-reconnect
+      // and handle backoff ourselves.
+      es.onerror = () => {
+        if (!mountedRef.current) return
+        es.close()
+        esRef.current = null
+        setStatus('disconnected')
+        onCloseRef.current?.()
+        scheduleReconnect()
       }
     } catch (err) {
-      const connectionError = err instanceof Error ? err : new Error('Failed to create WebSocket')
-      console.error('[WS] Connection error:', connectionError)
+      const connectionError = err instanceof Error ? err : new Error('Failed to create SSE connection')
+      console.error('[SSE] Connection error:', connectionError)
       setError(connectionError)
       setStatus('error')
       onErrorRef.current?.(connectionError)
     }
-  // Remove retryCount from dependencies to prevent infinite loops
-  // Use retryCountRef inside the callback instead
+
+    function scheduleReconnect() {
+      const currentRetryCount = retryCountRef.current
+      if (!manualDisconnectRef.current && enabled && currentRetryCount < maxRetries) {
+        const delay = calculateBackoffDelay(currentRetryCount, baseDelay, maxDelay)
+        retryCountRef.current = currentRetryCount + 1
+        setRetryCount(currentRetryCount + 1)
+        reconnectTimeoutRef.current = setTimeout(() => {
+          if (mountedRef.current) connect()
+        }, delay)
+      } else if (currentRetryCount >= maxRetries) {
+        console.error(`[SSE] Max retries reached for ${uspaceId}`)
+        const maxRetryError = new Error(`Connection failed after ${maxRetries} attempts`)
+        setError(maxRetryError)
+        setStatus('error')
+        if (enableFallback && !fallbackLoadedRef.current) {
+          fetchFallbackData()
+        }
+      }
+    }
+  // retryCount intentionally excluded — use retryCountRef inside callback
   }, [uspaceId, enabled, maxRetries, baseDelay, maxDelay, enableFallback, fetchFallbackData])
 
   /**
