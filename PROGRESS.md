@@ -37,6 +37,6 @@
 | 21 | F21 | Direct navigation Plan Generator → Trajectory Generator | Not Started |
 | 22 | F22 | Update u-plan STATE on FAS authorization response | Completed |
 | 23 | F23 | Fix 3D viewer InfoBox theme & play animation reliability | Not Started |
-| 24 | F24 | Fix Trajectory 3D viewer play animation & unified height reference | Not Started |
+| 24 | F24 | Fix Trajectory 3D viewer play animation & unified height reference | Completed |
 | 25 | F25 | HTTPS-compatible geoawareness WebSocket | Completed |
 | 26 | F26 | U-Plan form field help tooltips | Not Started |

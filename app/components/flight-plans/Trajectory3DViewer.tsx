@@ -123,6 +123,9 @@ const Trajectory3DViewer: React.FC<Trajectory3DViewerProps> = ({
   const viewerRef = useRef<any>(null)
   const cesiumRef = useRef<any>(null)
   const droneEntityRef = useRef<any>(null)
+  const currentTimeRef = useRef<number>(0)
+  const pointsRef = useRef<TrajectoryPoint[]>([])
+  const followDroneRef = useRef<boolean>(false)
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -142,7 +145,11 @@ const Trajectory3DViewer: React.FC<Trajectory3DViewerProps> = ({
     [points],
   )
 
-  // Play animation loop
+  // Keep refs in sync with state for use inside RAF tick
+  useEffect(() => { pointsRef.current = points }, [points])
+  useEffect(() => { followDroneRef.current = followDrone }, [followDrone])
+
+  // Play animation loop — directly updates drone via refs to bypass React batching
   useEffect(() => {
     if (!playing || endTime === 0) return
 
@@ -152,24 +159,50 @@ const Trajectory3DViewer: React.FC<Trajectory3DViewerProps> = ({
       const deltaSec = ((now - lastFrameRef.current) / 1000) * speed
       lastFrameRef.current = now
 
-      setCurrentTime(prev => {
-        const next = prev + deltaSec
-        if (next >= endTime) {
-          setPlaying(false)
-          return endTime
-        }
-        return next
-      })
+      const prev = currentTimeRef.current
+      let next = prev + deltaSec
+      let finished = false
 
-      animFrameRef.current = requestAnimationFrame(tick)
+      if (next >= endTime) {
+        next = endTime
+        finished = true
+      }
+
+      currentTimeRef.current = next
+      setCurrentTime(next)
+
+      // Directly update drone entity position (bypasses React state batching)
+      const Cesium = cesiumRef.current
+      const drone = droneEntityRef.current
+      const pts = pointsRef.current
+      if (Cesium && drone && pts.length > 0) {
+        const pos = interpolatePosition(pts, next)
+        if (pos) {
+          drone.position = Cesium.Cartesian3.fromDegrees(pos.lng, pos.lat, pos.alt)
+
+          if (followDroneRef.current && viewerRef.current && !viewerRef.current.isDestroyed()) {
+            viewerRef.current.camera.lookAt(
+              Cesium.Cartesian3.fromDegrees(pos.lng, pos.lat, pos.alt),
+              new Cesium.HeadingPitchRange(0, Cesium.Math.toRadians(-30), 200),
+            )
+          }
+        }
+      }
+
+      if (finished) {
+        setPlaying(false)
+      } else {
+        animFrameRef.current = requestAnimationFrame(tick)
+      }
     }
 
     animFrameRef.current = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(animFrameRef.current)
   }, [playing, speed, endTime])
 
-  // Update drone entity position when currentTime changes
+  // Update drone entity position when slider changes (play mode updates in tick)
   useEffect(() => {
+    if (playing) return
     const Cesium = cesiumRef.current
     const drone = droneEntityRef.current
     if (!Cesium || !drone || points.length === 0) return
@@ -177,17 +210,15 @@ const Trajectory3DViewer: React.FC<Trajectory3DViewerProps> = ({
     const pos = interpolatePosition(points, currentTime)
     if (!pos) return
 
-    const cartesian = Cesium.Cartesian3.fromDegrees(pos.lng, pos.lat, pos.alt)
-    drone.position = cartesian
+    drone.position = Cesium.Cartesian3.fromDegrees(pos.lng, pos.lat, pos.alt)
 
-    // Follow drone camera mode
     if (followDrone && viewerRef.current) {
       viewerRef.current.camera.lookAt(
-        cartesian,
+        Cesium.Cartesian3.fromDegrees(pos.lng, pos.lat, pos.alt),
         new Cesium.HeadingPitchRange(0, Cesium.Math.toRadians(-30), 200),
       )
     }
-  }, [currentTime, points, followDrone])
+  }, [currentTime, points, followDrone, playing])
 
   // Unlock camera when follow mode is turned off
   useEffect(() => {
@@ -212,6 +243,7 @@ const Trajectory3DViewer: React.FC<Trajectory3DViewerProps> = ({
       setPoints([])
       setCsvContent('')
       setCurrentTime(0)
+      currentTimeRef.current = 0
       setPlaying(false)
 
       try {
@@ -285,9 +317,26 @@ const Trajectory3DViewer: React.FC<Trajectory3DViewerProps> = ({
         }
         if (destroyed) { viewer.destroy(); return }
 
-        // 7. Build trajectory polyline positions
-        const cartesianPositions = parsedPoints.map(p =>
-          Cesium.Cartesian3.fromDegrees(p.lng, p.lat, p.alt),
+        // 7. Sample terrain heights for AGL-to-absolute altitude conversion (polyline)
+        let terrainHeights: number[] = new Array(parsedPoints.length).fill(0)
+        try {
+          const terrainProvider = viewer.scene.globe.terrainProvider
+          if (terrainProvider.readyPromise) {
+            await terrainProvider.readyPromise
+          }
+          const cartographics = parsedPoints.map((p: TrajectoryPoint) =>
+            Cesium.Cartographic.fromDegrees(p.lng, p.lat),
+          )
+          const sampled = await Cesium.sampleTerrainMostDetailed(terrainProvider, cartographics)
+          terrainHeights = sampled.map((c: any) => c.height || 0)
+        } catch {
+          // Terrain sampling failed — polyline uses raw AGL alts (may mismatch markers)
+        }
+        if (destroyed) { viewer.destroy(); return }
+
+        // 8. Build trajectory polyline with terrain-corrected absolute altitudes
+        const cartesianPositions = parsedPoints.map((p, i) =>
+          Cesium.Cartesian3.fromDegrees(p.lng, p.lat, terrainHeights[i] + p.alt),
         )
 
         // Trajectory polyline entity
@@ -361,7 +410,7 @@ const Trajectory3DViewer: React.FC<Trajectory3DViewerProps> = ({
             color: Cesium.Color.YELLOW,
             outlineColor: Cesium.Color.BLACK,
             outlineWidth: 2,
-            heightReference: Cesium.HeightReference.NONE,
+            heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND,
           },
           label: {
             text: 'Drone',
@@ -531,7 +580,10 @@ const Trajectory3DViewer: React.FC<Trajectory3DViewerProps> = ({
               {/* Play/Pause */}
               <button
                 onClick={() => {
-                  if (currentTime >= endTime) setCurrentTime(0)
+                  if (currentTime >= endTime) {
+                    currentTimeRef.current = 0
+                    setCurrentTime(0)
+                  }
                   setPlaying(p => !p)
                 }}
                 className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-colors"
@@ -556,8 +608,10 @@ const Trajectory3DViewer: React.FC<Trajectory3DViewerProps> = ({
                 max={endTime || 1}
                 value={currentTime}
                 onChange={e => {
+                  const val = Number(e.target.value)
                   setPlaying(false)
-                  setCurrentTime(Number(e.target.value))
+                  currentTimeRef.current = val
+                  setCurrentTime(val)
                 }}
                 className="flex-1 h-1.5 accent-blue-500 cursor-pointer"
                 step={0.1}
