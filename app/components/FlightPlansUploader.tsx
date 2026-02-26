@@ -18,7 +18,7 @@
  * Uses modular components from flight-plans/ directory.
  */
 
-import React, { useState, useCallback, useMemo, DragEvent } from 'react'
+import React, { useState, useCallback, useMemo, useEffect, useRef, DragEvent } from 'react'
 import dynamic from 'next/dynamic'
 import axios from 'axios'
 import { HelpCircle } from 'lucide-react'
@@ -178,6 +178,7 @@ export function FlightPlansUploader() {
 
   // UI State
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null)
+  const selectPlanHandled = useRef(false)
   const [isCreatingFolder, setIsCreatingFolder] = useState(false)
   // TASK-088: Processing confirmation dialog state
   const [processingConfirmDialog, setProcessingConfirmDialog] = useState<{
@@ -317,6 +318,25 @@ export function FlightPlansUploader() {
   
   // TASK-222: Drag state for orphan plans drop zone
   const [isDraggingOverOrphans, setIsDraggingOverOrphans] = useState(false)
+
+  // Task 21: Auto-select plan from query parameter (Plan Generator redirect)
+  useEffect(() => {
+    if (selectPlanHandled.current) return
+    if (plansLoading || flightPlans.length === 0) return
+
+    const params = new URLSearchParams(window.location.search)
+    const selectPlanParam = params.get('selectPlan')
+    if (!selectPlanParam) return
+
+    selectPlanHandled.current = true
+    const plan = flightPlans.find(p => String(p.id) === selectPlanParam)
+    if (plan) {
+      setSelectedPlanId(selectPlanParam)
+      toast.success(`Plan "${plan.customName}" imported from Plan Generator`)
+    }
+    // Clean up URL
+    window.history.replaceState(null, '', '/trajectory-generator')
+  }, [plansLoading, flightPlans, toast])
 
   // Transform folders with their flight plans
   const transformedFolders = useMemo(() => {

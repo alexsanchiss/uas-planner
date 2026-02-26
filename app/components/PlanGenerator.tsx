@@ -44,6 +44,7 @@ L.Icon.Default.mergeOptions({
 });
 
 import { useAuth } from "../hooks/useAuth";
+import { useRouter } from "next/navigation";
 import axios from "axios";
 
 // Helper to get auth headers for API requests
@@ -308,6 +309,7 @@ export default function PlanGenerator() {
   const [loading, setLoading] = useState(false);
 
   const toast = useToast();
+  const router = useRouter();
   // Create a wrapper for PlanMap to show toast messages
   const showToast = useCallback((message: string) => {
     // Determine toast type based on message content
@@ -754,10 +756,10 @@ export default function PlanGenerator() {
         scheduledAt,
         geoawarenessData,
       }, { headers });
-      showToast(
-        `The plan "${planName}" has been saved in the Plan Generator folder in Trajectory Generator.`
-      );
+      const createdPlanId = createRes.data?.id;
       setPlanName("");
+      toast.success(`Plan "${planName}" saved. Redirecting to Trajectory Generator...`);
+      router.push(`/trajectory-generator?selectPlan=${createdPlanId}`);
     } catch (err: any) {
       showToast(
         "Error uploading the plan: " +
