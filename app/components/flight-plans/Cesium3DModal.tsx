@@ -135,6 +135,8 @@ const Cesium3DModal: React.FC<Cesium3DModalProps> = ({ isOpen, onClose, uplanDat
     lastFrameRef.current = performance.now()
 
     const tick = (now: number) => {
+      if (viewerRef.current?.isDestroyed()) return
+
       const deltaMs = (now - lastFrameRef.current) * speed
       lastFrameRef.current = now
 
@@ -211,6 +213,32 @@ const Cesium3DModal: React.FC<Cesium3DModalProps> = ({ isOpen, onClose, uplanDat
         })
 
         viewerRef.current = viewer
+
+        // Force InfoBox to use dark, readable styling regardless of app theme
+        try {
+          const infoBoxFrame = viewer.infoBox?.frame
+          if (infoBoxFrame) {
+            infoBoxFrame.addEventListener('load', () => {
+              const frameDoc = infoBoxFrame.contentDocument || infoBoxFrame.contentWindow?.document
+              if (frameDoc) {
+                const style = frameDoc.createElement('style')
+                style.textContent = `
+                  html, body { background: transparent !important; }
+                  .cesium-infoBox { background: rgba(38, 38, 38, 0.95) !important; color: #e0e0e0 !important; }
+                  .cesium-infoBox-title { color: #ffffff !important; background: rgba(30, 30, 30, 0.9) !important; }
+                  .cesium-infoBox-description { color: #e0e0e0 !important; }
+                  .cesium-infoBox-description * { color: #e0e0e0 !important; }
+                  table { color: #e0e0e0 !important; width: 100%; }
+                  td, th { color: #e0e0e0 !important; border-color: #555 !important; padding: 4px 8px; }
+                  a { color: #6cb4ee !important; }
+                `
+                frameDoc.head.appendChild(style)
+              }
+            })
+          }
+        } catch (e) {
+          console.warn('Could not style Cesium InfoBox:', e)
+        }
 
         // 5. Add OSM buildings
         try {
