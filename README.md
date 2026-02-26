@@ -69,7 +69,7 @@ uas-planner/
 │   ├── components/           # React components
 │   │   ├── auth/             # Auth-related components
 │   │   ├── flight-plans/     # Flight plan UI components
-│   │   ├── plan-generator/   # Plan generator components
+│   │   ├── plan-definition/   # Plan Definition components
 │   │   └── ui/               # Shared UI components
 │   ├── hooks/                # Custom React hooks
 │   ├── styles/               # CSS (themes.css)
@@ -249,8 +249,8 @@ Permite subir, organizar y procesar planes de vuelo:
 - Visualización de trayectorias con playback
 
 ### Navegación y páginas
-- **/plan-generator**: Generador de planes de vuelo
-- **/trajectory-generator**: Procesador y visualizador de trayectorias
+- **/plan-definition**: Generador de planes de vuelo
+- **/plan-authorization**: Procesador y visualizador de trayectorias
 - **/how-it-works**: Explicación del funcionamiento
 - **/contact-us**: Formulario de contacto
 - **/login**: Autenticación

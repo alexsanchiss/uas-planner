@@ -5,8 +5,8 @@ import "leaflet/dist/leaflet.css";
 import { Marker, Popup, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import { Point, ScanWaypoint } from "@/lib/scan-generator";
-import { GeozoneLayer } from "./plan-generator/GeozoneLayer";
-import { GeozoneInfoPopup } from "./plan-generator/GeozoneInfoPopup";
+import { GeozoneLayer } from "./plan-definition/GeozoneLayer";
+import { GeozoneInfoPopup } from "./plan-definition/GeozoneInfoPopup";
 import { useI18n } from "@/app/i18n";
 import type { GeozoneData, WebSocketStatus } from "@/app/hooks/useGeoawarenessWebSocket";
 

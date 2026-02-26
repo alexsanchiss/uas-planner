@@ -783,7 +783,7 @@ export function FlightPlansUploaderDev() {
     };
   }, [user]);
 
-  // Task 21: Auto-select plan from query parameter (Plan Generator redirect)
+  // Task 21: Auto-select plan from query parameter (Plan Definition redirect)
   useEffect(() => {
     if (selectPlanHandled.current) return;
     if (isInitialLoading || flightPlans.length === 0) return;
@@ -801,9 +801,9 @@ export function FlightPlansUploaderDev() {
       if (plan.folderId) {
         setExpandedFolders(prev => prev.includes(plan.folderId!) ? prev : [...prev, plan.folderId!]);
       }
-      toast.success(`Plan "${plan.customName}" imported from Plan Generator`);
+      toast.success(`Plan "${plan.customName}" imported from Plan Definition`);
     }
-    window.history.replaceState(null, '', '/trajectory-generator');
+    window.history.replaceState(null, '', '/plan-authorization');
   }, [isInitialLoading, flightPlans, toast]);
 
   const fetchData = async () => {
@@ -1697,10 +1697,10 @@ export function FlightPlansUploaderDev() {
     <div className="bg-gray-900 w-full">
       {/* Help Button */}
       <a
-        href="/how-it-works#trajectory-generator-help"
+        href="/how-it-works#plan-authorization-help"
         target="_self"
         className="fixed top-24 right-8 z-[9999] bg-blue-700 hover:bg-blue-800 text-white rounded-full p-3 shadow-lg flex items-center gap-2 transition-all duration-200"
-        title="Need help with Trajectory Generator?"
+        title="Need help with Plan Authorization?"
       >
         <HelpCircle className="w-6 h-6" />
       </a>

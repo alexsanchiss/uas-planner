@@ -21,7 +21,7 @@
 % Used inside tables to avoid overflow when showing endpoints.
 \newcommand{\icdendpoint}[1]{\begingroup\small\path{#1}\endgroup}
 
-\title{ SPIRIT \\ \small{ICD - V\_{2.1.0}}}
+\title{ SPIRIT \\ \small{ICD - V\_{2.2.0}}}
 \author{U-Plan Preparation Service (UPPS) \\ Álex Sanchis}
 \date{\today}
 
@@ -33,10 +33,11 @@ Este documento describe la(s) interfaz(ces) del sistema \textbf{UPPS} (parte de 
 \begin{itemize}
     \item La interfaz entre el \textbf{cliente web} (operador UAS) y el \textbf{backend UPPS} (API HTTP de Next.js).
     \item La integración del backend con servicios externos: \textbf{FAS} (\textit{Flight Authorization Service}) y \textbf{Geoawareness Service}.
-    \item La integración \textbf{WebSocket} con el \textbf{Geoawareness Service} para obtención de geozonas y datos de U-space en tiempo real.
+    \item La integración con el \textbf{Geoawareness Service} mediante un \textbf{proxy SSE} en el backend para obtención de geozonas y datos de U-space en tiempo real (sin conexión directa desde el navegador).
     \item La coordinación del procesamiento distribuido de trayectorias mediante un \textbf{daemon de asignación} (\texttt{traj-assigner.js}) y \textbf{máquinas de proceso} (workers) que ejecutan el proyecto externo \texttt{traj-runner}.
     \item El sistema de \textbf{regeneración automática de volúmenes de operación} para planes procesados.
-    \item El \textbf{workflow guiado de 5 pasos} para preparación, procesamiento y autorización de planes de vuelo.
+    \item El \textbf{workflow guiado de 5 pasos} para preparación, procesamiento y autorización de planes de vuelo en la página \textbf{Plan Authorization}.
+    \item Generación interactiva de planes de vuelo en la página \textbf{Plan Definition}.
     \item Sistema de \textbf{visualización interactiva} con mapas Leaflet para trayectorias, waypoints y geozonas.
 \end{itemize}
 
@@ -63,6 +64,82 @@ El objetivo de la interfaz es permitir que un usuario cargue planes de vuelo (t�
     \item \textbf{Timestamps dinámicos en U-Plan}: Los campos \texttt{creationTime} y \texttt{updateTime} se actualizan automáticamente al momento del envío a FAS.
     \item \textbf{Workflow optimizado}: Interfaz guiada de 5 pasos con indicadores de progreso, bloqueo de edición post-procesamiento y validaciones mejoradas.
     \item \textbf{Arquitectura modular mejorada}: Componentes reutilizables organizados por funcionalidad con hooks especializados.
+\end{itemize}
+
+\subsection*{Novedades en V2.2.0}
+
+\subsubsection*{Sprint 1 (post v2.1.0) --- Robustez, UX y mejoras de flujo}
+\begin{itemize}
+    \item \textbf{Eliminación de validación DNS en registro} (Feature 1): Se elimina la función \texttt{validateEmailDomain()} del endpoint de registro, que bloqueaba dominios corporativos con configuraciones DNS no estándar. Solo se mantiene la validación de formato Zod.
+    \item \textbf{Caducidad del código de verificación reducida a 3 minutos} (Feature 2): Código de verificación de email válido 3 minutos (antes 24~h); doble-verificación safeguard (\texttt{emailVerified: false}); mensaje de cooldown corregido en \texttt{/api/auth/resend-verification}.
+    \item \textbf{Fix tema del sistema y toasts} (Feature 7): Tema por defecto basado en preferencia del SO; toasts totalmente opacos en ambos temas.
+    \item \textbf{Validación de archivo U-Plan en carga} (Feature 8): Toast de error detallado si el archivo tiene extensión incorrecta, no es JSON válido, o carece de \texttt{operationVolumes}.
+    \item \textbf{Campos de perfil de usuario} (Feature 9): Nuevos campos en BD \texttt{firstName}, \texttt{lastName}, \texttt{phone}; nuevos endpoints \texttt{GET/PATCH /api/user/profile}; \texttt{UplanFormModal} se pre-rellena automáticamente con los datos del perfil.
+    \item \textbf{Notificación por email al cancelar plan aprobado} (Feature 10): Se envía email al usuario cuando se elimina un plan con \texttt{authorizationStatus="aprobado"}.
+    \item \textbf{Botón OK y tecla Enter en edición de waypoints} (Feature 4): Los popups de edición de lat/lon incluyen botón OK y soporte de Enter para confirmar sin cerrar el teclado.
+    \item \textbf{Botón ``Añadir Waypoint'' en la barra lateral} (Feature 5): Formulario inline para introducir coordenadas manualmente sin hacer click en el mapa.
+    \item \textbf{Prevención de zoom reset en transiciones SCAN} (Feature 3): Se elimina \texttt{scanHandlerVersion} de la key de \texttt{PlanMap}, evitando el remontaje del mapa Leaflet en cada paso del flujo SCAN.
+    \item \textbf{Generación automática de volúmenes antes de descargar U-Plan} (Feature 6): Si el U-Plan no tiene volúmenes de operación, se generan automáticamente antes de lanzar la descarga.
+    \item \textbf{Visualización de denegación mejorada --- coloreado selectivo} (Feature 12): Solo los volúmenes geométricamente conflictivos se colorean en rojo (intersección 2D de polígonos); se muestra la razón FAS parseada con número de volúmenes y geozonas conflictivos.
+    \item \textbf{Restricciones regulatorias EU para clase UAS} (Feature 13): Tabla de restricciones C0--C6 (MTOM máximo y dimensión máxima) validada en \texttt{PlanGenerator} y \texttt{UplanFormModal}.
+    \item \textbf{Visor 3D de volúmenes de operación U-Plan con CesiumJS} (Feature 11): Nuevo componente \texttt{Cesium3DModal} con globe OSM Buildings; botón ``View 3D'' en \texttt{FlightPlansUploader}; nuevo endpoint \texttt{GET /api/cesium/token}.
+\end{itemize}
+
+\subsubsection*{Sprint 2 --- Nuevas Funcionalidades (visualización 3D, trayectorias, contacto)}
+\begin{itemize}
+    \item \textbf{Edición de perfil en /profile} (Feature 14): La edición de \texttt{firstName}, \texttt{lastName} y \texttt{phone} se traslada de \texttt{/settings} a \texttt{/profile}; la página de ajustes conserva solo tema, idioma y notificaciones.
+    \item \textbf{Corrección de altitud AGL en trayectorias} (Feature 15): Al convertir trayectoria CSV a U-Plan se resta \texttt{plannedHomePosition[2]} de todos los valores \texttt{Alt}; los visores 3D usan \texttt{RELATIVE\_TO\_GROUND}.
+    \item \textbf{Slider 4D en el visor 3D U-Plan} (Feature 16): Barra de tiempo con play/pause en \texttt{Cesium3DModal}; volúmenes activos resaltados, inactivos atenuados; velocidades 1×, 2×, 5×, 10×.
+    \item \textbf{Modal unificado de resultado de autorización FAS 2D/3D} (Feature 18): Nuevo componente \texttt{AuthorizationResultModal} con pestañas 2D/3D; muestra planes aprobados y denegados; sección ``Parsed FAS Reason'' en lenguaje natural.
+    \item \textbf{Mapa 3D de denegación con volúmenes de geozonas} (Feature 17): Nuevo componente \texttt{Denial3DModal}; volúmenes operativos en gris/rojo más prismas 3D semitransparentes de geozonas conflictivas con sus límites verticales.
+    \item \textbf{Página de Contacto con sistema de tickets} (Feature 19): Formulario con Asunto, Categoría y Descripción; nuevo endpoint \texttt{POST /api/contact} que genera número de ticket \texttt{UPPS-AAAAMMDD-XXXX}; email de confirmación al usuario y notificación al equipo de soporte.
+    \item \textbf{Visor 3D de trayectoria con dron animado} (Feature 20): Nuevo componente \texttt{Trajectory3DViewer} (Cesium); trayectoria como polilínea 3D semitransparente; slider temporal + play/pause; modelo de dron interpolado sobre la trayectoria.
+\end{itemize}
+
+\subsubsection*{Sprint 3 --- Polish, correcciones y arquitectura}
+\begin{itemize}
+    \item \textbf{Renombrado de páginas principales}:
+    \begin{itemize}
+        \item \texttt{/plan-generator} renombrado a \texttt{/plan-definition} (\textit{Plan Definition}).
+        \item \texttt{/trajectory-generator} renombrado a \texttt{/plan-authorization} (\textit{Plan Authorization}).
+        \item Los componentes internos \texttt{plan-generator/} han pasado a \texttt{plan-definition/}.
+    \end{itemize}
+    \item \textbf{Navegación directa Plan Definition $\rightarrow$ Plan Authorization} (Sprint 3 \#21):
+    \begin{itemize}
+        \item Tras subir un plan desde Plan Definition, la app navega automáticamente a \texttt{/plan-authorization?selectPlan=<id>}.
+        \item Plan Authorization lee el parámetro \texttt{selectPlan} y auto-selecciona el plan recién importado.
+    \end{itemize}
+    \item \textbf{Sincronización del campo \texttt{state} del U-Plan con FAS} (Sprint 3 \#22):
+    \begin{itemize}
+        \item El handler \texttt{PUT /api/fas/<externalResponseNumber>} actualiza ahora el campo \texttt{state} dentro del JSON del U-Plan almacenado en BD, reflejando el estado comunicado por FAS (\texttt{ACCEPTED}, \texttt{WITHDRAWN}, etc.).
+    \end{itemize}
+    \item \textbf{Corrección de tema oscuro en InfoBox de Cesium} (Sprint 3 \#23):
+    \begin{itemize}
+        \item Se inyecta CSS en el iframe de \texttt{viewer.infoBox.frame} para forzar fondo oscuro y texto claro, eliminando el problema de texto blanco sobre fondo blanco en tema oscuro.
+        \item Aplicado en: \texttt{Cesium3DModal}, \texttt{AuthorizationResultModal}, \texttt{Denial3DModal}, \texttt{Trajectory3DViewer}.
+    \end{itemize}
+    \item \textbf{Corrección del visor 3D de trayectoria} (Sprint 3 \#24):
+    \begin{itemize}
+        \item El dron ahora se actualiza correctamente durante la reproducción (usando ref en lugar de estado React para la lógica del RAF tick).
+        \item Unificación de referencia de altura: trayectoria, waypoints y dron usan \texttt{RELATIVE\_TO\_GROUND} (AGL) de forma consistente, eliminando la doble ruta visible.
+    \end{itemize}
+    \item \textbf{Proxy SSE para Geoawareness en el backend} (Sprint 3 \#25 + mejora posterior):
+    \begin{itemize}
+        \item Arquitectura cambiada: el \textbf{navegador ya no abre WebSocket directamente} al servicio Geoawareness.
+        \item El backend (Next.js) abre la conexión \texttt{ws://} internamente y retransmite cada mensaje al navegador como un evento SSE (\textit{Server-Sent Events}) via \texttt{GET /api/geoawareness/stream/\{uspaceId\}}.
+        \item Esto elimina los errores de \textit{mixed-content} en despliegues HTTPS sin requerir TLS en el servicio Geoawareness.
+        \item Solo se requiere la variable de entorno \textbf{servidor} \texttt{GEOAWARENESS\_SERVICE\_IP}; se depreca \texttt{NEXT\_PUBLIC\_GEOAWARENESS\_SERVICE\_IP}.
+    \end{itemize}
+    \item \textbf{Tooltips de ayuda en el formulario U-Plan} (Sprint 3 \#26):
+    \begin{itemize}
+        \item Nuevo componente reutilizable \texttt{FieldHelp} (icono \texttt{?}) con tooltip al hacer click.
+        \item Explica acrónimos de aviación: SAC, SIC, MTOM, VLOS, BVLOS, SAIL, etc.
+        \item Añadido en \texttt{UplanFormModal} y \texttt{PlanGenerator}/\texttt{PlanDefinition}.
+    \end{itemize}
+    \item \textbf{Corrección de activos Cesium en servidor} (fix buildtime):
+    \begin{itemize}
+        \item El script \texttt{postinstall} y el nuevo hook \texttt{prebuild} copian \textbf{todo} el directorio \texttt{Build/Cesium/} (incluyendo \texttt{Cesium.js}) a \texttt{public/cesium/}, corrigiendo el error 404 en despliegues donde \texttt{public/cesium} está en \texttt{.gitignore}.
+    \end{itemize}
 \end{itemize}
 
 \subsection*{Novedades en V2.1.0}
@@ -155,7 +232,7 @@ El objetivo de la interfaz es permitir que un usuario cargue planes de vuelo (t�
     \item \textbf{Servicios externos}:
     \begin{itemize}
         \item \textbf{FAS} (Flight Authorization Service): recibe el U-Plan generado y posteriormente notifica el resultado al UPPS.
-        \item \textbf{Geoawareness Service}: proporciona datos de U-spaces y geozonas mediante conexión WebSocket en tiempo real. El cliente web se conecta a \texttt{ws://<GEOAWARENESS\_SERVICE\_IP>/ws/gas/\{USPACE\_ID\}} para recibir información actualizada de geozonas.
+        \item \textbf{Geoawareness Service}: proporciona datos de U-spaces y geozonas. El backend UPPS abre una conexión WebSocket interna a \texttt{ws://<GEOAWARENESS\_SERVICE\_IP>/ws/gas/\{USPACE\_ID\}} y retransmite los mensajes al cliente web como eventos SSE a través de \texttt{GET /api/geoawareness/stream/\{uspaceId\}}. El navegador nunca se conecta directamente al servicio Geoawareness.
     \end{itemize}
     \item (Opcional) \textbf{noVNC/QGroundControl}: el frontend incluye un componente que embebe un \texttt{iframe} apuntando a \texttt{http://localhost:6080/} para visualizar/controlar una instancia VNC de QGroundControl.
 \end{itemize}
@@ -186,9 +263,9 @@ FAS callback: state & String & Texto & Campo \texttt{state} recibido en el callb
 \hline
 FAS callback: message & String/Null & Texto & Campo \texttt{message} recibido en el callback; se persiste como \texttt{authorizationMessage}. \\
 \hline
-Geoawareness WS: endpoint & String & URL WebSocket & Conexión WebSocket a \texttt{ws://<IP>/ws/gas/\{USPACE\_ID\}}. El cliente se conecta especificando el identificador del U-space. \\
+Geoawareness SSE: endpoint & String & URL HTTP & El cliente web se conecta al proxy del backend: \texttt{GET /api/geoawareness/stream/\{USPACE\_ID\}}. El backend abre internamente \texttt{ws://<IP>/ws/gas/\{USPACE\_ID\}} y retransmite mensajes como SSE. \\
 \hline
-Geoawareness WS: message & Object & JSON & Mensaje WebSocket con estructura de 3 bloques: \texttt{uspace\_identifier}, \texttt{uspace\_data}, y \texttt{geozones} (FeatureCollection). Ver sección \ref{sec:geoawareness-ws-format}. \\
+Geoawareness SSE: message & Object & JSON & Evento SSE (tipo \texttt{data}) con el mensaje JSON del servicio Geoawareness. Estructura de 3 bloques: \texttt{uspace\_identifier}, \texttt{uspace\_data}, y \texttt{geozones} (FeatureCollection). Ver sección \ref{sec:geoawareness-ws-format}. \\
 \hline
 \end{longtable}
 
@@ -253,7 +330,7 @@ Las salidas del sistema consisten en respuestas HTTP al cliente web y en peticio
 \endlastfoot
 HTTP request a FAS & JSON & application/json & \texttt{POST }\icdendpoint{<FAS_API_URL>} (si no se define \texttt{FAS\_ENDPOINT}, se usa el path \icdendpoint{/uplan}). Cuerpo: U-Plan. Cabecera: \texttt{Content-Type: application/json}. \\
 \hline
-WebSocket connection a Geoawareness & N/A & WebSocket & Conexión WebSocket a \texttt{ws://<GEOAWARENESS\_SERVICE\_IP>/ws/gas/\{USPACE\_ID\}}. El cliente establece la conexión y recibe actualizaciones en tiempo real. \\
+SSE stream a cliente (proxy Geoawareness) & N/A & text/event-stream & El backend abre \texttt{ws://<GEOAWARENESS\_SERVICE\_IP>/ws/gas/\{USPACE\_ID\}} y retransmite cada mensaje al cliente via SSE (\texttt{GET /api/geoawareness/stream/\{uspaceId\}}). El navegador nunca abre WebSocket directo al servicio. \\
 \hline
 \end{longtable}
 
@@ -310,15 +387,15 @@ El U-Plan se genera a partir del CSV y \texttt{scheduledAt} y contiene una lista
     \item \textbf{UPPS $\leftrightarrow$ MySQL}: Prisma se conecta a MySQL mediante \texttt{DATABASE\_URL}. En el ejemplo de configuración, MySQL usa el puerto \texttt{3306}.
     \item \textbf{UPPS $\rightarrow$ FAS}: HTTP \texttt{POST} sin TLS a \texttt{http://<FAS\_IP>/<FAS\_ENDPOINT>}. Si \texttt{FAS\_ENDPOINT} no existe, se usa el path \texttt{uplan}. Content-Type: \texttt{application/json}.
     \item \textbf{FAS $\rightarrow$ UPPS}: HTTP \texttt{PUT} a \icdendpoint{/api/fas/<externalResponseNumber>} con JSON \texttt{\{state, message\}}.
-    \item \textbf{Cliente web $\leftrightarrow$ Geoawareness (WebSocket)}: El cliente web establece una conexión WebSocket directa con el servicio Geoawareness:
+    \item \textbf{Cliente web $\leftrightarrow$ Geoawareness (SSE proxy)}: La arquitectura utiliza SSE como capa de transporte entre el navegador y el backend, y WebSocket interno entre el backend y el servicio Geoawareness:
     \begin{itemize}
-        \item \textbf{Endpoint}: \texttt{ws://<GEOAWARENESS\_SERVICE\_IP>/ws/gas/\{USPACE\_ID\}}
-        \item \textbf{Protocolo}: WebSocket (RFC 6455)
-        \item \textbf{Reconexión}: Backoff exponencial con retries (1s, 2s, 4s, 8s, 16s, máx. 5 intentos)
-        \item \textbf{Formato de mensaje}: JSON con estructura de 3 bloques (ver sección \ref{sec:geoawareness-ws-format})
-        \item \textbf{Fallback}: Si la conexión WebSocket falla después de 5 intentos, el sistema carga datos estáticos de geozonas desde \texttt{/api/deprecated/geoawareness-geozones}
+        \item \textbf{Navegador $\rightarrow$ Backend (SSE)}: \texttt{GET /api/geoawareness/stream/\{uspaceId\}} — EventSource HTTP estándar, compatible con HTTPS sin restricciones de mixed-content.
+        \item \textbf{Backend $\rightarrow$ Geoawareness (WS interno)}: \texttt{ws://<GEOAWARENESS\_SERVICE\_IP>/ws/gas/\{uspaceId\}} — conexión WebSocket en la red interna del servidor; no requiere TLS.
+        \item \textbf{Eventos SSE emitidos}: \texttt{connected} (WS abierto), \texttt{data} (mensaje del servicio), \texttt{error} (error WS), \texttt{close} (WS cerrado).
+        \item \textbf{Reconexión automática}: el hook \texttt{useGeoawarenessWebSocket} implementa backoff exponencial (1s, 2s, 4s, 8s, 16s) sobre la conexión SSE.
+        \item \textbf{Fallback}: Si la conexión SSE falla después de 5 intentos, el sistema carga datos estáticos de geozonas desde \texttt{/api/deprecated/geoawareness-geozones}.
     \end{itemize}
-    \item \textbf{(Deprecated) UPPS $\rightarrow$ Geoawareness HTTP}: El endpoint HTTP \texttt{POST }\icdendpoint{/geozones\_searcher\_by\_volumes} está deprecado. Usar WebSocket para nuevas integraciones.
+    \item \textbf{(Deprecated) UPPS $\rightarrow$ Geoawareness HTTP}: El endpoint HTTP \texttt{POST }\icdendpoint{/geozones\_searcher\_by\_volumes} está deprecado. Usar el proxy SSE para nuevas integraciones.
     \item \textbf{(Opcional) noVNC/QGroundControl}: la UI incluye un \texttt{iframe} a \texttt{http://localhost:6080/}. Este transporte depende de que noVNC esté levantado localmente.
     \item \textbf{Autenticación}:
     \begin{itemize}
@@ -416,8 +493,24 @@ El U-Plan se genera a partir del CSV y \texttt{scheduledAt} y contiene una lista
 
 \section{Versionado y Control de Cambios}
 \begin{itemize}
-    \item \textbf{Versión del ICD}: \texttt{V\_2.1.0}.
-    \item \textbf{Versión de la aplicación}: \texttt{v2.1.0 SPIRIT} (versión de producción con gestión de emails, importación de UPLANs externos y mejoras de robustez).
+    \item \textbf{Versión del ICD}: \texttt{V\_2.2.0}.
+    \item \textbf{Versión de la aplicación}: \texttt{v2.2.0 SPIRIT} (Sprints 1--3: 26 funcionalidades nuevas, proxy SSE de Geoawareness, visores 3D completos, gestión de usuario, sistema de contacto, restricciones EU).
+    \item \textbf{Cambios en v2.2.0 SPIRIT}:
+    \begin{itemize}
+        \item \textbf{Auth}: Eliminación de validación DNS en registro; caducidad de código de verificación a 3 min; doble-verificación safeguard.
+        \item \textbf{UI/UX}: Tema del sistema por defecto; toasts opacos; validación de archivo U-Plan en carga; tooltips \texttt{FieldHelp} en formularios.
+        \item \textbf{Perfil de usuario}: Campos \texttt{firstName}, \texttt{lastName}, \texttt{phone}; endpoints \texttt{GET/PATCH /api/user/profile}; pre-relleno automático en U-Plan form.
+        \item \textbf{Email}: Notificación al cancelar plan aprobado; email de confirmación en sistema de tickets.
+        \item \textbf{Plan Definition (ex Plan Generator)}: Botón OK y Enter en edición de waypoints; botón ``Añadir Waypoint'' en sidebar; fix zoom reset SCAN; generación automática de volúmenes antes de descarga; navegación directa a Plan Authorization tras subir plan.
+        \item \textbf{FAS}: Coloreado selectivo de volúmenes conflictivos (intersección 2D); razón FAS parseada en lenguaje natural; sincronización del campo \texttt{state} del U-Plan con la decisión FAS.
+        \item \textbf{Restricciones regulatorias EU}: Tabla C0--C6 con MTOM y dimensión máxima; validación en formulario.
+        \item \textbf{Visores 3D CesiumJS}: \texttt{Cesium3DModal} (volúmenes operativos + OSM Buildings + slider 4D); \texttt{Denial3DModal} (primas 3D de geozonas conflictivas); \texttt{AuthorizationResultModal} (modal unificado 2D/3D); \texttt{Trajectory3DViewer} (dron animado + RAF + AGL unificado); InfoBox dark-theme fix en todos los visores.
+        \item \textbf{Contacto}: Página \texttt{/contact-us}; endpoint \texttt{POST /api/contact}; tickets \texttt{UPPS-AAAAMMDD-XXXX}.
+        \item \textbf{Renombrado de páginas}: Plan Generator $\rightarrow$ \texttt{/plan-definition}, Trajectory Generator $\rightarrow$ \texttt{/plan-authorization}.
+        \item \textbf{Proxy SSE Geoawareness}: Backend conecta \texttt{ws://} internamente y sirve SSE al navegador via \texttt{GET /api/geoawareness/stream/[uspaceId]}; elimina mixed-content en HTTPS; depreca \texttt{NEXT\_PUBLIC\_GEOAWARENESS\_SERVICE\_IP}.
+        \item \textbf{Fix Cesium assets}: \texttt{postinstall}/\texttt{prebuild} copian directorio completo \texttt{Build/Cesium/} (incluyendo \texttt{Cesium.js}) a \texttt{public/cesium/}.
+        \item \textbf{Nuevos endpoints}: \texttt{GET/PATCH /api/user/profile}, \texttt{POST /api/contact}, \texttt{GET /api/cesium/token}, \texttt{GET /api/geoawareness/stream/[uspaceId]}.
+    \end{itemize}
     \item \textbf{Cambios en v2.1.0 SPIRIT}:
     \begin{itemize}
         \item \textbf{Sistema de emails completo}: Integración con MailerSend para verificación de email, reset de contraseña y notificaciones de autorización FAS.
@@ -473,38 +566,55 @@ El U-Plan se genera a partir del CSV y \texttt{scheduledAt} y contiene una lista
     \end{itemize}
 \end{itemize}
 
-\section{Integración WebSocket con Geoawareness Service}
+\section{Integración con el Servicio Geoawareness}
 \label{sec:geoawareness-ws-format}
 
-\subsection{Conexión WebSocket}
-El cliente web establece conexión WebSocket directamente con el servicio Geoawareness para obtener datos de geozonas en tiempo real.
+\subsection{Arquitectura del Proxy SSE}
+A partir de la versión 2.2.0, la comunicación con el servicio Geoawareness ya no se realiza con una conexión WebSocket directa desde el navegador, sino a través de un proxy SSE alojado en el propio backend UPPS:
 
 \begin{itemize}
-    \item \textbf{URL}: \texttt{ws://<GEOAWARENESS\_SERVICE\_IP>/ws/gas/\{USPACE\_ID\}}
-    \item \textbf{Parámetro path}: \texttt{USPACE\_ID} -- Identificador del U-space (ej: \texttt{VLCUspace})
-    \item \textbf{Protocolo}: WebSocket (RFC 6455)
-    \item \textbf{Content-Type mensajes}: \texttt{application/json}
+    \item \textbf{Motivación}: Una conexión \texttt{ws://} iniciada desde una página servida por HTTPS es bloqueada por los navegadores (política de mixed-content). El proxy SSE elimina esta restricción sin requerir TLS en el servicio Geoawareness.
+    \item \textbf{Flujo}:
+    \begin{enumerate}
+        \item El navegador abre \texttt{GET /api/geoawareness/stream/\{uspaceId\}} como \texttt{EventSource} (SSE sobre HTTPS).
+        \item El backend Next.js (runtime Node.js) abre \texttt{ws://<GEOAWARENESS\_SERVICE\_IP>/ws/gas/\{uspaceId\}} de forma interna usando la librería \texttt{ws}.
+        \item Cada mensaje WebSocket recibido del servicio se retransmite al navegador como un evento SSE (tipo \texttt{data}).
+        \item Si el navegador cierra la conexión SSE, el backend cierra el WebSocket interno para evitar fugas de recursos.
+    \end{enumerate}
+    \item \textbf{Evento SSE \texttt{connected}}: emitido cuando el WS interno se abre correctamente.
+    \item \textbf{Evento SSE \texttt{error}}: emitido si el WS interno reporta un error; el stream SSE se cierra.
+    \item \textbf{Evento SSE \texttt{close}}: emitido cuando el WS interno cierra; el stream SSE se cierra.
+    \item \textbf{Reconexión}: gestionada por el hook \texttt{useGeoawarenessWebSocket} con backoff exponencial sobre la conexión SSE.
 \end{itemize}
 
-\subsection{Estados de Conexión}
+\subsection{Endpoint proxy SSE}
+\begin{itemize}
+    \item \textbf{URL}: \texttt{GET /api/geoawareness/stream/\{uspaceId\}}
+    \item \textbf{Parámetro path}: \texttt{uspaceId} -- Identificador del U-space (ej: \texttt{VLCUspace})
+    \item \textbf{Content-Type respuesta}: \texttt{text/event-stream}
+    \item \textbf{Headers}: \texttt{Cache-Control: no-cache, no-transform}, \texttt{X-Accel-Buffering: no}
+    \item \textbf{Autenticación}: ninguna (la autenticación se gestiona en el frontend; el endpoint es interno al mismo origen)
+\end{itemize}
+
+\subsection{States de Conexión (hook)}
 El hook \texttt{useGeoawarenessWebSocket} gestiona los siguientes estados:
 \begin{itemize}
-    \item \texttt{connecting}: Estableciendo conexión WebSocket
-    \item \texttt{connected}: Conexión activa, recibiendo datos
-    \item \texttt{disconnected}: Conexión cerrada
-    \item \texttt{error}: Error en la conexión
+    \item \texttt{connecting}: Estableciendo conexión SSE al backend
+    \item \texttt{connected}: El backend confirmó apertura del WS, recibiendo datos
+    \item \texttt{disconnected}: Conexión SSE cerrada
+    \item \texttt{error}: Error en la conexión SSE o WS interno
 \end{itemize}
 
 \subsection{Reconexión Automática}
-El sistema implementa reconexión automática con backoff exponencial:
+El sistema implementa reconexión automática con backoff exponencial sobre la conexión SSE:
 \begin{itemize}
     \item Intentos máximos: 5
     \item Delays: 1s $\rightarrow$ 2s $\rightarrow$ 4s $\rightarrow$ 8s $\rightarrow$ 16s
     \item Tras agotar intentos: Fallback a endpoint HTTP deprecado
 \end{itemize}
 
-\subsection{Formato de Mensaje WebSocket}
-El mensaje WebSocket se estructura en 3 bloques principales:
+\subsection{Formato de Mensaje (inalterado)}
+El payload JSON de cada evento SSE es idéntico al que enviaba el antiguo WebSocket directo. Se estructura en 3 bloques principales:
 
 \subsubsection{Bloque 1: Campos de Control}
 \begin{longtable}{|p{4cm}|p{2.5cm}|p{8.5cm}|}
@@ -693,7 +803,8 @@ schedule.endEvent & String & Evento de fin \\
 \subsubsection{Bloque 3: Geozonas (geozones)}
 FeatureCollection GeoJSON con las geozonas asociadas al U-space. Cada Feature tiene la misma estructura que \texttt{uspace\_data} (geometría, properties con restrictionConditions, zoneAuthority, limitedApplicability).
 
-\subsection{Ejemplo de Mensaje WebSocket}
+\subsection{Ejemplo de Mensaje (payload SSE)}
+El campo \texttt{data} de cada evento SSE contiene el mismo JSON que enviaba el antiguo WebSocket:
 \begin{lstlisting}[style=json]
 {
   "uspace_identifier": "VLCUspace",
@@ -736,7 +847,7 @@ FeatureCollection GeoJSON con las geozonas asociadas al U-space. Cada Feature ti
 \end{lstlisting}
 
 \subsection{Sistema de Fallback}
-Si la conexión WebSocket falla después de 5 intentos de reconexión, el sistema activa automáticamente un fallback HTTP:
+Si la conexión SSE falla después de 5 intentos de reconexión, el sistema activa automáticamente un fallback HTTP:
 
 \begin{itemize}
     \item \textbf{Endpoint fallback}: \texttt{GET /api/deprecated/geoawareness-geozones}
@@ -750,8 +861,9 @@ Si la conexión WebSocket falla después de 5 intentos de reconexión, el sistem
 \begin{itemize}
     \item \texttt{DATABASE\_URL}: conexión MySQL (ejemplo: \texttt{mysql://USER@HOST:3306/upps}).
     \item \texttt{FAS\_API\_URL}: URL completa del servicio FAS (incluye protocolo, host, puerto y path).
-    \item \texttt{GEOAWARENESS\_SERVICE\_IP}: host:puerto del servicio geoawareness (usado para conexiones WebSocket).
-    \item \texttt{NEXT\_PUBLIC\_GEOAWARENESS\_SERVICE\_IP}: misma IP pero accesible desde el cliente web para conexiones WebSocket directas.
+    \item \texttt{GEOAWARENESS\_SERVICE\_IP}: host:puerto del servicio geoawareness (servidor). Usado por el proxy SSE para abrir la conexión WebSocket interna.
+    \item \texttt{GEOAWARENESS\_ENDPOINT} (opcional): prefijo del path WebSocket (por defecto: \texttt{ws/gas/}).
+    \item \texttt{NEXT\_PUBLIC\_GEOAWARENESS\_SERVICE\_IP}: \textbf{deprecado en v2.2.0}. Ya no es necesario; el navegador no abre WebSocket directamente.
     \item \texttt{MAILERSEND\_API\_KEY}: API key de MailerSend para envío de emails (verificación, reset, notificaciones).
     \item \texttt{MAILERSEND\_SENDER\_EMAIL} (opcional): Email del remitente (por defecto: \texttt{UPPS@sna-upv.com}).
     \item \texttt{MAILERSEND\_SENDER\_NAME} (opcional): Nombre del remitente (por defecto: \texttt{UPPS}).
@@ -787,21 +899,24 @@ Si la conexión WebSocket falla después de 5 intentos de reconexión, el sistem
     \item \texttt{POST }\icdendpoint{/api/auth/request-password-reset} (v2.1: solicitud de reset con envío de email)
     \item \texttt{POST }\icdendpoint{/api/auth/reset-password} (v2.1: reset de contraseña con token)
     \item \texttt{GET }\icdendpoint{/api/geoawareness/uspaces} (proxy para lista de U-spaces)
+    \item \texttt{GET }\icdendpoint{/api/geoawareness/stream/[uspaceId]} (v2.2.0: proxy SSE de Geoawareness; retransmite WebSocket interno como SSE)
     \item \texttt{GET }\icdendpoint{/api/deprecated/geoawareness-geozones} (fallback HTTP, deprecated)
 \end{itemize}
 
-\subsection*{C. Endpoints WebSocket}
+\subsection*{C. Endpoints de streaming}
 \begin{itemize}
-    \item \texttt{ws://<GEOAWARENESS\_SERVICE\_IP>/ws/gas/\{USPACE\_ID\}} -- Conexión de geoawareness en tiempo real
+    \item \texttt{GET /api/geoawareness/stream/\{uspaceId\}} -- Proxy SSE de Geoawareness (v2.2.0). El backend abre internamente \texttt{ws://<GEOAWARENESS\_SERVICE\_IP>/ws/gas/\{uspaceId\}} y retransmite los mensajes al navegador como eventos SSE.
+    \item \textbf{(Servidor interno, no expuesto)}: \texttt{ws://<GEOAWARENESS\_SERVICE\_IP>/ws/gas/\{USPACE\_ID\}} -- Solo accedido por el backend.
 \end{itemize}
 
 \subsection*{D. Flujo de alto nivel (texto)}
 \begin{enumerate}
-    \item El usuario abre el Plan Generator y selecciona un U-space.
-    \item El cliente web conecta via WebSocket a \texttt{ws://.../ws/gas/\{USPACE\_ID\}} para recibir geozonas en tiempo real.
+    \item El usuario abre \textbf{Plan Definition} (\texttt{/plan-definition}) y selecciona un U-space.
+    \item El cliente web conecta al proxy SSE backend \texttt{/api/geoawareness/stream/\{USPACE\_ID\}} que a su vez abre \texttt{ws://.../ws/gas/\{USPACE\_ID\}} para recibir geozonas en tiempo real.
     \item El usuario define waypoints sobre el mapa, visualizando las geozonas como referencia.
     \item El usuario sube planes: \texttt{POST }\icdendpoint{/api/flightPlans} con \texttt{fileContent} y \texttt{status="sin procesar"}.
-    \item \textbf{Workflow de 5 pasos} (Trajectory Generator):
+    \item Tras subir, la app navega automáticamente a \textbf{Plan Authorization} (\texttt{/plan-authorization?selectPlan=<id>}) y auto-selecciona el plan importado.
+    \item \textbf{Workflow de 5 pasos} (Plan Authorization):
     \begin{enumerate}
         \item \textbf{Select}: Usuario selecciona un plan de vuelo de la lista.
         \item \textbf{DateTime}: Usuario establece fecha/hora programada (\texttt{scheduledAt}).
@@ -826,8 +941,8 @@ La aplicación se estructura en componentes modulares organizados por funcionali
 
 \subsubsection*{Componentes principales}
 \begin{itemize}
-    \item \texttt{FlightPlansUploader}: Interfaz principal del Trajectory Generator con workflow guiado.
-    \item \texttt{PlanGenerator}: Generador de planes de vuelo con mapa interactivo y waypoints.
+    \item \texttt{FlightPlansUploader}: Interfaz principal del \textbf{Plan Authorization} con workflow guiado.
+    \item \texttt{PlanGenerator} / \textbf{Plan Definition}: Generador de planes de vuelo con mapa interactivo y waypoints (página \texttt{/plan-definition}).
     \item \texttt{ProcessingWorkflow}: Indicador visual del workflow de 5 pasos.
     \item \texttt{FolderList}: Gestión de carpetas con drag-and-drop.
     \item \texttt{FlightPlanCard}: Tarjeta de plan con operaciones individuales.
@@ -836,11 +951,14 @@ La aplicación se estructura en componentes modulares organizados por funcionali
 
 \subsubsection*{Componentes de visualización}
 \begin{itemize}
-    \item \texttt{TrajectoryMapViewer}: Visualizador de trayectorias con Leaflet (sustituye descarga CSV).
-    \item \texttt{GeoawarenessViewer}: Visualizador de trayectoria sobre geozonas con WebSocket en tiempo real.
+    \item \texttt{Trajectory3DViewer}: Visor 3D de trayectoria con dron animado (Cesium), altitudes AGL.
+    \item \texttt{GeoawarenessViewer}: Visualizador de trayectoria sobre geozonas con SSE en tiempo real.
+    \item \texttt{Cesium3DModal}: Visor 3D de volúmenes de operación U-Plan con slider temporal 4D.
+    \item \texttt{AuthorizationResultModal}: Modal unificado de resultado de autorización (2D + 3D).
+    \item \texttt{Denial3DModal}: Visor 3D de denegación con geozonas conflictivas.
     \item \texttt{WaypointMapModal}: Modal para preview de waypoints en plan.
     \item \texttt{UplanViewModal}: Visualizador de volúmenes de operación en mapa.
-    \item \texttt{UplanFormModal}: Formulario de edición de campos U-Plan.
+    \item \texttt{UplanFormModal}: Formulario de edición de campos U-Plan (con tooltips \texttt{FieldHelp}).
     \item \texttt{GeozoneLayer}: Capa de geozonas con colores por tipo y opacidad configurable.
 \end{itemize}
 
@@ -848,11 +966,16 @@ La aplicación se estructura en componentes modulares organizados por funcionali
 \begin{itemize}
     \item \texttt{useFlightPlans}: Gestión de planes con polling opcional (5s).
     \item \texttt{useFolders}: Gestión de carpetas.
-    \item \texttt{useGeoawarenessWebSocket}: Conexión WebSocket con reconexión automática.
+    \item \texttt{useGeoawarenessWebSocket}: Conexión SSE con reconexión automática (v2.2.0: proxy backend).
     \item \texttt{useVolumeRegeneration}: Regeneración automática de volúmenes (30s).
     \item \texttt{usePolling}: Polling genérico con control de errores.
     \item \texttt{useTheme}: Gestión del tema claro/oscuro con persistencia.
     \item \texttt{useToast}: Notificaciones toast con estados y retry.
+\end{itemize}
+
+\subsubsection*{Componentes UI reutilizables (v2.2.0)}
+\begin{itemize}
+    \item \texttt{FieldHelp}: Icono \texttt{?} con tooltip al click; explica acrónimos de aviación en formularios U-Plan.
 \end{itemize}
 
 \subsubsection*{Sistema de temas (v2.0)}

@@ -231,8 +231,8 @@ export function Header() {
   }, []);
 
   const navLinks = [
-    { href: "/plan-generator", label: "Plan Generator" },
-    { href: "/trajectory-generator", label: "Trajectory Generator" },
+    { href: "/plan-definition", label: "Plan Definition" },
+    { href: "/plan-authorization", label: "Plan Authorization" },
     { href: "/plan-activation", label: "Plan Activation" },
   ];
 

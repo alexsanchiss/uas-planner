@@ -262,17 +262,17 @@ ALTER TABLE user ADD COLUMN phone VARCHAR(50) DEFAULT NULL;
 
 ---
 
-## Task 21: Direct Navigation from Plan Generator to Trajectory Generator
+## Task 21: Direct Navigation from Plan Definition to Plan Authorization
 **Feature:** 21 | **Priority:** High | **Scope:** Small
 
 1. `app/components/PlanGenerator.tsx`: In `handleUploadPlan`, after successful POST to `/api/flightPlans`:
    - Get the created plan's ID from the API response.
-   - Use Next.js `useRouter` to navigate: `router.push(\`/trajectory-generator?selectPlan=\${planId}\`)`.
-   - Remove the "saved in Plan Generator folder" toast — user will see the plan directly.
+   - Use Next.js `useRouter` to navigate: `router.push(\`/plan-authorization?selectPlan=\${planId}\`)`.
+   - Remove the "saved in Plan Definition folder" toast — user will see the plan directly.
 2. `app/components/FlightPlansUploader.tsx`: On mount or when URL changes:
    - Read `selectPlan` query parameter from `window.location.search` or `useSearchParams()`.
    - If present, find the plan by ID in the loaded flight plans list and auto-select it (set `selectedPlanId`).
-   - Show a success toast: "Plan imported from Plan Generator" or similar.
+   - Show a success toast: "Plan imported from Plan Definition" or similar.
    - Clean up the URL param after selection (optional, `router.replace` without the param).
 3. Run `npm run build && npm run lint && npm test`.
 

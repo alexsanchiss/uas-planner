@@ -11,18 +11,18 @@ export default function HowItWorksPage() {
             <span className="font-semibold text-[var(--color-primary)]">Log in or sign up:</span> You must be logged in to use all features.
           </li>
           <li>
-            <span className="font-semibold text-[var(--color-primary)]">Create a Flight Plan with Plan Generator:</span>
+            <span className="font-semibold text-[var(--color-primary)]">Create a Flight Plan with Plan Definition:</span>
             <ul className="list-disc ml-6 text-base mt-1">
-              <li>Go to <span className="font-semibold">Plan Generator</span> and click on the map to add waypoints for your mission.</li>
+              <li>Go to <span className="font-semibold">Plan Definition</span> and click on the map to add waypoints for your mission.</li>
               <li>Fill in flight details, UAS information, and give your plan a name.</li>
               <li>Drag and drop waypoints to reorder them. The first is always <span className="italic">Takeoff</span>, the last can be <span className="italic">Landing</span>.</li>
-              <li>When ready, click <span className="font-semibold">Upload to Trajectory Generator</span>. Your plan will be saved and available in the Trajectory Generator.</li>
+              <li>When ready, click <span className="font-semibold">Upload to Plan Authorization</span>. Your plan will be saved and available in the Plan Authorization.</li>
             </ul>
           </li>
           <li>
-            <span className="font-semibold text-[var(--color-primary)]">Process and Visualize Trajectories with Trajectory Generator:</span>
+            <span className="font-semibold text-[var(--color-primary)]">Process and Visualize Trajectories with Plan Authorization:</span>
             <ul className="list-disc ml-6 text-base mt-1">
-              <li>Go to <span className="font-semibold">Trajectory Generator</span> to see your uploaded plans, organized in folders.</li>
+              <li>Go to <span className="font-semibold">Plan Authorization</span> to see your uploaded plans, organized in folders.</li>
               <li>For each plan, you can:
                 <ul className="list-disc ml-6 mt-1">
                   <li><span className="font-semibold">Process</span> a plan to generate its trajectory. The status will update as it is queued, processed, or if there is an error.</li>
@@ -54,25 +54,25 @@ export default function HowItWorksPage() {
           </li>
         </ol>
       </section>
-      {/* Plan Generator Help Section */}
-      <section id="plan-generator-help" className="mb-10 bg-[var(--surface-primary)] border border-[var(--border-primary)] rounded-lg shadow p-6 text-[var(--text-primary)] scroll-mt-24">
+      {/* Plan Definition Help Section */}
+      <section id="plan-definition-help" className="mb-10 bg-[var(--surface-primary)] border border-[var(--border-primary)] rounded-lg shadow p-6 text-[var(--text-primary)] scroll-mt-24">
         <h3 className="text-xl font-bold mb-2 text-[var(--color-primary)] flex items-center gap-2">
-          Plan Generator Help
+          Plan Definition Help
         </h3>
         <ul className="list-disc ml-6 text-base space-y-1">
-          <li>Go to <span className="font-semibold">Plan Generator</span> and click on the map to add waypoints for your mission.</li>
+          <li>Go to <span className="font-semibold">Plan Definition</span> and click on the map to add waypoints for your mission.</li>
           <li>Fill in flight details, UAS information, and give your plan a name.</li>
           <li>Drag and drop waypoints to reorder them. The first is always <span className="italic">Takeoff</span>, the last can be <span className="italic">Landing</span>.</li>
-          <li>When ready, click <span className="font-semibold">Upload to Trajectory Generator</span>. Your plan will be saved and available in the Trajectory Generator.</li>
+          <li>When ready, click <span className="font-semibold">Upload to Plan Authorization</span>. Your plan will be saved and available in the Plan Authorization.</li>
         </ul>
         <div className="mt-4 bg-[var(--status-info-bg)] border-l-4 border-[var(--status-info)] p-4 rounded">
           <span className="font-semibold text-[var(--status-info-text)]">Note:</span> U-Plan data is <span className="font-semibold">not required</span>. If you leave these fields empty, the system will randomize them so you can try the Flight Authorization Service (FAS) anyway.
         </div>
       </section>
-      {/* Trajectory Generator Help Section */}
-      <section id="trajectory-generator-help" className="mb-10 bg-[var(--surface-primary)] border border-[var(--border-primary)] rounded-lg shadow p-6 text-[var(--text-primary)] scroll-mt-24">
+      {/* Plan Authorization Help Section */}
+      <section id="plan-authorization-help" className="mb-10 bg-[var(--surface-primary)] border border-[var(--border-primary)] rounded-lg shadow p-6 text-[var(--text-primary)] scroll-mt-24">
         <h3 className="text-xl font-bold mb-2 text-[var(--color-primary)] flex items-center gap-2">
-          Trajectory Generator Help
+          Plan Authorization Help
         </h3>
         <ul className="list-disc ml-6 text-base space-y-1">
           <li>See your uploaded plans, organized in folders.</li>
