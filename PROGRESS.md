@@ -38,5 +38,5 @@
 | 22 | F22 | Update u-plan STATE on FAS authorization response | Completed |
 | 23 | F23 | Fix 3D viewer InfoBox theme & play animation reliability | Not Started |
 | 24 | F24 | Fix Trajectory 3D viewer play animation & unified height reference | Not Started |
-| 25 | F25 | HTTPS-compatible geoawareness WebSocket | Not Started |
+| 25 | F25 | HTTPS-compatible geoawareness WebSocket | Completed |
 | 26 | F26 | U-Plan form field help tooltips | Not Started |

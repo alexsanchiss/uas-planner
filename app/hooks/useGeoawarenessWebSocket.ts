@@ -345,6 +345,9 @@ export interface UseGeoawarenessWebSocketReturn {
 
 /**
  * Get the WebSocket URL for a given U-space
+ *
+ * When deploying over HTTPS, the geoawareness service must support TLS (WSS),
+ * either directly or via a reverse proxy that terminates TLS.
  */
 function getWebSocketUrl(uspaceId: string): string | null {
   const serviceIp = process.env.NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP
@@ -362,6 +365,20 @@ function getWebSocketUrl(uspaceId: string): string | null {
     wsUrl = wsUrl.replace('https://', 'wss://')
   } else if (!wsUrl.startsWith('ws://') && !wsUrl.startsWith('wss://')) {
     wsUrl = `ws://${wsUrl}`
+  }
+
+  // Auto-upgrade to wss:// when the page is served over HTTPS to avoid
+  // mixed-content errors ("An insecure WebSocket connection may not be
+  // initiated from a page loaded over HTTPS").
+  if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
+    if (wsUrl.startsWith('ws://')) {
+      console.warn(
+        '[useGeoawarenessWebSocket] Page is loaded over HTTPS but NEXT_PUBLIC_GEOAWARENESS_SERVICE_IP resolved to ws://. ' +
+        'Auto-upgrading to wss:// to prevent mixed-content blocking. ' +
+        'Consider setting the env var with a wss:// or https:// prefix for production.'
+      )
+      wsUrl = wsUrl.replace('ws://', 'wss://')
+    }
   }
   
   const fullUrl = `${wsUrl}/ws/gas/${uspaceId}`
