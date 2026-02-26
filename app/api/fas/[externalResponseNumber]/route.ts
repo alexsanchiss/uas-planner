@@ -60,11 +60,26 @@ export async function PUT(
     const newStatus = state === "ACCEPTED" ? "aprobado" : "denegado";
     const authMessage = typeof message === 'string' ? message : (message ? JSON.stringify(message) : undefined);
 
+    // Update the u-plan JSON state to reflect the FAS decision
+    let updatedUplanStr: string | undefined;
+    if (flightPlan.uplan) {
+      try {
+        const parsed = typeof flightPlan.uplan === 'string'
+          ? JSON.parse(flightPlan.uplan)
+          : flightPlan.uplan;
+        parsed.state = state;
+        updatedUplanStr = JSON.stringify(parsed);
+      } catch {
+        // If uplan is not valid JSON, skip the state update
+      }
+    }
+
     await prisma.flightPlan.update({
       where: { id: flightPlan.id },
       data: {
         authorizationStatus: newStatus,
         ...(authMessage !== undefined && { authorizationMessage: authMessage }),
+        ...(updatedUplanStr !== undefined && { uplan: updatedUplanStr }),
       },
     });
 

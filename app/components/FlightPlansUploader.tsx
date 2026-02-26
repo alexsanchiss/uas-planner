@@ -256,7 +256,8 @@ export function FlightPlansUploader() {
     open: boolean
     planId: string
   }>({ open: false, planId: '' })
-  // TASK-003: State for on-demand volume generation
+  // TASK-003: State for on-demand volume generation (used by handleViewUplanMap, kept for UplanViewModal)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [generatingVolumes, setGeneratingVolumes] = useState<string | null>(null) // planId or null
   // Task 11: Cesium 3D viewer state
   const [cesium3DModal, setCesium3DModal] = useState<{
@@ -1013,6 +1014,8 @@ export function FlightPlansUploader() {
   }, [flightPlans, toast])
 
   // TASK-003: Handle viewing U-Plan map - generates volumes on demand if not present
+  // Kept for programmatic use by child components; primary UI button removed in favor of 3D viewer
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleViewUplanMap = useCallback(async (planId: string) => {
     const plan = flightPlans.find(p => String(p.id) === planId)
     if (!plan) return
@@ -1503,31 +1506,7 @@ export function FlightPlansUploader() {
                   </svg>
                   Review U-Plan
                 </button>
-                {/* View U-Plan Map button - shows operation volumes on map */}
-                {/* TASK-079: Show waypoints even without uplan, for planning visualization */}
-                {/* TASK-003: Generate volumes on demand if not present */}
-                <button
-                  onClick={() => handleViewUplanMap(selectedPlan.id)}
-                  disabled={(!selectedPlan.fileContent && !selectedPlan.uplan) || generatingVolumes === selectedPlan.id}
-                  className="px-4 py-2 text-sm font-medium text-[var(--text-primary)] bg-[var(--surface-tertiary)] border border-[var(--border-primary)] rounded-md hover:bg-[var(--bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors btn-interactive flex items-center gap-2"
-                >
-                  {generatingVolumes === selectedPlan.id ? (
-                    <>
-                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                      </svg>
-                      Generating Volumes...
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                      </svg>
-                      View U-Plan Map
-                    </>
-                  )}
-                </button>
+                {/* View U-Plan Map button removed — use View 3D U-Plan instead */}
                 {/* Task 11: View 3D U-Plan button - opens Cesium 3D viewer */}
                 <button
                   onClick={() => handleView3DUplan(selectedPlan.id)}
@@ -1551,19 +1530,7 @@ export function FlightPlansUploader() {
                     </>
                   )}
                 </button>
-                {/* View trajectory button - TASK-001: Require status=procesado AND csvResult */}
-                <button
-                  onClick={() => handleDownloadPlan(selectedPlan.id)}
-                  disabled={selectedPlan.status !== 'procesado' || !selectedPlan.csvResult}
-                  title={selectedPlan.status !== 'procesado' ? 'Plan must be processed first' : !selectedPlan.csvResult ? 'Trajectory data not available' : undefined}
-                  className="px-4 py-2 text-sm font-medium text-[var(--text-primary)] bg-[var(--surface-tertiary)] border border-[var(--border-primary)] rounded-md hover:bg-[var(--bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors btn-interactive flex items-center gap-2"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-                  </svg>
-                  View Trajectory
-                </button>
-                {/* Task 20: View trajectory in 3D with drone animation */}
+                {/* View trajectory in 3D with drone animation */}
                 <button
                   onClick={() => {
                     const plan = flightPlans.find(p => String(p.id) === String(selectedPlan.id))
@@ -1581,7 +1548,7 @@ export function FlightPlansUploader() {
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
                   </svg>
-                  View Trajectory 3D
+                  View Trajectory
                 </button>
                 {/* Check Geoawareness button */}
                 <button
@@ -1650,41 +1617,18 @@ export function FlightPlansUploader() {
                         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        View Authorization Result (Approved)
+                        View Authorization Result
                       </>
                     ) : (
                       <>
                         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                         </svg>
-                        View Authorization Result (Denied)
+                        View Authorization Result
                       </>
                     )}
                   </button>
-                  {/* Task 17: 3D Denial view button for denied plans */}
-                  {selectedPlan.authorizationStatus === 'denegado' && !!selectedPlan.uplan && (
-                    <button
-                      onClick={() => {
-                        const messageStr = typeof selectedPlan.authorizationMessage === 'string'
-                          ? selectedPlan.authorizationMessage
-                          : typeof selectedPlan.authorizationMessage === 'object' && selectedPlan.authorizationMessage !== null
-                            ? JSON.stringify(selectedPlan.authorizationMessage)
-                            : null
-                        setDenial3DModal({
-                          open: true,
-                          uplan: selectedPlan.uplan,
-                          authorizationMessage: messageStr,
-                          geoawarenessData: selectedPlan.geoawarenessData ?? null,
-                        })
-                      }}
-                      className="w-full px-6 py-3 text-base font-semibold rounded-lg transition-all transform hover:scale-[1.02] shadow-md hover:shadow-lg flex items-center justify-center gap-3 bg-red-700 hover:bg-red-800 text-white"
-                    >
-                      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-                      </svg>
-                      View Denial 3D
-                    </button>
-                  )}
+                  {/* View Denial 3D button removed — use View Authorization Result (3D tab) instead */}
                 </div>
               )}
 

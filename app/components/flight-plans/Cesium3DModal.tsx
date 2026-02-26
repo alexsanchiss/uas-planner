@@ -106,32 +106,6 @@ const Cesium3DModal: React.FC<Cesium3DModalProps> = ({ isOpen, onClose, uplanDat
     if (hasTimeData) setCurrentTimeMs(globalStartMs)
   }, [hasTimeData, globalStartMs])
 
-  // Play animation loop
-  useEffect(() => {
-    if (!playing || !hasTimeData) return
-
-    lastFrameRef.current = performance.now()
-
-    const tick = (now: number) => {
-      const deltaMs = (now - lastFrameRef.current) * speed
-      lastFrameRef.current = now
-
-      setCurrentTimeMs(prev => {
-        const next = prev + deltaMs
-        if (next >= globalEndMs) {
-          setPlaying(false)
-          return globalEndMs
-        }
-        return next
-      })
-
-      animFrameRef.current = requestAnimationFrame(tick)
-    }
-
-    animFrameRef.current = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(animFrameRef.current)
-  }, [playing, speed, hasTimeData, globalEndMs])
-
   // Update entity colors based on current time
   const updateVolumeColors = useCallback((timeMs: number) => {
     const Cesium = cesiumRef.current
@@ -143,15 +117,47 @@ const Cesium3DModal: React.FC<Cesium3DModalProps> = ({ isOpen, onClose, uplanDat
       if (entity.polygon) {
         entity.polygon.material = isActive
           ? Cesium.Color.fromCssColorString('rgba(51, 148, 255, 0.65)')
-          : Cesium.Color.fromCssColorString('rgba(160, 160, 160, 0.12)')
+          : Cesium.Color.fromCssColorString('rgba(160, 160, 160, 0.25)')
         entity.polygon.outlineColor = isActive
           ? Cesium.Color.fromCssColorString('rgba(51, 148, 255, 0.9)')
-          : Cesium.Color.fromCssColorString('rgba(160, 160, 160, 0.3)')
+          : Cesium.Color.fromCssColorString('rgba(160, 160, 160, 0.45)')
       }
     })
   }, [])
 
-  // Sync entity colors when currentTimeMs changes
+  // Play animation loop — use ref to read latest time for direct entity updates
+  const currentTimeMsRef = useRef(currentTimeMs)
+  currentTimeMsRef.current = currentTimeMs
+
+  useEffect(() => {
+    if (!playing || !hasTimeData) return
+
+    lastFrameRef.current = performance.now()
+
+    const tick = (now: number) => {
+      const deltaMs = (now - lastFrameRef.current) * speed
+      lastFrameRef.current = now
+
+      const next = currentTimeMsRef.current + deltaMs
+      if (next >= globalEndMs) {
+        setPlaying(false)
+        setCurrentTimeMs(globalEndMs)
+        updateVolumeColors(globalEndMs)
+      } else {
+        setCurrentTimeMs(next)
+        updateVolumeColors(next)
+      }
+
+      if (next < globalEndMs) {
+        animFrameRef.current = requestAnimationFrame(tick)
+      }
+    }
+
+    animFrameRef.current = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(animFrameRef.current)
+  }, [playing, speed, hasTimeData, globalEndMs, updateVolumeColors])
+
+  // Sync entity colors when currentTimeMs changes (both slider and play animation)
   useEffect(() => {
     if (hasTimeData) updateVolumeColors(currentTimeMs)
   }, [currentTimeMs, hasTimeData, updateVolumeColors])
@@ -200,8 +206,8 @@ const Cesium3DModal: React.FC<Cesium3DModalProps> = ({ isOpen, onClose, uplanDat
           sceneModePicker: false,
           navigationHelpButton: false,
           fullscreenButton: false,
-          selectionIndicator: false,
-          infoBox: false,
+          selectionIndicator: true,
+          infoBox: true,
         })
 
         viewerRef.current = viewer

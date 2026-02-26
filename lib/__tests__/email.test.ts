@@ -95,7 +95,7 @@ describe('Email Service', () => {
       expect(mockSend).toHaveBeenCalledTimes(1);
       const params = mockSend.mock.calls[0][0];
       expect(params.to[0].email).toBe('user@example.com');
-      expect(params.subject).toContain('Verify');
+      expect(params.subject).toContain('Verification');
       expect(params.html).toContain('abc-token');
       expect(params.html).toContain('123456');
     });
@@ -150,7 +150,7 @@ describe('Email Service', () => {
       expect(params.subject).toContain('Approved');
       expect(params.subject).toContain('TestPlan');
       expect(params.attachments).toHaveLength(1);
-      expect(params.attachments[0].filename).toBe('TestPlan.json');
+      expect(params.attachments[0].filename).toBe('uplan_TestPlan.json');
       expect(params.attachments[0].content).toBe(
         Buffer.from(uplanJson, 'utf-8').toString('base64'),
       );
@@ -167,7 +167,7 @@ describe('Email Service', () => {
 
       const params = mockSend.mock.calls[0][0];
       expect(params.subject).toContain('Denied');
-      expect(params.html).toContain('denied');
+      expect(params.html).toContain('DENIED');
     });
 
     it('should not throw on send failure', async () => {

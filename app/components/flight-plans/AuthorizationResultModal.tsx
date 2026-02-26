@@ -264,8 +264,8 @@ function Cesium3DView({ volumes, isApproved, conflictingIndices, geozones }: Ces
           sceneModePicker: false,
           navigationHelpButton: false,
           fullscreenButton: false,
-          selectionIndicator: false,
-          infoBox: false,
+          selectionIndicator: true,
+          infoBox: true,
         })
         viewerRef.current = viewer
 
@@ -314,8 +314,9 @@ function Cesium3DView({ volumes, isApproved, conflictingIndices, geozones }: Ces
             outlineColor = Cesium.Color.fromCssColorString('rgba(59, 130, 246, 0.8)')
           }
 
+          const volName = vol.name || `Volume ${idx + 1}`
           viewer.entities.add({
-            name: vol.name || `Volume ${idx + 1}`,
+            name: volName,
             polygon: {
               hierarchy: Cesium.Cartesian3.fromDegreesArray(degreesArray),
               height: lowerLimit,
@@ -327,6 +328,17 @@ function Cesium3DView({ volumes, isApproved, conflictingIndices, geozones }: Ces
               outlineColor,
               outlineWidth: 2,
             },
+            description: [
+              '<table style="width:100%">',
+              `<tr><td><b>Volume</b></td><td>${volName}</td></tr>`,
+              `<tr><td><b>Ordinal</b></td><td>${vol.ordinal ?? idx}</td></tr>`,
+              `<tr><td><b>Min Alt</b></td><td>${lowerLimit} m AGL</td></tr>`,
+              `<tr><td><b>Max Alt</b></td><td>${upperLimit} m AGL</td></tr>`,
+              `<tr><td><b>Status</b></td><td>${isApproved ? 'Authorized' : isConflicting ? 'Conflicting' : 'OK'}</td></tr>`,
+              vol.timeBegin ? `<tr><td><b>Start</b></td><td>${vol.timeBegin}</td></tr>` : '',
+              vol.timeEnd ? `<tr><td><b>End</b></td><td>${vol.timeEnd}</td></tr>` : '',
+              '</table>',
+            ].join(''),
           })
         }
 
@@ -365,6 +377,16 @@ function Cesium3DView({ volumes, isApproved, conflictingIndices, geozones }: Ces
               outlineColor: Cesium.Color.fromCssColorString('rgba(245, 158, 11, 0.9)'),
               outlineWidth: 2,
             },
+            description: [
+              '<table style="width:100%">',
+              `<tr><td><b>Geozone</b></td><td>${gz.identifier}</td></tr>`,
+              gz.name ? `<tr><td><b>Name</b></td><td>${gz.name}</td></tr>` : '',
+              `<tr><td><b>Type</b></td><td>${gz.type}</td></tr>`,
+              gz.info ? `<tr><td><b>Info</b></td><td>${gz.info}</td></tr>` : '',
+              `<tr><td><b>Lower</b></td><td>${lowerAlt.toFixed(0)} m</td></tr>`,
+              `<tr><td><b>Upper</b></td><td>${upperAlt.toFixed(0)} m</td></tr>`,
+              '</table>',
+            ].join(''),
           })
         }
 
@@ -615,9 +637,9 @@ const AuthorizationResultModal: React.FC<AuthorizationResultModalProps> = ({
     return () => window.removeEventListener('keydown', handler)
   }, [isOpen, onClose])
 
-  // Reset tab when modal opens
+  // Reset tab when modal opens — default to 3D view
   useEffect(() => {
-    if (isOpen) setActiveTab('2d')
+    if (isOpen) setActiveTab('3d')
   }, [isOpen])
 
   if (!isOpen) return null
@@ -627,8 +649,8 @@ const AuthorizationResultModal: React.FC<AuthorizationResultModalProps> = ({
   const totalVolumes = operationVolumes2D.length
 
   const tabs: { id: TabId; label: string }[] = [
-    { id: '2d', label: '2D Map' },
     { id: '3d', label: '3D Map' },
+    { id: '2d', label: '2D Map' },
     { id: 'details', label: 'Details' },
   ]
 
@@ -830,45 +852,24 @@ const AuthorizationResultModal: React.FC<AuthorizationResultModalProps> = ({
                   ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
                   : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
               }`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className={`text-sm font-semibold ${
-                    isApproved ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300'
-                  }`}>
-                    Status: {isApproved ? 'Approved' : 'Denied'}
-                  </span>
-                </div>
                 {isApproved ? (
-                  <p className="text-sm text-green-700 dark:text-green-400">
-                    All {totalVolumes} operation volume{totalVolumes !== 1 ? 's' : ''} authorized.
+                  <p className="text-sm text-green-700 dark:text-green-400 font-semibold">
+                    ✓ All {totalVolumes} operation volume{totalVolumes !== 1 ? 's' : ''} authorized.
+                  </p>
+                ) : denial?.withdrawnReason ? (
+                  <p className="text-sm text-red-700 dark:text-red-400 font-semibold">
+                    ✗ {denial.withdrawnReason}
                   </p>
                 ) : (
-                  <p className="text-sm text-red-700 dark:text-red-400">
-                    {conflictCount > 0
+                  <p className="text-sm text-red-700 dark:text-red-400 font-semibold">
+                    ✗ {conflictCount > 0
                       ? `${conflictCount} of ${totalVolumes} volume${totalVolumes !== 1 ? 's' : ''} conflicting.`
                       : `${totalVolumes} volume${totalVolumes !== 1 ? 's' : ''} denied.`}
                   </p>
                 )}
               </div>
 
-              {/* Conflicting volumes */}
-              {!isApproved && conflictingVolumeIndices && conflictingVolumeIndices.length > 0 && (
-                <div className="p-4 bg-amber-50 dark:bg-amber-900/15 border border-amber-200 dark:border-amber-800 rounded-lg">
-                  <h4 className="text-sm font-semibold text-amber-800 dark:text-amber-300 mb-1">Conflicting Volumes</h4>
-                  <p className="text-sm text-amber-700 dark:text-amber-400">
-                    Volumes: {conflictingVolumeIndices.join(', ')}
-                  </p>
-                </div>
-              )}
-
-              {/* WITHDRAWN reason */}
-              {denial?.withdrawnReason && (
-                <div className="p-4 bg-red-50 dark:bg-red-900/15 border border-red-200 dark:border-red-800 rounded-lg">
-                  <h4 className="text-sm font-semibold text-red-800 dark:text-red-300 mb-1">FAS Reason</h4>
-                  <p className="text-sm text-red-700 dark:text-red-400">{denial.withdrawnReason}</p>
-                </div>
-              )}
-
-              {/* Geozone conflicts */}
+              {/* Geozone conflicts (only when they provide extra info beyond the reason) */}
               {geozonesDetail && geozonesDetail.geozones.length > 0 && (
                 <div className="p-4 bg-orange-50 dark:bg-orange-900/15 border border-orange-200 dark:border-orange-800 rounded-lg">
                   <h4 className="text-sm font-semibold text-orange-800 dark:text-orange-300 mb-2">
@@ -892,23 +893,15 @@ const AuthorizationResultModal: React.FC<AuthorizationResultModalProps> = ({
                 </div>
               )}
 
-              {/* No geozones info for approved */}
-              {isApproved && (
-                <div className="p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
-                  <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-1">Geozone Conflicts</h4>
-                  <p className="text-sm text-[var(--text-secondary)]">No conflicting geozones.</p>
-                </div>
-              )}
-
               {/* Raw FAS response */}
-              <div className="p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
-                <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-2">Raw FAS Response</h4>
-                <pre className="text-xs text-[var(--text-secondary)] whitespace-pre-wrap font-mono bg-[var(--bg-tertiary)] dark:bg-gray-900 p-3 rounded-lg border border-[var(--border-primary)] dark:border-gray-700 max-h-48 overflow-y-auto">
+              <details className="p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+                <summary className="text-sm font-semibold text-[var(--text-primary)] cursor-pointer select-none">Raw FAS Response</summary>
+                <pre className="mt-2 text-xs text-[var(--text-secondary)] whitespace-pre-wrap font-mono bg-[var(--bg-tertiary)] dark:bg-gray-900 p-3 rounded-lg border border-[var(--border-primary)] dark:border-gray-700 max-h-48 overflow-y-auto">
                   {reason
                     ? typeof reason === 'string' ? reason : JSON.stringify(reason, null, 2)
                     : 'No FAS response available.'}
                 </pre>
-              </div>
+              </details>
             </div>
           )}
         </div>
