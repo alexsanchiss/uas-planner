@@ -39,4 +39,4 @@
 | 23 | F23 | Fix 3D viewer InfoBox theme & play animation reliability | Completed |
 | 24 | F24 | Fix Trajectory 3D viewer play animation & unified height reference | Completed |
 | 25 | F25 | HTTPS-compatible geoawareness WebSocket | Completed |
-| 26 | F26 | U-Plan form field help tooltips | Not Started |
+| 26 | F26 | U-Plan form field help tooltips | Completed |

@@ -21,6 +21,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Checkbox } from '../ui/checkbox';
 import { LoadingSpinner } from '../ui/loading-spinner';
+import { FieldHelp } from '../ui/field-help';
 import { useToast } from '@/app/hooks/useToast';
 import {
   validateUplanFormData,
@@ -130,9 +131,11 @@ interface FormFieldProps {
   children: React.ReactNode;
   /** TASK-003: Whether this field has a validation error (for red highlighting) */
   hasValidationError?: boolean;
+  /** TASK-026: Help tooltip text for field explanation */
+  helpText?: string;
 }
 
-function FormField({ label, required, error, children, hasValidationError }: FormFieldProps) {
+function FormField({ label, required, error, children, hasValidationError, helpText }: FormFieldProps) {
   return (
     <div className="mb-4">
       <label className={`block text-sm font-medium mb-1 flex items-center gap-1 ${
@@ -145,6 +148,7 @@ function FormField({ label, required, error, children, hasValidationError }: For
         )}
         {label}
         {required && <span className="text-red-400 ml-1">*</span>}
+        {helpText && <FieldHelp text={helpText} />}
       </label>
       <div className={hasValidationError ? 'error-shake' : ''}>
         {children}
@@ -609,6 +613,7 @@ export default function UplanFormModal({
                       required 
                       error={getNestedError('dataOwnerIdentifier', 'sac')}
                       hasValidationError={hasFieldError('dataOwnerIdentifier.sac')}
+                      helpText="System Area Code — 3-character alphanumeric code identifying the geographic area of the data owner"
                     >
                       <Input
                         value={formData.dataOwnerIdentifier?.sac || ''}
@@ -623,6 +628,7 @@ export default function UplanFormModal({
                       required 
                       error={getNestedError('dataOwnerIdentifier', 'sic')}
                       hasValidationError={hasFieldError('dataOwnerIdentifier.sic')}
+                      helpText="System Identification Code — 3-character code uniquely identifying the data owner within a SAC"
                     >
                       <Input
                         value={formData.dataOwnerIdentifier?.sic || ''}
@@ -642,6 +648,7 @@ export default function UplanFormModal({
                       required 
                       error={getNestedError('dataSourceIdentifier', 'sac')}
                       hasValidationError={hasFieldError('dataSourceIdentifier.sac')}
+                      helpText="System Area Code — 3-character alphanumeric code identifying the geographic area of the data source"
                     >
                       <Input
                         value={formData.dataSourceIdentifier?.sac || ''}
@@ -656,6 +663,7 @@ export default function UplanFormModal({
                       required 
                       error={getNestedError('dataSourceIdentifier', 'sic')}
                       hasValidationError={hasFieldError('dataSourceIdentifier.sic')}
+                      helpText="System Identification Code — 3-character code uniquely identifying the data source within a SAC"
                     >
                       <Input
                         value={formData.dataSourceIdentifier?.sic || ''}
@@ -744,6 +752,7 @@ export default function UplanFormModal({
                   required 
                   error={getNestedError('flightDetails', 'mode')}
                   hasValidationError={hasFieldError('flightDetails.mode')}
+                  helpText="VLOS: Visual Line of Sight — pilot sees the drone directly. BVLOS: Beyond Visual Line of Sight — drone operates outside direct visual contact"
                 >
                   <SelectField
                     value={formData.flightDetails?.mode}
@@ -758,6 +767,7 @@ export default function UplanFormModal({
                   required 
                   error={getNestedError('flightDetails', 'category')}
                   hasValidationError={hasFieldError('flightDetails.category')}
+                  helpText="OPEN (A1-A3): Low-risk operations. SPECIFIC (SAIL): Medium-risk requiring authorization. CERTIFIED: High-risk requiring type certificate"
                 >
                   <SelectField
                     value={formData.flightDetails?.category}
@@ -773,6 +783,7 @@ export default function UplanFormModal({
                   label="Special Operation" 
                   error={getNestedError('flightDetails', 'specialOperation')}
                   hasValidationError={hasFieldError('flightDetails.specialOperation')}
+                  helpText="Type of special operation authorization, if applicable to the flight"
                 >
                   <SelectField
                     value={formData.flightDetails?.specialOperation}
@@ -806,6 +817,7 @@ export default function UplanFormModal({
                   required 
                   error={getNestedError('uas', 'registrationNumber') || validationErrors?.nestedErrors?.uas?.root?.['registrationNumber']}
                   hasValidationError={hasFieldError('uas.registrationNumber')}
+                  helpText="UAS operator registration number issued by your national aviation authority"
                 >
                   <Input
                     value={formData.uas?.registrationNumber || ''}
@@ -819,6 +831,7 @@ export default function UplanFormModal({
                   required 
                   error={getNestedError('uas', 'serialNumber') || validationErrors?.nestedErrors?.uas?.root?.['serialNumber']}
                   hasValidationError={hasFieldError('uas.serialNumber')}
+                  helpText="Manufacturer's serial number for the specific UAS unit (max 20 characters)"
                 >
                   <Input
                     value={formData.uas?.serialNumber || ''}
@@ -839,6 +852,7 @@ export default function UplanFormModal({
                     required 
                     error={validationErrors?.nestedErrors?.uas?.flightCharacteristics?.['uasMTOM']}
                     hasValidationError={hasFieldError('uas.flightCharacteristics.uasMTOM')}
+                    helpText="Maximum Take-Off Mass — total mass of the UAS at takeoff including payload and batteries, in kilograms"
                   >
                     <Input
                       type="number"
@@ -864,6 +878,7 @@ export default function UplanFormModal({
                     required 
                     error={validationErrors?.nestedErrors?.uas?.flightCharacteristics?.['uasMaxSpeed']}
                     hasValidationError={hasFieldError('uas.flightCharacteristics.uasMaxSpeed')}
+                    helpText="Maximum flight speed of the UAS in meters per second"
                   >
                     <Input
                       type="number"
@@ -889,6 +904,7 @@ export default function UplanFormModal({
                     required 
                     error={validationErrors?.nestedErrors?.uas?.flightCharacteristics?.['Connectivity']}
                     hasValidationError={hasFieldError('uas.flightCharacteristics.Connectivity')}
+                    helpText="Communication protocol used by the UAS for command and control (e.g., LTE, 5G, WiFi)"
                   >
                     <SelectField
                       value={formData.uas?.flightCharacteristics?.Connectivity}
@@ -903,6 +919,7 @@ export default function UplanFormModal({
                     required 
                     error={validationErrors?.nestedErrors?.uas?.flightCharacteristics?.['idTechnology']}
                     hasValidationError={hasFieldError('uas.flightCharacteristics.idTechnology')}
+                    helpText="Remote identification technology — how the UAS broadcasts its identity (e.g., Direct Remote ID, Network Remote ID)"
                   >
                     <SelectField
                       value={formData.uas?.flightCharacteristics?.idTechnology}
@@ -917,6 +934,7 @@ export default function UplanFormModal({
                     required 
                     error={validationErrors?.nestedErrors?.uas?.flightCharacteristics?.['maxFlightTime']}
                     hasValidationError={hasFieldError('uas.flightCharacteristics.maxFlightTime')}
+                    helpText="Maximum duration the UAS can fly on a single battery charge, in minutes"
                   >
                     <Input
                       type="number"
@@ -993,6 +1011,7 @@ export default function UplanFormModal({
                     required 
                     error={validationErrors?.nestedErrors?.uas?.generalCharacteristics?.['uasClass']}
                     hasValidationError={hasFieldError('uas.generalCharacteristics.uasClass')}
+                    helpText="EU UAS class marking (C0-C6) per Delegated Regulation 2019/945. Each class has specific mass, dimension, and speed limits"
                   >
                     <SelectField
                       value={formData.uas?.generalCharacteristics?.uasClass}
@@ -1041,6 +1060,7 @@ export default function UplanFormModal({
                     required 
                     error={validationErrors?.nestedErrors?.uas?.generalCharacteristics?.['uasDimension']}
                     hasValidationError={hasFieldError('uas.generalCharacteristics.uasDimension')}
+                    helpText="Maximum characteristic dimension of the UAS. LT_1: less than 1m, LT_3: less than 3m, LT_8: less than 8m, GTE_8: 8m or more"
                   >
                     <SelectField
                       value={formData.uas?.generalCharacteristics?.uasDimension}
@@ -1072,6 +1092,7 @@ export default function UplanFormModal({
                 required 
                 error={getFieldError('operatorId')}
                 hasValidationError={hasFieldError('operatorId')}
+                helpText="Unique identifier for the UAS operator, typically the registration number from the national aviation authority"
               >
                 <Input
                   value={formData.operatorId || ''}

@@ -60,6 +60,7 @@ import {
   DropResult,
 } from "@hello-pangea/dnd";
 import { HelpCircle, Grid3X3, MousePointer2, ChevronRight, Edit2, Plus } from "lucide-react";
+import { FieldHelp } from './ui/field-help';
 import dynamic from 'next/dynamic';
 
 const PlanMap = dynamic(() => import('./PlanMap'), { ssr: false });
@@ -1200,7 +1201,7 @@ export default function PlanGenerator() {
                       <div className="font-semibold text-[var(--text-secondary)] mb-1">
                         Data Owner Identifier
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 items-center">
                         <input
                           type="text"
                           maxLength={3}
@@ -1217,6 +1218,7 @@ export default function PlanGenerator() {
                           }
                           className="input w-20 text-xs"
                         />
+                        <FieldHelp text="System Area Code — 3-character code identifying the geographic area of the data owner" />
                         <input
                           type="text"
                           maxLength={3}
@@ -1233,6 +1235,7 @@ export default function PlanGenerator() {
                           }
                           className="input w-20 text-xs"
                         />
+                        <FieldHelp text="System Identification Code — 3-character code uniquely identifying the data owner within a SAC" />
                       </div>
                     </div>
                     {/* Data Source Identifier */}
@@ -1240,7 +1243,7 @@ export default function PlanGenerator() {
                       <div className="font-semibold text-[var(--text-secondary)] mb-1">
                         Data Source Identifier
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 items-center">
                         <input
                           type="text"
                           maxLength={3}
@@ -1257,6 +1260,7 @@ export default function PlanGenerator() {
                           }
                           className="input w-20 text-xs"
                         />
+                        <FieldHelp text="System Area Code — 3-character code identifying the geographic area of the data source" />
                         <input
                           type="text"
                           maxLength={3}
@@ -1273,6 +1277,7 @@ export default function PlanGenerator() {
                           }
                           className="input w-20 text-xs"
                         />
+                        <FieldHelp text="System Identification Code — 3-character code uniquely identifying the data source within a SAC" />
                       </div>
                     </div>
                     {/* Contact Details */}
@@ -1446,7 +1451,7 @@ export default function PlanGenerator() {
                       <div className="font-semibold text-[var(--text-secondary)] mb-1">
                         Flight Details
                       </div>
-                      <div className="flex gap-2 mb-2 flex-wrap">
+                      <div className="flex gap-2 mb-2 flex-wrap items-center">
                         <select
                           value={flightPlanDetails.flightDetails.mode}
                           onChange={(e) =>
@@ -1467,6 +1472,7 @@ export default function PlanGenerator() {
                             </option>
                           ))}
                         </select>
+                        <FieldHelp text="VLOS: Visual Line of Sight — pilot sees the drone directly. BVLOS: Beyond Visual Line of Sight — drone operates outside direct visual contact" />
                         <select
                           value={flightPlanDetails.flightDetails.category}
                           onChange={(e) =>
@@ -1487,6 +1493,7 @@ export default function PlanGenerator() {
                             </option>
                           ))}
                         </select>
+                        <FieldHelp text="OPEN (A1-A3): Low-risk operations. SPECIFIC (SAIL): Medium-risk requiring authorization. CERTIFIED: High-risk requiring type certificate" />
                         <label className="flex items-center gap-1 text-xs text-[var(--text-tertiary)]">
                           <input
                             type="checkbox"
@@ -1506,7 +1513,7 @@ export default function PlanGenerator() {
                           Private flight
                         </label>
                       </div>
-                      <div className="mb-2">
+                      <div className="mb-2 flex items-center gap-1">
                         <select
                           value={
                             flightPlanDetails.flightDetails.specialOperation
@@ -1529,6 +1536,7 @@ export default function PlanGenerator() {
                             </option>
                           ))}
                         </select>
+                        <FieldHelp text="Type of special operation authorization, if applicable to the flight" />
                       </div>
                     </div>
                     {/* UAS */}
@@ -1536,7 +1544,7 @@ export default function PlanGenerator() {
                       <div className="font-semibold text-[var(--text-secondary)] mb-1">
                         UAS
                       </div>
-                      <div className="flex gap-2 mb-2">
+                      <div className="flex gap-2 mb-2 items-center">
                         <input
                           type="text"
                           placeholder="Registration number"
@@ -1552,6 +1560,7 @@ export default function PlanGenerator() {
                           }
                           className="input w-32 text-xs"
                         />
+                        <FieldHelp text="UAS operator registration number issued by your national aviation authority" />
                         <input
                           type="text"
                           maxLength={20}
@@ -1565,11 +1574,12 @@ export default function PlanGenerator() {
                           }
                           className="input w-32 text-xs"
                         />
+                        <FieldHelp text="Manufacturer's serial number for the specific UAS unit (max 20 characters)" />
                       </div>
                       <div className="font-semibold text-[var(--text-tertiary)] mb-1 mt-2">
                         Flight Characteristics
                       </div>
-                      <div className="flex gap-2 mb-2 flex-wrap">
+                      <div className="flex gap-2 mb-2 flex-wrap items-center">
                         <input
                           type="number"
                           placeholder="MTOM (kg)"
@@ -1600,6 +1610,7 @@ export default function PlanGenerator() {
                           }}
                           className="input w-24 text-xs"
                         />
+                        <FieldHelp text="Maximum Take-Off Mass — total mass of the UAS at takeoff including payload and batteries, in kilograms" />
                         <input
                           type="number"
                           placeholder="Max speed (m/s)"
@@ -1631,6 +1642,7 @@ export default function PlanGenerator() {
                           }}
                           className="input w-28 text-xs"
                         />
+                        <FieldHelp text="Maximum flight speed of the UAS in meters per second" />
                         <select
                           value={
                             flightPlanDetails.uas.flightCharacteristics
@@ -1657,6 +1669,7 @@ export default function PlanGenerator() {
                             </option>
                           ))}
                         </select>
+                        <FieldHelp text="Communication protocol used by the UAS for command and control (e.g., LTE, 5G, WiFi)" />
                         <select
                           value={
                             flightPlanDetails.uas.flightCharacteristics
@@ -1683,6 +1696,7 @@ export default function PlanGenerator() {
                             </option>
                           ))}
                         </select>
+                        <FieldHelp text="Remote identification technology — how the UAS broadcasts its identity (e.g., Direct Remote ID, Network Remote ID)" />
                         <input
                           type="number"
                           placeholder="Max flight time (min)"
@@ -1704,11 +1718,12 @@ export default function PlanGenerator() {
                           }
                           className="input w-40 text-xs"
                         />
+                        <FieldHelp text="Maximum duration the UAS can fly on a single battery charge, in minutes" />
                       </div>
                       <div className="font-semibold text-[var(--text-tertiary)] mb-1 mt-2">
                         General Characteristics
                       </div>
-                      <div className="flex gap-2 flex-wrap">
+                      <div className="flex gap-2 flex-wrap items-center">
                         <input
                           type="text"
                           placeholder="Brand"
@@ -1851,6 +1866,7 @@ export default function PlanGenerator() {
                             </option>
                           ))}
                         </select>
+                        <FieldHelp text="EU UAS class marking (C0-C6) per Delegated Regulation 2019/945. Each class has specific mass, dimension, and speed limits" />
                         <select
                           value={
                             flightPlanDetails.uas.generalCharacteristics
@@ -1882,12 +1898,14 @@ export default function PlanGenerator() {
                             ));
                           })()}
                         </select>
+                        <FieldHelp text="Maximum characteristic dimension of the UAS. LT_1: less than 1m, LT_3: less than 3m, LT_8: less than 8m, GTE_8: 8m or more" />
                       </div>
                     </div>
                     {/* Operator ID */}
                     <div>
                       <label className="block mb-1 font-medium text-[var(--text-secondary)]">
                         Operator ID
+                        <FieldHelp text="Unique identifier for the UAS operator, typically the registration number from the national aviation authority" />
                       </label>
                       <input
                         type="text"
