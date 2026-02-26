@@ -765,6 +765,7 @@ export function FlightPlansUploaderDev() {
   const [uplanEditModal, setUplanEditModal] = useState<{ open: boolean, uplan: any, planId: number | null }>({ open: false, uplan: null, planId: null });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const selectPlanHandled = useRef(false);
 
   useEffect(() => {
     if (!user) return;
@@ -781,6 +782,29 @@ export function FlightPlansUploaderDev() {
       isMounted = false;
     };
   }, [user]);
+
+  // Task 21: Auto-select plan from query parameter (Plan Generator redirect)
+  useEffect(() => {
+    if (selectPlanHandled.current) return;
+    if (isInitialLoading || flightPlans.length === 0) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const selectPlanParam = params.get('selectPlan');
+    if (!selectPlanParam) return;
+
+    selectPlanHandled.current = true;
+    const planId = Number(selectPlanParam);
+    const plan = flightPlans.find(p => p.id === planId);
+    if (plan) {
+      setSelectedPlans([planId]);
+      // Auto-expand the folder containing the plan
+      if (plan.folderId) {
+        setExpandedFolders(prev => prev.includes(plan.folderId!) ? prev : [...prev, plan.folderId!]);
+      }
+      toast.success(`Plan "${plan.customName}" imported from Plan Generator`);
+    }
+    window.history.replaceState(null, '', '/trajectory-generator');
+  }, [isInitialLoading, flightPlans, toast]);
 
   const fetchData = async () => {
     try {
