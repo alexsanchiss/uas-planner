@@ -10,7 +10,9 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "postinstall": "node -e \"const fs=require('fs'),p=require('path');const s=p.join('node_modules','cesium','Build','Cesium'),d=p.join('public','cesium');['Workers','ThirdParty','Assets','Widgets'].forEach(f=>{const src=p.join(s,f),dst=p.join(d,f);if(fs.existsSync(src)){fs.mkdirSync(dst,{recursive:true});fs.cpSync(src,dst,{recursive:true})}});console.log('Cesium assets copied to public/cesium')\""
+    "copy-cesium": "node -e \"const fs=require('fs'),p=require('path');const s=p.join('node_modules','cesium','Build','Cesium'),d=p.join('public','cesium');if(fs.existsSync(s)){fs.mkdirSync(d,{recursive:true});fs.cpSync(s,d,{recursive:true});console.log('Cesium assets copied to public/cesium')}else{console.error('cesium Build not found')}\"",
+    "postinstall": "npm run copy-cesium",
+    "prebuild": "npm run copy-cesium"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
