@@ -40,3 +40,18 @@
 | 24 | F24 | Fix Trajectory 3D viewer play animation & unified height reference | Completed |
 | 25 | F25 | HTTPS-compatible geoawareness WebSocket | Completed |
 | 26 | F26 | U-Plan form field help tooltips | Completed |
+
+## Sprint 4 — Bug Fixes, UX Polish & New Features
+
+| Task | Feature | Description | Status |
+|------|---------|-------------|--------|
+| 27 | F27 | Fix Manual Waypoint Popup — OK closes popup, Enter triggers OK | Completed |
+| 28 | F28 | SCAN Pattern — Add Vertex, popup OK/close, bounds fixes | Not Started |
+| 29 | F29 | Selected Plan second click opens Waypoints Modal | Not Started |
+| 30 | F30 | Fix 4D volume color update during Play animation | Completed |
+| 31 | F31 | Fix Trajectory 3D Viewer — remove AMSL polyline | Not Started |
+| 32 | F32 | Geoawareness 3D Viewer with extruded geozones | Not Started |
+| 33 | F33 | Auto-fill email in U-Plan form | Not Started |
+| 34 | F34 | Profile U-Plan Drafts system | Not Started |
+| 35 | F35 | Remove Flight Plan Details from Plan Definition | Not Started |
+| 36 | F36 | Update ICD & move v2.2.0 tag | Not Started |
