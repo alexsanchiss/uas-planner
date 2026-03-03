@@ -295,6 +295,22 @@ function Cesium3DView({ volumes, isApproved, conflictingIndices, geozones }: Ces
           console.warn('Could not style Cesium InfoBox:', e)
         }
 
+        // Force Cesium widget styling for dark-theme readability
+        const cesiumStyle = document.createElement('style')
+        cesiumStyle.textContent = `
+          .cesium-viewer .cesium-widget-credits,
+          .cesium-viewer .cesium-widget-credits * { color: #aaa !important; }
+          .cesium-viewer .cesium-viewer-toolbar button { color: #fff !important; }
+          .cesium-viewer .cesium-navigation-help,
+          .cesium-viewer .cesium-navigation-help * { color: #e0e0e0 !important; background: rgba(38,38,38,0.95) !important; }
+          .cesium-viewer .cesium-baseLayerPicker-dropDown,
+          .cesium-viewer .cesium-baseLayerPicker-dropDown * { color: #e0e0e0 !important; background: rgba(38,38,38,0.95) !important; }
+          .cesium-viewer .cesium-viewer-selectionIndicator { color: #fff !important; }
+          .cesium-viewer .cesium-infoBox { color: #e0e0e0 !important; background: rgba(38,38,38,0.95) !important; }
+          .cesium-viewer .cesium-infoBox-title { color: #fff !important; background: rgba(30,30,30,0.9) !important; }
+        `
+        containerRef.current!.appendChild(cesiumStyle)
+
         try {
           const osmBuildings = await Cesium.createOsmBuildingsAsync()
           if (!destroyed) viewer.scene.primitives.add(osmBuildings)
