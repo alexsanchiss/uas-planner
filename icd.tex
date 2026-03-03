@@ -507,7 +507,7 @@ El U-Plan se genera a partir del CSV y \texttt{scheduledAt} y contiene una lista
 \section{Versionado y Control de Cambios}
 \begin{itemize}
     \item \textbf{Versión del ICD}: \texttt{V\_2.2.0}.
-    \item \textbf{Versión de la aplicación}: \texttt{v2.2.0 SPIRIT} (Sprints 1--4: 35 funcionalidades, proxy SSE de Geoawareness, visores 3D completos, gestión de usuario, sistema de contacto, restricciones EU, borradores U-Plan, visor Geoawareness 3D).
+    \item \textbf{Versión de la aplicación}: \texttt{v2.2.0 SPIRIT} (Sprints 1--5: 42 funcionalidades, proxy SSE de Geoawareness, visores 3D completos, gestión de usuario, sistema de contacto, restricciones EU, borradores U-Plan, visor Geoawareness 3D, correcciones UX y altimetría AGL en Geoawareness 3D).
     \item \textbf{Cambios en v2.2.0 SPIRIT}:
     \begin{itemize}
         \item \textbf{Auth}: Eliminación de validación DNS en registro; caducidad de código de verificación a 3 min; doble-verificación safeguard.
@@ -530,6 +530,16 @@ El U-Plan se genera a partir del CSV y \texttt{scheduledAt} y contiene una lista
             \item Nuevo \texttt{Geoawareness3DModal} con geozonas 3D extruidas, trayectoria y volúmenes.
             \item Auto-relleno email U-Plan desde perfil; sistema de borradores U-Plan (\texttt{uplanDraft} + endpoints CRUD).
             \item Eliminación de sección Flight Plan Details de Plan Definition ($\sim$840 líneas).
+        \end{itemize}
+        \item \textbf{Sprint 5 --- Correcciones de visores 3D, gestión de borradores y UX}:
+        \begin{itemize}
+            \item \textbf{Fix preview waypoints en panel de plan seleccionado} (F37): Prop \texttt{onWaypointPreviewClick} propagada al componente \texttt{FlightPlanCard} en el panel lateral; click en plan seleccionado abre correctamente el modal de waypoints.
+            \item \textbf{Fix renderizado continuo en \texttt{Cesium3DModal}} (F38): Se activa \texttt{viewer.scene.requestRenderMode = false} inmediatamente tras la creación del viewer, garantizando actualización continua de la escena para animaciones y carga de terreno.
+            \item \textbf{Eliminación de polilínea de trayectoria en visores 3D} (F39): Reemplazada la polilínea continua de trayectoria en \texttt{Trajectory3DViewer} y \texttt{Geoawareness3DModal} por marcadores individuales de puntos: despegue (verde), aterrizaje (rojo) y waypoints intermedios (azul); se conservan etiquetas en despegue/aterrizaje.
+            \item \textbf{Fix tema oscuro en InfoBox/widgets de Cesium} (F40): Inyección de CSS con \texttt{background: \#1e1e1e !important; color: \#e0e0e0 !important;} en el \texttt{<iframe>} de InfoBox y en los contenedores de widgets externos de los cinco visores CesiumJS (\texttt{Cesium3DModal}, \texttt{Denial3DModal}, \texttt{AuthorizationResultModal}, \texttt{Trajectory3DViewer}, \texttt{Geoawareness3DModal}).
+            \item \textbf{Gestión de borradores U-Plan mejorada} (F41): Botón ``Eliminar borrador'' (rojo + icono de papelera) añadido al formulario \texttt{UplanFormModal}; botones ``Actualizar'' (teal) y ``Guardar como borrador'' (verde) con iconos diferenciados; eliminada opción de borrar borrador desde la página de Perfil (se centraliza en el formulario).
+            \item \textbf{Auto-zoom de cámara a zona de vuelo en Geoawareness 3D}: La cámara en \texttt{Geoawareness3DModal} hace zoom al BoundingSphere de volúmenes de operación + trayectoria (en lugar de la totalidad de geozonas), mostrando el área de vuelo relevante al abrir el modal.
+            \item \textbf{Fix altimetría AGL en volúmenes de operación en Geoawareness 3D} (F42): Los volúmenes de operación de U-Plan en \texttt{Geoawareness3DModal} se convierten de AGL a AMSL mediante \texttt{Cesium.sampleTerrainMostDetailed()} aplicado al centroide de cada polígono; se eliminan \texttt{heightReference: RELATIVE\_TO\_GROUND} y \texttt{extrudedHeightReference: RELATIVE\_TO\_GROUND} a favor de alturas absolutas AMSL calculadas explícitamente (\( h_{\text{AMSL}} = h_{\text{terreno}} + h_{\text{AGL}} \)); esto corrige la aparición de volúmenes a nivel del mar cuando las teselas de terreno no han cargado al inicializar el viewer.
         \end{itemize}
         \item \textbf{Nuevos endpoints (Sprint 4)}: \texttt{GET/POST /api/user/drafts}, \texttt{GET/PATCH/DELETE /api/user/drafts/[id]}.
     \end{itemize}
