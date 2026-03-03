@@ -345,28 +345,9 @@ const Trajectory3DViewer: React.FC<Trajectory3DViewerProps> = ({
         }
         if (destroyed) { viewer.destroy(); return }
 
-        // 7. Build trajectory polyline positions using AGL altitudes
-        // (matching waypoint markers which use RELATIVE_TO_GROUND)
-        const cartesianPositions = parsedPoints.map((p) =>
-          Cesium.Cartesian3.fromDegrees(p.lng, p.lat, p.alt),
-        )
-
-        // Trajectory polyline entity (AGL altitudes — will approximate above terrain)
-        viewer.entities.add({
-          name: 'Trajectory Path',
-          polyline: {
-            positions: cartesianPositions,
-            width: 3,
-            material: new Cesium.PolylineGlowMaterialProperty({
-              glowPower: 0.15,
-              color: Cesium.Color.DODGERBLUE.withAlpha(0.7),
-            }),
-            clampToGround: false,
-          },
-        })
-
-        // 8. Waypoint markers: takeoff (green), landing (red), cruise (blue)
-        // All waypoints are clickable via infoBox
+        // 7. Waypoint markers: takeoff (green), landing (red), cruise (blue)
+        const waypointPositions: any[] = []
+        // All waypoints are clickable via infoBox — collect positions for camera bounding
         parsedPoints.forEach((p, idx) => {
           const isTakeoff = idx === 0
           const isLanding = idx === parsedPoints.length - 1
@@ -377,6 +358,8 @@ const Trajectory3DViewer: React.FC<Trajectory3DViewerProps> = ({
               : Cesium.Color.CORNFLOWERBLUE
           const label = isTakeoff ? 'Takeoff' : isLanding ? 'Landing' : `WP ${idx + 1}`
           const pixelSize = isTakeoff || isLanding ? 10 : 6
+          const waypointPos = Cesium.Cartesian3.fromDegrees(p.lng, p.lat, p.alt)
+          waypointPositions.push(waypointPos)
 
           viewer.entities.add({
             name: label,
@@ -437,8 +420,8 @@ const Trajectory3DViewer: React.FC<Trajectory3DViewerProps> = ({
         })
         droneEntityRef.current = droneEntity
 
-        // 10. Camera — fly to encompass full trajectory
-        const boundingSphere = Cesium.BoundingSphere.fromPoints(cartesianPositions)
+        // 9. Camera — fly to encompass full trajectory
+        const boundingSphere = Cesium.BoundingSphere.fromPoints(waypointPositions)
         boundingSphere.radius = Math.max(boundingSphere.radius * 2.5, 300)
         viewer.camera.flyToBoundingSphere(boundingSphere, {
           duration: 1.5,
