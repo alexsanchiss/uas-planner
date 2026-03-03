@@ -352,8 +352,8 @@ export default function GeoawarenessModal({
           borderRadius: '12px',
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
           padding: '24px',
-          width: '70vw',
-          maxWidth: '1200px',
+          width: '85vw',
+          maxWidth: '1600px',
           maxHeight: '90vh',
           overflow: 'auto',
           position: 'relative'
@@ -416,9 +416,9 @@ export default function GeoawarenessModal({
 
         {/* Map */}
         <div style={{ 
-          height: '50vh', 
-          minHeight: '350px',
-          maxHeight: '500px',
+          height: '60vh', 
+          minHeight: '400px',
+          maxHeight: '650px',
           borderRadius: '8px', 
           overflow: 'hidden', 
           border: '1px solid #ccc',
