@@ -345,29 +345,13 @@ const Trajectory3DViewer: React.FC<Trajectory3DViewerProps> = ({
         }
         if (destroyed) { viewer.destroy(); return }
 
-        // 7. Sample terrain heights for AGL-to-absolute altitude conversion (polyline)
-        let terrainHeights: number[] = new Array(parsedPoints.length).fill(0)
-        try {
-          const terrainProvider = viewer.scene.globe.terrainProvider
-          if (terrainProvider.readyPromise) {
-            await terrainProvider.readyPromise
-          }
-          const cartographics = parsedPoints.map((p: TrajectoryPoint) =>
-            Cesium.Cartographic.fromDegrees(p.lng, p.lat),
-          )
-          const sampled = await Cesium.sampleTerrainMostDetailed(terrainProvider, cartographics)
-          terrainHeights = sampled.map((c: any) => c.height || 0)
-        } catch {
-          // Terrain sampling failed — polyline uses raw AGL alts (may mismatch markers)
-        }
-        if (destroyed) { viewer.destroy(); return }
-
-        // 8. Build trajectory polyline with terrain-corrected absolute altitudes
-        const cartesianPositions = parsedPoints.map((p, i) =>
-          Cesium.Cartesian3.fromDegrees(p.lng, p.lat, terrainHeights[i] + p.alt),
+        // 7. Build trajectory polyline positions using AGL altitudes
+        // (matching waypoint markers which use RELATIVE_TO_GROUND)
+        const cartesianPositions = parsedPoints.map((p) =>
+          Cesium.Cartesian3.fromDegrees(p.lng, p.lat, p.alt),
         )
 
-        // Trajectory polyline entity
+        // Trajectory polyline entity (AGL altitudes — will approximate above terrain)
         viewer.entities.add({
           name: 'Trajectory Path',
           polyline: {

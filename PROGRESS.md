@@ -49,7 +49,7 @@
 | 28 | F28 | SCAN Pattern — Add Vertex, popup OK/close, bounds fixes | Completed |
 | 29 | F29 | Selected Plan second click opens Waypoints Modal | Not Started |
 | 30 | F30 | Fix 4D volume color update during Play animation | Completed |
-| 31 | F31 | Fix Trajectory 3D Viewer — remove AMSL polyline | Not Started |
+| 31 | F31 | Fix Trajectory 3D Viewer — remove AMSL polyline | Completed |
 | 32 | F32 | Geoawareness 3D Viewer with extruded geozones | Not Started |
 | 33 | F33 | Auto-fill email in U-Plan form | Not Started |
 | 34 | F34 | Profile U-Plan Drafts system | Not Started |
