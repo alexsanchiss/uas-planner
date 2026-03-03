@@ -1416,6 +1416,7 @@ export function FlightPlansUploader() {
             onDelete={handleDeletePlan}
             onRename={handleRenamePlan}
             onViewAuthorizationMessage={handleViewAuthorizationMessage}
+            onWaypointPreviewClick={handleWaypointPreviewClick}
             loadingStates={{
               processing: loadingPlanIds.processing.has(selectedPlan.id),
               downloading: loadingPlanIds.downloading.has(selectedPlan.id),
