@@ -721,17 +721,47 @@ export default function UplanFormModal({
 
                 <div className="flex-1" />
 
+                {/* Delete loaded draft */}
+                {loadedDraftId && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!authToken || !loadedDraftId) return;
+                      try {
+                        const res = await fetch(`/api/user/drafts/${loadedDraftId}`, {
+                          method: 'DELETE',
+                          headers: { Authorization: `Bearer ${authToken}` },
+                        });
+                        if (!res.ok) throw new Error('Failed to delete draft');
+                        setLoadedDraftId(null);
+                        fetchDrafts();
+                        toast.success('Draft deleted');
+                      } catch {
+                        toast.error('Failed to delete draft');
+                      }
+                    }}
+                    className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md font-medium bg-red-600 hover:bg-red-700 text-white transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Delete Draft
+                  </button>
+                )}
+
                 {/* Update loaded draft */}
                 {loadedDraftId && (
-                  <Button
+                  <button
                     type="button"
-                    variant="outline"
                     onClick={handleUpdateDraft}
                     disabled={isUpdatingDraft}
-                    className="text-sm px-3 py-1.5"
+                    className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md font-medium bg-teal-600 hover:bg-teal-700 text-white transition-colors disabled:opacity-50"
                   >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
                     {isUpdatingDraft ? 'Updating...' : 'Update Draft'}
-                  </Button>
+                  </button>
                 )}
 
                 {/* Save as new draft */}
@@ -767,14 +797,16 @@ export default function UplanFormModal({
                     </Button>
                   </div>
                 ) : (
-                  <Button
+                  <button
                     type="button"
-                    variant="outline"
                     onClick={() => setShowSaveDraftInput(true)}
-                    className="text-sm px-3 py-1.5"
+                    className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md font-medium bg-green-600 hover:bg-green-700 text-white transition-colors"
                   >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+                    </svg>
                     Save as Draft
-                  </Button>
+                  </button>
                 )}
               </div>
             </div>
