@@ -369,6 +369,14 @@ export default function UplanFormModal({
                 phones[0] = profile.phone;
                 next.contactDetails.phones = phones;
               }
+              // Auto-fill email from user profile
+              const emails: string[] = Array.isArray(next.contactDetails.emails)
+                ? next.contactDetails.emails
+                : [''];
+              if ((!emails[0] || emails[0] === '') && profile.email) {
+                emails[0] = profile.email;
+                next.contactDetails.emails = emails;
+              }
               return next;
             });
           })
