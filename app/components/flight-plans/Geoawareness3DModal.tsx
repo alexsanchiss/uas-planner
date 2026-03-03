@@ -446,42 +446,54 @@ const Geoawareness3DModal: React.FC<Geoawareness3DModalProps> = ({
           }
         }
 
-        // ─── 9. Render trajectory polyline ───────────────────────────────
-        if (trajectory.length > 1) {
-          const positions = trajectory.map(p => Cesium.Cartesian3.fromDegrees(p.lng, p.lat, p.alt))
-          viewer.entities.add({
-            name: 'Flight Trajectory',
-            polyline: {
-              positions,
-              width: 3,
-              material: new Cesium.PolylineGlowMaterialProperty({
-                glowPower: 0.15,
-                color: Cesium.Color.fromCssColorString('#2196F3'),
-              }),
-              clampToGround: false,
-            },
-          })
+        // ─── 9. Render trajectory waypoint markers ────────────────────────
+        if (trajectory.length > 0) {
+          trajectory.forEach((p, idx) => {
+            const isTakeoff = idx === 0
+            const isLanding = idx === trajectory.length - 1
+            const color = isTakeoff
+              ? Cesium.Color.LIMEGREEN
+              : isLanding
+                ? Cesium.Color.RED
+                : Cesium.Color.CORNFLOWERBLUE
+            const label = isTakeoff ? 'Takeoff' : isLanding ? 'Landing' : `WP ${idx + 1}`
+            const pixelSize = isTakeoff || isLanding ? 10 : 6
 
-          // Takeoff marker
-          const first = trajectory[0]
-          viewer.entities.add({
-            name: 'Takeoff',
-            position: Cesium.Cartesian3.fromDegrees(first.lng, first.lat, first.alt),
-            point: { pixelSize: 10, color: Cesium.Color.GREEN, outlineColor: Cesium.Color.WHITE, outlineWidth: 2, heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND },
-            label: { text: 'Takeoff', font: '12px sans-serif', fillColor: Cesium.Color.WHITE, style: Cesium.LabelStyle.FILL_AND_OUTLINE, outlineWidth: 2, verticalOrigin: Cesium.VerticalOrigin.BOTTOM, pixelOffset: new Cesium.Cartesian2(0, -14), heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND },
-          })
+            viewer.entities.add({
+              name: label,
+              position: Cesium.Cartesian3.fromDegrees(p.lng, p.lat, p.alt),
+              point: {
+                pixelSize,
+                color,
+                outlineColor: Cesium.Color.WHITE,
+                outlineWidth: 1,
+                heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND,
+              },
+              label: isTakeoff || isLanding
+                ? {
+                    text: label,
+                    font: '12px sans-serif',
+                    fillColor: Cesium.Color.WHITE,
+                    outlineColor: Cesium.Color.BLACK,
+                    outlineWidth: 2,
+                    style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+                    verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+                    pixelOffset: new Cesium.Cartesian2(0, -14),
+                  }
+                : undefined,
+              description: [
+                '<table style="width:100%">',
+                `<tr><td><b>${label}</b></td></tr>`,
+                `<tr><td>Lat</td><td>${p.lat.toFixed(6)}</td></tr>`,
+                `<tr><td>Lon</td><td>${p.lng.toFixed(6)}</td></tr>`,
+                `<tr><td>Alt</td><td>${p.alt.toFixed(1)} m AGL</td></tr>`,
+                '</table>',
+              ].join(''),
+            })
 
-          // Landing marker
-          const last = trajectory[trajectory.length - 1]
-          viewer.entities.add({
-            name: 'Landing',
-            position: Cesium.Cartesian3.fromDegrees(last.lng, last.lat, last.alt),
-            point: { pixelSize: 10, color: Cesium.Color.RED, outlineColor: Cesium.Color.WHITE, outlineWidth: 2, heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND },
-            label: { text: 'Landing', font: '12px sans-serif', fillColor: Cesium.Color.WHITE, style: Cesium.LabelStyle.FILL_AND_OUTLINE, outlineWidth: 2, verticalOrigin: Cesium.VerticalOrigin.BOTTOM, pixelOffset: new Cesium.Cartesian2(0, -14), heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND },
+            // Add to bounding positions
+            allPositions.push(Cesium.Cartographic.fromDegrees(p.lng, p.lat))
           })
-
-          // Add trajectory points to bounds
-          trajectory.forEach(p => allPositions.push(Cesium.Cartographic.fromDegrees(p.lng, p.lat)))
         }
 
         // ─── 10. Fly camera to all entities ──────────────────────────────
@@ -604,10 +616,20 @@ const Geoawareness3DModal: React.FC<Geoawareness3DModalProps> = ({
           {!loading && !error && (
             <div className="absolute bottom-4 left-4 bg-gray-900/80 backdrop-blur-sm rounded-lg p-3 text-xs text-gray-300 space-y-1.5">
               {trajectory.length > 0 && (
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: '#2196F3' }} />
-                  <span>Flight trajectory</span>
-                </div>
+                <>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#32cd32' }} />
+                    <span>Takeoff</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#6495ed' }} />
+                    <span>Cruise waypoint</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#ff0000' }} />
+                    <span>Landing</span>
+                  </div>
+                </>
               )}
               {volumeCount > 0 && (
                 <div className="flex items-center gap-2">

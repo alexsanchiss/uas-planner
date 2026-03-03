@@ -62,6 +62,6 @@
 |------|---------|-------------|--------|
 | 37 | F37 | Fix Selected Plan preview click → Waypoints Modal | Completed |
 | 38 | F38 | Fix 4D volume color update — force continuous rendering | Completed |
-| 39 | F39+40 | Remove trajectory polyline + Fix Geoawareness 3D waypoints & camera | Not Started |
+| 39 | F39+40 | Remove trajectory polyline + Fix Geoawareness 3D waypoints & camera | Completed |
 | 40 | F41 | Fix Cesium popup text colors in dark theme (all 3D modals) | Not Started |
 | 41 | F42 | Draft delete from form + styled draft buttons | Not Started |
