@@ -311,6 +311,7 @@ const Geoawareness3DModal: React.FC<Geoawareness3DModalProps> = ({
           infoBox: true,
         })
         viewerRef.current = viewer
+        viewer.scene.requestRenderMode = false
 
         // 5. Dark InfoBox CSS injection
         try {
@@ -321,7 +322,7 @@ const Geoawareness3DModal: React.FC<Geoawareness3DModalProps> = ({
               if (doc) {
                 const s = doc.createElement('style')
                 s.textContent = `
-                  html, body { background: transparent !important; }
+                  html, body { background: #1e1e1e !important; color: #e0e0e0 !important; }
                   .cesium-infoBox { background: rgba(38,38,38,0.95) !important; color: #e0e0e0 !important; }
                   .cesium-infoBox-title { color: #fff !important; background: rgba(30,30,30,0.9) !important; }
                   .cesium-infoBox-description { color: #e0e0e0 !important; }
@@ -356,7 +357,8 @@ const Geoawareness3DModal: React.FC<Geoawareness3DModalProps> = ({
         try { const b = await Cesium.createOsmBuildingsAsync(); if (!destroyed) viewer.scene.primitives.add(b) } catch { /* optional */ }
         if (destroyed) { viewer.destroy(); return }
 
-        const allPositions: any[] = []
+        const allPositions: any[] = []    // all entity positions (geozone + volume + trajectory)
+        const flightPositions: any[] = []  // volume + trajectory only, used for primary camera focus
 
         // ─── 7. Render geozones ──────────────────────────────────────────
         for (const gz of geozones) {
@@ -376,7 +378,7 @@ const Geoawareness3DModal: React.FC<Geoawareness3DModalProps> = ({
           ring.forEach((c: number[]) => {
             if (c.length >= 2) {
               degreesArr.push(c[0], c[1])
-              allPositions.push(Cesium.Cartographic.fromDegrees(c[0], c[1]))
+              allPositions.push(Cesium.Cartesian3.fromDegrees(c[0], c[1]))
             }
           })
           if (degreesArr.length < 6) continue // need at least 3 points
@@ -430,7 +432,8 @@ const Geoawareness3DModal: React.FC<Geoawareness3DModalProps> = ({
             const deg: number[] = []
             coords.forEach(([lon, lat]: number[]) => {
               deg.push(lon, lat)
-              allPositions.push(Cesium.Cartographic.fromDegrees(lon, lat))
+              allPositions.push(Cesium.Cartesian3.fromDegrees(lon, lat))
+              flightPositions.push(Cesium.Cartesian3.fromDegrees(lon, lat))
             })
 
             const lo = extractAlt(vol.minAltitude) ?? 10
@@ -508,17 +511,17 @@ const Geoawareness3DModal: React.FC<Geoawareness3DModalProps> = ({
             })
 
             // Add to bounding positions
-            allPositions.push(Cesium.Cartographic.fromDegrees(p.lng, p.lat))
+            allPositions.push(Cesium.Cartesian3.fromDegrees(p.lng, p.lat))
+            flightPositions.push(Cesium.Cartesian3.fromDegrees(p.lng, p.lat))
           })
         }
 
-        // ─── 10. Fly camera to all entities ──────────────────────────────
-        if (allPositions.length > 0) {
-          const cartesians = allPositions.map((c: any) =>
-            Cesium.Cartesian3.fromRadians(c.longitude, c.latitude, c.height || 0)
-          )
-          const bs = Cesium.BoundingSphere.fromPoints(cartesians)
-          bs.radius = Math.max(bs.radius * 2.5, 500)
+        // ─── 10. Fly camera — focus on operation volumes + trajectory (tight zoom)
+        //         fall back to all entities if no flight data
+        const cameraPositions = flightPositions.length > 0 ? flightPositions : allPositions
+        if (cameraPositions.length > 0) {
+          const bs = Cesium.BoundingSphere.fromPoints(cameraPositions)
+          bs.radius = Math.max(bs.radius * 1.5, 300)
           viewer.camera.flyToBoundingSphere(bs, {
             duration: 1.5,
             offset: new Cesium.HeadingPitchRange(0, Cesium.Math.toRadians(-45), 0),
