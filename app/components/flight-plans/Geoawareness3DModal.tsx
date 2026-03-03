@@ -421,9 +421,41 @@ const Geoawareness3DModal: React.FC<Geoawareness3DModalProps> = ({
           })
         }
 
-        // ─── 8. Render operation volumes ─────────────────────────────────
+        // ─── 8. Render operation volumes (AGL → AMSL via terrain sampling) ───
         const volumes = uplanData?.operationVolumes
         if (volumes && volumes.length > 0) {
+          // Collect one representative coordinate per volume to sample terrain
+          // in a single batch call (more efficient than per-vertex sampling).
+          interface VolumeSample { volIdx: number; lon: number; lat: number }
+          const samplePoints: VolumeSample[] = []
+          volumes.forEach((vol, idx) => {
+            const coords = vol.geometry?.coordinates?.[0]
+            if (coords && coords.length > 0) {
+              const [lon, lat] = coords[Math.floor(coords.length / 2)]
+              samplePoints.push({ volIdx: idx, lon, lat })
+            }
+          })
+
+          // Terrain heights keyed by volume index (metres AMSL)
+          const terrainByVol: Record<number, number> = {}
+          if (samplePoints.length > 0) {
+            try {
+              const cartographics = samplePoints.map(sp =>
+                Cesium.Cartographic.fromDegrees(sp.lon, sp.lat),
+              )
+              const sampled = await Cesium.sampleTerrainMostDetailed(
+                viewer.terrainProvider,
+                cartographics,
+              )
+              samplePoints.forEach((sp, i) => {
+                terrainByVol[sp.volIdx] = sampled[i]?.height ?? 0
+              })
+            } catch {
+              // If terrain sampling fails, volumes will appear above sea level (AMSL 0).
+              // This is an acceptable graceful degradation.
+            }
+          }
+
           for (let idx = 0; idx < volumes.length; idx++) {
             const vol = volumes[idx]
             const coords = vol.geometry?.coordinates?.[0]
@@ -439,14 +471,19 @@ const Geoawareness3DModal: React.FC<Geoawareness3DModalProps> = ({
             const lo = extractAlt(vol.minAltitude) ?? 10
             const hi = extractAlt(vol.maxAltitude) ?? 120
 
+            // Convert AGL → absolute AMSL using sampled terrain height.
+            // Using absolute heights (no heightReference) avoids reliance on
+            // Cesium's async RELATIVE_TO_GROUND resolution for extruded polygons.
+            const terrainH = terrainByVol[idx] ?? 0
+            const lowerAmsl = terrainH + lo
+            const upperAmsl = terrainH + hi
+
             viewer.entities.add({
               name: vol.name || `Volume ${idx + 1}`,
               polygon: {
                 hierarchy: Cesium.Cartesian3.fromDegreesArray(deg),
-                height: lo,
-                extrudedHeight: hi,
-                heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND,
-                extrudedHeightReference: Cesium.HeightReference.RELATIVE_TO_GROUND,
+                height: lowerAmsl,
+                extrudedHeight: upperAmsl,
                 material: Cesium.Color.fromCssColorString('rgba(51, 128, 255, 0.30)'),
                 outline: true,
                 outlineColor: Cesium.Color.fromCssColorString('rgba(51, 128, 255, 0.8)'),
