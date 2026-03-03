@@ -384,6 +384,7 @@ export interface Translations {
     area: string
     clear: string
     deleteVertex: string
+    addVertex: string
     invalidNumber: string
     latRange: string
     lngRange: string
@@ -799,6 +800,7 @@ export const translations: Record<Language, Translations> = {
       area: 'Area',
       clear: 'Clear',
       deleteVertex: 'Delete vertex',
+      addVertex: 'Add Vertex',
       invalidNumber: 'Invalid number',
       latRange: 'Lat must be -90..90',
       lngRange: 'Lng must be -180..180',
@@ -1205,6 +1207,7 @@ export const translations: Record<Language, Translations> = {
       area: 'Área',
       clear: 'Limpiar',
       deleteVertex: 'Eliminar vértice',
+      addVertex: 'Añadir Vértice',
       invalidNumber: 'Número inválido',
       latRange: 'Lat debe ser -90..90',
       lngRange: 'Lng debe ser -180..180',
