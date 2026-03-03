@@ -53,5 +53,5 @@
 | 32 | F32 | Geoawareness 3D Viewer with extruded geozones | Not Started |
 | 33 | F33 | Auto-fill email in U-Plan form | Not Started |
 | 34 | F34 | Profile U-Plan Drafts system | Not Started |
-| 35 | F35 | Remove Flight Plan Details from Plan Definition | Not Started |
+| 35 | F35 | Remove Flight Plan Details from Plan Definition | Completed |
 | 36 | F36 | Update ICD & move v2.2.0 tag | Not Started |
