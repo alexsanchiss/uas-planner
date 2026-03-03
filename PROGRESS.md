@@ -47,7 +47,7 @@
 |------|---------|-------------|--------|
 | 27 | F27 | Fix Manual Waypoint Popup — OK closes popup, Enter triggers OK | Completed |
 | 28 | F28 | SCAN Pattern — Add Vertex, popup OK/close, bounds fixes | Completed |
-| 29 | F29 | Selected Plan second click opens Waypoints Modal | Not Started |
+| 29 | F29 | Selected Plan second click opens Waypoints Modal | Completed |
 | 30 | F30 | Fix 4D volume color update during Play animation | Completed |
 | 31 | F31 | Fix Trajectory 3D Viewer — remove AMSL polyline | Completed |
 | 32 | F32 | Geoawareness 3D Viewer with extruded geozones | Not Started |

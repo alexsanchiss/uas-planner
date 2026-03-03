@@ -263,9 +263,14 @@ export function FlightPlanCard({
   }
 
   // TASK-217: Handle card click for selection
+  // TASK-029: Second click on selected plan opens waypoints modal
   const handleCardClick = () => {
     if (!isEditing) {
-      onSelect?.(plan.id)
+      if (isSelected && waypoints.length > 0 && onWaypointPreviewClick) {
+        onWaypointPreviewClick(plan.id, waypoints)
+      } else {
+        onSelect?.(plan.id)
+      }
     }
   }
 
