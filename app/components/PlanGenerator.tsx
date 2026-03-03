@@ -1157,7 +1157,7 @@ export default function PlanGenerator() {
                     <ScanPatternGeneratorV2
                       onApply={handleApplyScanPattern}
                       onCancel={handleCancelScanPattern}
-                      serviceBounds={[SERVICE_LIMITS[0], SERVICE_LIMITS[1], SERVICE_LIMITS[2], SERVICE_LIMITS[3]]}
+                      serviceBounds={effectiveServiceLimits as [number, number, number, number]}
                       onMapClick={handleSetScanMapClickHandler}
                       onOverlaysChange={setScanOverlays}
                       onDragHandlers={handleSetScanDragHandlers}

@@ -32,6 +32,7 @@ import {
   ChevronRight,
   Pencil,
   CheckCircle2,
+  Plus,
 } from "lucide-react";
 import {
   ScanConfig,
@@ -439,15 +440,18 @@ export default function ScanPatternGeneratorV2({
   }, [polygonClosed]);
 
   const handleVertexUpdate = useCallback((index: number, lat: number, lng: number) => {
+    if (!isWithinBounds(lat, lng, serviceBoundsRef.current)) return;
     setPolygonVertices(prev => prev.map((v, i) => (i === index ? { lat, lng } : v)));
   }, []);
 
   // ---- Expose drag handlers to parent for map marker drag events ----
   const handleExternalTakeoffUpdate = useCallback((lat: number, lng: number) => {
+    if (!isWithinBounds(lat, lng, serviceBoundsRef.current)) return;
     setTakeoffPoint({ lat, lng });
   }, []);
 
   const handleExternalLandingUpdate = useCallback((lat: number, lng: number) => {
+    if (!isWithinBounds(lat, lng, serviceBoundsRef.current)) return;
     setLandingPoint({ lat, lng });
   }, []);
 
@@ -460,6 +464,34 @@ export default function ScanPatternGeneratorV2({
     });
     return () => { onDragHandlers(null); };
   }, [onDragHandlers, handleExternalTakeoffUpdate, handleExternalLandingUpdate, handleVertexUpdate]);
+
+  const handleAddVertex = useCallback(() => {
+    const bounds = serviceBoundsRef.current;
+    let newLat: number;
+    let newLng: number;
+
+    if (polygonVertices.length >= 2) {
+      // Midpoint between last two vertices
+      const last = polygonVertices[polygonVertices.length - 1];
+      const prev = polygonVertices[polygonVertices.length - 2];
+      newLat = (last.lat + prev.lat) / 2;
+      newLng = (last.lng + prev.lng) / 2;
+    } else if (polygonVertices.length === 1) {
+      // Slightly offset from existing vertex
+      newLat = polygonVertices[0].lat + 0.001;
+      newLng = polygonVertices[0].lng + 0.001;
+    } else if (bounds) {
+      // Center of service bounds
+      const [minLng, minLat, maxLng, maxLat] = bounds;
+      newLat = (minLat + maxLat) / 2;
+      newLng = (minLng + maxLng) / 2;
+    } else {
+      return; // No bounds and no vertices — can't determine position
+    }
+
+    if (!isWithinBounds(newLat, newLng, bounds)) return;
+    setPolygonVertices(prev => [...prev, { lat: newLat, lng: newLng }]);
+  }, [polygonVertices]);
 
   const handleClearPolygon = useCallback(() => {
     setPolygonVertices([]);
@@ -701,6 +733,17 @@ export default function ScanPatternGeneratorV2({
               </div>
             )}
             
+            {/* Add Vertex Button (only when polygon is not closed) */}
+            {!polygonClosed && (
+              <button
+                onClick={handleAddVertex}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-lg hover:bg-[var(--bg-hover)] transition-colors border border-dashed border-[var(--border-secondary)]"
+              >
+                <Plus className="w-4 h-4" />
+                {t.planGenerator.addVertex}
+              </button>
+            )}
+
             {/* Close Polygon Button */}
             {!polygonClosed && polygonVertices.length >= 3 && (
               <button
