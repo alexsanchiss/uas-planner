@@ -473,3 +473,314 @@ ALTER TABLE user ADD COLUMN phone VARCHAR(50) DEFAULT NULL;
 4. Feature 23 (3D InfoBox + play reliability + UI/UX)
 5. Feature 21 (Plan Definition → Plan Authorization navigation)
 6. Feature 26 (Form tooltips, standalone UI work)
+
+---
+
+# Sprint 4 — Bug Fixes, UX Polish & New Features
+
+## Feature 27: Fix Manual Waypoint Popup Close on OK/Enter
+
+**Problem:** In Plan Definition (Manual mode), the OK button in each waypoint's map popup commits the lat/lng data but does NOT close the popup. Pressing Enter only blurs the input — it does not click OK or close the popup.
+
+**Solution:**
+1. In `PlanMap.tsx` `EditablePopupContent`: after committing lat/lng values in the OK handler, call `map.closePopup()` (via `useMap()` from `react-leaflet`).
+2. Change Enter key handler to trigger the OK handler (not just blur), which then also closes the popup.
+3. Apply the same pattern to all Leaflet `<Popup>` instances: SCAN takeoff/landing popups and polygon vertex popups.
+
+**Files to modify:**
+- `app/components/PlanMap.tsx` — EditablePopupContent OK handler + Enter key, SCAN overlay popups
+
+---
+
+## Feature 28: SCAN Pattern Polygon Vertex Improvements
+
+**Problem:** Multiple SCAN pattern issues:
+1. No "Add Vertex" button in the sidebar — vertices can only be added by clicking the map.
+2. Polygon vertex popups lack an OK button and Enter-to-close behavior.
+3. SCAN waypoint click-placement uses hardcoded `SERVICE_LIMITS` instead of the selected U-Space bounds — clicking outside the default bounds is rejected even when a larger U-Space is selected.
+4. Dragging vertices in SCAN has no bounds validation — vertices can be dragged outside any U-Space limits.
+
+**Solution:**
+1. Add "Add Vertex" button in `ScanPatternGeneratorV2.tsx` sidebar (step 2) below the last vertex. Pre-fill with a sensible position (midpoint between last two vertices or polygon centroid). Validate against `serviceBounds`.
+2. In `PlanMap.tsx` SCAN polygon vertex popups: add OK button + Enter→OK→close pattern (same as Feature 27).
+3. In `PlanGenerator.tsx` line 1160: change `serviceBounds={[SERVICE_LIMITS[...]]}` to `serviceBounds={effectiveServiceLimits}` so SCAN respects the selected U-Space.
+4. In `ScanPatternGeneratorV2.tsx` drag handlers (`handleVertexUpdate`, `handleExternalTakeoffUpdate`, `handleExternalLandingUpdate`): add `isWithinBounds()` validation; revert to previous position if outside bounds.
+
+**Files to modify:**
+- `app/components/plan-definition/ScanPatternGeneratorV2.tsx` — Add Vertex button, drag bounds check
+- `app/components/PlanGenerator.tsx` — Pass effectiveServiceLimits to SCAN
+- `app/components/PlanMap.tsx` — SCAN vertex popup OK/Enter/close
+
+---
+
+## Feature 29: Selected Plan Click Opens Waypoints Modal
+
+**Problem:** In Plan Authorization (FlightPlansUploader), the small map preview on each plan card shows "Click to view waypoints map" on hover and works when clicked at folder level. But when a plan is already selected (highlighted), clicking the plan card body only toggles selection off — the user expects a second click on a selected plan to open the waypoints modal.
+
+**Solution:**
+In `FlightPlanCard.tsx` `handleCardClick`: if the plan is already selected (`isSelected === true`), instead of deselecting, call `onWaypointPreviewClick(plan.id, waypoints)` to open the waypoints map modal.
+
+**Files to modify:**
+- `app/components/flight-plans/FlightPlanCard.tsx` — Modify handleCardClick for second-click behavior
+
+---
+
+## Feature 30: Fix 4D Volume Animation During Play in Cesium3DModal
+
+**Problem:** In the "View 3D U-Plan" Cesium modal, the 4D time slider bar advances during play, but the volume colors/visibility do NOT update. Manual slider drag works correctly. The RAF loop calls both `setCurrentTimeMs(next)` and `updateVolumeColors(next)`, but `updateVolumeColors` assigns raw `Cesium.Color` objects to `entity.polygon.material`, which Cesium may not detect as a property change — Cesium expects `ColorMaterialProperty`.
+
+**Solution:**
+1. In `Cesium3DModal.tsx` `updateVolumeColors`: assign material using `new Cesium.ColorMaterialProperty(color)` instead of raw `Cesium.Color.fromCssColorString(...)`.
+2. Optionally also assign outlineColor via `new Cesium.ConstantProperty(color)`.
+3. Additionally, add `viewer.scene.requestRender()` after each `updateVolumeColors` call in the RAF tick to force the scene to repaint.
+
+**Files to modify:**
+- `app/components/flight-plans/Cesium3DModal.tsx` — Fix material assignment in updateVolumeColors
+
+---
+
+## Feature 31: Fix Trajectory 3D Viewer Polyline & Labels
+
+**Problem:** The Trajectory 3D viewer draws two visual paths:
+1. Blue waypoint dots using `RELATIVE_TO_GROUND` (AGL) — correct.
+2. A glowing polyline using absolute positions `terrainHeights[i] + p.alt` (AMSL) — visually mismatched with the dots.
+The polyline also has Takeoff/Landing labels at positions that don't match the dot markers. The terrain sampling adds unnecessary complexity and visual discrepancy.
+
+**Solution:**
+1. Remove the terrain sampling code entirely (`sampleTerrainMostDetailed` section).
+2. Change the polyline to use AGL positions: `Cesium.Cartesian3.fromDegrees(p.lng, p.lat, p.alt)` matching the waypoint markers.
+3. Keep polyline `clampToGround: false` but with AGL altitudes.
+4. Since Cesium polylines don't natively support `heightReference`, and the polyline will be at AGL altitude (not terrain-adjusted), it may slightly float/sink relative to terrain. This is acceptable — the blue dots with `RELATIVE_TO_GROUND` provide the accurate reference. The polyline is a visual guide.
+5. Takeoff and Landing labels are already on the correct waypoint markers — no change needed there.
+
+**Files to modify:**
+- `app/components/flight-plans/Trajectory3DViewer.tsx` — Remove terrain sampling, simplify polyline
+
+---
+
+## Feature 32: Geoawareness 3D Viewer
+
+**Problem:** Geoawareness geozones are only viewable in a 2D Leaflet modal. A 3D view with extruded geozone volumes would help users understand vertical airspace restrictions better. Also, the current 2D modal is too small for the dense geozone info popups.
+
+**Solution:**
+1. Create `Geoawareness3DModal.tsx` with Cesium viewer showing:
+   - Trajectory as blue polyline (from plan's CSV data or operation volumes).
+   - Geozones as 3D extruded polygons: height from `lowerLimit`, extruded to `upperLimit`, colored per `GEOZONE_COLORS` palette from `GeoawarenessModal.tsx`.
+   - Clickable geozones: on entity click, Cesium InfoBox shows the same detailed info as the 2D modal (General Info, Restriction Conditions, Authority Info, Applicability).
+2. Add a "3D" button next to the existing Geoawareness button in `FlightPlansUploader.tsx`.
+3. Enlarge the 2D GeoawarenessModal from `70vw / 1200px` to `85vw / 1600px`, map height to `60vh / min 400px / max 650px`.
+4. The 3D modal uses the same enlarged dimensions.
+
+**Files to create:**
+- `app/components/flight-plans/Geoawareness3DModal.tsx`
+
+**Files to modify:**
+- `app/components/GeoawarenessModal.tsx` — Enlarge modal dimensions
+- `app/components/FlightPlansUploader.tsx` — Add 3D Geoawareness button, dynamic import
+
+---
+
+## Feature 33: Auto-fill Email in U-Plan Form
+
+**Problem:** The U-Plan form auto-fills firstName, lastName, and phone from the user profile, but does NOT auto-fill the email address field. The user's registration email should be pre-filled.
+
+**Solution:**
+1. In `UplanFormModal.tsx`, in the profile fetch `useEffect`: after pre-filling name/phone, also check `contactDetails.emails[0]` — if empty, fill with the user's email from the `useAuth()` hook (`user.email`) or from the profile API response (add `email` to the profile endpoint response).
+2. Update `/api/user/profile` GET handler to include the user's `email` field in the response.
+
+**Files to modify:**
+- `app/components/flight-plans/UplanFormModal.tsx` — Pre-fill emails[0] from user email
+- `app/api/user/profile/route.ts` — Include email in GET response
+
+---
+
+## Feature 34: Profile U-Plan Drafts System
+
+**Problem:** Users re-enter the same U-Plan form data repeatedly. Need a draft system where users can save, load, update, and delete pre-filled form configurations from their profile.
+
+**SQL to execute manually:**
+```sql
+CREATE TABLE uplan_draft (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  userId INT NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  draftData JSON NOT NULL,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (userId) REFERENCES user(id) ON DELETE CASCADE,
+  INDEX idx_user (userId)
+);
+```
+
+**Solution:**
+1. Add `uplanDraft` model in `prisma/schema.prisma` + relation on `user`. Run `npx prisma generate`.
+2. Create API routes:
+   - `GET /api/user/drafts` — List all user's drafts (id, name, updatedAt).
+   - `POST /api/user/drafts` — Create draft with `{ name, draftData }`.
+   - `GET /api/user/drafts/[id]` — Get single draft (full draftData).
+   - `PATCH /api/user/drafts/[id]` — Update draft name/data.
+   - `DELETE /api/user/drafts/[id]` — Delete draft.
+3. Profile page (`/profile`): Add "U-Plan Drafts" section below profile fields. List drafts with name, last updated, Edit/Delete buttons. "New Draft" button opens a form to name and fill draft data.
+4. `UplanFormModal`: Add "Load Draft" dropdown at the top. Selecting a draft fetches its `draftData` and merges into the form via `mergeWithDefaults()`.
+
+**Files to create:**
+- `app/api/user/drafts/route.ts`
+- `app/api/user/drafts/[id]/route.ts`
+
+**Files to modify:**
+- `prisma/schema.prisma` — Add uplanDraft model
+- `app/profile/page.tsx` — Add drafts section
+- `app/components/flight-plans/UplanFormModal.tsx` — Add Load Draft button
+
+---
+
+## Feature 35: Remove Flight Plan Details from Plan Definition
+
+**Problem:** The "Flight Plan Details" inline form in Plan Definition duplicates the U-Plan form available in Plan Authorization. It should be removed so form data entry only happens via the UplanFormModal in Plan Authorization.
+
+**Solution:**
+1. In `PlanGenerator.tsx`: Remove the "Flight Plan Details" collapsible button (lines ~1617–1625) and its entire content block (lines ~1626–1939).
+2. Remove `detailsOpen` state, `initialFlightPlanDetails` constant, and all `flightPlanDetails` state.
+3. In `handleUploadPlan`: stop spreading `flightPlanDetails` into the U-Plan JSON. The plan will be uploaded with waypoints + datetime only; the U-Plan form data will be filled via the UplanFormModal in Plan Authorization.
+4. Clean up any unused imports.
+
+**Files to modify:**
+- `app/components/PlanGenerator.tsx` — Remove Flight Plan Details section and related state
+
+---
+
+## Feature 36: Update ICD & Move v2.2.0 Tag
+
+**Problem:** All Sprint 4 changes need to be documented in the ICD, and the v2.2.0 git tag must be moved to the final commit.
+
+**Solution:**
+1. Update `icd.tex` "Novedades V2.2.0" section with Sprint 4 changes: popup fixes, SCAN bounds, selected plan click, 4D play fix, trajectory polyline fix, Geoawareness 3D, email auto-fill, drafts system, Flight Plan Details removal.
+2. Add new endpoints to Annex B: `GET/POST /api/user/drafts`, `GET/PATCH/DELETE /api/user/drafts/[id]`.
+3. Add new components to Annex E: `Geoawareness3DModal`, `uplanDraft` model.
+4. Amend or create new commit, delete old v2.2.0 tag, create new annotated v2.2.0 tag on final commit, force push.
+
+**Files to modify:**
+- `icd.tex`
+
+---
+
+## Sprint 4 Implementation Order
+
+1. Feature 27 (Manual popup OK/Enter close — small, foundational)
+2. Feature 28 (SCAN pattern improvements — builds on F27 pattern)
+3. Feature 29 (Selected plan click — small standalone fix)
+4. Feature 30 (4D play animation fix — small Cesium fix)
+5. Feature 31 (Trajectory polyline fix — small Cesium fix)
+6. Feature 35 (Remove Flight Plan Details — cleanup before new features)
+7. Feature 33 (Email auto-fill — small, quick)
+8. Feature 34 (Profile drafts system — large, new DB + API + UI)
+9. Feature 32 (Geoawareness 3D — large, new Cesium component)
+10. Feature 36 (ICD update & tag — final task)
+
+---
+
+# Sprint 5 — Bug Fixes & UX Refinements
+
+## Feature 37: Fix Selected Plan Preview Click → Waypoints Modal
+
+**Problem:** When a plan is selected and displayed at the top in the "Selected plan" panel, clicking the waypoint mini-preview SVG does NOT open the waypoints map modal. The `FlightPlanCard` inside the selected plan panel is missing the `onWaypointPreviewClick` prop.
+
+**Solution:**
+1. In `FlightPlansUploader.tsx`: pass `onWaypointPreviewClick={handleWaypointPreviewClick}` to the `FlightPlanCard` rendered inside the "Selected plan" panel (around line 1411).
+
+**Files to modify:**
+- `app/components/FlightPlansUploader.tsx`
+
+---
+
+## Feature 38: Fix 4D Volume Color Update — Force Periodic Re-render
+
+**Problem:** During Play animation on the 4D time slider in Cesium3DModal, volume colors do not visually update even though `ColorMaterialProperty` and `requestRender()` are used. Cesium's `requestRenderMode` may be suppressing continuous updates.
+
+**Solution:**
+1. In `Cesium3DModal.tsx`: after creating the viewer, explicitly set `viewer.scene.requestRenderMode = false` to force continuous rendering while the modal is open. This ensures Cesium re-draws every frame so material/color property changes are always visible.
+2. Additionally, in the play animation `tick` function, add `viewer.scene.requestRender()` calls every iteration to be safe.
+
+**Files to modify:**
+- `app/components/flight-plans/Cesium3DModal.tsx`
+
+---
+
+## Feature 39: Remove Trajectory Polyline from 3D Viewers
+
+**Problem:** In the Trajectory 3D Viewer, the polyline connecting waypoints still appears and is drawn at wrong AMSL altitudes. The user wants ONLY the waypoint dots visible (no connecting polyline).
+
+**Solution:**
+1. In `Trajectory3DViewer.tsx`: Remove the polyline entity that connects all trajectory points. Keep only the individual waypoint point+label entities and the drone entity.
+2. In `Geoawareness3DModal.tsx`: Replace the trajectory polyline with individual waypoint markers (point entities) like in Trajectory3DViewer — takeoff (green), landing (red), cruise (blue). Remove the polyline entirely.
+
+**Files to modify:**
+- `app/components/flight-plans/Trajectory3DViewer.tsx`
+- `app/components/flight-plans/Geoawareness3DModal.tsx`
+
+---
+
+## Feature 40: Fix Geoawareness 3D Viewer — AGL Heights, Waypoint Markers, Camera Zoom
+
+**Problem:** In `Geoawareness3DModal.tsx`:
+1. Operation volumes are rendered as AMSL but their altitudes are AGL — they need `RELATIVE_TO_GROUND` height reference (already present, but check).
+2. Trajectory is drawn as a polyline at wrong altitude. Should be individual waypoint markers (same as in Trajectory3DViewer).
+3. Camera does not zoom/center on the geozones + volumes properly.
+
+**Solution:**
+1. Verify operation volumes use `RELATIVE_TO_GROUND` for both `heightReference` and `extrudedHeightReference` (they already do — verify).
+2. Replace trajectory polyline rendering with individual waypoint point entities (takeoff green, landing red, cruise blue) with `RELATIVE_TO_GROUND` height reference on each point.
+3. Ensure camera `flyToBoundingSphere` includes all geozone, volume, and trajectory positions for proper centering.
+
+**Files to modify:**
+- `app/components/flight-plans/Geoawareness3DModal.tsx`
+
+Note: Feature 39 and 40 overlap for Geoawareness3DModal — they should be handled together.
+
+---
+
+## Feature 41: Fix Cesium InfoBox/Popup Text Color Across All 3D Modals
+
+**Problem:** In dark theme, the Cesium InfoBox popups display text that inherits the app's dark theme CSS (light text on light background or vice-versa), making it unreadable. Need to force all Cesium InfoBox popups and other overlay elements (like the toolbar, navigation help, etc.) to have fixed dark-background/light-text styling.
+
+**Solution:**
+All four Cesium 3D components already inject InfoBox CSS. The issue is that the Cesium *widget container itself* (toolbar buttons, credit display, etc.) inherits the app's CSS variables and theme. We need to:
+1. In each of the 4 Cesium modals (`Cesium3DModal.tsx`, `Trajectory3DViewer.tsx`, `Geoawareness3DModal.tsx`, `AuthorizationResultModal.tsx`): after creating the viewer, inject a `<style>` tag into the main document scoped to the Cesium container that forces all Cesium widget text/background to fixed dark theme colors, overriding CSS variable inheritance.
+2. This includes `.cesium-widget`, `.cesium-viewer`, toolbar buttons, credit element, selection indicator, etc.
+
+**Files to modify:**
+- `app/components/flight-plans/Cesium3DModal.tsx`
+- `app/components/flight-plans/Trajectory3DViewer.tsx`
+- `app/components/flight-plans/Geoawareness3DModal.tsx`
+- `app/components/flight-plans/AuthorizationResultModal.tsx`
+
+---
+
+## Feature 42: Draft Delete from Form + Styled Draft Buttons
+
+**Problem:**
+1. Users want to delete a draft directly from the UplanFormModal (not only from profile page).
+2. The "Update Draft", "Save as Draft", and "Delete Draft" buttons need distinguishing colors or icons.
+3. Remove draft delete option from profile page.
+
+**Solution:**
+1. In `UplanFormModal.tsx`:
+   - Add a "Delete Draft" button (red, with trash icon) next to "Update Draft" when a draft is loaded. It calls `DELETE /api/user/drafts/[id]` and clears `loadedDraftId`.
+   - Style "Update Draft" button with a blue/teal color and a refresh/save icon.
+   - Style "Save as Draft" button with a green color and a plus/document icon.
+   - Style "Delete Draft" button with a red color and a trash icon.
+2. In `app/profile/page.tsx`: Remove the delete button from the drafts list. Keep rename only.
+
+**Files to modify:**
+- `app/components/flight-plans/UplanFormModal.tsx`
+- `app/profile/page.tsx`
+
+---
+
+## Sprint 5 Implementation Order
+
+1. Feature 37 (Selected plan preview click fix — trivial, one-line)
+2. Feature 38 (4D play animation re-render — small Cesium fix)
+3. Feature 39 + 40 (Trajectory polyline removal + Geoawareness fixes — combined)
+4. Feature 41 (InfoBox text color fix across all Cesium modals)
+5. Feature 42 (Draft delete from form + styled buttons)

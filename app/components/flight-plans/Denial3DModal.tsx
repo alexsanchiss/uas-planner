@@ -281,7 +281,7 @@ const Denial3DModal: React.FC<Denial3DModalProps> = ({ isOpen, onClose, uplan, a
               if (frameDoc) {
                 const style = frameDoc.createElement('style')
                 style.textContent = `
-                  html, body { background: transparent !important; }
+                  html, body { background: #1e1e1e !important; color: #e0e0e0 !important; }
                   .cesium-infoBox { background: rgba(38, 38, 38, 0.95) !important; color: #e0e0e0 !important; }
                   .cesium-infoBox-title { color: #ffffff !important; background: rgba(30, 30, 30, 0.9) !important; }
                   .cesium-infoBox-description { color: #e0e0e0 !important; }
