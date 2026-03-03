@@ -76,6 +76,9 @@ const AuthorizationResultModal = dynamic(() => import('./flight-plans/Authorizat
 // Task 20: Dynamic import for 3D Trajectory viewer with drone animation (requires Cesium)
 const Trajectory3DViewer = dynamic(() => import('./flight-plans/Trajectory3DViewer'), { ssr: false })
 
+// Task 32: Dynamic import for 3D Geoawareness viewer with extruded geozones (requires Cesium)
+const Geoawareness3DModal = dynamic(() => import('./flight-plans/Geoawareness3DModal'), { ssr: false })
+
 /**
  * Transform API flight plan data to component flight plan format
  * TASK-220: Include fileContent for waypoint preview extraction
@@ -288,6 +291,14 @@ export function FlightPlansUploader() {
     planId: string | null
     planName: string
   }>({ open: false, planId: null, planName: '' })
+
+  // Task 32: 3D Geoawareness viewer state
+  const [geoawareness3DModal, setGeoawareness3DModal] = useState<{
+    open: boolean
+    planId: string
+    uspaceId: string | null
+    uplanData: Record<string, unknown> | null
+  }>({ open: false, planId: '', uspaceId: null, uplanData: null })
   
   const [loadingPlanIds, setLoadingPlanIds] = useState<{
     processing: Set<string>
@@ -1593,6 +1604,38 @@ export function FlightPlansUploader() {
                     </>
                   )}
                 </button>
+                {/* Task 32: 3D Geoawareness viewer button */}
+                <button
+                  onClick={() => {
+                    const plan = flightPlans.find(p => String(p.id) === String(selectedPlan.id))
+                    if (!plan) return
+                    let uspaceId: string | null = null
+                    try {
+                      const geoData = plan.geoawarenessData
+                      if (geoData && typeof geoData === 'object' && 'uspace_identifier' in geoData) {
+                        uspaceId = (geoData as { uspace_identifier: string }).uspace_identifier
+                      }
+                    } catch { /* ignore */ }
+                    let uplanData: Record<string, unknown> | null = null
+                    try {
+                      uplanData = typeof plan.uplan === 'string' ? JSON.parse(plan.uplan) : plan.uplan as Record<string, unknown> | null
+                    } catch { /* ignore */ }
+                    setGeoawareness3DModal({
+                      open: true,
+                      planId: String(plan.id),
+                      uspaceId,
+                      uplanData,
+                    })
+                  }}
+                  disabled={!selectedPlan.geoawarenessData}
+                  title={!selectedPlan.geoawarenessData ? 'Run geoawareness check first' : 'View geozones in 3D'}
+                  className="px-4 py-2 text-sm font-medium text-[var(--text-primary)] bg-[var(--surface-tertiary)] border border-[var(--border-primary)] rounded-md hover:bg-[var(--bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors btn-interactive flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                  </svg>
+                  3D Geoawareness
+                </button>
                 {/* Download U-Plan JSON button - always visible after processing */}
                 {/* Task 6: Auto-generates volumes before download if missing */}
                 {selectedPlan.uplan ? (
@@ -2101,6 +2144,17 @@ export function FlightPlansUploader() {
           onClose={() => setTrajectory3DViewer({ open: false, planId: null, planName: '' })}
           planId={trajectory3DViewer.planId}
           planName={trajectory3DViewer.planName}
+        />
+      )}
+
+      {/* Task 32: 3D Geoawareness viewer with extruded geozones */}
+      {geoawareness3DModal.uspaceId && (
+        <Geoawareness3DModal
+          isOpen={geoawareness3DModal.open}
+          onClose={() => setGeoawareness3DModal({ open: false, planId: '', uspaceId: null, uplanData: null })}
+          planId={geoawareness3DModal.planId}
+          uspaceId={geoawareness3DModal.uspaceId}
+          uplanData={geoawareness3DModal.uplanData as any as { operationVolumes?: Array<{ geography: { type: string; coordinates: number[][][] }; altitude_lower: { value: number; reference: string; units: string }; altitude_upper: { value: number; reference: string; units: string } }> } | null}
         />
       )}
     </div>
