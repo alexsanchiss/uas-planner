@@ -6,7 +6,7 @@ import { useToast } from "../hooks/useToast";
 import { ProtectedRoute } from "../components/auth/protected-route";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
-import { Mail, Calendar, Shield, FileText, Pencil, Trash2 } from "lucide-react";
+import { Mail, Calendar, Shield, FileText, Pencil } from "lucide-react";
 
 interface Draft {
   id: number;
@@ -30,7 +30,6 @@ export default function ProfilePage() {
   const [draftsLoading, setDraftsLoading] = useState(false);
   const [editingDraftId, setEditingDraftId] = useState<number | null>(null);
   const [editingDraftName, setEditingDraftName] = useState("");
-  const [deletingDraftId, setDeletingDraftId] = useState<number | null>(null);
 
   const fetchDrafts = useCallback(async () => {
     const token = localStorage.getItem("authToken");
@@ -116,24 +115,6 @@ export default function ProfilePage() {
     }
   };
 
-  const handleDeleteDraft = async (draftId: number) => {
-    const token = localStorage.getItem("authToken");
-    if (!token) return;
-    setDeletingDraftId(draftId);
-    try {
-      const res = await fetch(`/api/user/drafts/${draftId}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error("Failed to delete draft");
-      toast.success("Draft deleted");
-      fetchDrafts();
-    } catch {
-      toast.error("Failed to delete draft");
-    } finally {
-      setDeletingDraftId(null);
-    }
-  };
 
   return (
     <ProtectedRoute>
@@ -312,14 +293,7 @@ export default function ProfilePage() {
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
-                        <button
-                          onClick={() => handleDeleteDraft(draft.id)}
-                          disabled={deletingDraftId === draft.id}
-                          className="p-1.5 rounded-md text-[var(--text-muted)] hover:text-red-400 hover:bg-red-900/20 transition-colors disabled:opacity-50"
-                          title="Delete draft"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+
                       </div>
                     )}
                   </div>
