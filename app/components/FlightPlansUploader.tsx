@@ -2154,7 +2154,7 @@ export function FlightPlansUploader() {
           onClose={() => setGeoawareness3DModal({ open: false, planId: '', uspaceId: null, uplanData: null })}
           planId={geoawareness3DModal.planId}
           uspaceId={geoawareness3DModal.uspaceId}
-          uplanData={geoawareness3DModal.uplanData as any as { operationVolumes?: Array<{ geography: { type: string; coordinates: number[][][] }; altitude_lower: { value: number; reference: string; units: string }; altitude_upper: { value: number; reference: string; units: string } }> } | null}
+          uplanData={geoawareness3DModal.uplanData as any}
         />
       )}
     </div>
