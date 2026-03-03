@@ -1,12 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { useToast } from "../hooks/useToast";
 import { ProtectedRoute } from "../components/auth/protected-route";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
-import { User, Mail, Calendar, Shield, Phone } from "lucide-react";
+import { Mail, Calendar, Shield, FileText, Pencil, Trash2 } from "lucide-react";
+
+interface Draft {
+  id: number;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export default function ProfilePage() {
   const { user } = useAuth();
@@ -17,6 +24,32 @@ export default function ProfilePage() {
   const [phone, setPhone] = useState("");
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Drafts state
+  const [drafts, setDrafts] = useState<Draft[]>([]);
+  const [draftsLoading, setDraftsLoading] = useState(false);
+  const [editingDraftId, setEditingDraftId] = useState<number | null>(null);
+  const [editingDraftName, setEditingDraftName] = useState("");
+  const [deletingDraftId, setDeletingDraftId] = useState<number | null>(null);
+
+  const fetchDrafts = useCallback(async () => {
+    const token = localStorage.getItem("authToken");
+    if (!token) return;
+    setDraftsLoading(true);
+    try {
+      const res = await fetch("/api/user/drafts", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDrafts(data);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setDraftsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     const token = localStorage.getItem("authToken");
@@ -34,7 +67,9 @@ export default function ProfilePage() {
         }
       })
       .catch(() => {});
-  }, []);
+
+    fetchDrafts();
+  }, [fetchDrafts]);
 
   const handleSaveProfile = async () => {
     const token = localStorage.getItem("authToken");
@@ -56,6 +91,47 @@ export default function ProfilePage() {
       toast.error("Failed to update profile");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleRenameDraft = async (draftId: number) => {
+    const token = localStorage.getItem("authToken");
+    if (!token || !editingDraftName.trim()) return;
+    try {
+      const res = await fetch(`/api/user/drafts/${draftId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ name: editingDraftName.trim() }),
+      });
+      if (!res.ok) throw new Error("Failed to rename draft");
+      toast.success("Draft renamed");
+      setEditingDraftId(null);
+      setEditingDraftName("");
+      fetchDrafts();
+    } catch {
+      toast.error("Failed to rename draft");
+    }
+  };
+
+  const handleDeleteDraft = async (draftId: number) => {
+    const token = localStorage.getItem("authToken");
+    if (!token) return;
+    setDeletingDraftId(draftId);
+    try {
+      const res = await fetch(`/api/user/drafts/${draftId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Failed to delete draft");
+      toast.success("Draft deleted");
+      fetchDrafts();
+    } catch {
+      toast.error("Failed to delete draft");
+    } finally {
+      setDeletingDraftId(null);
     }
   };
 
@@ -148,6 +224,108 @@ export default function ProfilePage() {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* U-Plan Drafts Section */}
+          <div className="mt-8 bg-[var(--surface-primary)] border border-[var(--border-primary)] rounded-xl p-6 shadow-lg">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-[var(--color-primary)]" />
+                <h2 className="text-lg font-semibold text-[var(--text-primary)]">U-Plan Drafts</h2>
+              </div>
+              <span className="text-sm text-[var(--text-muted)]">
+                {drafts.length} draft{drafts.length !== 1 ? "s" : ""}
+              </span>
+            </div>
+            <p className="text-sm text-[var(--text-muted)] mb-4">
+              Save and load U-Plan form configurations to avoid re-entering the same data.
+              Use &ldquo;Save as Draft&rdquo; in the U-Plan form to create drafts.
+            </p>
+
+            {draftsLoading ? (
+              <div className="text-center py-6 text-[var(--text-muted)]">Loading drafts...</div>
+            ) : drafts.length === 0 ? (
+              <div className="text-center py-6 text-[var(--text-muted)] border border-dashed border-[var(--border-primary)] rounded-lg">
+                <FileText className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                <p>No drafts yet</p>
+                <p className="text-xs mt-1">Open the U-Plan form and click &ldquo;Save as Draft&rdquo; to create one</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {drafts.map((draft) => (
+                  <div
+                    key={draft.id}
+                    className="flex items-center justify-between p-3 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-primary)] hover:border-[var(--color-primary)] transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      {editingDraftId === draft.id ? (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="text"
+                            value={editingDraftName}
+                            onChange={(e) => setEditingDraftName(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") handleRenameDraft(draft.id);
+                              if (e.key === "Escape") { setEditingDraftId(null); setEditingDraftName(""); }
+                            }}
+                            className="py-1 text-sm"
+                            autoFocus
+                          />
+                          <Button
+                            onClick={() => handleRenameDraft(draft.id)}
+                            className="px-3 py-1 text-xs"
+                          >
+                            Save
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => { setEditingDraftId(null); setEditingDraftName(""); }}
+                            className="px-3 py-1 text-xs"
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <p className="font-medium text-[var(--text-primary)] truncate">{draft.name}</p>
+                          <p className="text-xs text-[var(--text-muted)]">
+                            Updated {new Date(draft.updatedAt).toLocaleDateString(undefined, {
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </p>
+                        </>
+                      )}
+                    </div>
+                    {editingDraftId !== draft.id && (
+                      <div className="flex items-center gap-1 ml-3">
+                        <button
+                          onClick={() => {
+                            setEditingDraftId(draft.id);
+                            setEditingDraftName(draft.name);
+                          }}
+                          className="p-1.5 rounded-md text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-primary)] transition-colors"
+                          title="Rename draft"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteDraft(draft.id)}
+                          disabled={deletingDraftId === draft.id}
+                          className="p-1.5 rounded-md text-[var(--text-muted)] hover:text-red-400 hover:bg-red-900/20 transition-colors disabled:opacity-50"
+                          title="Delete draft"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

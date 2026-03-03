@@ -23,6 +23,20 @@ model user {
   phone                    String?      @db.VarChar(50)
   flightPlans              flightPlan[]
   folders                  folder[]
+  uplanDrafts              uplanDraft[]
+}
+
+model uplanDraft {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  name      String   @db.VarChar(255)
+  draftData Json
+  createdAt DateTime @default(now()) @db.Timestamp(0)
+  updatedAt DateTime @default(now()) @updatedAt @db.Timestamp(0)
+  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "idx_user")
+  @@map("uplan_draft")
 }
 
 model machine {

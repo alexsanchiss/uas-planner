@@ -308,8 +308,104 @@ export default function UplanFormModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   
+  // Draft state
+  const [drafts, setDrafts] = useState<{ id: number; name: string; updatedAt: string }[]>([]);
+  const [loadedDraftId, setLoadedDraftId] = useState<number | null>(null);
+  const [showSaveDraftInput, setShowSaveDraftInput] = useState(false);
+  const [newDraftName, setNewDraftName] = useState('');
+  const [isSavingNewDraft, setIsSavingNewDraft] = useState(false);
+  const [isUpdatingDraft, setIsUpdatingDraft] = useState(false);
+  
   // Track whether modal was previously open to detect open transitions
   const wasOpenRef = useRef(false);
+
+  // Fetch available drafts when modal opens
+  const fetchDrafts = useCallback(async () => {
+    if (!authToken) return;
+    try {
+      const res = await fetch('/api/user/drafts', {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDrafts(data);
+      }
+    } catch {
+      // ignore
+    }
+  }, [authToken]);
+
+  // Load a specific draft's data into the form
+  const handleLoadDraft = async (draftId: number) => {
+    if (!authToken) return;
+    try {
+      const res = await fetch(`/api/user/drafts/${draftId}`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      if (!res.ok) throw new Error('Failed to load draft');
+      const draft = await res.json();
+      const merged = mergeWithDefaults(draft.draftData);
+      setFormData(merged);
+      setLoadedDraftId(draftId);
+      setValidationErrors(null);
+      toast.success(`Draft "${draft.name}" loaded`);
+    } catch {
+      toast.error('Failed to load draft');
+    }
+  };
+
+  // Save current form data as a new draft
+  const handleSaveNewDraft = async () => {
+    if (!authToken || !newDraftName.trim()) return;
+    setIsSavingNewDraft(true);
+    try {
+      const res = await fetch('/api/user/drafts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          name: newDraftName.trim(),
+          draftData: formData,
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to save draft');
+      const created = await res.json();
+      setLoadedDraftId(created.id);
+      setShowSaveDraftInput(false);
+      setNewDraftName('');
+      toast.success(`Draft "${created.name}" saved`);
+      fetchDrafts();
+    } catch {
+      toast.error('Failed to save draft');
+    } finally {
+      setIsSavingNewDraft(false);
+    }
+  };
+
+  // Update the currently loaded draft with current form data
+  const handleUpdateDraft = async () => {
+    if (!authToken || !loadedDraftId) return;
+    setIsUpdatingDraft(true);
+    try {
+      const res = await fetch(`/api/user/drafts/${loadedDraftId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({ draftData: formData }),
+      });
+      if (!res.ok) throw new Error('Failed to update draft');
+      toast.success('Draft updated');
+      fetchDrafts();
+    } catch {
+      toast.error('Failed to update draft');
+    } finally {
+      setIsUpdatingDraft(false);
+    }
+  };
 
   // TASK-003: Merge external fieldErrors (from parent) with internal validation errors
   const mergedFieldErrors = React.useMemo(() => {
@@ -330,6 +426,12 @@ export default function UplanFormModal({
       // Modal just opened - initialize form data
       const merged = mergeWithDefaults(existingUplan);
       setFormData(merged);
+      setLoadedDraftId(null);
+      setShowSaveDraftInput(false);
+      setNewDraftName('');
+      
+      // Fetch available drafts
+      fetchDrafts();
       
       // TASK-003: Show external validation errors on open (if any)
       if (Object.keys(fieldErrors).length > 0) {
@@ -384,7 +486,7 @@ export default function UplanFormModal({
       }
     }
     wasOpenRef.current = open;
-  }, [open, existingUplan, fieldErrors, authToken]);
+  }, [open, existingUplan, fieldErrors, authToken, fetchDrafts]);
 
   // Helper to get field error
   const getFieldError = useCallback((path: string): string[] | undefined => {
@@ -596,6 +698,87 @@ export default function UplanFormModal({
         {/* Scrollable Form Content */}
         <div className="flex-1 overflow-y-auto px-6 py-4">
           <form onSubmit={(e) => { e.preventDefault(); }}>
+            {/* Draft Toolbar */}
+            <div className="mb-4 p-3 bg-gray-800 border border-gray-700 rounded-md">
+              <div className="flex items-center gap-3 flex-wrap">
+                {/* Load Draft Dropdown */}
+                <div className="flex items-center gap-2">
+                  <label className="text-sm text-gray-400 whitespace-nowrap">Load Draft:</label>
+                  <select
+                    value={loadedDraftId ?? ''}
+                    onChange={(e) => {
+                      const id = e.target.value ? parseInt(e.target.value, 10) : null;
+                      if (id) handleLoadDraft(id);
+                    }}
+                    className="px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">— Select draft —</option>
+                    {drafts.map((d) => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex-1" />
+
+                {/* Update loaded draft */}
+                {loadedDraftId && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleUpdateDraft}
+                    disabled={isUpdatingDraft}
+                    className="text-sm px-3 py-1.5"
+                  >
+                    {isUpdatingDraft ? 'Updating...' : 'Update Draft'}
+                  </Button>
+                )}
+
+                {/* Save as new draft */}
+                {showSaveDraftInput ? (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="text"
+                      value={newDraftName}
+                      onChange={(e) => setNewDraftName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSaveNewDraft();
+                        if (e.key === 'Escape') { setShowSaveDraftInput(false); setNewDraftName(''); }
+                      }}
+                      placeholder="Draft name..."
+                      className="py-1 text-sm w-40"
+                      autoFocus
+                    />
+                    <Button
+                      type="button"
+                      onClick={handleSaveNewDraft}
+                      disabled={isSavingNewDraft || !newDraftName.trim()}
+                      className="text-sm px-3 py-1.5"
+                    >
+                      {isSavingNewDraft ? 'Saving...' : 'Save'}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => { setShowSaveDraftInput(false); setNewDraftName(''); }}
+                      className="text-sm px-3 py-1.5"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowSaveDraftInput(true)}
+                    className="text-sm px-3 py-1.5"
+                  >
+                    Save as Draft
+                  </Button>
+                )}
+              </div>
+            </div>
+
             {/* Error Summary */}
             {validationErrors && Object.keys(validationErrors.fieldErrors).length > 0 && (
               <div className="mb-4 p-4 bg-red-900/30 border border-red-700 rounded-md">
