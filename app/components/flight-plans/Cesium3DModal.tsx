@@ -115,14 +115,23 @@ const Cesium3DModal: React.FC<Cesium3DModalProps> = ({ isOpen, onClose, uplanDat
     entities.forEach(({ entity, beginMs, endMs }) => {
       const isActive = timeMs >= beginMs && timeMs <= endMs
       if (entity.polygon) {
-        entity.polygon.material = isActive
-          ? Cesium.Color.fromCssColorString('rgba(51, 148, 255, 0.65)')
-          : Cesium.Color.fromCssColorString('rgba(160, 160, 160, 0.25)')
-        entity.polygon.outlineColor = isActive
-          ? Cesium.Color.fromCssColorString('rgba(51, 148, 255, 0.9)')
-          : Cesium.Color.fromCssColorString('rgba(160, 160, 160, 0.45)')
+        entity.polygon.material = new Cesium.ColorMaterialProperty(
+          isActive
+            ? Cesium.Color.fromCssColorString('rgba(51, 148, 255, 0.65)')
+            : Cesium.Color.fromCssColorString('rgba(160, 160, 160, 0.25)')
+        )
+        entity.polygon.outlineColor = new Cesium.ConstantProperty(
+          isActive
+            ? Cesium.Color.fromCssColorString('rgba(51, 148, 255, 0.9)')
+            : Cesium.Color.fromCssColorString('rgba(160, 160, 160, 0.45)')
+        )
       }
     })
+
+    // Force scene repaint so Cesium picks up the property changes
+    if (viewerRef.current && !viewerRef.current.isDestroyed()) {
+      viewerRef.current.scene.requestRender()
+    }
   }, [])
 
   // Play animation loop — use ref to read latest time for direct entity updates
