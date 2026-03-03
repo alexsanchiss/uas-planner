@@ -140,6 +140,8 @@ const Cesium3DModal: React.FC<Cesium3DModalProps> = ({ isOpen, onClose, uplanDat
 
   useEffect(() => {
     if (!playing || !hasTimeData) return
+    // Guard: don't start animation if no volume entities are tracked
+    if (entitiesRef.current.length === 0) return
 
     lastFrameRef.current = performance.now()
 
@@ -222,6 +224,11 @@ const Cesium3DModal: React.FC<Cesium3DModalProps> = ({ isOpen, onClose, uplanDat
         })
 
         viewerRef.current = viewer
+
+        // Disable request render mode so Cesium renders every frame.
+        // This ensures material/color property changes (e.g. during 4D animation)
+        // are always visually reflected without relying on requestRender() calls.
+        viewer.scene.requestRenderMode = false
 
         // Force InfoBox to use dark, readable styling regardless of app theme
         try {
