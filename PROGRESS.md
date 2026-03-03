@@ -54,4 +54,4 @@
 | 33 | F33 | Auto-fill email in U-Plan form | Completed |
 | 34 | F34 | Profile U-Plan Drafts system | Completed |
 | 35 | F35 | Remove Flight Plan Details from Plan Definition | Completed |
-| 36 | F36 | Update ICD & move v2.2.0 tag | Not Started |
+| 36 | F36 | Update ICD & move v2.2.0 tag | Completed |

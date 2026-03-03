@@ -142,6 +142,19 @@ El objetivo de la interfaz es permitir que un usuario cargue planes de vuelo (t�
     \end{itemize}
 \end{itemize}
 
+\subsubsection*{Sprint 4 --- Bug Fixes, UX Polish \& Nuevas Funcionalidades}
+\begin{itemize}
+    \item \textbf{Fix popup waypoint manual --- OK cierra popup, Enter dispara OK} (Feature 27): El botón OK en popups de edición de waypoints ahora cierra el popup tras confirmar cambios. La tecla Enter dispara la misma lógica que OK. Aplicado también a todos los popups SCAN (takeoff, landing, vértices polígono).
+    \item \textbf{Mejoras SCAN pattern --- Add Vertex, bounds efectivos, validación drag} (Feature 28): Nuevo botón ``Add Vertex'' en paso 2 del sidebar SCAN; los límites del servicio usan \texttt{effectiveServiceLimits} (U-space seleccionado) en lugar de constantes globales; la operación de arrastrar vértices, takeoff y landing se valida contra los bounds del servicio.
+    \item \textbf{Segundo click en plan seleccionado abre modal de waypoints} (Feature 29): Al hacer click en un plan ya seleccionado, se abre el modal de previsualización de waypoints en lugar de deseleccionar el plan.
+    \item \textbf{Fix actualización de color de volúmenes 4D durante Play} (Feature 30): Se reemplaza la asignación directa de \texttt{material} y \texttt{outlineColor} en entidades Cesium por \texttt{ColorMaterialProperty} y \texttt{ConstantProperty}, lo que permite que Cesium detecte el cambio y re-renderice correctamente durante la animación.
+    \item \textbf{Fix polilínea de trayectoria 3D --- eliminado terreno AMSL} (Feature 31): Se elimina el muestreo de terreno (\texttt{sampleTerrainMostDetailed}) del visor \texttt{Trajectory3DViewer}; la polilínea usa directamente altitudes AGL del CSV, unificando la referencia de altura con waypoints y dron.
+    \item \textbf{Visor 3D de Geoawareness con geozonas extruidas} (Feature 32): Nuevo componente \texttt{Geoawareness3DModal} basado en CesiumJS que muestra geozonas como polígonos 3D extruidos coloreados por tipo de restricción (\texttt{GEOZONE\_COLORS}), trayectoria como polilínea azul y volúmenes de operación. Las geozonas son clickables y muestran información de autoridad, restricciones y aplicabilidad en un InfoBox. Modal de Geoawareness 2D ampliado (85vw/1600px). Botón ``3D Geoawareness'' en la barra de herramientas de Plan Authorization.
+    \item \textbf{Auto-relleno de email en formulario U-Plan} (Feature 33): El campo \texttt{contactDetails.emails[0]} del formulario U-Plan se pre-rellena automáticamente con el email del perfil del usuario activo.
+    \item \textbf{Sistema de borradores U-Plan} (Feature 34): Nuevo modelo Prisma \texttt{uplanDraft} para persistir borradores de U-Plan vinculados al usuario. Endpoints CRUD completos: \texttt{GET/POST /api/user/drafts} y \texttt{GET/PATCH/DELETE /api/user/drafts/[id]}. Sección ``U-Plan Drafts'' en la página \texttt{/profile} para listar, crear, editar nombre y eliminar borradores. El formulario \texttt{UplanFormModal} incluye desplegable ``Load Draft'' y botones ``Save as Draft'' / ``Update Draft''.
+    \item \textbf{Eliminación de sección Flight Plan Details de Plan Definition} (Feature 35): Se eliminan $\sim$840 líneas del componente \texttt{PlanGenerator} (estado \texttt{flightPlanDetails}, botón ``Flight Plan Details'' y todo su bloque de contenido), simplificando el flujo de definición de plan.
+\end{itemize}
+
 \subsection*{Novedades en V2.1.0}
 \begin{itemize}
     \item \textbf{Sistema de gestión de emails con MailerSend}:
@@ -494,7 +507,7 @@ El U-Plan se genera a partir del CSV y \texttt{scheduledAt} y contiene una lista
 \section{Versionado y Control de Cambios}
 \begin{itemize}
     \item \textbf{Versión del ICD}: \texttt{V\_2.2.0}.
-    \item \textbf{Versión de la aplicación}: \texttt{v2.2.0 SPIRIT} (Sprints 1--3: 26 funcionalidades nuevas, proxy SSE de Geoawareness, visores 3D completos, gestión de usuario, sistema de contacto, restricciones EU).
+    \item \textbf{Versión de la aplicación}: \texttt{v2.2.0 SPIRIT} (Sprints 1--4: 35 funcionalidades, proxy SSE de Geoawareness, visores 3D completos, gestión de usuario, sistema de contacto, restricciones EU, borradores U-Plan, visor Geoawareness 3D).
     \item \textbf{Cambios en v2.2.0 SPIRIT}:
     \begin{itemize}
         \item \textbf{Auth}: Eliminación de validación DNS en registro; caducidad de código de verificación a 3 min; doble-verificación safeguard.
@@ -509,7 +522,16 @@ El U-Plan se genera a partir del CSV y \texttt{scheduledAt} y contiene una lista
         \item \textbf{Renombrado de páginas}: Plan Generator $\rightarrow$ \texttt{/plan-definition}, Trajectory Generator $\rightarrow$ \texttt{/plan-authorization}.
         \item \textbf{Proxy SSE Geoawareness}: Backend conecta \texttt{ws://} internamente y sirve SSE al navegador via \texttt{GET /api/geoawareness/stream/[uspaceId]}; elimina mixed-content en HTTPS; depreca \texttt{NEXT\_PUBLIC\_GEOAWARENESS\_SERVICE\_IP}.
         \item \textbf{Fix Cesium assets}: \texttt{postinstall}/\texttt{prebuild} copian directorio completo \texttt{Build/Cesium/} (incluyendo \texttt{Cesium.js}) a \texttt{public/cesium/}.
-        \item \textbf{Nuevos endpoints}: \texttt{GET/PATCH /api/user/profile}, \texttt{POST /api/contact}, \texttt{GET /api/cesium/token}, \texttt{GET /api/geoawareness/stream/[uspaceId]}.
+        \item \textbf{Nuevos endpoints (Sprints 1--3)}: \texttt{GET/PATCH /api/user/profile}, \texttt{POST /api/contact}, \texttt{GET /api/cesium/token}, \texttt{GET /api/geoawareness/stream/[uspaceId]}.
+        \item \textbf{Sprint 4 --- Bug Fixes, UX Polish \& Nuevas Funcionalidades}:
+        \begin{itemize}
+            \item Fix popup waypoint (OK cierra, Enter confirma); mejoras SCAN (Add Vertex, bounds efectivos, drag validado); segundo click en plan abre waypoints.
+            \item Fix color 4D (\texttt{ColorMaterialProperty}/\texttt{ConstantProperty}); fix polilínea trayectoria 3D (eliminado AMSL, unificado AGL).
+            \item Nuevo \texttt{Geoawareness3DModal} con geozonas 3D extruidas, trayectoria y volúmenes.
+            \item Auto-relleno email U-Plan desde perfil; sistema de borradores U-Plan (\texttt{uplanDraft} + endpoints CRUD).
+            \item Eliminación de sección Flight Plan Details de Plan Definition ($\sim$840 líneas).
+        \end{itemize}
+        \item \textbf{Nuevos endpoints (Sprint 4)}: \texttt{GET/POST /api/user/drafts}, \texttt{GET/PATCH/DELETE /api/user/drafts/[id]}.
     \end{itemize}
     \item \textbf{Cambios en v2.1.0 SPIRIT}:
     \begin{itemize}
@@ -901,6 +923,11 @@ Si la conexión SSE falla después de 5 intentos de reconexión, el sistema acti
     \item \texttt{GET }\icdendpoint{/api/geoawareness/uspaces} (proxy para lista de U-spaces)
     \item \texttt{GET }\icdendpoint{/api/geoawareness/stream/[uspaceId]} (v2.2.0: proxy SSE de Geoawareness; retransmite WebSocket interno como SSE)
     \item \texttt{GET }\icdendpoint{/api/deprecated/geoawareness-geozones} (fallback HTTP, deprecated)
+    \item \texttt{GET }\icdendpoint{/api/user/drafts} (v2.2.0 Sprint 4: lista borradores U-Plan del usuario)
+    \item \texttt{POST }\icdendpoint{/api/user/drafts} (v2.2.0 Sprint 4: crea un borrador U-Plan)
+    \item \texttt{GET }\icdendpoint{/api/user/drafts/[id]} (v2.2.0 Sprint 4: obtiene un borrador específico)
+    \item \texttt{PATCH }\icdendpoint{/api/user/drafts/[id]} (v2.2.0 Sprint 4: actualiza nombre o datos de un borrador)
+    \item \texttt{DELETE }\icdendpoint{/api/user/drafts/[id]} (v2.2.0 Sprint 4: elimina un borrador)
 \end{itemize}
 
 \subsection*{C. Endpoints de streaming}
@@ -956,6 +983,7 @@ La aplicación se estructura en componentes modulares organizados por funcionali
     \item \texttt{Cesium3DModal}: Visor 3D de volúmenes de operación U-Plan con slider temporal 4D.
     \item \texttt{AuthorizationResultModal}: Modal unificado de resultado de autorización (2D + 3D).
     \item \texttt{Denial3DModal}: Visor 3D de denegación con geozonas conflictivas.
+    \item \texttt{Geoawareness3DModal}: Visor 3D de geozonas extruidas con trayectoria y volúmenes (v2.2.0 Sprint 4).
     \item \texttt{WaypointMapModal}: Modal para preview de waypoints en plan.
     \item \texttt{UplanViewModal}: Visualizador de volúmenes de operación en mapa.
     \item \texttt{UplanFormModal}: Formulario de edición de campos U-Plan (con tooltips \texttt{FieldHelp}).
@@ -976,6 +1004,11 @@ La aplicación se estructura en componentes modulares organizados por funcionali
 \subsubsection*{Componentes UI reutilizables (v2.2.0)}
 \begin{itemize}
     \item \texttt{FieldHelp}: Icono \texttt{?} con tooltip al click; explica acrónimos de aviación en formularios U-Plan.
+\end{itemize}
+
+\subsubsection*{Modelo de datos adicional (v2.2.0 Sprint 4)}
+\begin{itemize}
+    \item \texttt{uplanDraft}: Modelo Prisma para borradores de U-Plan. Campos: \texttt{id} (autoincremental), \texttt{userId} (FK $\rightarrow$ user), \texttt{name} (varchar), \texttt{draftData} (JSON), \texttt{createdAt}, \texttt{updatedAt}. Índice en \texttt{userId}; cascada en eliminación del usuario.
 \end{itemize}
 
 \subsubsection*{Sistema de temas (v2.0)}
