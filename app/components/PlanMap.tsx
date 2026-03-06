@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { MapContainer, TileLayer, Polyline, Rectangle, Polygon } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import { Marker, Popup, useMapEvents } from "react-leaflet";
+import { Marker, Popup, useMapEvents, useMap } from "react-leaflet";
 import L from "leaflet";
 import { Point, ScanWaypoint } from "@/lib/scan-generator";
 import { GeozoneLayer } from "./plan-definition/GeozoneLayer";
@@ -135,6 +135,7 @@ function EditablePopupContent({ wp, idx, onWaypointChange }: {
   onWaypointChange: (idx: number, field: WaypointField, value: number | boolean) => void;
 }) {
   const { t } = useI18n();
+  const map = useMap();
   const [localLat, setLocalLat] = React.useState(wp.lat.toString());
   const [localLng, setLocalLng] = React.useState(wp.lng.toString());
   
@@ -143,6 +144,14 @@ function EditablePopupContent({ wp, idx, onWaypointChange }: {
     setLocalLng(wp.lng.toFixed(7));
   }, [wp.lat, wp.lng]);
   
+  const handleOk = () => {
+    const lat = parseFloat(localLat);
+    const lng = parseFloat(localLng);
+    if (!isNaN(lat)) onWaypointChange(idx, 'lat', lat);
+    if (!isNaN(lng)) onWaypointChange(idx, 'lng', lng);
+    map.closePopup();
+  };
+
   const inputStyle: React.CSSProperties = {
     width: '100%', fontSize: '12px', padding: '2px 4px',
     border: '1px solid var(--border-primary, #ccc)', borderRadius: '3px', boxSizing: 'border-box',
@@ -164,7 +173,7 @@ function EditablePopupContent({ wp, idx, onWaypointChange }: {
         <input type="text" value={localLat}
           onChange={(e) => setLocalLat(e.target.value)}
           onBlur={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v)) { onWaypointChange(idx, 'lat', v); } else { setLocalLat(wp.lat.toFixed(7)); } }}
-          onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+          onKeyDown={(e) => { if (e.key === 'Enter') handleOk(); }}
           style={inputStyle} />
       </div>
       <div style={rowStyle}>
@@ -172,7 +181,7 @@ function EditablePopupContent({ wp, idx, onWaypointChange }: {
         <input type="text" value={localLng}
           onChange={(e) => setLocalLng(e.target.value)}
           onBlur={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v)) { onWaypointChange(idx, 'lng', v); } else { setLocalLng(wp.lng.toFixed(7)); } }}
-          onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+          onKeyDown={(e) => { if (e.key === 'Enter') handleOk(); }}
           style={inputStyle} />
       </div>
       <div style={rowStyle}>
@@ -209,12 +218,7 @@ function EditablePopupContent({ wp, idx, onWaypointChange }: {
       <div style={{ marginTop: '8px', borderTop: '1px solid var(--border-primary, #eee)', paddingTop: '6px' }}>
         <button
           type="button"
-          onClick={() => {
-            const lat = parseFloat(localLat);
-            const lng = parseFloat(localLng);
-            if (!isNaN(lat)) onWaypointChange(idx, 'lat', lat);
-            if (!isNaN(lng)) onWaypointChange(idx, 'lng', lng);
-          }}
+          onClick={handleOk}
           style={{
             width: '100%', padding: '4px 0', fontSize: '12px', fontWeight: 'bold',
             background: 'var(--color-primary, #3b82f6)', color: '#fff', border: 'none',
@@ -335,21 +339,85 @@ function createServiceAreaMask(bounds: [[number, number], [number, number]]): [n
   return [outer, inner];
 }
 
+// Reusable popup content for SCAN overlay markers (takeoff, landing, vertex)
+function ScanPopupContent({ title, subtitle, lat, lng, onCommit }: {
+  title: string;
+  subtitle?: React.ReactNode;
+  lat: number;
+  lng: number;
+  onCommit: (lat: number, lng: number) => void;
+}) {
+  const { t } = useI18n();
+  const map = useMap();
+  const [localLat, setLocalLat] = React.useState(lat.toFixed(7));
+  const [localLng, setLocalLng] = React.useState(lng.toFixed(7));
+  
+  React.useEffect(() => {
+    setLocalLat(lat.toFixed(7));
+    setLocalLng(lng.toFixed(7));
+  }, [lat, lng]);
+  
+  const handleOk = () => {
+    const parsedLat = parseFloat(localLat);
+    const parsedLng = parseFloat(localLng);
+    if (!isNaN(parsedLat) && !isNaN(parsedLng)) {
+      onCommit(parsedLat, parsedLng);
+    }
+    map.closePopup();
+  };
+  
+  const labelStyle: React.CSSProperties = {
+    fontSize: '11px', fontWeight: 'bold', display: 'block', marginBottom: '1px', color: 'var(--text-secondary, #555)',
+  };
+  const inputStyle: React.CSSProperties = {
+    width: '100%', fontSize: '12px', padding: '2px 4px',
+    border: '1px solid var(--border-primary, #ccc)', borderRadius: '3px', boxSizing: 'border-box',
+    backgroundColor: 'var(--input-bg, #fff)', color: 'var(--text-primary, #000)',
+  };
+  
+  return (
+    <div style={{ minWidth: '170px' }}>
+      <div style={{ fontWeight: 'bold', marginBottom: '6px', fontSize: '13px', borderBottom: '1px solid var(--border-primary, #eee)', paddingBottom: '4px', color: 'var(--text-primary, #000)' }}>
+        {title}
+        {subtitle}
+      </div>
+      <div style={{ marginBottom: '4px' }}>
+        <label style={labelStyle}>{t.planGenerator.latitude}</label>
+        <input type="text" value={localLat}
+          onChange={(e) => setLocalLat(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') handleOk(); }}
+          style={inputStyle} />
+      </div>
+      <div style={{ marginBottom: '4px' }}>
+        <label style={labelStyle}>{t.planGenerator.longitude}</label>
+        <input type="text" value={localLng}
+          onChange={(e) => setLocalLng(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') handleOk(); }}
+          style={inputStyle} />
+      </div>
+      <div style={{ marginTop: '8px', borderTop: '1px solid var(--border-primary, #eee)', paddingTop: '6px' }}>
+        <button
+          type="button"
+          onClick={handleOk}
+          style={{
+            width: '100%', padding: '4px 0', fontSize: '12px', fontWeight: 'bold',
+            background: 'var(--color-primary, #3b82f6)', color: '#fff', border: 'none',
+            borderRadius: '4px', cursor: 'pointer',
+          }}
+        >
+          OK
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // SCAN Pattern Overlays Component
 function ScanOverlays({ scanOverlays, onDragEnd }: { scanOverlays: any; onDragEnd?: (type: 'takeoff' | 'landing' | 'vertex', index: number, lat: number, lng: number) => void }) {
   const { t } = useI18n();
   if (!scanOverlays) return null;
   
   const { takeoffPoint, landingPoint, polygonVertices, polygonClosed, previewWaypoints } = scanOverlays;
-
-  const coordLabelStyle: React.CSSProperties = {
-    fontSize: '11px', fontWeight: 'bold', display: 'block', marginBottom: '1px', color: 'var(--text-secondary, #555)',
-  };
-  const coordInputStyle: React.CSSProperties = {
-    width: '100%', fontSize: '12px', padding: '2px 4px',
-    border: '1px solid var(--border-primary, #ccc)', borderRadius: '3px', boxSizing: 'border-box',
-    backgroundColor: 'var(--input-bg, #fff)', color: 'var(--text-primary, #000)',
-  };
   
   // Create custom icons for takeoff and landing
   const takeoffIcon = L.divIcon({
@@ -459,23 +527,12 @@ function ScanOverlays({ scanOverlays, onDragEnd }: { scanOverlays: any; onDragEn
           } : undefined}
         >
           <Popup minWidth={180}>
-            <div style={{ minWidth: '170px' }}>
-              <div style={{ fontWeight: 'bold', marginBottom: '6px', fontSize: '13px', borderBottom: '1px solid var(--border-primary, #eee)', paddingBottom: '4px', color: 'var(--text-primary, #000)' }}>
-                {t.planGenerator.takeoffPointLabel}
-              </div>
-              <div style={{ marginBottom: '4px' }}>
-                <label style={coordLabelStyle}>{t.planGenerator.latitude}</label>
-                <input type="number" step="any" defaultValue={takeoffPoint.lat}
-                  onBlur={(e) => { const v = Number(e.target.value); if (!isNaN(v) && onDragEnd) onDragEnd('takeoff', 0, v, takeoffPoint.lng); }}
-                  style={coordInputStyle} />
-              </div>
-              <div>
-                <label style={coordLabelStyle}>{t.planGenerator.longitude}</label>
-                <input type="number" step="any" defaultValue={takeoffPoint.lng}
-                  onBlur={(e) => { const v = Number(e.target.value); if (!isNaN(v) && onDragEnd) onDragEnd('takeoff', 0, takeoffPoint.lat, v); }}
-                  style={coordInputStyle} />
-              </div>
-            </div>
+            <ScanPopupContent
+              title={t.planGenerator.takeoffPointLabel}
+              lat={takeoffPoint.lat}
+              lng={takeoffPoint.lng}
+              onCommit={(lat, lng) => onDragEnd?.('takeoff', 0, lat, lng)}
+            />
           </Popup>
         </Marker>
       )}
@@ -494,23 +551,12 @@ function ScanOverlays({ scanOverlays, onDragEnd }: { scanOverlays: any; onDragEn
           } : undefined}
         >
           <Popup minWidth={180}>
-            <div style={{ minWidth: '170px' }}>
-              <div style={{ fontWeight: 'bold', marginBottom: '6px', fontSize: '13px', borderBottom: '1px solid var(--border-primary, #eee)', paddingBottom: '4px', color: 'var(--text-primary, #000)' }}>
-                {t.planGenerator.landingPointLabel}
-              </div>
-              <div style={{ marginBottom: '4px' }}>
-                <label style={coordLabelStyle}>{t.planGenerator.latitude}</label>
-                <input type="number" step="any" defaultValue={landingPoint.lat}
-                  onBlur={(e) => { const v = Number(e.target.value); if (!isNaN(v) && onDragEnd) onDragEnd('landing', 0, v, landingPoint.lng); }}
-                  style={coordInputStyle} />
-              </div>
-              <div>
-                <label style={coordLabelStyle}>{t.planGenerator.longitude}</label>
-                <input type="number" step="any" defaultValue={landingPoint.lng}
-                  onBlur={(e) => { const v = Number(e.target.value); if (!isNaN(v) && onDragEnd) onDragEnd('landing', 0, landingPoint.lat, v); }}
-                  style={coordInputStyle} />
-              </div>
-            </div>
+            <ScanPopupContent
+              title={t.planGenerator.landingPointLabel}
+              lat={landingPoint.lat}
+              lng={landingPoint.lng}
+              onCommit={(lat, lng) => onDragEnd?.('landing', 0, lat, lng)}
+            />
           </Popup>
         </Marker>
       )}
@@ -559,26 +605,15 @@ function ScanOverlays({ scanOverlays, onDragEnd }: { scanOverlays: any; onDragEn
               } : undefined}
             >
               <Popup minWidth={180}>
-                <div style={{ minWidth: '170px' }}>
-                  <div style={{ fontWeight: 'bold', marginBottom: '6px', fontSize: '13px', borderBottom: '1px solid var(--border-primary, #eee)', paddingBottom: '4px', color: 'var(--text-primary, #000)' }}>
-                    {t.planGenerator.vertex} {idx + 1}
-                    {idx === 0 && !polygonClosed && polygonVertices.length >= 3 && (
-                      <div style={{color: '#a855f7', fontSize: '11px', fontWeight: 'normal', marginTop: '2px'}}>{t.planGenerator.clickNearToClose}</div>
-                    )}
-                  </div>
-                  <div style={{ marginBottom: '4px' }}>
-                    <label style={coordLabelStyle}>{t.planGenerator.latitude}</label>
-                    <input type="number" step="any" defaultValue={v.lat}
-                      onBlur={(e) => { const val = Number(e.target.value); if (!isNaN(val) && onDragEnd) onDragEnd('vertex', idx, val, v.lng); }}
-                      style={coordInputStyle} />
-                  </div>
-                  <div>
-                    <label style={coordLabelStyle}>{t.planGenerator.longitude}</label>
-                    <input type="number" step="any" defaultValue={v.lng}
-                      onBlur={(e) => { const val = Number(e.target.value); if (!isNaN(val) && onDragEnd) onDragEnd('vertex', idx, v.lat, val); }}
-                      style={coordInputStyle} />
-                  </div>
-                </div>
+                <ScanPopupContent
+                  title={`${t.planGenerator.vertex} ${idx + 1}`}
+                  subtitle={idx === 0 && !polygonClosed && polygonVertices.length >= 3 ? (
+                    <div style={{color: '#a855f7', fontSize: '11px', fontWeight: 'normal', marginTop: '2px'}}>{t.planGenerator.clickNearToClose}</div>
+                  ) : undefined}
+                  lat={v.lat}
+                  lng={v.lng}
+                  onCommit={(lat, lng) => onDragEnd?.('vertex', idx, lat, lng)}
+                />
               </Popup>
             </Marker>
           ))}
