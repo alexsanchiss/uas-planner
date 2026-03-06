@@ -1236,9 +1236,9 @@ export function FlightPlansUploader() {
     }
   }, [flightPlans, denialMapModal])
 
-  // Task 6: Download U-Plan as JSON — generates volumes first if missing
+  // Task 6: Download U-Plan as JSON — always available; generates volumes first if missing or no uplan yet
   const handleDownloadUplanJson = useCallback(async (planId: string, uplanData: unknown, planName: string) => {
-    if (!uplanData || !planName) return
+    if (!planName) return
 
     const uplanObj = uplanData as { operationVolumes?: unknown[] } | null
     const hasVolumes = Array.isArray(uplanObj?.operationVolumes) && uplanObj.operationVolumes.length > 0
@@ -1637,9 +1637,9 @@ export function FlightPlansUploader() {
                   </svg>
                   3D Geoawareness
                 </button>
-                {/* Download U-Plan JSON button - always visible after processing */}
-                {/* Task 6: Auto-generates volumes before download if missing */}
-                {selectedPlan.uplan ? (
+                {/* Download U-Plan JSON button - visible once plan has a processed trajectory (csvResult) */}
+                {/* Task 6: Auto-generates uplan/volumes before download if missing */}
+                {selectedPlan.csvResult ? (
                   <button
                     onClick={() => handleDownloadUplanJson(selectedPlan.id, selectedPlan.uplan, selectedPlan.name)}
                     disabled={loadingPlanIds.downloading.has(selectedPlan.id)}

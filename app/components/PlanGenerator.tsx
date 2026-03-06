@@ -1358,6 +1358,7 @@ export default function PlanGenerator() {
                                     Lat:
                                   </label>
                                   <input
+                                    key={`lat-${idx}-${Number(wp.lat).toFixed(7)}`}
                                     type="text"
                                     defaultValue={Number(wp.lat).toFixed(7)}
                                     onBlur={(e) => {
@@ -1379,6 +1380,7 @@ export default function PlanGenerator() {
                                     Lon:
                                   </label>
                                   <input
+                                    key={`lng-${idx}-${Number(wp.lng).toFixed(7)}`}
                                     type="text"
                                     defaultValue={Number(wp.lng).toFixed(7)}
                                     onBlur={(e) => {
