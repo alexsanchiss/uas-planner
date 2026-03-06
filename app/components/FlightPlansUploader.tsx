@@ -276,6 +276,8 @@ export function FlightPlansUploader() {
     geoawarenessData: unknown
   }>({ open: false, uplan: null, authorizationMessage: null, geoawarenessData: null })
   const [generatingVolumes3D, setGeneratingVolumes3D] = useState<string | null>(null)
+  // Task 32: loading state for 3D Geoawareness open (volume generation)
+  const [generatingGeo3D, setGeneratingGeo3D] = useState<string | null>(null)
   // Task 18: Unified Authorization Result modal state
   const [authResultModal, setAuthResultModal] = useState<{
     open: boolean
@@ -1184,6 +1186,65 @@ export function FlightPlansUploader() {
     }
   }, [flightPlans, refreshPlans, toast])
 
+  // Task 32: Open 3D Geoawareness viewer — generates volumes first if missing, like View 3D U-Plan
+  const handleOpen3DGeoawareness = useCallback(async (planId: string) => {
+    const plan = flightPlans.find(p => String(p.id) === planId)
+    if (!plan) return
+
+    // Extract uspaceId from geoawareness data
+    let uspaceId: string | null = null
+    try {
+      const geoData = plan.geoawarenessData
+      if (geoData && typeof geoData === 'object' && 'uspace_identifier' in geoData) {
+        uspaceId = (geoData as { uspace_identifier: string }).uspace_identifier
+      }
+    } catch { /* ignore */ }
+
+    if (!uspaceId) {
+      toast.error('No U-Space identifier found. Run geoawareness check first.')
+      return
+    }
+
+    setGeneratingGeo3D(planId)
+    try {
+      const token = localStorage.getItem('authToken')
+      const response = await fetch(`/api/flightPlans/${planId}`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      })
+      if (!response.ok) throw new Error('Failed to fetch plan data')
+      const freshPlan = await response.json()
+
+      let uplanData: any = freshPlan.uplan
+      if (typeof uplanData === 'string') {
+        try { uplanData = JSON.parse(uplanData) } catch { uplanData = null }
+      }
+
+      const hasVolumes = Array.isArray(uplanData?.operationVolumes) && uplanData.operationVolumes.length > 0
+
+      if (!hasVolumes && freshPlan.csvResult) {
+        const volumeResponse = await fetch(`/api/flightPlans/${planId}/generate-volumes`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        })
+        if (!volumeResponse.ok) throw new Error('Failed to generate volumes')
+        const result = await volumeResponse.json()
+        refreshPlans().catch(err => console.error('[Open3DGeo] Refresh error:', err))
+        uplanData = result.uplan
+        toast.success(`Generated ${result.volumesGenerated} operation volumes`)
+      }
+
+      setGeoawareness3DModal({ open: true, planId, uspaceId, uplanData })
+    } catch (error) {
+      toast.error('Failed to open 3D Geoawareness viewer.')
+      console.error('[Open3DGeo] Error:', error)
+    } finally {
+      setGeneratingGeo3D(null)
+    }
+  }, [flightPlans, refreshPlans, toast])
+
   // Handle viewing authorization message - opens unified AuthorizationResultModal for both approved and denied plans
   const handleViewAuthorizationMessage = useCallback((planId: string, message: unknown) => {
     const plan = flightPlans.find(p => String(p.id) === planId)
@@ -1582,60 +1643,29 @@ export function FlightPlansUploader() {
                   </svg>
                   View Trajectory
                 </button>
-                {/* Check Geoawareness button */}
+                {/* Task 32: 3D Geoawareness viewer button (replaces deprecated 2D Check Geoawareness) */}
                 <button
-                  onClick={() => handleGeoawareness(selectedPlan.id)}
-                  disabled={loadingPlanIds.geoawareness.has(selectedPlan.id)}
+                  onClick={() => handleOpen3DGeoawareness(selectedPlan.id)}
+                  disabled={!selectedPlan.geoawarenessData || generatingGeo3D === selectedPlan.id}
+                  title={!selectedPlan.geoawarenessData ? 'Run geoawareness check first' : 'View geozones in 3D'}
                   className="px-4 py-2 text-sm font-medium text-[var(--text-primary)] bg-[var(--surface-tertiary)] border border-[var(--border-primary)] rounded-md hover:bg-[var(--bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors btn-interactive flex items-center gap-2"
                 >
-                  {loadingPlanIds.geoawareness.has(selectedPlan.id) ? (
+                  {generatingGeo3D === selectedPlan.id ? (
                     <>
                       <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                       </svg>
-                      Checking...
+                      Generating...
                     </>
                   ) : (
                     <>
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
                       </svg>
-                      Check Geoawareness
+                      3D Geoawareness
                     </>
                   )}
-                </button>
-                {/* Task 32: 3D Geoawareness viewer button */}
-                <button
-                  onClick={() => {
-                    const plan = flightPlans.find(p => String(p.id) === String(selectedPlan.id))
-                    if (!plan) return
-                    let uspaceId: string | null = null
-                    try {
-                      const geoData = plan.geoawarenessData
-                      if (geoData && typeof geoData === 'object' && 'uspace_identifier' in geoData) {
-                        uspaceId = (geoData as { uspace_identifier: string }).uspace_identifier
-                      }
-                    } catch { /* ignore */ }
-                    let uplanData: Record<string, unknown> | null = null
-                    try {
-                      uplanData = typeof plan.uplan === 'string' ? JSON.parse(plan.uplan) : plan.uplan as Record<string, unknown> | null
-                    } catch { /* ignore */ }
-                    setGeoawareness3DModal({
-                      open: true,
-                      planId: String(plan.id),
-                      uspaceId,
-                      uplanData,
-                    })
-                  }}
-                  disabled={!selectedPlan.geoawarenessData}
-                  title={!selectedPlan.geoawarenessData ? 'Run geoawareness check first' : 'View geozones in 3D'}
-                  className="px-4 py-2 text-sm font-medium text-[var(--text-primary)] bg-[var(--surface-tertiary)] border border-[var(--border-primary)] rounded-md hover:bg-[var(--bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors btn-interactive flex items-center gap-2"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-                  </svg>
-                  3D Geoawareness
                 </button>
                 {/* Download U-Plan JSON button - visible once plan has a processed trajectory (csvResult) */}
                 {/* Task 6: Auto-generates uplan/volumes before download if missing */}
@@ -2075,23 +2105,6 @@ export function FlightPlansUploader() {
           handleAuthorizePlan(planId)
         }}
       />
-
-      {/* TASK-076: Geoawareness viewer modal - shows trajectory over geozones */}
-      <Modal
-        open={geoawarenessModal.open}
-        onClose={() => setGeoawarenessModal({ open: false, planId: '', planName: '', uspaceId: null })}
-        title={`Geoawareness: ${geoawarenessModal.planName}`}
-        maxWidth="4xl"
-      >
-        <div className="h-[70vh] -mx-6 -mb-6">
-          <GeoawarenessViewer
-            key={geoawarenessModal.planId}
-            planId={geoawarenessModal.planId}
-            planName={geoawarenessModal.planName}
-            uspaceId={geoawarenessModal.uspaceId}
-          />
-        </div>
-      </Modal>
 
       {/* U-Space selector modal for external UPLANs */}
       <Modal
