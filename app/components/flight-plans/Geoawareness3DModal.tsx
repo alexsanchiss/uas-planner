@@ -422,39 +422,45 @@ const Geoawareness3DModal: React.FC<Geoawareness3DModalProps> = ({
         }
 
         // ─── 8. Render operation volumes (AGL → AMSL via terrain sampling) ───
+        // CesiumJS's RELATIVE_TO_GROUND for extruded polygons is unreliable:
+        // terrain tiles may not be loaded when entities are added, so polygons
+        // snap to the WGS84 ellipsoid (near-sea-level) instead of to terrain.
+        // Terrain sampling converts AGL values → absolute AMSL heights, which
+        // Cesium always renders correctly regardless of tile load state.
         const volumes = uplanData?.operationVolumes
         if (volumes && volumes.length > 0) {
-          // Collect one representative coordinate per volume to sample terrain
-          // in a single batch call (more efficient than per-vertex sampling).
-          interface VolumeSample { volIdx: number; lon: number; lat: number }
-          const samplePoints: VolumeSample[] = []
-          volumes.forEach((vol, idx) => {
+          // Collect one representative point per volume for batch terrain sampling.
+          interface VolSample { volIdx: number; cart: any }
+          const sampleData: VolSample[] = []
+          volumes.forEach((vol, i) => {
             const coords = vol.geometry?.coordinates?.[0]
             if (coords && coords.length > 0) {
               const [lon, lat] = coords[Math.floor(coords.length / 2)]
-              samplePoints.push({ volIdx: idx, lon, lat })
+              sampleData.push({ volIdx: i, cart: Cesium.Cartographic.fromDegrees(lon, lat) })
             }
           })
 
-          // Terrain heights keyed by volume index (metres AMSL)
-          const terrainByVol: Record<number, number> = {}
-          if (samplePoints.length > 0) {
+          // terrainH[volIdx] = meters AMSL of terrain at that volume's centre.
+          const terrainH: Record<number, number> = {}
+          if (sampleData.length > 0) {
             try {
-              const cartographics = samplePoints.map(sp =>
-                Cesium.Cartographic.fromDegrees(sp.lon, sp.lat),
-              )
               const sampled = await Cesium.sampleTerrainMostDetailed(
                 viewer.terrainProvider,
-                cartographics,
+                sampleData.map(s => s.cart),
               )
-              samplePoints.forEach((sp, i) => {
-                terrainByVol[sp.volIdx] = sampled[i]?.height ?? 0
+              sampleData.forEach((s, i) => {
+                terrainH[s.volIdx] = sampled[i]?.height ?? 0
               })
             } catch {
-              // If terrain sampling fails, volumes will appear above sea level (AMSL 0).
-              // This is an acceptable graceful degradation.
+              // Terrain sampling failed — fall back to RELATIVE_TO_GROUND below.
             }
           }
+
+          // Did we get at least one non-zero terrain height (distinguishes true
+          // sea-level from "terrain provider not ready yet")?  We accept zero for
+          // genuine sea-level locations, so we simply check whether the call
+          // returned any values at all.
+          const hasTerrain = Object.keys(terrainH).length > 0
 
           for (let idx = 0; idx < volumes.length; idx++) {
             const vol = volumes[idx]
@@ -470,20 +476,24 @@ const Geoawareness3DModal: React.FC<Geoawareness3DModalProps> = ({
 
             const lo = extractAlt(vol.minAltitude) ?? 10
             const hi = extractAlt(vol.maxAltitude) ?? 120
+            const groundH = terrainH[idx] ?? 0
 
-            // Convert AGL → absolute AMSL using sampled terrain height.
-            // Using absolute heights (no heightReference) avoids reliance on
-            // Cesium's async RELATIVE_TO_GROUND resolution for extruded polygons.
-            const terrainH = terrainByVol[idx] ?? 0
-            const lowerAmsl = terrainH + lo
-            const upperAmsl = terrainH + hi
+            // If terrain sampling succeeded: absolute AMSL heights (most reliable).
+            // If it failed: RELATIVE_TO_GROUND as fallback (works once tiles load).
+            const lowerH = hasTerrain ? groundH + lo : lo
+            const upperH = hasTerrain ? groundH + hi : hi
+            const polygonHeightRef = hasTerrain ? undefined : Cesium.HeightReference.RELATIVE_TO_GROUND
 
             viewer.entities.add({
               name: vol.name || `Volume ${idx + 1}`,
               polygon: {
                 hierarchy: Cesium.Cartesian3.fromDegreesArray(deg),
-                height: lowerAmsl,
-                extrudedHeight: upperAmsl,
+                height: lowerH,
+                extrudedHeight: upperH,
+                ...(polygonHeightRef !== undefined ? {
+                  heightReference: polygonHeightRef,
+                  extrudedHeightReference: polygonHeightRef,
+                } : {}),
                 material: Cesium.Color.fromCssColorString('rgba(51, 128, 255, 0.30)'),
                 outline: true,
                 outlineColor: Cesium.Color.fromCssColorString('rgba(51, 128, 255, 0.8)'),
