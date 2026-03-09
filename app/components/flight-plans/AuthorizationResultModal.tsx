@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { MapContainer, TileLayer, Polygon, Tooltip, useMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
+import { useGeoawarenessWebSocket, type GeozoneData } from '@/app/hooks/useGeoawarenessWebSocket'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -147,6 +148,44 @@ function feetToMeters(ft: number): number {
   return ft * 0.3048
 }
 
+const GEOZONE_COLORS: Record<string, string> = {
+  'U-SPACE':           '#e41a1c',
+  'PROHIBITED':        '#4daf4a',
+  'REQ_AUTHORIZATION': '#ff7f00',
+  'CONDITIONAL':       '#a65628',
+  'NO_RESTRICTION':    '#999999',
+}
+
+function getGeozoneColor(type: string | undefined): string {
+  if (!type) return '#999999'
+  return GEOZONE_COLORS[type.toUpperCase()] || '#999999'
+}
+
+function extractGeozonePolygonCoords(gz: GeozoneData): [number, number][] | null {
+  const geom = gz.geometry
+  if (!geom?.coordinates) return null
+  try {
+    if (geom.type === 'Polygon') {
+      const rings = geom.coordinates as number[][][]
+      return toLeafletCoords(rings[0] || [])
+    }
+    if (geom.type === 'MultiPolygon') {
+      const polys = geom.coordinates as number[][][][]
+      return toLeafletCoords(polys[0]?.[0] || [])
+    }
+  } catch { /* ignore invalid geometry */ }
+  return null
+}
+
+function extractGeozoneAltsFromWs(gz: GeozoneData): { lower: number; upper: number } {
+  const vRef = gz.geometry?.verticalReference
+  const uom = (vRef?.uom || 'M').toUpperCase()
+  let lower = 0, upper = 150
+  if (vRef?.lower != null) lower = uom === 'FT' ? feetToMeters(vRef.lower) : vRef.lower
+  if (vRef?.upper != null) upper = uom === 'FT' ? feetToMeters(vRef.upper) : vRef.upper
+  return { lower, upper }
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function loadCesiumScript(): Promise<any> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -183,8 +222,11 @@ function loadCesiumScript(): Promise<any> {
 
 function FitBoundsHandler({ allCoords }: { allCoords: [number, number][] }) {
   const map = useMap()
+  // Fit once when coordinates become available — never re-fit so the user
+  // can pan/zoom freely after the initial view.
+  const fittedRef = useRef(false)
   useEffect(() => {
-    if (allCoords.length === 0) return
+    if (fittedRef.current || allCoords.length === 0) return
     const lats = allCoords.map(c => c[0])
     const lngs = allCoords.map(c => c[1])
     const bounds: [[number, number], [number, number]] = [
@@ -192,6 +234,7 @@ function FitBoundsHandler({ allCoords }: { allCoords: [number, number][] }) {
       [Math.max(...lats), Math.max(...lngs)],
     ]
     map.fitBounds(bounds, { padding: [40, 40] })
+    fittedRef.current = true
   }, [map, allCoords])
   return null
 }
@@ -224,14 +267,26 @@ interface Cesium3DViewProps {
     geometry: { type: string; coordinates: number[][][] | number[][] }
     verticalReference?: ConflictingGeozone['verticalReference']
   }[]
+  allGeozonesWs?: GeozoneData[]
+  conflictingGeozoneIds?: Set<string>
 }
 
-function Cesium3DView({ volumes, isApproved, conflictingIndices, geozones }: Cesium3DViewProps) {
+function Cesium3DView({ volumes, isApproved, conflictingIndices, geozones, allGeozonesWs, conflictingGeozoneIds }: Cesium3DViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const viewerRef = useRef<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Keep refs in sync with the latest props on every render.
+  // The init effect reads from these refs so it always sees the freshest
+  // geozone data without needing allGeozonesWs/conflictingGeozoneIds in its
+  // dependency array — avoiding a full Cesium viewer teardown+recreate on
+  // every periodic WebSocket update.
+  const allGeozonesWsRef = useRef<GeozoneData[]>([])
+  const conflictingGeozoneIdsRef = useRef<Set<string>>(new Set())
+  allGeozonesWsRef.current = allGeozonesWs ?? []
+  conflictingGeozoneIdsRef.current = conflictingGeozoneIds ?? new Set()
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -384,52 +439,135 @@ function Cesium3DView({ volumes, isApproved, conflictingIndices, geozones }: Ces
           })
         }
 
-        // Add geozones (denied only)
-        for (const gz of geozones) {
-          const rawCoords = gz.geometry.type === 'Polygon'
-            ? gz.geometry.coordinates[0] as number[][]
-            : gz.geometry.coordinates as unknown as number[][]
-          if (!rawCoords || rawCoords.length === 0) continue
+        // Add geozones — use WebSocket data (all geozones) when available, fall back to conflicting-only from denial
+        // Read geozone snapshot from ref (captured at render time, before this
+        // async init ran).  This way geozones are rendered without the init
+        // effect needing allGeozonesWs/conflictingGeozoneIds in its dep array.
+        const geozonesSnapshot = allGeozonesWsRef.current
+        const conflictingIdsSnapshot = conflictingGeozoneIdsRef.current
+        const useWsGeozones = geozonesSnapshot.length > 0
+        if (useWsGeozones) {
+          for (const gz of geozonesSnapshot) {
+            const geom = gz.geometry
+            if (!geom) continue
+            const rawCoords = geom.coordinates
+            if (!rawCoords || !Array.isArray(rawCoords) || rawCoords.length === 0) continue
 
-          const degreesArray: number[] = []
-          rawCoords.forEach((c: number[]) => {
-            degreesArray.push(c[0], c[1])
-            allPositions.push(Cesium.Cartographic.fromDegrees(c[0], c[1]))
-          })
+            // Robust ring extraction — handles string-encoded coords, ring-of-rings vs flat
+            let ring: number[][]
+            try {
+              const parsed = typeof rawCoords === 'string' ? JSON.parse(rawCoords as unknown as string) : rawCoords
+              if (geom.type === 'Polygon') {
+                // coords: [ring0, ring1, ...] → take outer ring
+                ring = (Array.isArray(parsed[0]) && Array.isArray(parsed[0][0])) ? parsed[0] : (parsed as number[][])
+              } else if (geom.type === 'MultiPolygon') {
+                // coords: [[ring0, ring1], ...] → take first polygon's outer ring
+                ring = (Array.isArray(parsed[0]) && Array.isArray(parsed[0][0]) && Array.isArray(parsed[0][0][0]))
+                  ? parsed[0][0]
+                  : parsed[0] as number[][]
+              } else {
+                continue // skip Point/Circle/unknown
+              }
+            } catch { continue }
+            if (!ring || ring.length === 0) continue
 
-          let lowerAlt = 0
-          let upperAlt = 150
-          const vRef = gz.verticalReference
-          if (vRef) {
-            const uom = (vRef.uom || 'M').toUpperCase()
-            if (typeof vRef.lower === 'number') lowerAlt = uom === 'FT' ? feetToMeters(vRef.lower) : vRef.lower
-            if (typeof vRef.upper === 'number') upperAlt = uom === 'FT' ? feetToMeters(vRef.upper) : vRef.upper
+            const degreesArray: number[] = []
+            ring.forEach((c: number[]) => {
+              if (!Array.isArray(c) || c.length < 2) return
+              degreesArray.push(c[0], c[1])
+              allPositions.push(Cesium.Cartesian3.fromDegrees(c[0], c[1]))
+            })
+            if (degreesArray.length < 6) continue // need at least 3 valid points
+
+            const gzId = gz.uas_geozones_identifier || (gz.properties?.identifier as string) || ''
+            const isConflicting = conflictingIdsSnapshot.has(gzId)
+            const type = (gz.properties?.type as string | undefined)?.toUpperCase()
+            const typeColorHex = getGeozoneColor(type)
+
+            const { lower: lowerAlt, upper: upperAlt } = extractGeozoneAltsFromWs(gz)
+            const fillAlpha = isConflicting ? 0.55 : 0.3
+            const outlineAlpha = isConflicting ? 1.0 : 0.75
+            const outlineWidth = isConflicting ? 3 : 1.5
+
+            const material = isConflicting
+              ? Cesium.Color.fromCssColorString('rgba(220, 38, 38, 0.55)')
+              : Cesium.Color.fromCssColorString(typeColorHex).withAlpha(fillAlpha)
+            const outlineColor = isConflicting
+              ? Cesium.Color.fromCssColorString('rgba(220, 38, 38, 1.0)')
+              : Cesium.Color.fromCssColorString(typeColorHex).withAlpha(outlineAlpha)
+            const gzName = (gz.properties?.name as string) || gzId || 'Geozone'
+            viewer.entities.add({
+              name: `${isConflicting ? '🚫 ' : '📍 '}${gzName}`,
+              polygon: {
+                hierarchy: Cesium.Cartesian3.fromDegreesArray(degreesArray),
+                // Geozone altitudes from the geoawareness service are AMSL.
+                // No heightReference → Cesium treats values as absolute (AMSL).
+                height: lowerAlt,
+                extrudedHeight: upperAlt,
+                material,
+                outline: true,
+                outlineColor,
+                outlineWidth,
+              },
+              description: [
+                '<table style="width:100%">',
+                `<tr><td><b>Geozone</b></td><td>${gzId}</td></tr>`,
+                gzName !== gzId ? `<tr><td><b>Name</b></td><td>${gzName}</td></tr>` : '',
+                type ? `<tr><td><b>Type</b></td><td>${type}</td></tr>` : '',
+                isConflicting ? `<tr><td><b>Status</b></td><td style="color:#f87171">⚠ CONFLICTING</td></tr>` : '',
+                `<tr><td><b>Lower</b></td><td>${lowerAlt.toFixed(0)} m AGL</td></tr>`,
+                `<tr><td><b>Upper</b></td><td>${upperAlt.toFixed(0)} m AGL</td></tr>`,
+                '</table>',
+              ].join(''),
+            })
           }
+        } else {
+          // Fallback: render only conflicting geozones from denial message
+          for (const gz of geozones) {
+            const rawCoords = gz.geometry.type === 'Polygon'
+              ? gz.geometry.coordinates[0] as number[][]
+              : gz.geometry.coordinates as unknown as number[][]
+            if (!rawCoords || rawCoords.length === 0) continue
 
-          viewer.entities.add({
-            name: `🚫 ${gz.identifier}`,
-            polygon: {
-              hierarchy: Cesium.Cartesian3.fromDegreesArray(degreesArray),
-              height: lowerAlt,
-              extrudedHeight: upperAlt,
-              heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND,
-              extrudedHeightReference: Cesium.HeightReference.RELATIVE_TO_GROUND,
-              material: Cesium.Color.fromCssColorString('rgba(245, 158, 11, 0.35)'),
-              outline: true,
-              outlineColor: Cesium.Color.fromCssColorString('rgba(245, 158, 11, 0.9)'),
-              outlineWidth: 2,
-            },
-            description: [
-              '<table style="width:100%">',
-              `<tr><td><b>Geozone</b></td><td>${gz.identifier}</td></tr>`,
-              gz.name ? `<tr><td><b>Name</b></td><td>${gz.name}</td></tr>` : '',
-              `<tr><td><b>Type</b></td><td>${gz.type}</td></tr>`,
-              gz.info ? `<tr><td><b>Info</b></td><td>${gz.info}</td></tr>` : '',
-              `<tr><td><b>Lower</b></td><td>${lowerAlt.toFixed(0)} m</td></tr>`,
-              `<tr><td><b>Upper</b></td><td>${upperAlt.toFixed(0)} m</td></tr>`,
-              '</table>',
-            ].join(''),
-          })
+            const degreesArray: number[] = []
+            rawCoords.forEach((c: number[]) => {
+              degreesArray.push(c[0], c[1])
+              allPositions.push(Cesium.Cartographic.fromDegrees(c[0], c[1]))
+            })
+
+            let lowerAlt = 0
+            let upperAlt = 150
+            const vRef = gz.verticalReference
+            if (vRef) {
+              const uom = (vRef.uom || 'M').toUpperCase()
+              if (typeof vRef.lower === 'number') lowerAlt = uom === 'FT' ? feetToMeters(vRef.lower) : vRef.lower
+              if (typeof vRef.upper === 'number') upperAlt = uom === 'FT' ? feetToMeters(vRef.upper) : vRef.upper
+            }
+
+            viewer.entities.add({
+              name: `🚫 ${gz.identifier}`,
+              polygon: {
+                hierarchy: Cesium.Cartesian3.fromDegreesArray(degreesArray),
+                // Fallback conflicting geozones: altitudes are AMSL (absolute).
+                height: lowerAlt,
+                extrudedHeight: upperAlt,
+                material: Cesium.Color.fromCssColorString('rgba(245, 158, 11, 0.35)'),
+                outline: true,
+                outlineColor: Cesium.Color.fromCssColorString('rgba(245, 158, 11, 0.9)'),
+                outlineWidth: 2,
+              },
+              description: [
+                '<table style="width:100%">',
+                `<tr><td><b>Geozone</b></td><td>${gz.identifier}</td></tr>`,
+                gz.name ? `<tr><td><b>Name</b></td><td>${gz.name}</td></tr>` : '',
+                `<tr><td><b>Type</b></td><td>${gz.type}</td></tr>`,
+                gz.info ? `<tr><td><b>Info</b></td><td>${gz.info}</td></tr>` : '',
+                `<tr><td><b>Lower</b></td><td>${lowerAlt.toFixed(0)} m</td></tr>`,
+                `<tr><td><b>Upper</b></td><td>${upperAlt.toFixed(0)} m</td></tr>`,
+                '</table>',
+              ].join(''),
+            })
+          }
         }
 
         // Camera
@@ -463,6 +601,10 @@ function Cesium3DView({ volumes, isApproved, conflictingIndices, geozones }: Ces
         viewerRef.current = null
       }
     }
+  // NOTE: allGeozonesWs and conflictingGeozoneIds are intentionally excluded.
+  // They are read via refs (allGeozonesWsRef / conflictingGeozoneIdsRef) so that
+  // periodic WebSocket messages don't trigger a full Cesium viewer teardown.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [volumes, isApproved, conflictingIndices, geozones])
 
   return (
@@ -502,10 +644,21 @@ function Cesium3DView({ volumes, isApproved, conflictingIndices, geozones }: Ces
                 <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: 'rgba(59, 130, 246, 0.5)' }} />
                 <span>OK volume</span>
               </div>
-              {geozones.length > 0 && (
+            </>
+          )}
+          {((allGeozonesWs?.length ?? 0) > 0 || geozones.length > 0) && (
+            <>
+              <div className="pt-1 border-t border-gray-600 mt-1 text-gray-400 font-semibold">Geozones</div>
+              {Object.entries(GEOZONE_COLORS).map(([type, color]) => (
+                <div key={type} className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: color + '80', border: `1.5px solid ${color}` }} />
+                  <span>{type.replace(/_/g, ' ')}</span>
+                </div>
+              ))}
+              {!isApproved && (conflictingGeozoneIds?.size ?? 0) > 0 && (
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: 'rgba(245, 158, 11, 0.5)' }} />
-                  <span>Geozone</span>
+                  <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: 'rgba(220,38,38,0.7)', border: '2px solid #dc2626' }} />
+                  <span>Conflicting geozone</span>
                 </div>
               )}
             </>
@@ -531,6 +684,44 @@ const AuthorizationResultModal: React.FC<AuthorizationResultModalProps> = ({
 
   const isApproved = status === 'aprobado'
   const denial = useMemo(() => (isApproved ? null : parseDenialMessage(reason)), [isApproved, reason])
+
+  // Extract uspaceId from stored geoawarenessData (field: uspace_identifier)
+  const uspaceId = useMemo(() => {
+    if (!geoawarenessData) return null
+    try {
+      const data = typeof geoawarenessData === 'string'
+        ? JSON.parse(geoawarenessData)
+        : geoawarenessData as Record<string, unknown>
+      return (data?.uspace_identifier as string) || null
+    } catch { return null }
+  }, [geoawarenessData])
+
+  // Connect to geoawareness SSE proxy to get ALL geozones for the U-space
+  const { data: geoWsData } = useGeoawarenessWebSocket({
+    uspaceId: isOpen ? uspaceId : null,
+    // Only enable if we actually have a uspaceId — external U-plans uploaded
+    // without a corresponding DB U-space entry will have uspaceId=null and
+    // should not attempt any WebSocket connection.
+    enabled: isOpen && !!uspaceId,
+    enableFallback: false,
+    maxRetries: 5,
+  })
+
+  // Memoised so that the fallback empty array is a stable reference.
+  // Without this, a new [] on every render cascades into Cesium3DView
+  // reinitializing and FitBoundsHandler re-zooming the 2D map.
+  const allGeozonesWs = useMemo(() => geoWsData?.geozones_data ?? [], [geoWsData])
+
+  // Build set of conflicting geozone IDs from denial message
+  const conflictingGeozoneIds = useMemo(() => {
+    const ids = new Set<string>()
+    if (!denial) return ids
+    for (const gz of denial.conflictingGeozones) {
+      const id = gz.identifier || gz.id?.toString() || ''
+      if (id) ids.add(id)
+    }
+    return ids
+  }, [denial])
 
   // Build geozone geometry lookup from geoawarenessData
   const geozoneGeometryLookup = useMemo(() => {
@@ -610,14 +801,40 @@ const AuthorizationResultModal: React.FC<AuthorizationResultModalProps> = ({
   }, [uplanData, isApproved, denial])
 
   const geozonePolygons2D = useMemo(() => {
+    // Prefer all geozones from WebSocket; fall back to conflicting-only from denial message
+    if (allGeozonesWs.length > 0) {
+      return allGeozonesWs
+        .map((gz) => {
+          const coords = extractGeozonePolygonCoords(gz)
+          if (!coords || coords.length < 3) return null
+          const id = gz.uas_geozones_identifier || (gz.properties?.identifier as string) || ''
+          const type = (gz.properties?.type as string) || 'UNKNOWN'
+          return {
+            coords,
+            identifier: id,
+            name: (gz.properties?.name as string) || '',
+            type,
+            info: '',
+            isConflicting: conflictingGeozoneIds.has(id),
+          }
+        })
+        .filter(Boolean) as { coords: [number, number][]; identifier: string; name: string; type: string; info: string; isConflicting: boolean }[]
+    }
     return resolvedGeozones.map((gz) => {
       const rawCoords = gz.geometry.type === 'Polygon'
         ? gz.geometry.coordinates[0] as number[][]
         : gz.geometry.coordinates as unknown as number[][]
       const leafletCoords = toLeafletCoords(rawCoords)
-      return { coords: leafletCoords, identifier: gz.identifier, name: gz.name, type: gz.type, info: gz.info }
+      return { coords: leafletCoords, identifier: gz.identifier, name: gz.name, type: gz.type, info: gz.info, isConflicting: true }
     })
-  }, [resolvedGeozones])
+  }, [allGeozonesWs, resolvedGeozones, conflictingGeozoneIds])
+
+  // Coords used for FitBoundsHandler: volumes only so the initial zoom centres
+  // on the flight plan, not on distant geozones.
+  const volCoords2D = useMemo(() =>
+    operationVolumes2D.flatMap(v => v.coords),
+    [operationVolumes2D]
+  )
 
   const allCoords2D = useMemo(() => {
     const coords: [number, number][] = []
@@ -770,7 +987,7 @@ const AuthorizationResultModal: React.FC<AuthorizationResultModalProps> = ({
                     scrollWheelZoom={true}
                     style={{ width: '100%', height: '100%' }}
                   >
-                    <FitBoundsHandler allCoords={allCoords2D} />
+                    <FitBoundsHandler allCoords={volCoords2D} />
                     <MapResizeHandler />
                     <TileLayer
                       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -821,21 +1038,35 @@ const AuthorizationResultModal: React.FC<AuthorizationResultModalProps> = ({
                         </Polygon>
                       )
                     })}
-                    {geozonePolygons2D.map((gz, idx) => (
-                      <Polygon
-                        key={`gz-${idx}`}
-                        positions={gz.coords}
-                        pathOptions={{ color: '#b91c1c', fillColor: '#f87171', fillOpacity: 0.3, weight: 2, dashArray: '8 4' }}
-                      >
-                        <Tooltip direction="top" offset={[0, -10]} sticky>
-                          <div className="text-xs min-w-[140px]">
-                            <div className="font-semibold text-red-700 mb-1">🚫 {gz.identifier}</div>
-                            {gz.name && <div className="text-gray-600 mb-1">{gz.name}</div>}
-                            <span className="text-gray-500">Type:</span> {gz.type}
-                          </div>
-                        </Tooltip>
-                      </Polygon>
-                    ))}
+                    {geozonePolygons2D.map((gz, idx) => {
+                      const typeColor = getGeozoneColor(gz.type?.toUpperCase())
+                      const color = gz.isConflicting ? '#dc2626' : typeColor
+                      const fillColor = gz.isConflicting ? '#ef4444' : typeColor
+                      return (
+                        <Polygon
+                          key={`gz-${idx}`}
+                          positions={gz.coords}
+                          pathOptions={{
+                            color,
+                            fillColor,
+                            fillOpacity: gz.isConflicting ? 0.4 : 0.25,
+                            weight: gz.isConflicting ? 3 : 1.5,
+                            dashArray: gz.isConflicting ? '8 4' : undefined,
+                          }}
+                        >
+                          <Tooltip direction="top" offset={[0, -10]} sticky>
+                            <div className="text-xs min-w-[140px]">
+                              <div className="font-semibold mb-1" style={{ color: gz.isConflicting ? '#b91c1c' : typeColor }}>
+                                {gz.isConflicting ? '🚫 ' : '📍 '}{gz.identifier}
+                              </div>
+                              {gz.name && <div className="text-gray-600 mb-1">{gz.name}</div>}
+                              <div><span className="text-gray-500">Type:</span> {gz.type}</div>
+                              {gz.isConflicting && <div className="text-red-600 font-medium mt-1">⚠ Conflicting</div>}
+                            </div>
+                          </Tooltip>
+                        </Polygon>
+                      )
+                    })}
                   </MapContainer>
                 </div>
               ) : (
@@ -862,10 +1093,22 @@ const AuthorizationResultModal: React.FC<AuthorizationResultModalProps> = ({
                       <span className="text-[var(--text-secondary)]">OK volume</span>
                     </div>
                     {geozonePolygons2D.length > 0 && (
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-3 rounded bg-red-400/40 border-2 border-red-700" style={{ borderStyle: 'dashed' }} />
-                        <span className="text-[var(--text-secondary)]">Geozone</span>
-                      </div>
+                      <>
+                        {Object.entries(GEOZONE_COLORS).map(([type, color]) =>
+                          geozonePolygons2D.some(gz => gz.type?.toUpperCase() === type) ? (
+                            <div key={type} className="flex items-center gap-2">
+                              <div className="w-4 h-3 rounded" style={{ backgroundColor: color + '55', border: `1.5px solid ${color}` }} />
+                              <span className="text-[var(--text-secondary)]">{type.replace(/_/g, ' ')}</span>
+                            </div>
+                          ) : null
+                        )}
+                        {!isApproved && geozonePolygons2D.some(gz => gz.isConflicting) && (
+                          <div className="flex items-center gap-2">
+                            <div className="w-4 h-3 rounded bg-red-400/40 border-2 border-red-700" style={{ borderStyle: 'dashed' }} />
+                            <span className="text-[var(--text-secondary)]">Conflicting geozone</span>
+                          </div>
+                        )}
+                      </>
                     )}
                   </>
                 )}
@@ -881,6 +1124,8 @@ const AuthorizationResultModal: React.FC<AuthorizationResultModalProps> = ({
                 isApproved={isApproved}
                 conflictingIndices={denial?.conflictingIndices ?? new Set()}
                 geozones={resolvedGeozones}
+                allGeozonesWs={allGeozonesWs}
+                conflictingGeozoneIds={conflictingGeozoneIds}
               />
             </div>
           )}
@@ -954,7 +1199,7 @@ const AuthorizationResultModal: React.FC<AuthorizationResultModalProps> = ({
             {totalVolumes > 0
               ? `${totalVolumes} operation volume${totalVolumes !== 1 ? 's' : ''}`
               : 'No operation volumes'}
-            {resolvedGeozones.length > 0 && ` · ${resolvedGeozones.length} geozone${resolvedGeozones.length !== 1 ? 's' : ''}`}
+            {geozonePolygons2D.length > 0 && ` · ${geozonePolygons2D.length} geozone${geozonePolygons2D.length !== 1 ? 's' : ''}`}
           </span>
           <button
             onClick={onClose}

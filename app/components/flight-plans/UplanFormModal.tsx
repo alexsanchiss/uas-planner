@@ -680,9 +680,25 @@ export default function UplanFormModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
-      <div className="bg-gray-900 rounded-lg shadow-lg w-full max-w-3xl max-h-[90vh] overflow-hidden relative flex flex-col">
+      <style>{`
+        @media (min-width: 640px) {
+          .uplan-modal-outer { margin-top: 60px !important; margin-bottom: 0 !important; }
+        }
+        @media (max-width: 639px) {
+          .uplan-modal-outer { margin-top: 20px !important; margin-bottom: 0 !important; }
+        }
+      `}</style>
+      <div className="bg-gray-900 rounded-lg shadow-lg w-full max-w-3xl max-h-[85vh] overflow-hidden relative flex flex-col uplan-modal-outer">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-700 flex items-center justify-between">
+        <div
+          className="px-6 py-4 border-b border-gray-700 flex items-center justify-between"
+          style={{
+            minHeight: '56px', // mobile default
+            flex: '0 0 auto',
+            background: 'inherit',
+            zIndex: 2,
+          }}
+        >
           <h2 className="text-xl font-bold text-white">
             Review U-Plan: {planName}
           </h2>
@@ -696,7 +712,23 @@ export default function UplanFormModal({
         </div>
 
         {/* Scrollable Form Content */}
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div
+          className="flex-1 overflow-y-auto px-6 py-4"
+          style={{
+            minHeight: 0,
+            paddingTop: '0px',
+          }}
+        >
+          <style>{`
+            @media (min-width: 640px) {
+              .uplan-modal-header { min-height: 64px !important; }
+              .uplan-modal-content { padding-top: 0 !important; }
+            }
+            @media (max-width: 639px) {
+              .uplan-modal-header { min-height: 56px !important; }
+              .uplan-modal-content { padding-top: 4px !important; }
+            }
+          `}</style>
           <form onSubmit={(e) => { e.preventDefault(); }}>
             {/* Draft Toolbar */}
             <div className="mb-4 p-3 bg-gray-800 border border-gray-700 rounded-md">
