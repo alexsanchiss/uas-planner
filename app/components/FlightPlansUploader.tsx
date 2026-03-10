@@ -184,6 +184,7 @@ export function FlightPlansUploader() {
   // UI State
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null)
   const selectPlanHandled = useRef(false)
+  const isPollingRef = useRef(true) // Track polling state to avoid redundant start/stop calls
   const [isCreatingFolder, setIsCreatingFolder] = useState(false)
   // TASK-088: Processing confirmation dialog state
   const [processingConfirmDialog, setProcessingConfirmDialog] = useState<{
@@ -341,10 +342,13 @@ export function FlightPlansUploader() {
     const needsPolling = flightPlans.some(
       p => p.status === 'en cola' || p.status === 'procesando' || p.authorizationStatus === 'pendiente'
     )
-    if (needsPolling) {
+    // Only call start/stop when the desired state differs from current state
+    if (needsPolling && !isPollingRef.current) {
       startPolling()
-    } else {
+      isPollingRef.current = true
+    } else if (!needsPolling && isPollingRef.current) {
       stopPolling()
+      isPollingRef.current = false
     }
   }, [flightPlans, plansLoading, stopPolling, startPolling])
 
