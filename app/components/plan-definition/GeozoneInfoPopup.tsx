@@ -229,7 +229,7 @@ function CollapsibleSection({ title, children, defaultExpanded = false, icon }: 
       {/* Section content - animated */}
       <div 
         className={`overflow-hidden transition-all duration-200 ease-in-out ${
-          isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+          isExpanded ? 'max-h-60 opacity-100' : 'max-h-0 opacity-0'
         }`}
       >
         <div className="px-2 py-2 text-xs text-[var(--text-secondary)] bg-[var(--surface-primary)]">
@@ -406,7 +406,7 @@ export function GeozoneInfoPopup({ geozone, position, onClose }: GeozoneInfoPopu
       closeButton={true}
       className="geozone-info-popup"
     >
-      <div className="min-w-[260px] max-w-[360px]">
+      <div className="min-w-[260px] max-w-[360px] max-h-[60vh] overflow-y-auto">
         {/* Header with identifier and type badge */}
         <div 
           className="px-3 py-2 -mx-2 -mt-2 mb-3 rounded-t"

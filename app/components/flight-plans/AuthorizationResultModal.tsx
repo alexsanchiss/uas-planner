@@ -515,8 +515,8 @@ function Cesium3DView({ volumes, isApproved, conflictingIndices, geozones, allGe
                 gzName !== gzId ? `<tr><td><b>Name</b></td><td>${gzName}</td></tr>` : '',
                 type ? `<tr><td><b>Type</b></td><td>${type}</td></tr>` : '',
                 isConflicting ? `<tr><td><b>Status</b></td><td style="color:#f87171">⚠ CONFLICTING</td></tr>` : '',
-                `<tr><td><b>Lower</b></td><td>${lowerAlt.toFixed(0)} m AGL</td></tr>`,
-                `<tr><td><b>Upper</b></td><td>${upperAlt.toFixed(0)} m AGL</td></tr>`,
+                `<tr><td><b>Lower</b></td><td>${lowerAlt.toFixed(0)} m AMSL</td></tr>`,
+                `<tr><td><b>Upper</b></td><td>${upperAlt.toFixed(0)} m AMSL</td></tr>`,
                 '</table>',
               ].join(''),
             })

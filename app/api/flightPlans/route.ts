@@ -23,6 +23,8 @@ import {
   safeParseBody,
 } from '@/lib/validators';
 import { z } from 'zod';
+import { sendPlanDeletionEmail } from '@/lib/email';
+import logger from '@/lib/logger';
 
 /**
  * FAS API URL - defaults to production server if not configured.
@@ -523,6 +525,22 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
       const failed = cancellationResults.filter((r) => r.status === 'rejected').length;
       if (failed > 0) {
         console.warn(`[FAS Cancellation] ${failed}/${approvedPlans.length} bulk cancellations failed`);
+      }
+
+      // Notify user via email for each approved plan (fire-and-forget)
+      const owner = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { email: true },
+      });
+      if (owner?.email) {
+        for (const plan of approvedPlans) {
+          sendPlanDeletionEmail(owner.email, plan.customName)
+            .catch(err => logger.error('Failed to send plan deletion email', {
+              userId,
+              planId: plan.id,
+              error: err instanceof Error ? err.message : String(err),
+            }));
+        }
       }
     }
 

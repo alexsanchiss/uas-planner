@@ -164,6 +164,8 @@ export function FlightPlansUploader() {
     errorCount: pollingErrorCount,
     resetErrors: resetPollingErrors,
     importExternalUplan,
+    stopPolling,
+    startPolling,
   } = useFlightPlans({ pollingEnabled: true, pollingInterval: 1000 })
   
   const {
@@ -331,6 +333,20 @@ export function FlightPlansUploader() {
   
   // TASK-222: Drag state for orphan plans drop zone
   const [isDraggingOverOrphans, setIsDraggingOverOrphans] = useState(false)
+
+  // Stop polling once all plans are in terminal states (no plan is actively processing or pending authorization).
+  // This prevents unnecessary re-renders that cause the Cesium 3D viewer to reload.
+  useEffect(() => {
+    if (plansLoading || flightPlans.length === 0) return
+    const needsPolling = flightPlans.some(
+      p => p.status === 'en cola' || p.status === 'procesando' || p.authorizationStatus === 'pendiente'
+    )
+    if (needsPolling) {
+      startPolling()
+    } else {
+      stopPolling()
+    }
+  }, [flightPlans, plansLoading, stopPolling, startPolling])
 
   // Task 21: Auto-select plan from query parameter (Plan Definition redirect)
   useEffect(() => {
