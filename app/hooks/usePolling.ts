@@ -177,7 +177,7 @@ export function usePolling<T>(
     setIsPolling(true)
   }, [])
 
-  // Setup and cleanup polling interval
+  // Initial fetch on mount
   useEffect(() => {
     mountedRef.current = true
 
@@ -188,6 +188,13 @@ export function usePolling<T>(
       setLoading(false)
     }
 
+    return () => {
+      mountedRef.current = false
+    }
+  }, [immediate])
+
+  // Setup and cleanup polling interval
+  useEffect(() => {
     // Setup polling interval with exponential backoff on errors
     if (isPolling && interval > 0) {
       // Calculate interval with backoff based on error count
@@ -202,13 +209,12 @@ export function usePolling<T>(
 
     // Cleanup on unmount or when polling settings change
     return () => {
-      mountedRef.current = false
       if (intervalRef.current) {
         clearInterval(intervalRef.current)
         intervalRef.current = null
       }
     }
-  }, [isPolling, interval, immediate, executeFetch, errorCount])
+  }, [isPolling, interval, errorCount])
 
   // Handle enabled option changes
   useEffect(() => {
