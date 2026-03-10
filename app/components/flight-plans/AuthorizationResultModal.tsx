@@ -253,6 +253,12 @@ function MapResizeHandler() {
   return null
 }
 
+// Stable empty-set constants — reused as fallback props so that component
+// renders for approved plans never pass a freshly-allocated `new Set()` to
+// Cesium3DView's effect dependency array, which would retrigger a full viewer
+// teardown+recreate on every poll cycle.
+const EMPTY_CONFLICT_INDICES = new Set<number>()
+
 // ─── 3D Viewer Sub-component ────────────────────────────────────────────────
 
 interface Cesium3DViewProps {
@@ -280,13 +286,15 @@ function Cesium3DView({ volumes, isApproved, conflictingIndices, geozones, allGe
 
   // Keep refs in sync with the latest props on every render.
   // The init effect reads from these refs so it always sees the freshest
-  // geozone data without needing allGeozonesWs/conflictingGeozoneIds in its
-  // dependency array — avoiding a full Cesium viewer teardown+recreate on
-  // every periodic WebSocket update.
+  // data without needing these in its dependency array — avoiding a full
+  // Cesium viewer teardown+recreate on every periodic WebSocket update or
+  // whenever the parent re-renders with a fresh Set() reference.
   const allGeozonesWsRef = useRef<GeozoneData[]>([])
   const conflictingGeozoneIdsRef = useRef<Set<string>>(new Set())
+  const conflictingIndicesRef = useRef<Set<number>>(new Set())
   allGeozonesWsRef.current = allGeozonesWs ?? []
   conflictingGeozoneIdsRef.current = conflictingGeozoneIds ?? new Set()
+  conflictingIndicesRef.current = conflictingIndices
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -375,7 +383,8 @@ function Cesium3DView({ volumes, isApproved, conflictingIndices, geozones, allGe
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const allPositions: any[] = []
-        const hasSpecificIndices = conflictingIndices.size > 0
+        const currentConflictingIndices = conflictingIndicesRef.current
+        const hasSpecificIndices = currentConflictingIndices.size > 0
         const allConflicting = !isApproved && !hasSpecificIndices
 
         for (let idx = 0; idx < volumes.length; idx++) {
@@ -395,7 +404,7 @@ function Cesium3DView({ volumes, isApproved, conflictingIndices, geozones, allGe
           let isConflicting = false
           if (!isApproved) {
             isConflicting = hasSpecificIndices
-              ? conflictingIndices.has(vol.ordinal ?? idx)
+              ? currentConflictingIndices.has(vol.ordinal ?? idx)
               : allConflicting
           }
 
@@ -601,11 +610,12 @@ function Cesium3DView({ volumes, isApproved, conflictingIndices, geozones, allGe
         viewerRef.current = null
       }
     }
-  // NOTE: allGeozonesWs and conflictingGeozoneIds are intentionally excluded.
-  // They are read via refs (allGeozonesWsRef / conflictingGeozoneIdsRef) so that
-  // periodic WebSocket messages don't trigger a full Cesium viewer teardown.
+  // NOTE: allGeozonesWs, conflictingGeozoneIds, and conflictingIndices are
+  // intentionally excluded from deps — they are read via refs so that periodic
+  // WebSocket messages or new Set() fallback references (e.g. for approved
+  // plans where denial=null) don't trigger a full Cesium viewer teardown.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [volumes, isApproved, conflictingIndices, geozones])
+  }, [volumes, isApproved, geozones])
 
   return (
     <div className="relative w-full" style={{ minHeight: '450px' }}>
@@ -915,7 +925,7 @@ const AuthorizationResultModal: React.FC<AuthorizationResultModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-[var(--surface-primary)] dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
+      <div className="mt-20 bg-[var(--surface-primary)] dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className={`px-6 py-4 border-b flex items-center justify-between ${
           isApproved
@@ -1122,7 +1132,7 @@ const AuthorizationResultModal: React.FC<AuthorizationResultModalProps> = ({
               <Cesium3DView
                 volumes={uplanData?.operationVolumes || []}
                 isApproved={isApproved}
-                conflictingIndices={denial?.conflictingIndices ?? new Set()}
+                conflictingIndices={denial?.conflictingIndices ?? EMPTY_CONFLICT_INDICES}
                 geozones={resolvedGeozones}
                 allGeozonesWs={allGeozonesWs}
                 conflictingGeozoneIds={conflictingGeozoneIds}
