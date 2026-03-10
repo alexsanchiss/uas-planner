@@ -78,8 +78,23 @@ function loadCesiumScript(): Promise<any> {
 function extractAlt(alt: unknown): number | null {
   if (alt == null) return null
   if (typeof alt === 'number') return alt
-  if (typeof alt === 'object' && (alt as any).value != null) return Number((alt as any).value)
+  if (typeof alt === 'object' && (alt as any).value != null) {
+    let val = Number((alt as any).value)
+    const uom = ((alt as any).uom || 'M').toUpperCase()
+    if (uom === 'FT') val = val * 0.3048
+    return val
+  }
   return null
+}
+
+/**
+ * Returns true when the altitude uses WGS84/absolute reference (i.e. already
+ * an ellipsoid height — must NOT have terrain height added on top).
+ */
+function isAbsoluteAlt(alt: unknown): boolean {
+  if (alt == null || typeof alt !== 'object') return false
+  const ref = ((alt as any).reference || '').toUpperCase()
+  return ref === 'WGS84' || ref === 'W84' || ref === 'AMSL' || ref === 'MSL'
 }
 
 function feetToMeters(ft: number): number {
@@ -421,12 +436,16 @@ const Geoawareness3DModal: React.FC<Geoawareness3DModalProps> = ({
           })
         }
 
-        // ─── 8. Render operation volumes (AGL → AMSL via terrain sampling) ───
-        // CesiumJS's RELATIVE_TO_GROUND for extruded polygons is unreliable:
-        // terrain tiles may not be loaded when entities are added, so polygons
-        // snap to the WGS84 ellipsoid (near-sea-level) instead of to terrain.
-        // Terrain sampling converts AGL values → absolute AMSL heights, which
-        // Cesium always renders correctly regardless of tile load state.
+        // ─── 8. Render operation volumes (AGL → absolute AMSL via terrain sampling) ───
+        // Strategy: sample the WGS84 ellipsoid height at each volume's centre once,
+        // then compute absolute heights (groundH + AGL value) so the polygon renders
+        // correctly regardless of when terrain tiles finish loading.
+        //
+        // Per-volume fallback: if the terrain sample for a specific volume is
+        // undefined or NaN (provider not ready, no data for that tile), that volume
+        // falls back to HeightReference.RELATIVE_TO_GROUND individually — avoiding
+        // the previous bug where a single failed sample (returning undefined → 0)
+        // caused the whole plan to appear at sea-level when hasTerrain was still true.
         const volumes = uplanData?.operationVolumes
         if (volumes && volumes.length > 0) {
           // Collect one representative point per volume for batch terrain sampling.
@@ -440,7 +459,9 @@ const Geoawareness3DModal: React.FC<Geoawareness3DModalProps> = ({
             }
           })
 
-          // terrainH[volIdx] = meters AMSL of terrain at that volume's centre.
+          // terrainH[volIdx] = WGS84 ellipsoid height of terrain at that volume's centre.
+          // Only populated when the sampled height is a finite number — avoids treating
+          // an undefined/NaN result (provider not ready) as sea-level (0).
           const terrainH: Record<number, number> = {}
           if (sampleData.length > 0) {
             try {
@@ -449,18 +470,17 @@ const Geoawareness3DModal: React.FC<Geoawareness3DModalProps> = ({
                 sampleData.map(s => s.cart),
               )
               sampleData.forEach((s, i) => {
-                terrainH[s.volIdx] = sampled[i]?.height ?? 0
+                const h = sampled[i]?.height
+                if (typeof h === 'number' && isFinite(h)) {
+                  terrainH[s.volIdx] = h
+                }
+                // If h is undefined/NaN, leave terrainH[volIdx] unset so this
+                // volume falls back to RELATIVE_TO_GROUND individually.
               })
             } catch {
-              // Terrain sampling failed — fall back to RELATIVE_TO_GROUND below.
+              // Terrain sampling failed entirely — all volumes will use fallback.
             }
           }
-
-          // Did we get at least one non-zero terrain height (distinguishes true
-          // sea-level from "terrain provider not ready yet")?  We accept zero for
-          // genuine sea-level locations, so we simply check whether the call
-          // returned any values at all.
-          const hasTerrain = Object.keys(terrainH).length > 0
 
           for (let idx = 0; idx < volumes.length; idx++) {
             const vol = volumes[idx]
@@ -476,13 +496,36 @@ const Geoawareness3DModal: React.FC<Geoawareness3DModalProps> = ({
 
             const lo = extractAlt(vol.minAltitude) ?? 10
             const hi = extractAlt(vol.maxAltitude) ?? 120
+
+            // If the altitude is already WGS84-absolute, use it directly.
+            // Otherwise treat as AGL and add sampled terrain height.
+            const loAbsolute = isAbsoluteAlt(vol.minAltitude)
+            const hiAbsolute = isAbsoluteAlt(vol.maxAltitude)
+
+            // Per-volume: did we get a valid terrain sample for this specific volume?
+            const hasSampledTerrain = idx in terrainH
             const groundH = terrainH[idx] ?? 0
 
-            // If terrain sampling succeeded: absolute AMSL heights (most reliable).
-            // If it failed: RELATIVE_TO_GROUND as fallback (works once tiles load).
-            const lowerH = hasTerrain ? groundH + lo : lo
-            const upperH = hasTerrain ? groundH + hi : hi
-            const polygonHeightRef = hasTerrain ? undefined : Cesium.HeightReference.RELATIVE_TO_GROUND
+            let lowerH: number
+            let upperH: number
+            let polygonHeightRef: any
+
+            if (loAbsolute || hiAbsolute) {
+              // Absolute (WGS84) altitude — render directly, no terrain offset.
+              lowerH = lo
+              upperH = hi
+              polygonHeightRef = undefined
+            } else if (hasSampledTerrain) {
+              // AGL + successful terrain sample → absolute AMSL heights.
+              lowerH = groundH + lo
+              upperH = groundH + hi
+              polygonHeightRef = undefined
+            } else {
+              // AGL + no terrain sample → RELATIVE_TO_GROUND fallback for this volume.
+              lowerH = lo
+              upperH = hi
+              polygonHeightRef = Cesium.HeightReference.RELATIVE_TO_GROUND
+            }
 
             viewer.entities.add({
               name: vol.name || `Volume ${idx + 1}`,
@@ -512,41 +555,75 @@ const Geoawareness3DModal: React.FC<Geoawareness3DModalProps> = ({
           }
         }
 
-        // ─── 9. Render trajectory waypoint markers ────────────────────────
+        // ─── 9. Render trajectory: polyline path + takeoff/landing markers ──
         if (trajectory.length > 0) {
+          // Sample terrain height for each trajectory waypoint so the polyline
+          // uses the same absolute-height coordinate system as the volumes.
+          // This ensures the path visually starts at 0 m AGL (ground) and rises
+          // consistently alongside the operation volume geometry.
+          const trajTerrainH: number[] = new Array(trajectory.length).fill(0)
+          try {
+            const trajCarts = trajectory.map(p => Cesium.Cartographic.fromDegrees(p.lng, p.lat))
+            const trajSampled = await Cesium.sampleTerrainMostDetailed(viewer.terrainProvider, trajCarts)
+            trajSampled.forEach((c: any, i: number) => {
+              const h = c?.height
+              if (typeof h === 'number' && isFinite(h)) trajTerrainH[i] = h
+            })
+          } catch { /* fallback: keep 0s — polyline appears at absolute AGL values */ }
+
+          // Build absolute Cartesian3 positions for the polyline
+          const trajAbsPositions = trajectory.map((p, i) =>
+            Cesium.Cartesian3.fromDegrees(p.lng, p.lat, trajTerrainH[i] + p.alt)
+          )
+
+          // Polyline connecting all waypoints
+          viewer.entities.add({
+            polyline: {
+              positions: trajAbsPositions,
+              width: 3,
+              material: new Cesium.PolylineGlowMaterialProperty({
+                color: Cesium.Color.CYAN.withAlpha(0.9),
+                glowPower: 0.15,
+              }),
+              depthFailMaterial: new Cesium.PolylineGlowMaterialProperty({
+                color: Cesium.Color.CYAN.withAlpha(0.3),
+                glowPower: 0.1,
+              }),
+            },
+          })
+
+          // Takeoff / landing markers
           trajectory.forEach((p, idx) => {
             const isTakeoff = idx === 0
             const isLanding = idx === trajectory.length - 1
-            const color = isTakeoff
-              ? Cesium.Color.LIMEGREEN
-              : isLanding
-                ? Cesium.Color.RED
-                : Cesium.Color.CORNFLOWERBLUE
-            const label = isTakeoff ? 'Takeoff' : isLanding ? 'Landing' : `WP ${idx + 1}`
-            const pixelSize = isTakeoff || isLanding ? 10 : 6
+            if (!isTakeoff && !isLanding) {
+              // Only render key markers to keep the 3D scene uncluttered
+              allPositions.push(Cesium.Cartesian3.fromDegrees(p.lng, p.lat))
+              flightPositions.push(Cesium.Cartesian3.fromDegrees(p.lng, p.lat))
+              return
+            }
+            const color = isTakeoff ? Cesium.Color.LIMEGREEN : Cesium.Color.RED
+            const label = isTakeoff ? 'Takeoff' : 'Landing'
 
             viewer.entities.add({
               name: label,
-              position: Cesium.Cartesian3.fromDegrees(p.lng, p.lat, p.alt),
+              position: trajAbsPositions[idx],
               point: {
-                pixelSize,
+                pixelSize: 12,
                 color,
                 outlineColor: Cesium.Color.WHITE,
-                outlineWidth: 1,
-                heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND,
+                outlineWidth: 2,
               },
-              label: isTakeoff || isLanding
-                ? {
-                    text: label,
-                    font: '12px sans-serif',
-                    fillColor: Cesium.Color.WHITE,
-                    outlineColor: Cesium.Color.BLACK,
-                    outlineWidth: 2,
-                    style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-                    verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-                    pixelOffset: new Cesium.Cartesian2(0, -14),
-                  }
-                : undefined,
+              label: {
+                text: label,
+                font: '13px sans-serif',
+                fillColor: Cesium.Color.WHITE,
+                outlineColor: Cesium.Color.BLACK,
+                outlineWidth: 2,
+                style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+                verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+                pixelOffset: new Cesium.Cartesian2(0, -16),
+              },
               description: [
                 '<table style="width:100%">',
                 `<tr><td><b>${label}</b></td></tr>`,
@@ -557,7 +634,6 @@ const Geoawareness3DModal: React.FC<Geoawareness3DModalProps> = ({
               ].join(''),
             })
 
-            // Add to bounding positions
             allPositions.push(Cesium.Cartesian3.fromDegrees(p.lng, p.lat))
             flightPositions.push(Cesium.Cartesian3.fromDegrees(p.lng, p.lat))
           })
