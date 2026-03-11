@@ -21,7 +21,7 @@
 % Used inside tables to avoid overflow when showing endpoints.
 \newcommand{\icdendpoint}[1]{\begingroup\small\path{#1}\endgroup}
 
-\title{ SPIRIT \\ \small{ICD - V\_{2.2.0}}}
+\title{ SPIRIT \\ \small{ICD - V\_{2.2.1}}}
 \author{U-Plan Preparation Service (UPPS) \\ Álex Sanchis}
 \date{\today}
 
@@ -153,6 +153,25 @@ El objetivo de la interfaz es permitir que un usuario cargue planes de vuelo (t�
     \item \textbf{Auto-relleno de email en formulario U-Plan} (Feature 33): El campo \texttt{contactDetails.emails[0]} del formulario U-Plan se pre-rellena automáticamente con el email del perfil del usuario activo.
     \item \textbf{Sistema de borradores U-Plan} (Feature 34): Nuevo modelo Prisma \texttt{uplanDraft} para persistir borradores de U-Plan vinculados al usuario. Endpoints CRUD completos: \texttt{GET/POST /api/user/drafts} y \texttt{GET/PATCH/DELETE /api/user/drafts/[id]}. Sección ``U-Plan Drafts'' en la página \texttt{/profile} para listar, crear, editar nombre y eliminar borradores. El formulario \texttt{UplanFormModal} incluye desplegable ``Load Draft'' y botones ``Save as Draft'' / ``Update Draft''.
     \item \textbf{Eliminación de sección Flight Plan Details de Plan Definition} (Feature 35): Se eliminan $\sim$840 líneas del componente \texttt{PlanGenerator} (estado \texttt{flightPlanDetails}, botón ``Flight Plan Details'' y todo su bloque de contenido), simplificando el flujo de definición de plan.
+\end{itemize}
+
+\subsubsection*{Sprint 5 --- V2.2.1 Bug Fixes, UX \& Nuevas Funcionalidades}
+\begin{itemize}
+    \item \textbf{Fix overflow de tooltips en formulario U-Plan} (Task 1): Los tooltips del formulario ahora se renderizan mediante un portal, evitando el recorte por contenedores con \texttt{overflow:hidden}.
+    \item \textbf{Respuestas FAS 400 establecen estado ``withdrawn''} (Task 2): Si FAS responde con HTTP~400, el U-Plan pasa a estado \texttt{withdrawn} y se envía email de denegación al usuario.
+    \item \textbf{Centrado de mapa en waypoints manuales} (Task 3): Al añadir un waypoint mediante coordenadas manuales en Plan Definition, el mapa se centra automáticamente en la nueva posición.
+    \item \textbf{Fix cámara de seguimiento y proximidad de etiquetas en visor 3D} (Task 4): Corregida la cámara de seguimiento del dron y la distancia de las etiquetas de waypoints en \texttt{Trajectory3DViewer}.
+    \item \textbf{Timeout de inactividad de 10 minutos} (Task 5): Se añade un overlay de ``Sesión expirada'' tras 10~minutos de inactividad del usuario, requiriendo re-login.
+    \item \textbf{Eliminación del botón auto-play en visor 3D de U-Plan} (Task 6): Se elimina el botón de reproducción automática del visor 3D de línea temporal de U-Plan.
+    \item \textbf{Restricción de fechas pasadas en date picker} (Task 7): El selector de fecha de programación de vuelo impide seleccionar fechas anteriores al momento actual.
+    \item \textbf{Reset de plan aprobado cancela autorización FAS} (Task 8): Resetear un plan aprobado envía cancelación a FAS y notificación por email al usuario, con modal de confirmación.
+    \item \textbf{Bloqueo de reset para U-Plans externos} (Task 9): Los U-Plans subidos externamente no pueden resetearse; se muestra mensaje informativo.
+    \item \textbf{U-Plans externos omiten recompilación de volúmenes} (Task 10): Al pulsar ``Save \& Request Auth'' en un U-Plan externo se envía directamente a FAS sin regenerar volúmenes.
+    \item \textbf{Fix overflow vertical en popup de geozonas} (Task 11): El popup de información de geozonas en Plan Definition ahora es scrollable verticalmente, evitando desbordamiento.
+    \item \textbf{Fix renderizado 3D de geozonas} (Task 12): Corregido el renderizado de geozonas 3D en los modales de Geoawareness y Resultado de Autorización.
+    \item \textbf{Eliminación de adjuntos JSON en emails de autorización} (Task 13): Los emails de resultado de autorización ya no incluyen el JSON del U-Plan como adjunto.
+    \item \textbf{Bump de versión y actualización de documentación} (Task 14): Versión actualizada a 2.2.1; documentación ICD actualizada con changelog del Sprint~5.
+    \item \textbf{Nueva splash page AETHON con shader animado} (Task 15): Nueva página de bienvenida con fondo de shader animado WebGL y enlace a \texttt{/launch}.
 \end{itemize}
 
 \subsection*{Novedades en V2.1.0}
