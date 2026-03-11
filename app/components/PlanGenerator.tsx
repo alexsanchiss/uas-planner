@@ -302,6 +302,8 @@ export default function PlanGenerator() {
   const [addWaypointFormOpen, setAddWaypointFormOpen] = useState(false);
   const [addWaypointLat, setAddWaypointLat] = useState('');
   const [addWaypointLng, setAddWaypointLng] = useState('');
+  // TASK-3: Position to fly the map to after sidebar waypoint add
+  const [flyToPosition, setFlyToPosition] = useState<[number, number] | null>(null);
   
 
   
@@ -1480,6 +1482,9 @@ export default function PlanGenerator() {
                               pauseDuration: 0,
                               flyOverMode: false,
                             });
+                            // TASK-3: Fly map to the newly added waypoint
+                            setFlyToPosition(null);
+                            setTimeout(() => setFlyToPosition([lat, lng]), 0);
                             setAddWaypointFormOpen(false);
                           }}
                           className="flex-1 px-3 py-1.5 rounded text-xs font-medium bg-[var(--color-primary)] text-white hover:bg-blue-800 transition-colors"
@@ -1552,6 +1557,8 @@ export default function PlanGenerator() {
             onReconnect={reconnectGeozones}
             // TASK-14: Scan overlay marker drag
             onScanOverlayDragEnd={generatorMode === 'scan' ? handleScanOverlayDragEnd : undefined}
+            // TASK-3: Fly map to manually added waypoint
+            flyToPosition={flyToPosition}
           />
         </main>
       </div>
