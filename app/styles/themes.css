@@ -159,6 +159,12 @@
   --auth-denied-border: rgba(239, 68, 68, 0.3);
   --auth-denied-text: #ef4444;
   
+  /* Withdrawn - Outside FAS service area (orange) */
+  --auth-withdrawn: #f97316;        /* orange-500 */
+  --auth-withdrawn-bg: rgba(249, 115, 22, 0.1);
+  --auth-withdrawn-border: rgba(249, 115, 22, 0.3);
+  --auth-withdrawn-text: #f97316;
+  
   /* No Authorization - Not requested (gray) */
   --auth-none: #6b7280;             /* gray-500 */
   --auth-none-bg: rgba(107, 114, 128, 0.1);
@@ -402,6 +408,12 @@
   --auth-denied-border: rgba(220, 38, 38, 0.3);
   --auth-denied-text: #b91c1c;      /* red-700 */
   
+  /* Withdrawn - Outside FAS service area (orange) */
+  --auth-withdrawn: #ea580c;        /* orange-600 */
+  --auth-withdrawn-bg: rgba(234, 88, 12, 0.1);
+  --auth-withdrawn-border: rgba(234, 88, 12, 0.3);
+  --auth-withdrawn-text: #c2410c;   /* orange-700 */
+  
   /* No Authorization - Not requested (gray) */
   --auth-none: #4b5563;             /* gray-600 */
   --auth-none-bg: rgba(75, 85, 99, 0.1);
@@ -587,6 +599,12 @@ html.theme-transition *::after {
   background-color: var(--auth-denied-bg);
   color: var(--auth-denied-text);
   border-color: var(--auth-denied-border);
+}
+
+.badge-auth-withdrawn {
+  background-color: var(--auth-withdrawn-bg);
+  color: var(--auth-withdrawn-text);
+  border-color: var(--auth-withdrawn-border);
 }
 
 /* Generic Status Badges */

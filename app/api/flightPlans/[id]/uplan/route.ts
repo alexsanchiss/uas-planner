@@ -33,6 +33,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { withAuth, isAuthError } from '@/lib/auth-middleware';
 import { trayToUplan } from '@/lib/uplan/tray_to_uplan';
+import { sendAuthorizationResultEmail } from '@/lib/email';
 import axios from 'axios';
 
 /**
@@ -284,18 +285,39 @@ export async function POST(
             ? err.response.data
             : JSON.stringify(err.response.data);
 
+          // FAS 400 = out of service area bounds → mark as 'withdrawn'
+          const is400 = err.response.status === 400;
+          const status = is400 ? 'withdrawn' : 'denegado';
+
           await prisma.flightPlan.update({
             where: { id },
             data: {
               uplan: uplanString,
-              authorizationStatus: 'denegado',
+              authorizationStatus: status,
               authorizationMessage: authMessageString,
               externalResponseNumber: `error: ${err.message}`,
             },
           });
 
+          // Send denial email for 400 (withdrawn) errors
+          if (is400) {
+            const user = await prisma.user.findUnique({
+              where: { id: flightPlan.userId },
+              select: { email: true },
+            });
+            if (user?.email) {
+              sendAuthorizationResultEmail(
+                user.email,
+                flightPlan.customName || `Plan #${id}`,
+                'withdrawn',
+                authMessageString,
+                uplanString,
+              ).catch(() => {/* already logged inside sendAuthorizationResultEmail */});
+            }
+          }
+
           return NextResponse.json(
-            { error: 'denegado', message: err.response.data },
+            { error: status, message: err.response.data },
             { status: err.response.status }
           );
         }

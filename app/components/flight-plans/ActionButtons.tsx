@@ -319,7 +319,7 @@ export function AuthorizeIconButton({ onClick, disabled, disabledTooltip, loadin
  * Clickable to view the authorization message
  */
 export interface AuthorizationResultButtonProps extends IconButtonProps {
-  authorizationStatus: 'sin autorización' | 'pendiente' | 'aprobado' | 'denegado'
+  authorizationStatus: 'sin autorización' | 'pendiente' | 'aprobado' | 'denegado' | 'withdrawn'
   onViewMessage?: () => void
 }
 
@@ -355,6 +355,15 @@ export function AuthorizationResultIconButton({
           icon: <DeniedShieldIcon size={size} />,
           isPending: false,
         }
+      case 'withdrawn':
+        return {
+          color: 'var(--auth-withdrawn, #f97316)',
+          hoverBg: 'var(--auth-withdrawn-bg, rgba(249,115,22,0.1))',
+          ring: 'var(--auth-withdrawn, #f97316)',
+          tooltip: 'Plan withdrawn (outside FAS bounds) - click to view',
+          icon: <DeniedShieldIcon size={size} />,
+          isPending: false,
+        }
       case 'pendiente':
         return {
           color: 'var(--status-warning)',
@@ -380,7 +389,7 @@ export function AuthorizationResultIconButton({
   
   // If approved or denied, clicking should show the message
   const handleClick = () => {
-    if ((authorizationStatus === 'aprobado' || authorizationStatus === 'denegado') && onViewMessage) {
+    if ((authorizationStatus === 'aprobado' || authorizationStatus === 'denegado' || authorizationStatus === 'withdrawn') && onViewMessage) {
       onViewMessage()
     } else if (onClick) {
       onClick()

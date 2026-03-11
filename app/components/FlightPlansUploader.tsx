@@ -92,7 +92,8 @@ function transformFlightPlan(plan: FlightPlanData): FlightPlan {
             plan.status === 'error' ? 'error' : 'sin procesar',
     authorizationStatus: plan.authorizationStatus === 'pendiente' ? 'pendiente' :
                          plan.authorizationStatus === 'aprobado' ? 'aprobado' :
-                         plan.authorizationStatus === 'denegado' ? 'denegado' : 'sin autorización',
+                         plan.authorizationStatus === 'denegado' ? 'denegado' :
+                         plan.authorizationStatus === 'withdrawn' ? 'withdrawn' : 'sin autorización',
     authorizationMessage: plan.authorizationMessage,
     // Parse uplan from string to object for U-Plan review
     uplan: plan.uplan ? (typeof plan.uplan === 'string' ? JSON.parse(plan.uplan) : plan.uplan) : null,
@@ -143,7 +144,7 @@ function getCompletedSteps(plan: FlightPlan | null): WorkflowStep[] {
     completed.push('geoawareness')
   }
   
-  if (plan.authorizationStatus === 'aprobado' || plan.authorizationStatus === 'denegado') {
+  if (plan.authorizationStatus === 'aprobado' || plan.authorizationStatus === 'denegado' || plan.authorizationStatus === 'withdrawn') {
     completed.push('authorize')
   }
   
@@ -223,7 +224,7 @@ export function FlightPlansUploader() {
     planId: string | null
     planName: string
     message: unknown
-    status: 'aprobado' | 'denegado' | null
+    status: 'aprobado' | 'denegado' | 'withdrawn' | null
     uplan: unknown
   }>({ open: false, planId: null, planName: '', message: null, status: null, uplan: null })
   // U-Plan review modal state - shows U-Plan before authorization
@@ -1276,7 +1277,7 @@ export function FlightPlansUploader() {
       setAuthResultModal({
         open: true,
         uplanData,
-        status: plan.authorizationStatus === 'aprobado' ? 'aprobado' : 'denegado',
+        status: plan.authorizationStatus === 'aprobado' ? 'aprobado' : plan.authorizationStatus === 'withdrawn' ? 'withdrawn' : 'denegado',
         reason: messageStr,
         geoawarenessData: plan.geoawarenessData ?? null,
         planName: plan.customName,
@@ -1311,7 +1312,7 @@ export function FlightPlansUploader() {
         planId: String(plan.id),
         planName: plan.customName,
         message: plan.authorizationMessage,
-        status: 'denegado',
+        status: plan.authorizationStatus === 'withdrawn' ? 'withdrawn' : 'denegado',
         uplan: denialMapModal.uplan,
       })
     }
@@ -1594,7 +1595,7 @@ export function FlightPlansUploader() {
               <p className="text-sm text-[var(--text-secondary)] mb-3">
                 {selectedPlan.authorizationStatus === 'pendiente' 
                   ? 'Authorization request sent to FAS. You can review data while waiting.'
-                  : selectedPlan.authorizationStatus === 'aprobado' || selectedPlan.authorizationStatus === 'denegado'
+                  : selectedPlan.authorizationStatus === 'aprobado' || selectedPlan.authorizationStatus === 'denegado' || selectedPlan.authorizationStatus === 'withdrawn'
                     ? 'View your flight plan data below.'
                     : 'The plan has been processed. Review the U-Plan information and check geoawareness data before requesting authorization.'}
               </p>
@@ -1610,8 +1611,8 @@ export function FlightPlansUploader() {
                       name: selectedPlan.name,
                     })
                   }}
-                  disabled={selectedPlan.authorizationStatus === 'aprobado' || selectedPlan.authorizationStatus === 'denegado' || selectedPlan.authorizationStatus === 'pendiente'}
-                  title={selectedPlan.authorizationStatus === 'aprobado' || selectedPlan.authorizationStatus === 'denegado' ? 'Cannot edit - plan has been authorized/denied' : selectedPlan.authorizationStatus === 'pendiente' ? 'Cannot edit while FAS is processing' : undefined}
+                  disabled={selectedPlan.authorizationStatus === 'aprobado' || selectedPlan.authorizationStatus === 'denegado' || selectedPlan.authorizationStatus === 'withdrawn' || selectedPlan.authorizationStatus === 'pendiente'}
+                  title={selectedPlan.authorizationStatus === 'aprobado' || selectedPlan.authorizationStatus === 'denegado' || selectedPlan.authorizationStatus === 'withdrawn' ? 'Cannot edit - plan has been authorized/denied' : selectedPlan.authorizationStatus === 'pendiente' ? 'Cannot edit while FAS is processing' : undefined}
                   className="px-4 py-2 text-sm font-medium text-[var(--text-primary)] bg-[var(--surface-tertiary)] border border-[var(--border-primary)] rounded-md hover:bg-[var(--bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors btn-interactive flex items-center gap-2"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1716,14 +1717,16 @@ export function FlightPlansUploader() {
               </div>
 
               {/* TASK: Large authorization status button for approved/denied plans */}
-              {(selectedPlan.authorizationStatus === 'aprobado' || selectedPlan.authorizationStatus === 'denegado') && (
+              {(selectedPlan.authorizationStatus === 'aprobado' || selectedPlan.authorizationStatus === 'denegado' || selectedPlan.authorizationStatus === 'withdrawn') && (
                 <div className="mt-4 flex flex-col gap-2">
                   <button
                     onClick={() => handleViewAuthorizationMessage(selectedPlan.id, selectedPlan.authorizationMessage)}
                     className={`w-full px-6 py-3 text-base font-semibold rounded-lg transition-all transform hover:scale-[1.02] shadow-md hover:shadow-lg flex items-center justify-center gap-3 ${
                       selectedPlan.authorizationStatus === 'aprobado'
                         ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
-                        : 'bg-red-500 hover:bg-red-600 text-white'
+                        : selectedPlan.authorizationStatus === 'withdrawn'
+                          ? 'bg-orange-500 hover:bg-orange-600 text-white'
+                          : 'bg-red-500 hover:bg-red-600 text-white'
                     }`}
                   >
                     {selectedPlan.authorizationStatus === 'aprobado' ? (
@@ -1991,15 +1994,17 @@ export function FlightPlansUploader() {
                 ? 'bg-green-50 dark:bg-green-900/20' 
                 : authorizationMessageModal.status === 'denegado'
                   ? 'bg-red-50 dark:bg-red-900/20'
-                  : ''
+                  : authorizationMessageModal.status === 'withdrawn'
+                    ? 'bg-orange-50 dark:bg-orange-900/20'
+                    : ''
             }`}>
               <div className="flex items-center gap-3">
                 {authorizationMessageModal.status === 'aprobado' ? (
                   <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="currentColor" viewBox="0 0 24 24">
                     <path fillRule="evenodd" d="M12 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016A11.955 11.955 0 0112 2.944zm3.707 7.763a1 1 0 00-1.414-1.414L11 12.586l-1.293-1.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
-                ) : authorizationMessageModal.status === 'denegado' ? (
-                  <svg className="w-6 h-6 text-red-600 dark:text-red-400" fill="currentColor" viewBox="0 0 24 24">
+                ) : authorizationMessageModal.status === 'denegado' || authorizationMessageModal.status === 'withdrawn' ? (
+                  <svg className={`w-6 h-6 ${authorizationMessageModal.status === 'withdrawn' ? 'text-orange-600 dark:text-orange-400' : 'text-red-600 dark:text-red-400'}`} fill="currentColor" viewBox="0 0 24 24">
                     <path fillRule="evenodd" d="M12 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016A11.955 11.955 0 0112 2.944zM9.707 9.707a1 1 0 00-1.414 1.414L10.586 12l-2.293 2.879a1 1 0 101.414 1.414L12 14.414l2.293 1.879a1 1 0 001.414-1.414L13.414 12l2.293-2.879a1 1 0 00-1.414-1.414L12 9.586l-2.293-1.879z" clipRule="evenodd" />
                   </svg>
                 ) : null}
@@ -2009,10 +2014,13 @@ export function FlightPlansUploader() {
                       ? 'text-green-800 dark:text-green-200' 
                       : authorizationMessageModal.status === 'denegado'
                         ? 'text-red-800 dark:text-red-200'
-                        : 'text-[var(--text-primary)]'
+                        : authorizationMessageModal.status === 'withdrawn'
+                          ? 'text-orange-800 dark:text-orange-200'
+                          : 'text-[var(--text-primary)]'
                   }`}>
                     {authorizationMessageModal.status === 'aprobado' ? 'Authorization Approved' : 
                      authorizationMessageModal.status === 'denegado' ? 'Authorization Denied' : 
+                     authorizationMessageModal.status === 'withdrawn' ? 'Authorization Withdrawn' :
                      'Authorization Response'}
                   </h2>
                   <p className="text-sm text-[var(--text-secondary)]">{authorizationMessageModal.planName}</p>
@@ -2061,7 +2069,7 @@ export function FlightPlansUploader() {
                   </button>
                 )}
                 {/* Task 11: View denial on map button for denied plans */}
-                {authorizationMessageModal.status === 'denegado' && !!authorizationMessageModal.uplan && (
+                {(authorizationMessageModal.status === 'denegado' || authorizationMessageModal.status === 'withdrawn') && !!authorizationMessageModal.uplan && (
                   <button
                     onClick={handleOpenDenialMap}
                     className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors flex items-center gap-2"

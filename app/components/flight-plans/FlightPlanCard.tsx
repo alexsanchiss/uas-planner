@@ -485,7 +485,7 @@ export function FlightPlanCard({
           authorizationStatus={plan.authorizationStatus}
           onClick={() => onAuthorize?.(plan.id)}
           onViewMessage={
-            plan.authorizationMessage && (plan.authorizationStatus === 'aprobado' || plan.authorizationStatus === 'denegado')
+            plan.authorizationMessage && (plan.authorizationStatus === 'aprobado' || plan.authorizationStatus === 'denegado' || plan.authorizationStatus === 'withdrawn')
               ? () => onViewAuthorizationMessage?.(plan.id, plan.authorizationMessage)
               : undefined
           }
@@ -497,9 +497,11 @@ export function FlightPlanCard({
               ? 'Authorization approved' 
               : plan.authorizationStatus === 'denegado'
                 ? 'Authorization denied'
-                : plan.authorizationStatus === 'pendiente'
-                  ? 'Authorization pending'
-                  : 'Request authorization'
+                : plan.authorizationStatus === 'withdrawn'
+                  ? 'Authorization withdrawn'
+                  : plan.authorizationStatus === 'pendiente'
+                    ? 'Authorization pending'
+                    : 'Request authorization'
           }
         />
         <ResetIconButton
