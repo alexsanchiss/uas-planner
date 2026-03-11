@@ -75,10 +75,7 @@ const Cesium3DModal: React.FC<Cesium3DModalProps> = ({ isOpen, onClose, uplanDat
 
   // 4D time slider state
   const [currentTimeMs, setCurrentTimeMs] = useState(0)
-  const [playing, setPlaying] = useState(false)
   const [speed, setSpeed] = useState<number>(1)
-  const lastFrameRef = useRef<number>(0)
-  const animFrameRef = useRef<number>(0)
 
   // Parse volume time ranges
   const volumeTimeRanges = useMemo<VolumeTimeRange[]>(() => {
@@ -134,43 +131,7 @@ const Cesium3DModal: React.FC<Cesium3DModalProps> = ({ isOpen, onClose, uplanDat
     }
   }, [])
 
-  // Play animation loop — use ref to read latest time for direct entity updates
-  const currentTimeMsRef = useRef(currentTimeMs)
-  currentTimeMsRef.current = currentTimeMs
-
-  useEffect(() => {
-    if (!playing || !hasTimeData) return
-    // Guard: don't start animation if no volume entities are tracked
-    if (entitiesRef.current.length === 0) return
-
-    lastFrameRef.current = performance.now()
-
-    const tick = (now: number) => {
-      if (viewerRef.current?.isDestroyed()) return
-
-      const deltaMs = (now - lastFrameRef.current) * speed
-      lastFrameRef.current = now
-
-      const next = currentTimeMsRef.current + deltaMs
-      if (next >= globalEndMs) {
-        setPlaying(false)
-        setCurrentTimeMs(globalEndMs)
-        updateVolumeColors(globalEndMs)
-      } else {
-        setCurrentTimeMs(next)
-        updateVolumeColors(next)
-      }
-
-      if (next < globalEndMs) {
-        animFrameRef.current = requestAnimationFrame(tick)
-      }
-    }
-
-    animFrameRef.current = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(animFrameRef.current)
-  }, [playing, speed, hasTimeData, globalEndMs, updateVolumeColors])
-
-  // Sync entity colors when currentTimeMs changes (both slider and play animation)
+  // Sync entity colors when currentTimeMs changes via slider
   useEffect(() => {
     if (hasTimeData) updateVolumeColors(currentTimeMs)
   }, [currentTimeMs, hasTimeData, updateVolumeColors])
@@ -371,8 +332,6 @@ const Cesium3DModal: React.FC<Cesium3DModalProps> = ({ isOpen, onClose, uplanDat
 
     return () => {
       destroyed = true
-      cancelAnimationFrame(animFrameRef.current)
-      setPlaying(false)
       entitiesRef.current = []
       if (viewerRef.current && !viewerRef.current.isDestroyed()) {
         viewerRef.current.destroy()
@@ -452,37 +411,13 @@ const Cesium3DModal: React.FC<Cesium3DModalProps> = ({ isOpen, onClose, uplanDat
         {hasTimeData && !loading && !error && (
           <div className="px-6 py-3 border-t border-gray-700">
             <div className="flex items-center gap-3 mb-2">
-              {/* Play/Pause */}
-              <button
-                onClick={() => {
-                  if (currentTimeMs >= globalEndMs) setCurrentTimeMs(globalStartMs)
-                  setPlaying(p => !p)
-                }}
-                className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-colors"
-                aria-label={playing ? 'Pause' : 'Play'}
-              >
-                {playing ? (
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <rect x="6" y="4" width="4" height="16" />
-                    <rect x="14" y="4" width="4" height="16" />
-                  </svg>
-                ) : (
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                )}
-              </button>
-
               {/* Time slider */}
               <input
                 type="range"
                 min={globalStartMs}
                 max={globalEndMs}
                 value={currentTimeMs}
-                onChange={e => {
-                  setPlaying(false)
-                  setCurrentTimeMs(Number(e.target.value))
-                }}
+                onChange={e => setCurrentTimeMs(Number(e.target.value))}
                 className="flex-1 h-1.5 accent-blue-500 cursor-pointer"
                 step={1000}
               />
