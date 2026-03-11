@@ -110,7 +110,7 @@ function UserDropdown({
           height={32}
           className="rounded-full"
         />
-        <span className="text-[var(--text-secondary)]">{username}</span>
+        <span className="text-[var(--text-secondary)] transition-colors duration-200">{username}</span>
         <svg 
           className={`w-4 h-4 text-[var(--text-muted)] transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
           fill="none" 
@@ -185,21 +185,22 @@ function UserDropdown({
 /**
  * Hamburger menu icon for mobile navigation
  */
-function HamburgerIcon({ open }: { open: boolean }) {
+function HamburgerIcon({ open, transparent }: { open: boolean; transparent?: boolean }) {
+  const barColor = transparent ? 'bg-white' : 'bg-[var(--text-secondary)]';
   return (
     <div className="w-6 h-6 flex flex-col justify-center items-center">
       <span
-        className={`block h-0.5 w-6 bg-[var(--text-secondary)] transition-all duration-300 ${
+        className={`block h-0.5 w-6 ${barColor} transition-all duration-300 ${
           open ? 'rotate-45 translate-y-1.5' : ''
         }`}
       />
       <span
-        className={`block h-0.5 w-6 bg-[var(--text-secondary)] transition-all duration-300 my-1 ${
+        className={`block h-0.5 w-6 ${barColor} transition-all duration-300 my-1 ${
           open ? 'opacity-0' : ''
         }`}
       />
       <span
-        className={`block h-0.5 w-6 bg-[var(--text-secondary)] transition-all duration-300 ${
+        className={`block h-0.5 w-6 ${barColor} transition-all duration-300 ${
           open ? '-rotate-45 -translate-y-1.5' : ''
         }`}
       />
@@ -246,17 +247,19 @@ export function Header({ transparent = false }: { transparent?: boolean }) {
         {/* Desktop layout */}
         <div className="hidden lg:grid lg:grid-cols-3 items-center">
           {/* Navegación a la izquierda */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2">
             {navLinks.map((link) => (
               <Link key={link.href} href={link.href} className="group">
                 <div
-                  className={`px-3 py-2 rounded-lg border transition-all duration-200 cursor-pointer shadow-sm
-                    ${
-                      isActive(link.href)
-                        ? "bg-[var(--color-primary)] border-[var(--color-primary-active)] text-white shadow-lg"
-                        : "bg-[var(--surface-secondary)] border-[var(--border-primary)] text-[var(--text-secondary)] group-hover:bg-[var(--color-primary)] group-hover:text-white group-hover:shadow-lg"
-                    }
-                    hover:scale-105 hover:shadow-xl`}
+                  className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-300 cursor-pointer
+                    ${transparent
+                      ? isActive(link.href)
+                        ? "bg-white/15 text-white border border-white/25 shadow-lg shadow-white/5 backdrop-blur-sm"
+                        : "text-white/80 border border-transparent hover:bg-white/10 hover:text-white hover:border-white/15"
+                      : isActive(link.href)
+                        ? "bg-[var(--color-primary)] text-white shadow-lg shadow-blue-500/25"
+                        : "text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+                    }`}
                 >
                   {link.label}
                 </div>
@@ -293,7 +296,7 @@ export function Header({ transparent = false }: { transparent?: boolean }) {
             aria-label="Toggle menu"
             aria-expanded={mobileMenuOpen}
           >
-            <HamburgerIcon open={mobileMenuOpen} />
+            <HamburgerIcon open={mobileMenuOpen} transparent={transparent} />
           </button>
 
           {/* Logo centered */}
@@ -322,18 +325,23 @@ export function Header({ transparent = false }: { transparent?: boolean }) {
 
         {/* Mobile menu dropdown */}
         {mobileMenuOpen && (
-          <div className="lg:hidden mt-3 pb-3 border-t border-[var(--border-primary)] pt-3 animate-fadeIn">
+          <div className={`lg:hidden mt-3 pb-3 border-t pt-3 animate-fadeIn ${
+            transparent ? 'border-white/10' : 'border-[var(--border-primary)]'
+          }`}>
             <nav className="flex flex-col space-y-2">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`px-4 py-3 rounded-lg border transition-all duration-200 text-center
-                    ${
-                      isActive(link.href)
-                        ? "bg-[var(--color-primary)] border-[var(--color-primary-active)] text-white"
-                        : "bg-[var(--surface-secondary)] border-[var(--border-primary)] text-[var(--text-secondary)] hover:bg-[var(--color-primary)] hover:text-white"
+                  className={`px-4 py-3 rounded-full transition-all duration-300 text-center font-medium text-sm
+                    ${transparent
+                      ? isActive(link.href)
+                        ? "bg-white/15 text-white border border-white/25"
+                        : "text-white/80 hover:bg-white/10 hover:text-white"
+                      : isActive(link.href)
+                        ? "bg-[var(--color-primary)] text-white shadow-md shadow-blue-500/20"
+                        : "text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
                     }`}
                 >
                   {link.label}
