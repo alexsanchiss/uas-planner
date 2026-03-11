@@ -10,7 +10,7 @@ import { useAuthContext } from "./auth/auth-provider";
 
 /**
  * Theme-aware logo component
- * Uses logo.jpg for dark theme, logo_black.png for light theme
+ * Uses logo.png for dark theme, logo_black.png for light theme
  */
 function ThemedLogo({ width, height, className }: { width: number; height: number; className?: string }) {
   const [isLightTheme, setIsLightTheme] = useState(false);
@@ -39,7 +39,7 @@ function ThemedLogo({ width, height, className }: { width: number; height: numbe
   
   return (
     <Image
-      src={isLightTheme ? "/images/logo_black.png" : "/images/logo.jpg"}
+      src={isLightTheme ? "/images/logo_black.png" : "/images/logo.png"}
       alt="UPPS Logo"
       width={width}
       height={height}
@@ -207,7 +207,7 @@ function HamburgerIcon({ open }: { open: boolean }) {
   );
 }
 
-export function Header() {
+export function Header({ transparent = false }: { transparent?: boolean }) {
   const { user, loading, logout } = useAuthContext();
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -237,7 +237,11 @@ export function Header() {
   ];
 
   return (
-    <header className="bg-[var(--surface-primary)] shadow-md relative z-[9999]">
+    <header className={`relative z-[9999] ${
+      transparent
+        ? 'bg-transparent backdrop-blur-md border-b border-white/10'
+        : 'bg-[var(--surface-primary)] shadow-md'
+    }`}>
       <div className="container mx-auto px-4 py-3">
         {/* Desktop layout */}
         <div className="hidden lg:grid lg:grid-cols-3 items-center">

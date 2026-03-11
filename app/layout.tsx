@@ -9,6 +9,7 @@ import { ToastProvider } from "./components/ui/toast-provider";
 import { I18nProvider } from "./i18n";
 import React, { useEffect, useState } from "react";
 import { Modal } from "./components/ui/modal";
+import { usePathname } from "next/navigation";
 
 /**
  * Initialize theme before React hydration to prevent flash
@@ -31,6 +32,9 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
+  const isSplash = pathname === "/";
+  const isLaunch = pathname === "/launch";
   const [showDemoPopup, setShowDemoPopup] = useState(false);
 
   useEffect(() => {
@@ -59,7 +63,7 @@ export default function RootLayout({
         <I18nProvider>
         <AuthProvider>
         <ToastProvider>
-        <Header />
+        {!isSplash && <Header transparent={isLaunch} />}
         <Modal
           open={showDemoPopup}
           onClose={() => setShowDemoPopup(false)}
@@ -97,7 +101,7 @@ export default function RootLayout({
           </p>
         </Modal>
         <main className="flex-1 flex flex-col">{children}</main>
-        <Footer />
+        {!isSplash && <Footer transparent={isLaunch} />}
         <SessionExpiredOverlay />
         </ToastProvider>
         </AuthProvider>
