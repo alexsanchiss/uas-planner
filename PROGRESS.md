@@ -9,7 +9,7 @@
 | 3 | Center map on manually added waypoint | ⬜ Not Started | — |
 | 4 | Fix drone follow camera + label proximity in 3D viewer | ⬜ Not Started | — |
 | 5 | Fix premature disconnections + 10-min inactivity timeout | ✅ Completed | — |
-| 6 | Remove Play button from 3D U-plan map viewer | ⬜ Not Started | — |
+| 6 | Remove Play button from 3D U-plan map viewer | ✅ Completed | — |
 | 7 | Restrict past dates in scheduledAt DateTimePicker | ✅ Completed | — |
 | 8 | Reset approved plan — cancel at FAS + email + modal warning | ✅ Completed | — |
 | 9 | Block reset for externally uploaded U-plans | ✅ Completed | — |
