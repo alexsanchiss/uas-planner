@@ -4,6 +4,11 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Smooth scrolling for anchor navigation */
+html {
+  scroll-behavior: smooth;
+}
+
 /* You can add any global styles below this line */
 body {
   background-color: var(--bg-primary);
