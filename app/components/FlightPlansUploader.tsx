@@ -2121,6 +2121,7 @@ export function FlightPlansUploader() {
         planName={uplanFormModal.name}
         authToken={typeof window !== 'undefined' ? localStorage.getItem('authToken') || '' : ''}
         hasBeenProcessed={selectedPlan?.status === 'procesado'}
+        hasCsvResult={!!selectedPlan?.csvResult}
         hasScheduledAt={!!selectedPlan?.scheduledAt}
         missingFields={uplanFormModal.missingFields}
         fieldErrors={uplanFormModal.fieldErrors}

@@ -65,6 +65,8 @@ interface UplanFormModalProps {
   authToken: string;
   /** Whether the plan has been processed (has CSV result) */
   hasBeenProcessed: boolean;
+  /** Whether the plan has CSV trajectory data (false for external U-plans) */
+  hasCsvResult: boolean;
   /** Whether the plan has scheduledAt set */
   hasScheduledAt: boolean;
   /** TASK-003: Missing fields from validation (for highlighting) */
@@ -296,6 +298,7 @@ export default function UplanFormModal({
   onRequestAuthorization,
   authToken,
   hasBeenProcessed,
+  hasCsvResult,
   hasScheduledAt,
   missingFields: _missingFields = [], // Prefixed with _ to indicate intentionally unused (used for validation info passed from parent)
   fieldErrors = {},
@@ -618,29 +621,27 @@ export default function UplanFormModal({
       
       setIsSavingDraft(false);
 
-      // Step 2: Generate operation volumes from trajectory
+      // Step 2: Generate operation volumes from trajectory (skip for external U-plans without CSV data)
       setIsSubmitting(true);
       try {
-        toast.info('Generating operation volumes...');
-        const volumeResponse = await fetch(`/api/flightPlans/${planId}/generate-volumes`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${authToken}`,
-            'Content-Type': 'application/json'
+        if (hasCsvResult) {
+          toast.info('Generating operation volumes...');
+          const volumeResponse = await fetch(`/api/flightPlans/${planId}/generate-volumes`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${authToken}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (!volumeResponse.ok) {
+            throw new Error('Failed to generate volumes');
           }
-        });
-        
-        if (!volumeResponse.ok) {
-          throw new Error('Failed to generate volumes');
+          
+          const volumeResult = await volumeResponse.json();
+          
+          toast.success(`Operation volumes generated (${volumeResult.volumesGenerated} volumes)`);
         }
-        
-        const volumeResult = await volumeResponse.json();
-        // console.log('[UplanFormModal] Volume generation:', {
-          // volumesGenerated: volumeResult.volumesGenerated,
-          // randomDataGenerated: volumeResult.randomDataGenerated
-        // });
-        
-        toast.success(`Operation volumes generated (${volumeResult.volumesGenerated} volumes)`);
         
         // Notify parent to refresh
         onSave?.();
@@ -682,7 +683,7 @@ export default function UplanFormModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
       <style>{`
         @media (min-width: 640px) {
-          .uplan-modal-outer { margin-top: 60px !important; margin-bottom: 0 !important; }
+          .uplan-modal-outer { margin-top: 120px !important; margin-bottom: 0 !important; }
         }
         @media (max-width: 639px) {
           .uplan-modal-outer { margin-top: 20px !important; margin-bottom: 0 !important; }
