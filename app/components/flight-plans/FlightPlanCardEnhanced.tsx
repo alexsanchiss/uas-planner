@@ -171,7 +171,7 @@ export function FlightPlanCardEnhanced({
   const canProcess = !!plan.scheduledAt && plan.status === 'sin procesar'
   const canViewTrajectory = !!plan.csvResult
   const canAuthorize = plan.status === 'procesado' && plan.authorizationStatus === 'sin autorización'
-  const canReset = plan.status !== 'sin procesar'
+  const canReset = plan.status !== 'sin procesar' && !!plan.fileContent
 
   useEffect(() => {
     if (isEditing && inputRef.current) {
@@ -344,7 +344,7 @@ export function FlightPlanCardEnhanced({
                 : 'bg-gray-100 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
               }
             `}
-            title={canReset ? 'Reset plan' : 'Nothing to reset'}
+            title={!plan.fileContent ? 'Cannot reset externally uploaded plan' : canReset ? 'Reset plan' : 'Nothing to reset'}
           >
             {loadingStates.resetting ? <LoadingSpinner /> : <ResetIcon size="sm" />}
           </button>

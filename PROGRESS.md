@@ -12,7 +12,7 @@
 | 6 | Remove Play button from 3D U-plan map viewer | ⬜ Not Started | — |
 | 7 | Restrict past dates in scheduledAt DateTimePicker | ⬜ Not Started | — |
 | 8 | Reset approved plan — cancel at FAS + email + modal warning | ⬜ Not Started | — |
-| 9 | Block reset for externally uploaded U-plans | ⬜ Not Started | — |
+| 9 | Block reset for externally uploaded U-plans | ✅ Completed | — |
 | 10 | Skip volume recompilation for external U-plans | ✅ Completed | — |
 | 11 | Fix geozone info popup overflow in Plan Definition | ⬜ Not Started | — |
 | 12 | Fix 3D geozone rendering in Geoawareness3D and AuthorizationResult | ⬜ Not Started | — |
