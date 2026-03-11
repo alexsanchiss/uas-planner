@@ -11,7 +11,7 @@
 | 5 | Fix premature disconnections + 10-min inactivity timeout | ⬜ Not Started | — |
 | 6 | Remove Play button from 3D U-plan map viewer | ⬜ Not Started | — |
 | 7 | Restrict past dates in scheduledAt DateTimePicker | ⬜ Not Started | — |
-| 8 | Reset approved plan — cancel at FAS + email + modal warning | ⬜ Not Started | — |
+| 8 | Reset approved plan — cancel at FAS + email + modal warning | ✅ Completed | — |
 | 9 | Block reset for externally uploaded U-plans | ✅ Completed | — |
 | 10 | Skip volume recompilation for external U-plans | ✅ Completed | — |
 | 11 | Fix geozone info popup overflow in Plan Definition | ⬜ Not Started | — |
