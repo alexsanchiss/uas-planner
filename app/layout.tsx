@@ -4,6 +4,7 @@ import "./globals.css";
 import { Footer } from "./components/footer";
 import { Header } from "./components/header";
 import { AuthProvider } from "./components/auth/auth-provider";
+import { SessionExpiredOverlay } from "./components/auth/session-expired-overlay";
 import { ToastProvider } from "./components/ui/toast-provider";
 import { I18nProvider } from "./i18n";
 import React, { useEffect, useState } from "react";
@@ -97,6 +98,7 @@ export default function RootLayout({
         </Modal>
         <main className="flex-1 flex flex-col">{children}</main>
         <Footer />
+        <SessionExpiredOverlay />
         </ToastProvider>
         </AuthProvider>
         </I18nProvider>
