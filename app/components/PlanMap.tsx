@@ -687,6 +687,19 @@ interface PlanMapProps {
   onReconnect?: () => void;
   // TASK-14: Scan overlay marker drag callback
   onScanOverlayDragEnd?: (type: 'takeoff' | 'landing' | 'vertex', index: number, lat: number, lng: number) => void;
+  // TASK-3: Fly to a position when a waypoint is added from the sidebar
+  flyToPosition?: [number, number] | null;
+}
+
+// TASK-3: Component to fly the map to a given position
+function FlyToHandler({ position }: { position: [number, number] }) {
+  const map = useMap();
+  useEffect(() => {
+    if (position) {
+      map.flyTo(position, Math.max(map.getZoom(), 16));
+    }
+  }, [position, map]);
+  return null;
 }
 
 const PlanMap = (props: PlanMapProps) => {
@@ -878,6 +891,9 @@ const PlanMap = (props: PlanMapProps) => {
         </div>
       )}
       
+      {/* TASK-3: Fly to position when waypoint added from sidebar */}
+      {props.flyToPosition && <FlyToHandler position={props.flyToPosition} />}
+
       {/* Map click handler */}
       <MapClickHandler 
         onAddWaypoint={props.handleAddWaypoint} 
