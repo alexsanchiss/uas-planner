@@ -7,7 +7,7 @@
 | 1 | Fix tooltip overflow in U-plan form popups | ✅ Completed | — |
 | 2 | Handle FAS 400 response — withdrawn state + denial email | ✅ Completed | — |
 | 3 | Center map on manually added waypoint | ⬜ Not Started | — |
-| 4 | Fix drone follow camera + label proximity in 3D viewer | ⬜ Not Started | — |
+| 4 | Fix drone follow camera + label proximity in 3D viewer | ✅ Completed | — |
 | 5 | Fix premature disconnections + 10-min inactivity timeout | ✅ Completed | — |
 | 6 | Remove Play button from 3D U-plan map viewer | ✅ Completed | — |
 | 7 | Restrict past dates in scheduledAt DateTimePicker | ✅ Completed | — |
