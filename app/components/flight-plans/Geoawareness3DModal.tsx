@@ -132,6 +132,63 @@ function safeParse<T>(v: unknown): T | null {
   return null
 }
 
+/**
+ * Detect if coordinate pair is in [lat, lng] order instead of GeoJSON [lng, lat].
+ * Latitude: -90..90; if |first| ≤ 90 and |second| > 90, it's [lat, lng].
+ */
+function isLatLngOrderCesium(coord: number[]): boolean {
+  if (coord.length < 2) return false
+  const [first, second] = coord
+  if (Math.abs(first) <= 90 && Math.abs(second) <= 180) {
+    if (Math.abs(second) > 90) return true
+    // European heuristic: lat ~30-50, lng near 0
+    if (first > 30 && first < 50 && Math.abs(second) < 10) return true
+  }
+  return false
+}
+
+/**
+ * Extract outer ring from geozone geometry as [lng, lat] pairs (Cesium-ready).
+ * Handles Polygon, MultiPolygon, various nesting depths, string-encoded coords,
+ * and auto-detects/swaps [lat, lng] → [lng, lat] when needed.
+ */
+function extractGeozoneRingForCesium(geometry: { type: string; coordinates: unknown }): number[][] | null {
+  if (!geometry?.coordinates) return null
+  const rawCoords = geometry.coordinates
+  if (!Array.isArray(rawCoords) || rawCoords.length === 0) return null
+
+  let ring: unknown[]
+  try {
+    const parsed = typeof rawCoords === 'string' ? JSON.parse(rawCoords) : rawCoords
+
+    if (geometry.type === 'MultiPolygon') {
+      const multi = parsed as number[][][][]
+      if (!multi[0]?.[0]) return null
+      ring = multi[0][0]
+    } else {
+      // Polygon or similar — detect nesting level
+      const first = parsed[0]
+      if (!Array.isArray(first)) return null
+      if (typeof first[0] === 'number') {
+        // [[lng, lat], ...] — missing outer ring wrapper
+        ring = parsed
+      } else if (Array.isArray(first[0])) {
+        // [[[lng, lat], ...]] — properly nested
+        ring = first
+      } else return null
+    }
+  } catch { return null }
+
+  if (!Array.isArray(ring) || ring.length === 0) return null
+  const firstCoord = ring[0]
+  if (!Array.isArray(firstCoord) || firstCoord.length < 2) return null
+
+  const needsSwap = isLatLngOrderCesium(firstCoord as number[])
+  return ring
+    .filter((c): c is number[] => Array.isArray(c) && c.length >= 2 && typeof c[0] === 'number' && typeof c[1] === 'number')
+    .map(c => needsSwap ? [c[1], c[0]] : [c[0], c[1]])
+}
+
 /** Format date for display */
 function fmtDate(d: string | undefined | null): string {
   if (!d) return 'N/A'
@@ -378,23 +435,15 @@ const Geoawareness3DModal: React.FC<Geoawareness3DModalProps> = ({
         // ─── 7. Render geozones ──────────────────────────────────────────
         for (const gz of geozones) {
           const geom = gz.geometry
-          if (!geom || geom.type !== 'Polygon') continue
-          const rawCoords = geom.coordinates
-          if (!rawCoords || !Array.isArray(rawCoords) || rawCoords.length === 0) continue
-          // Coordinates: either number[][][] (Polygon) or string
-          let ring: number[][]
-          try {
-            const parsed = typeof rawCoords === 'string' ? JSON.parse(rawCoords) : rawCoords
-            ring = (Array.isArray(parsed[0]) && Array.isArray(parsed[0][0])) ? parsed[0] : parsed
-          } catch { continue }
-          if (!ring || ring.length === 0) continue
+          if (!geom) continue
+          // Support Polygon and MultiPolygon with coordinate order detection
+          const ring = extractGeozoneRingForCesium(geom as { type: string; coordinates: unknown })
+          if (!ring || ring.length < 3) continue
 
           const degreesArr: number[] = []
           ring.forEach((c: number[]) => {
-            if (c.length >= 2) {
-              degreesArr.push(c[0], c[1])
-              allPositions.push(Cesium.Cartesian3.fromDegrees(c[0], c[1]))
-            }
+            degreesArr.push(c[0], c[1]) // already [lng, lat] from helper
+            allPositions.push(Cesium.Cartesian3.fromDegrees(c[0], c[1]))
           })
           if (degreesArr.length < 6) continue // need at least 3 points
 
