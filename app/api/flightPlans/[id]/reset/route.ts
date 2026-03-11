@@ -86,6 +86,7 @@ export async function POST(
         customName: true,
         status: true,
         csvResult: true,
+        fileContent: true,
       },
     });
 
@@ -101,6 +102,14 @@ export async function POST(
       return NextResponse.json(
         { error: 'Access denied' },
         { status: 403 }
+      );
+    }
+
+    // Block reset for externally uploaded plans (no file content to re-process)
+    if (!flightPlan.fileContent) {
+      return NextResponse.json(
+        { error: 'Cannot reset an externally uploaded plan' },
+        { status: 400 }
       );
     }
 
