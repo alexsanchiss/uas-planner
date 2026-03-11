@@ -134,7 +134,7 @@ describe('Email Service', () => {
   });
 
   describe('sendAuthorizationResultEmail', () => {
-    it('should send approval email with UPLAN attachment', async () => {
+    it('should send approval email with login link (no attachment)', async () => {
       const uplanJson = '{"operationVolumes":[]}';
       await sendAuthorizationResultEmail(
         'user@example.com',
@@ -149,11 +149,8 @@ describe('Email Service', () => {
       expect(params.to[0].email).toBe('user@example.com');
       expect(params.subject).toContain('Approved');
       expect(params.subject).toContain('TestPlan');
-      expect(params.attachments).toHaveLength(1);
-      expect(params.attachments[0].filename).toBe('uplan_TestPlan.json');
-      expect(params.attachments[0].content).toBe(
-        Buffer.from(uplanJson, 'utf-8').toString('base64'),
-      );
+      expect(params.attachments).toHaveLength(0);
+      expect(params.html).toContain('Access UPPS Platform');
     });
 
     it('should send denial email', async () => {
