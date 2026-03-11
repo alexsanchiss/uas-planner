@@ -431,7 +431,7 @@ const Trajectory3DViewer: React.FC<Trajectory3DViewerProps> = ({
             outlineWidth: 2,
             style: Cesium.LabelStyle.FILL_AND_OUTLINE,
             verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-            pixelOffset: new Cesium.Cartesian2(0, -18),
+            pixelOffset: new Cesium.Cartesian2(0, -6),
           },
         })
         droneEntityRef.current = droneEntity
