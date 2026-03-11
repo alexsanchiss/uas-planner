@@ -105,6 +105,13 @@ export function DateTimePicker({
   // Local state for input value (to allow typing without immediate API calls)
   const [localValue, setLocalValue] = useState(apiValue)
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Compute current local datetime as min to prevent selecting past dates
+  const getNowLocal = useCallback(() => {
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+  }, [])
+  const [minDateTime, setMinDateTime] = useState(getNowLocal)
   
   // Sync local state with API value when it changes externally
   useEffect(() => {
@@ -151,6 +158,11 @@ export function DateTimePicker({
     }, 800)
   }, [onChange])
   
+  // Refresh min datetime on focus so it's always current when interacting
+  const handleFocus = useCallback(() => {
+    setMinDateTime(getNowLocal())
+  }, [getNowLocal])
+
   // Handle blur: immediately save on blur (in case user clicks away before debounce)
   const handleBlur = useCallback(() => {
     // Clear debounce timer and save immediately
@@ -206,10 +218,11 @@ export function DateTimePicker({
           id={inputId}
           value={localValue}
           onChange={handleChange}
+          onFocus={handleFocus}
           onBlur={handleBlur}
           disabled={disabled}
           required={required}
-          min={min}
+          min={min ?? minDateTime}
           max={max}
           className={`
             w-full px-3 py-2 border rounded-md shadow-sm
