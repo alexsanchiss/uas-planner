@@ -198,7 +198,8 @@ export function FlightPlansUploader() {
     open: boolean
     planId: string | null
     planName: string
-  }>({ open: false, planId: null, planName: '' })
+    isApproved: boolean
+  }>({ open: false, planId: null, planName: '', isApproved: false })
   // Authorization confirmation dialog state
   const [authorizationConfirmDialog, setAuthorizationConfirmDialog] = useState<{
     open: boolean
@@ -863,6 +864,7 @@ export function FlightPlansUploader() {
       open: true,
       planId,
       planName: plan.customName,
+      isApproved: plan.authorizationStatus === 'aprobado',
     })
   }, [flightPlans])
 
@@ -1952,6 +1954,7 @@ export function FlightPlansUploader() {
         onConfirm={confirmResetPlan}
         title="Reset flight plan"
         message={`Are you sure you want to reset the plan "${resetConfirmDialog.planName}"? This action will delete the processed trajectory, authorization status, and all associated data. The plan will return to "unprocessed" status.`}
+        warning={resetConfirmDialog.isApproved ? 'This plan has been approved by the FAS. Resetting will cancel the authorization and the plan will be denied.' : undefined}
         confirmLabel="Reset"
         cancelLabel="Cancel"
         variant="warning"

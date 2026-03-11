@@ -19,11 +19,51 @@
  * 7. Clear machineAssignedId (set to null)
  */
 
-import { Prisma } from '@prisma/client';
-
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { withAuth, isAuthError } from '@/lib/auth-middleware';
+import { sendPlanDeletionEmail } from '@/lib/email';
+import { logger } from '@/lib/logger';
+
+/**
+ * FAS API URL - defaults to production server if not configured.
+ */
+const FAS_API_URL = process.env.FAS_API_URL || 'http://158.42.167.56:8000/uplan';
+
+/**
+ * Derive the FAS base URL by removing the /uplan path suffix.
+ */
+function getFasBaseUrl(): string {
+  try {
+    const url = new URL(FAS_API_URL);
+    return `${url.protocol}//${url.host}`;
+  } catch {
+    return FAS_API_URL.replace(/\/uplan\/?$/, '');
+  }
+}
+
+/**
+ * Send a cancellation request to the FAS for an approved flight plan.
+ * Fire-and-forget: failures are logged but do not block the reset.
+ */
+async function sendFasCancellation(externalResponseNumber: string): Promise<void> {
+  const baseUrl = getFasBaseUrl();
+  const cancelUrl = `${baseUrl}/uplan_cancelation/${encodeURIComponent(externalResponseNumber)}`;
+
+  try {
+    const response = await fetch(cancelUrl, { method: 'DELETE' });
+    if (!response.ok) {
+      console.warn(
+        `[FAS Cancellation] Non-OK response for ${externalResponseNumber}: ${response.status} ${response.statusText}`
+      );
+    }
+  } catch (error) {
+    console.warn(
+      `[FAS Cancellation] Failed to cancel ${externalResponseNumber}:`,
+      error instanceof Error ? error.message : error
+    );
+  }
+}
 
 /**
  * Params type for dynamic route
@@ -87,6 +127,8 @@ export async function POST(
         status: true,
         csvResult: true,
         fileContent: true,
+        authorizationStatus: true,
+        externalResponseNumber: true,
       },
     });
 
@@ -119,6 +161,27 @@ export async function POST(
         { error: 'El plan ya está sin procesar', code: 'ALREADY_UNPROCESSED' },
         { status: 400 }
       );
+    }
+
+    // If the plan was approved by FAS, cancel it and notify the user
+    if (flightPlan.authorizationStatus === 'aprobado') {
+      if (flightPlan.externalResponseNumber) {
+        sendFasCancellation(flightPlan.externalResponseNumber).catch(() => {});
+      }
+
+      // Notify user via email (fire-and-forget)
+      const owner = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { email: true },
+      });
+      if (owner?.email) {
+        sendPlanDeletionEmail(owner.email, flightPlan.customName)
+          .catch(err => logger.error('Failed to send plan reset email', {
+            userId,
+            planId: id,
+            error: err instanceof Error ? err.message : String(err),
+          }));
+      }
     }
 
     // 2. Perform reset in a transaction

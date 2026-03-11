@@ -6,6 +6,8 @@ export interface ConfirmDialogProps {
   onConfirm: () => void
   title?: string
   message: string
+  /** Optional amber warning shown below the message */
+  warning?: string
   confirmLabel?: string
   cancelLabel?: string
   variant?: 'danger' | 'warning' | 'info'
@@ -26,6 +28,7 @@ export function ConfirmDialog({
   onConfirm,
   title = 'Confirm action',
   message,
+  warning,
   confirmLabel = 'Confirm',
   cancelLabel = 'Cancel',
   variant = 'danger',
@@ -115,6 +118,11 @@ export function ConfirmDialog({
               <p className="mt-2 text-sm text-gray-600">
                 {message}
               </p>
+              {warning && (
+                <p className="mt-2 text-sm font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                  ⚠️ {warning}
+                </p>
+              )}
             </div>
           </div>
         </div>
