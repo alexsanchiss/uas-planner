@@ -229,10 +229,10 @@ function CollapsibleSection({ title, children, defaultExpanded = false, icon }: 
       {/* Section content - animated */}
       <div 
         className={`overflow-hidden transition-all duration-200 ease-in-out ${
-          isExpanded ? 'max-h-60 opacity-100' : 'max-h-0 opacity-0'
+          isExpanded ? 'max-h-[200px] opacity-100' : 'max-h-0 opacity-0'
         }`}
       >
-        <div className="px-2 py-2 text-xs text-[var(--text-secondary)] bg-[var(--surface-primary)]">
+        <div className="px-2 py-2 text-xs text-[var(--text-secondary)] bg-[var(--surface-primary)] max-h-[180px] overflow-y-auto">
           {children}
         </div>
       </div>
@@ -325,6 +325,15 @@ export function GeozoneInfoPopup({ geozone, position, onClose }: GeozoneInfoPopu
         .leaflet-popup-content-wrapper {
           background: var(--surface-primary, #fff) !important;
         }
+        .geozone-info-popup .leaflet-popup-content-wrapper {
+          max-height: 420px;
+          overflow: hidden;
+        }
+        .geozone-info-popup .leaflet-popup-content {
+          max-height: 400px;
+          overflow: hidden;
+          margin: 8px;
+        }
       `;
       document.head.appendChild(style);
     }
@@ -405,8 +414,11 @@ export function GeozoneInfoPopup({ geozone, position, onClose }: GeozoneInfoPopu
       minWidth={280}
       closeButton={true}
       className="geozone-info-popup"
+      autoPan={true}
+      autoPanPadding={[10, 10] as L.PointExpression}
+      keepInView={true}
     >
-      <div className="min-w-[260px] max-w-[360px] max-h-[60vh] overflow-y-auto">
+      <div className="min-w-[260px] max-w-[360px] max-h-[350px] overflow-y-auto">
         {/* Header with identifier and type badge */}
         <div 
           className="px-3 py-2 -mx-2 -mt-2 mb-3 rounded-t"
