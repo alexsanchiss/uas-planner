@@ -249,7 +249,7 @@ export async function sendPasswordResetEmail(
 export async function sendAuthorizationResultEmail(
   to: string,
   planName: string,
-  status: 'aprobado' | 'denegado',
+  status: 'aprobado' | 'denegado' | 'withdrawn',
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _message: string,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -258,10 +258,10 @@ export async function sendAuthorizationResultEmail(
   const client = getMailerSendClient();
   if (!client) return;
 
-  const statusLabel = status === 'aprobado' ? 'Approved' : 'Denied';
-  const statusColor = status === 'aprobado' ? '#059669' : '#dc2626';
-  const statusBgColor = status === 'aprobado' ? '#d1fae5' : '#fee2e2';
-  const statusBorderColor = status === 'aprobado' ? '#10b981' : '#ef4444';
+  const statusLabel = status === 'aprobado' ? 'Approved' : status === 'withdrawn' ? 'Withdrawn' : 'Denied';
+  const statusColor = status === 'aprobado' ? '#059669' : status === 'withdrawn' ? '#d97706' : '#dc2626';
+  const statusBgColor = status === 'aprobado' ? '#d1fae5' : status === 'withdrawn' ? '#fef3c7' : '#fee2e2';
+  const statusBorderColor = status === 'aprobado' ? '#10b981' : status === 'withdrawn' ? '#f59e0b' : '#ef4444';
 
   const emailParams = new EmailParams()
     .setFrom(new Sender(SENDER_EMAIL, SENDER_NAME))
@@ -324,6 +324,10 @@ export async function sendAuthorizationResultEmail(
                 ? `<p style="margin: 25px 0 0; font-size: 14px; line-height: 1.6; color: #059669;">
                     <strong>✓ Next Steps:</strong> You may now proceed with your flight operations according to the approved plan. Please ensure all operational requirements and safety protocols are followed.
                   </p>`
+                : status === 'withdrawn'
+                ? `<p style="margin: 25px 0 0; font-size: 14px; line-height: 1.6; color: #d97706;">
+                    <strong>⚠ Withdrawn:</strong> Your flight plan was outside the FAS service area bounds and has been automatically withdrawn. Please review your operation volumes and submit a revised plan within the service area.
+                  </p>`
                 : `<p style="margin: 25px 0 0; font-size: 14px; line-height: 1.6; color: #dc2626;">
                     <strong>✗ Note:</strong> If you have questions about the denial or wish to submit a revised flight plan, please contact our team directly.
                   </p>`
@@ -371,6 +375,8 @@ export async function sendAuthorizationResultEmail(
     .setText(
       `Flight Plan Authorization Result\n\nDear valued customer,\n\nYour flight plan "${planName}" has been processed.\n\nStatus: ${statusLabel.toUpperCase()}\n\nFor complete details and to download your UPLAN file, please log in to the UPPS Platform:\n${APP_URL}\n\n${status === 'aprobado' 
         ? 'You may now proceed with your flight operations according to the approved plan.' 
+        : status === 'withdrawn'
+        ? 'Your flight plan was outside the FAS service area bounds and has been automatically withdrawn. Please review your operation volumes and submit a revised plan.'
         : 'If you have questions about the denial or wish to submit a revised plan, please contact our team.'
       }\n\n---\nBest regards,\nAlex Sanchis\nUPPS Service Manager\nUAS Planning & Authorization Service\n+34 609 33 22 55\nasanmar4@upv.edu.es\n\n---\nThis email is confidential and intended solely for the addressee. Please do not reply to this email address. For inquiries, contact asanmar4@upv.edu.es`,
     );

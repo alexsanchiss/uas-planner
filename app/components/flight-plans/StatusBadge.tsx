@@ -1,7 +1,7 @@
 import React from 'react'
 
 export type PlanStatus = 'sin procesar' | 'en proceso' | 'procesado' | 'error'
-export type AuthorizationStatus = 'sin autorización' | 'pendiente' | 'aprobado' | 'denegado'
+export type AuthorizationStatus = 'sin autorización' | 'pendiente' | 'aprobado' | 'denegado' | 'withdrawn'
 
 interface StatusBadgeProps {
   type: 'plan' | 'authorization'
@@ -25,6 +25,7 @@ const authorizationStatusStyles: Record<AuthorizationStatus, string> = {
   'pendiente': 'badge-auth-pending',         // Amber/Yellow - awaiting authorization
   'aprobado': 'badge-auth-approved',         // Green - authorization approved
   'denegado': 'badge-auth-denied',           // Red - authorization denied
+  'withdrawn': 'badge-auth-withdrawn',       // Orange - withdrawn (out of FAS bounds)
 }
 
 const planStatusLabels: Record<PlanStatus, string> = {
@@ -39,6 +40,7 @@ const authorizationStatusLabels: Record<AuthorizationStatus, string> = {
   'pendiente': 'Pending',
   'aprobado': 'Approved',
   'denegado': 'Denied',
+  'withdrawn': 'Withdrawn',
 }
 
 export function StatusBadge({ type, status, className = '' }: StatusBadgeProps) {

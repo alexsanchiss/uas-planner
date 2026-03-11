@@ -24,7 +24,7 @@ const AUTH_TOKEN_KEY = 'authToken'
  * Flight plan status types
  */
 export type FlightPlanStatus = 'sin procesar' | 'en cola' | 'procesando' | 'procesado' | 'error'
-export type AuthorizationStatus = 'sin autorización' | 'pendiente' | 'aprobado' | 'denegado'
+export type AuthorizationStatus = 'sin autorización' | 'pendiente' | 'aprobado' | 'denegado' | 'withdrawn'
 
 /**
  * Flight plan folder reference

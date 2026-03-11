@@ -5,7 +5,7 @@
 | # | Task | Status | Commit |
 |---|------|--------|--------|
 | 1 | Fix tooltip overflow in U-plan form popups | ⬜ Not Started | — |
-| 2 | Handle FAS 400 response — withdrawn state + denial email | ⬜ Not Started | — |
+| 2 | Handle FAS 400 response — withdrawn state + denial email | ✅ Completed | — |
 | 3 | Center map on manually added waypoint | ⬜ Not Started | — |
 | 4 | Fix drone follow camera + label proximity in 3D viewer | ⬜ Not Started | — |
 | 5 | Fix premature disconnections + 10-min inactivity timeout | ⬜ Not Started | — |

@@ -132,7 +132,8 @@ interface FlightPlan {
     | "sin autorización"
     | "procesando autorización"
     | "aprobado"
-    | "denegado";
+    | "denegado"
+    | "withdrawn";
   uplan?: any;
   authorizationMessage?: any;
   scheduledAt?: string | null;
@@ -1509,7 +1510,7 @@ export function FlightPlansUploaderDev() {
     const plans = flightPlans.filter(
       (p) =>
         p.folderId === folderId &&
-        p.authorizationStatus === "denegado" &&
+        (p.authorizationStatus === "denegado" || p.authorizationStatus === "withdrawn") &&
         p.authorizationMessage
     );
     if (plans.length === 0) {
@@ -1634,7 +1635,7 @@ export function FlightPlansUploaderDev() {
     const errors = selectedPlans
       .map(id => {
         const plan = flightPlans.find(p => p.id === id);
-        if (plan && plan.authorizationStatus === 'denegado' && plan.authorizationMessage) {
+        if (plan && (plan.authorizationStatus === 'denegado' || plan.authorizationStatus === 'withdrawn') && plan.authorizationMessage) {
           return { name: plan.customName, message: plan.authorizationMessage };
         }
         return null;
@@ -2031,7 +2032,7 @@ export function FlightPlansUploaderDev() {
                                 !selectedPlans.some(
                                   id => {
                                     const plan = flightPlans.find(p => p.id === id);
-                                    return plan && plan.authorizationStatus === "denegado" && plan.authorizationMessage;
+                                    return plan && (plan.authorizationStatus === "denegado" || plan.authorizationStatus === "withdrawn") && plan.authorizationMessage;
                                   }
                                 )
                               }
@@ -2286,15 +2287,15 @@ export function FlightPlansUploaderDev() {
                                         Request Auth
                                       </div>
                                     </Button>
-                                  ) : plan.authorizationStatus === "denegado" ? (
+                                  ) : plan.authorizationStatus === "denegado" || plan.authorizationStatus === "withdrawn" ? (
                                     <Button
                                       variant="outline"
                                       onClick={() => setUplanErrorModal({ open: true, message: plan.authorizationMessage || 'No message' })}
-                                      className="text-rose-400 hover:bg-rose-500/90 hover:text-white border-rose-400/50 hover:border-rose-500 min-w-[153px] ml-2 flex items-center justify-center h-12 min-h-[48px]"
+                                      className={`${plan.authorizationStatus === "withdrawn" ? "text-orange-400 hover:bg-orange-500/90 hover:text-white border-orange-400/50 hover:border-orange-500" : "text-rose-400 hover:bg-rose-500/90 hover:text-white border-rose-400/50 hover:border-rose-500"} min-w-[153px] ml-2 flex items-center justify-center h-12 min-h-[48px]`}
                                     >
                                       <div className="flex items-center justify-center">
                                         <XIcon className="h-4 w-4 mr-2" />
-                                        View error
+                                        {plan.authorizationStatus === "withdrawn" ? "Withdrawn" : "View error"}
                                       </div>
                                     </Button>
                                   ) : plan.authorizationStatus === "aprobado" ? (
