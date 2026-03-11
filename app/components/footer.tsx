@@ -57,9 +57,13 @@ function ThemedImage({
   );
 }
 
-export function Footer() {
+export function Footer({ transparent = false }: { transparent?: boolean }) {
   return (
-    <footer className="bg-[var(--bg-primary)] text-[var(--text-secondary)] border-t border-[var(--border-primary)]">
+    <footer className={`relative z-[100] ${
+      transparent
+        ? 'bg-transparent backdrop-blur-md text-white/80 border-t border-white/10'
+        : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] border-t border-[var(--border-primary)]'
+    }`}>
       <div className="container mx-auto px-4 py-6 grid grid-cols-1 md:grid-cols-4 gap-8 items-center text-center">
         {/* Logos stacked vertically and centered */}
         <div className="flex flex-col items-center justify-center space-y-4">
@@ -165,7 +169,11 @@ export function Footer() {
         </div>
       </div>
       {/* Copyright row */}
-      <div className="w-full bg-[var(--surface-primary)] text-[var(--text-muted)] text-xs text-center py-4 border-t border-[var(--border-primary)]">
+      <div className={`w-full text-xs text-center py-4 border-t ${
+        transparent
+          ? 'bg-transparent text-white/50 border-white/10'
+          : 'bg-[var(--surface-primary)] text-[var(--text-muted)] border-[var(--border-primary)]'
+      }`}>
         &copy; {new Date().getFullYear()} U-PLAN PREPARATION SERVICE (UPPS) -{" "}
         <a
           href="https://www.sna-upv.com"

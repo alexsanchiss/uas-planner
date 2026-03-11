@@ -1,8 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { InteractiveHoverButton } from "./components/ui/interactive-hover-button";
 
 const ShaderBackground = dynamic(
   () => import("@/components/ui/animated-shader-background"),
@@ -21,7 +20,7 @@ export default function SplashPage() {
       <div className="absolute inset-0 z-[1] bg-black/30" />
 
       {/* Centered content */}
-      <div className="relative z-10 flex flex-col items-center text-center px-4">
+      <div className="relative z-10 flex flex-col items-center text-center px-4 max-w-2xl">
         {/* App name */}
         <h1
           className="text-6xl sm:text-7xl md:text-8xl font-extrabold tracking-tight text-white splash-fade-in-up"
@@ -38,15 +37,22 @@ export default function SplashPage() {
           Plan. Authorize. Fly.
         </p>
 
+        {/* Brief marketing description */}
+        <p
+          className="mt-6 text-sm sm:text-base text-gray-400 leading-relaxed splash-fade-in-up"
+          style={{ animationDelay: "0.65s" }}
+        >
+          The all-in-one UAS flight management platform. Define your mission,
+          get airspace authorization, and activate your flight plan — seamlessly.
+        </p>
+
         {/* CTA Button */}
-        <Link
-          href="/launch"
-          className="mt-10 splash-fade-in-up inline-flex items-center gap-2 px-8 py-3.5 rounded-full text-lg font-semibold text-white bg-gradient-to-r from-blue-500 to-violet-600 shadow-lg splash-glow-btn transition-transform duration-200 hover:scale-105 active:scale-95"
+        <div
+          className="mt-10 splash-fade-in-up"
           style={{ animationDelay: "0.8s" }}
         >
-          Enter Platform
-          <ChevronRight className="w-5 h-5" />
-        </Link>
+          <InteractiveHoverButton text="Enter Platform" href="/launch" />
+        </div>
       </div>
     </div>
   );

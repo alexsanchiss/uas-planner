@@ -17,7 +17,7 @@ export function AppChoice({
   onLaunch,
 }: AppChoiceProps) {
   return (
-    <div className="bg-[var(--surface-primary)] rounded-lg shadow-md overflow-hidden border border-[var(--border-primary)]">
+    <div className="bg-black/60 backdrop-blur-sm rounded-lg shadow-md overflow-hidden border border-white/10 transition-transform duration-200 hover:scale-[1.02]">
       <Image
         src={image}
         alt={name}
