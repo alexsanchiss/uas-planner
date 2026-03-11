@@ -18,4 +18,4 @@
 | 12 | Fix 3D geozone rendering in Geoawareness3D and AuthorizationResult | ✅ Completed | — |
 | 13 | Remove email JSON attachments entirely | ✅ Completed | — |
 | 14 | Version bump to 2.2.1, update icd.tex, create tag | ⬜ Not Started | — |
-| 15 | Create epic landing page with shader background | ⬜ Not Started | — |
+| 15 | Create epic landing page with shader background | ✅ Completed | — |
