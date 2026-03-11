@@ -4,6 +4,34 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 
 /**
+ * Footer link with animated underline on hover
+ */
+function FooterLink({
+  href,
+  transparent,
+  children,
+}: {
+  href: string;
+  transparent?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className={`relative text-sm transition-colors duration-300 ${
+        transparent
+          ? 'text-white/70 hover:text-white'
+          : 'text-[var(--text-secondary)] hover:text-[var(--color-primary)]'
+      } after:absolute after:bottom-0 after:left-0 after:w-0 after:h-px after:transition-all after:duration-300 hover:after:w-full ${
+        transparent ? 'after:bg-white/60' : 'after:bg-[var(--color-primary)]'
+      }`}
+    >
+      {children}
+    </Link>
+  );
+}
+
+/**
  * Theme-aware image component for footer
  * Uses MutationObserver to watch for data-theme changes, same logic as header
  */
@@ -64,13 +92,14 @@ export function Footer({ transparent = false }: { transparent?: boolean }) {
         ? 'bg-transparent backdrop-blur-md text-white/80 border-t border-white/10'
         : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] border-t border-[var(--border-primary)]'
     }`}>
-      <div className="container mx-auto px-4 py-6 grid grid-cols-1 md:grid-cols-4 gap-8 items-center text-center">
-        {/* Logos stacked vertically and centered */}
-        <div className="flex flex-col items-center justify-center space-y-4">
+      <div className="container mx-auto px-6 py-10 grid grid-cols-1 md:grid-cols-4 gap-10 items-start text-center md:text-left">
+        {/* Logos stacked vertically */}
+        <div className="flex flex-col items-center md:items-start justify-start space-y-5">
           <a
             href="https://sna-upv.com"
             target="_blank"
             rel="noopener noreferrer"
+            className="transition-opacity duration-300 hover:opacity-80"
           >
             <ThemedImage
               darkSrc="/images/SNA_WHITE.png"
@@ -85,6 +114,7 @@ export function Footer({ transparent = false }: { transparent?: boolean }) {
             href="https://www.upv.es"
             target="_blank"
             rel="noopener noreferrer"
+            className="transition-opacity duration-300 hover:opacity-80"
           >
             <ThemedImage
               darkSrc="/images/marca_UPV_principal_blanco150.png"
@@ -92,25 +122,28 @@ export function Footer({ transparent = false }: { transparent?: boolean }) {
               alt="UPV Logo"
               width={160}
               height={90}
-              className="p-[2px] mt-0 !mt-0"
+              className="p-[2px]"
             />
           </a>
         </div>
-        {/* Social media icons stacked vertically and centered */}
-        <div className="flex flex-col items-center justify-center space-y-6">
+        {/* Social media */}
+        <div className="flex flex-col items-center md:items-start justify-start space-y-4">
+          <h3 className={`text-xs font-semibold uppercase tracking-widest mb-1 ${
+            transparent ? 'text-white/50' : 'text-[var(--text-muted)]'
+          }`}>Connect</h3>
           <a
             href="https://www.linkedin.com/company/sna-upv"
             target="_blank"
             rel="noopener noreferrer"
             aria-label="LinkedIn"
-            className="hover:opacity-80"
+            className="transition-all duration-300 hover:opacity-80 hover:scale-105"
           >
             <ThemedImage
               darkSrc="/images/LinkedIN_white.svg"
               lightSrc="/images/LinkedIN_dark.svg"
               alt="LinkedIn"
-              width={48}
-              height={48}
+              width={40}
+              height={40}
             />
           </a>
           <a
@@ -118,60 +151,52 @@ export function Footer({ transparent = false }: { transparent?: boolean }) {
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Instagram"
-            className="hover:opacity-80"
+            className="transition-all duration-300 hover:opacity-80 hover:scale-105"
           >
             <ThemedImage
               darkSrc="/images/Instagram_white.svg"
               lightSrc="/images/Instagram_dark.svg"
               alt="Instagram"
-              width={48}
-              height={48}
+              width={40}
+              height={40}
             />
           </a>
         </div>
-        {/* Main menu */}
-        <div className="flex flex-col items-center justify-center space-y-2">
-          <div className="font-semibold mb-2">Apps</div>
-          <Link
-            href="/plan-definition"
-            className="hover:text-[var(--color-primary)] transition"
-          >
+        {/* Apps menu */}
+        <div className="flex flex-col items-center md:items-start justify-start space-y-3">
+          <h3 className={`text-xs font-semibold uppercase tracking-widest mb-1 ${
+            transparent ? 'text-white/50' : 'text-[var(--text-muted)]'
+          }`}>Apps</h3>
+          <FooterLink href="/plan-definition" transparent={transparent}>
             Plan Definition
-          </Link>
-          <Link
-            href="/plan-authorization"
-            className="hover:text-[var(--color-primary)] transition"
-          >
+          </FooterLink>
+          <FooterLink href="/plan-authorization" transparent={transparent}>
             Plan Authorization
-          </Link>
-          <Link
-            href="/plan-activation"
-            className="hover:text-[var(--color-primary)] transition"
-          >
+          </FooterLink>
+          <FooterLink href="/plan-activation" transparent={transparent}>
             Plan Activation
-          </Link>
+          </FooterLink>
         </div>
         {/* Info menu */}
-        <div className="flex flex-col items-center justify-center space-y-2">
-          <div className="font-semibold mb-2">Information</div>
-          <Link href="/contact-us" className="hover:text-[var(--color-primary)] transition">
+        <div className="flex flex-col items-center md:items-start justify-start space-y-3">
+          <h3 className={`text-xs font-semibold uppercase tracking-widest mb-1 ${
+            transparent ? 'text-white/50' : 'text-[var(--text-muted)]'
+          }`}>Information</h3>
+          <FooterLink href="/contact-us" transparent={transparent}>
             Contact Us
-          </Link>
-          <Link href="/how-it-works" className="hover:text-[var(--color-primary)] transition">
+          </FooterLink>
+          <FooterLink href="/how-it-works" transparent={transparent}>
             How it works?
-          </Link>
-          <Link
-            href="/privacy-policy"
-            className="hover:text-[var(--color-primary)] transition"
-          >
+          </FooterLink>
+          <FooterLink href="/privacy-policy" transparent={transparent}>
             Privacy Policy
-          </Link>
+          </FooterLink>
         </div>
       </div>
       {/* Copyright row */}
       <div className={`w-full text-xs text-center py-4 border-t ${
         transparent
-          ? 'bg-transparent text-white/50 border-white/10'
+          ? 'bg-transparent text-white/40 border-white/10'
           : 'bg-[var(--surface-primary)] text-[var(--text-muted)] border-[var(--border-primary)]'
       }`}>
         &copy; {new Date().getFullYear()} U-PLAN PREPARATION SERVICE (UPPS) -{" "}
@@ -179,7 +204,13 @@ export function Footer({ transparent = false }: { transparent?: boolean }) {
           href="https://www.sna-upv.com"
           target="_blank"
           rel="noopener noreferrer"
-          className="underline hover:text-[var(--color-primary)] transition"
+          className={`relative inline-block transition-colors duration-300 ${
+            transparent
+              ? 'text-white/60 hover:text-white/90'
+              : 'text-[var(--text-muted)] hover:text-[var(--color-primary)]'
+          } after:absolute after:bottom-0 after:left-0 after:w-0 after:h-px after:transition-all after:duration-300 hover:after:w-full ${
+            transparent ? 'after:bg-white/60' : 'after:bg-[var(--color-primary)]'
+          }`}
         >
           SNA Lab, UPV
         </a>
