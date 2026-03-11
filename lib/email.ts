@@ -1,4 +1,4 @@
-import { MailerSend, EmailParams, Sender, Recipient, Attachment } from 'mailersend';
+import { MailerSend, EmailParams, Sender, Recipient } from 'mailersend';
 import { logger } from './logger';
 
 const SENDER_EMAIL = process.env.MAILERSEND_SENDER_EMAIL || 'UPPS@sna-upv.com';
@@ -242,15 +242,18 @@ export async function sendPasswordResetEmail(
 }
 
 /**
- * Send authorization result notification with UPLAN JSON as attachment.
+ * Send authorization result notification.
  * This is a fire-and-forget notification — errors are logged but never thrown.
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function sendAuthorizationResultEmail(
   to: string,
   planName: string,
   status: 'aprobado' | 'denegado',
-  message: string,
-  uplanJson: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _message: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _uplanJson: string,
 ): Promise<void> {
   const client = getMailerSendClient();
   if (!client) return;
@@ -259,13 +262,6 @@ export async function sendAuthorizationResultEmail(
   const statusColor = status === 'aprobado' ? '#059669' : '#dc2626';
   const statusBgColor = status === 'aprobado' ? '#d1fae5' : '#fee2e2';
   const statusBorderColor = status === 'aprobado' ? '#10b981' : '#ef4444';
-  const uplanBase64 = Buffer.from(uplanJson, 'utf-8').toString('base64');
-  
-  // Sanitize filename: remove special characters and limit length
-  const sanitizedName = planName
-    .replace(/[^a-zA-Z0-9_\-]/g, '_')
-    .substring(0, 50);
-  const filename = `uplan_${sanitizedName}.json`;
 
   const emailParams = new EmailParams()
     .setFrom(new Sender(SENDER_EMAIL, SENDER_NAME))
@@ -273,129 +269,6 @@ export async function sendAuthorizationResultEmail(
     .setSubject(`Flight Plan ${statusLabel}: ${planName} — UPPS Platform`)
     .setHtml(
       `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
-  <table role="presentation" style="width: 100%; border-collapse: collapse;">
-    <tr>
-      <td style="padding: 20px 0;">
-        <table role="presentation" style="width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-          <!-- Header -->
-          <tr>
-            <td style="padding: 40px 40px 30px; text-align: center; border-bottom: 3px solid #1e3a8a;">
-              <h1 style="margin: 0; color: #1e3a8a; font-size: 28px; font-weight: bold;">Flight Plan Authorization Result</h1>
-            </td>
-          </tr>
-          <!-- Content -->
-          <tr>
-            <td style="padding: 40px;">
-              <p style="margin: 0 0 20px; font-size: 16px; line-height: 1.6; color: #333;">
-                Dear valued customer,
-              </p>
-              <p style="margin: 0 0 25px; font-size: 16px; line-height: 1.6; color: #333;">
-                Your flight plan <strong>${planName}</strong> has been processed by our UAS Planning and Authorization System.
-              </p>
-              
-              <!-- Status Badge -->
-              <div style="background-color: ${statusBgColor}; border-left: 4px solid ${statusBorderColor}; padding: 20px; margin: 25px 0; text-align: center;">
-                <p style="margin: 0 0 10px; font-size: 14px; color: #666; text-transform: uppercase; letter-spacing: 1px;">
-                  Authorization Status
-                </p>
-                <p style="margin: 0; font-size: 32px; font-weight: bold; color: ${statusColor};">
-                  ${statusLabel.toUpperCase()}
-                </p>
-              </div>
-
-              <!-- Details Section -->
-              <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 20px; margin: 25px 0;">
-                <p style="margin: 0 0 10px; font-size: 14px; color: #666; font-weight: bold;">
-                  Authorization Details:
-                </p>
-                <div style="background-color: #ffffff; padding: 15px; border-radius: 4px; font-family: monospace; font-size: 13px; color: #333; line-height: 1.6; white-space: pre-wrap; word-wrap: break-word;">${message}</div>
-              </div>
-
-              <div style="background-color: #eff6ff; border-left: 4px solid #3b82f6; padding: 15px; margin: 25px 0;">
-                <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #1e40af;">
-                  <strong>📎 Attachment:</strong> The complete UPLAN JSON file for your flight plan is attached to this email. Please save it for your records and operational use.
-                </p>
-              </div>
-
-              ${status === 'aprobado' 
-                ? `<p style="margin: 25px 0 0; font-size: 14px; line-height: 1.6; color: #059669;">
-                    <strong>✓ Next Steps:</strong> You may now proceed with your flight operations according to the approved plan. Please ensure all operational requirements and safety protocols are followed.
-                  </p>`
-                : `<p style="margin: 25px 0 0; font-size: 14px; line-height: 1.6; color: #dc2626;">
-                    <strong>✗ Note:</strong> If you have questions about the denial or wish to submit a revised flight plan, please contact our team directly.
-                  </p>`
-              }
-            </td>
-          </tr>
-          <!-- Signature -->
-          <tr>
-            <td style="padding: 30px 40px; border-top: 1px solid #e5e7eb;">
-              <table role="presentation" style="width: 100%;">
-                <tr>
-                  <td style="width: 70%; vertical-align: top;">
-                    <p style="margin: 0 0 5px; font-size: 15px; color: #333; font-weight: bold;">Best regards,</p>
-                    <p style="margin: 0 0 3px; font-size: 15px; color: #1e3a8a; font-weight: bold;">Alex Sanchis</p>
-                    <p style="margin: 0 0 3px; font-size: 13px; color: #666;">UPPS Service Manager</p>
-                    <p style="margin: 0 0 3px; font-size: 13px; color: #666;">UAS Planning & Authorization Service</p>
-                    <p style="margin: 0 0 3px; font-size: 13px; color: #666;">Phone: +34 609 33 22 55</p>
-                    <p style="margin: 0; font-size: 13px; color: #1e3a8a;"><a href="mailto:asanmar4@upv.edu.es" style="color: #1e3a8a; text-decoration: none;">asanmar4@upv.edu.es</a></p>
-                  </td>
-                  <td style="width: 30%; text-align: right; vertical-align: middle;">
-                    <img src="${APP_URL}/images/SNA_DEEPBLUE.png" alt="SNA Logo" style="max-width: 120px; height: auto;">
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <!-- Footer -->
-          <tr>
-            <td style="padding: 20px 40px; background-color: #f9fafb; border-top: 1px solid #e5e7eb;">
-              <p style="margin: 0 0 10px; font-size: 11px; line-height: 1.5; color: #999; text-align: center;">
-                <strong>Important:</strong> This email and any attachments are confidential and intended solely for the addressee. If you are not the intended recipient, please delete this email immediately.
-              </p>
-              <p style="margin: 0; font-size: 11px; line-height: 1.5; color: #999; text-align: center;">
-                Please do not reply to this email address. For inquiries or support, contact us directly at <a href="mailto:asanmar4@upv.edu.es" style="color: #1e3a8a;">asanmar4@upv.edu.es</a>
-              </p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`,
-    )
-    .setText(
-      `Flight Plan Authorization Result\n\nDear valued customer,\n\nYour flight plan "${planName}" has been processed.\n\nStatus: ${statusLabel.toUpperCase()}\n\nAuthorization Details:\n${message}\n\nThe UPLAN JSON file is attached to this email.\n\n${status === 'aprobado' 
-        ? 'You may now proceed with your flight operations according to the approved plan.' 
-        : 'If you have questions about the denial or wish to submit a revised plan, please contact our team.'
-      }\n\n---\nBest regards,\nAlex Sanchis\nUPPS Service Manager\nUAS Planning & Authorization Service\n+34 609 33 22 55\nasanmar4@upv.edu.es\n\n---\nThis email is confidential and intended solely for the addressee. Please do not reply to this email address. For inquiries, contact asanmar4@upv.edu.es`,
-    )
-    .setAttachments([
-      new Attachment(uplanBase64, filename, 'attachment'),
-    ]);
-
-  try {
-    await client.email.send(emailParams);
-    logger.info('Authorization result email sent', { to, planName, status });
-  } catch (error: unknown) {
-    const detail = error instanceof Error ? error.message : JSON.stringify(error);
-    logger.error('Failed to send authorization result email with attachment', { to, planName, error: detail });
-    
-    // Retry without attachment - simplified notification
-    try {
-      const simplifiedEmailParams = new EmailParams()
-        .setFrom(new Sender(SENDER_EMAIL, SENDER_NAME))
-        .setTo([new Recipient(to)])
-        .setSubject(`Flight Plan ${statusLabel}: ${planName} — UPPS Platform`)
-        .setHtml(
-          `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
@@ -494,20 +367,20 @@ export async function sendAuthorizationResultEmail(
   </table>
 </body>
 </html>`,
-        )
-        .setText(
-          `Flight Plan Authorization Result\n\nDear valued customer,\n\nYour flight plan "${planName}" has been processed.\n\nStatus: ${statusLabel.toUpperCase()}\n\nFor complete details and to download your UPLAN file, please log in to the UPPS Platform:\n${APP_URL}\n\n${status === 'aprobado' 
-            ? 'You may now proceed with your flight operations according to the approved plan.' 
-            : 'If you have questions about the denial or wish to submit a revised plan, please contact our team.'
-          }\n\n---\nBest regards,\nAlex Sanchis\nUPPS Service Manager\nUAS Planning & Authorization Service\n+34 609 33 22 55\nasanmar4@upv.edu.es\n\n---\nThis email is confidential and intended solely for the addressee. Please do not reply to this email address. For inquiries, contact asanmar4@upv.edu.es`,
-        );
+    )
+    .setText(
+      `Flight Plan Authorization Result\n\nDear valued customer,\n\nYour flight plan "${planName}" has been processed.\n\nStatus: ${statusLabel.toUpperCase()}\n\nFor complete details and to download your UPLAN file, please log in to the UPPS Platform:\n${APP_URL}\n\n${status === 'aprobado' 
+        ? 'You may now proceed with your flight operations according to the approved plan.' 
+        : 'If you have questions about the denial or wish to submit a revised plan, please contact our team.'
+      }\n\n---\nBest regards,\nAlex Sanchis\nUPPS Service Manager\nUAS Planning & Authorization Service\n+34 609 33 22 55\nasanmar4@upv.edu.es\n\n---\nThis email is confidential and intended solely for the addressee. Please do not reply to this email address. For inquiries, contact asanmar4@upv.edu.es`,
+    );
 
-      await client.email.send(simplifiedEmailParams);
-      logger.info('Authorization result email sent without attachment (fallback)', { to, planName, status });
-    } catch (retryError: unknown) {
-      const retryDetail = retryError instanceof Error ? retryError.message : JSON.stringify(retryError);
-      logger.error('Failed to send authorization result email even without attachment', { to, planName, error: retryDetail });
-    }
+  try {
+    await client.email.send(emailParams);
+    logger.info('Authorization result email sent', { to, planName, status });
+  } catch (error: unknown) {
+    const detail = error instanceof Error ? error.message : JSON.stringify(error);
+    logger.error('Failed to send authorization result email', { to, planName, error: detail });
   }
 }
 
