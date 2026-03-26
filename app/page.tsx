@@ -102,7 +102,7 @@ export default function LandingPage() {
               className="text-6xl sm:text-7xl md:text-8xl font-extrabold tracking-tight text-white splash-fade-in-up"
               style={{ animationDelay: "0.2s" }}
             >
-              AETHON
+              PAUTHFLY
             </h1>
             <p
               className="mt-4 text-lg sm:text-xl md:text-2xl text-gray-300 font-light tracking-wide splash-fade-in-up"
@@ -176,7 +176,7 @@ export default function LandingPage() {
                 </h2>
                 <p className="mt-4 text-gray-400 max-w-xl mx-auto">
                   Every successful drone mission is built on planning, compliance,
-                  and execution. AETHON handles all three.
+                  and execution. PAUTHFLY handles all three.
                 </p>
               </div>
 
