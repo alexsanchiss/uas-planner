@@ -239,6 +239,12 @@ export default function ScanPatternGeneratorV2({
   const [statistics, setStatistics] = useState<ScanStatistics | null>(null);
   const [validation, setValidation] = useState<ScanValidation | null>(null);
   
+  // Add vertex form state
+  const [addVertexFormOpen, setAddVertexFormOpen] = useState(false);
+  const [addVertexLat, setAddVertexLat] = useState('');
+  const [addVertexLng, setAddVertexLng] = useState('');
+  const [addVertexError, setAddVertexError] = useState<string | null>(null);
+  
   // ---- TASK-216: Refs for stable handler management ----
   // Store onMapClick in a ref to avoid dependency issues in the main click handler
   const onMapClickRef = useRef(onMapClick);
@@ -464,34 +470,6 @@ export default function ScanPatternGeneratorV2({
     });
     return () => { onDragHandlers(null); };
   }, [onDragHandlers, handleExternalTakeoffUpdate, handleExternalLandingUpdate, handleVertexUpdate]);
-
-  const handleAddVertex = useCallback(() => {
-    const bounds = serviceBoundsRef.current;
-    let newLat: number;
-    let newLng: number;
-
-    if (polygonVertices.length >= 2) {
-      // Midpoint between last two vertices
-      const last = polygonVertices[polygonVertices.length - 1];
-      const prev = polygonVertices[polygonVertices.length - 2];
-      newLat = (last.lat + prev.lat) / 2;
-      newLng = (last.lng + prev.lng) / 2;
-    } else if (polygonVertices.length === 1) {
-      // Slightly offset from existing vertex
-      newLat = polygonVertices[0].lat + 0.001;
-      newLng = polygonVertices[0].lng + 0.001;
-    } else if (bounds) {
-      // Center of service bounds
-      const [minLng, minLat, maxLng, maxLat] = bounds;
-      newLat = (minLat + maxLat) / 2;
-      newLng = (minLng + maxLng) / 2;
-    } else {
-      return; // No bounds and no vertices — can't determine position
-    }
-
-    if (!isWithinBounds(newLat, newLng, bounds)) return;
-    setPolygonVertices(prev => [...prev, { lat: newLat, lng: newLng }]);
-  }, [polygonVertices]);
 
   const handleClearPolygon = useCallback(() => {
     setPolygonVertices([]);
@@ -733,15 +711,107 @@ export default function ScanPatternGeneratorV2({
               </div>
             )}
             
-            {/* Add Vertex Button (only when polygon is not closed) */}
-            {!polygonClosed && (
+            {/* Add Vertex Button or Form (only when polygon is not closed) */}
+            {!polygonClosed && !addVertexFormOpen && (
               <button
-                onClick={handleAddVertex}
+                onClick={() => {
+                  // Pre-fill with center of service bounds or last vertex position
+                  let defaultLat = '';
+                  let defaultLng = '';
+                  if (polygonVertices.length > 0) {
+                    const last = polygonVertices[polygonVertices.length - 1];
+                    defaultLat = last.lat.toFixed(6);
+                    defaultLng = last.lng.toFixed(6);
+                  } else if (serviceBounds) {
+                    const [minLng, minLat, maxLng, maxLat] = serviceBounds;
+                    defaultLat = ((minLat + maxLat) / 2).toFixed(6);
+                    defaultLng = ((minLng + maxLng) / 2).toFixed(6);
+                  }
+                  setAddVertexLat(defaultLat);
+                  setAddVertexLng(defaultLng);
+                  setAddVertexError(null);
+                  setAddVertexFormOpen(true);
+                }}
                 className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-lg hover:bg-[var(--bg-hover)] transition-colors border border-dashed border-[var(--border-secondary)]"
               >
                 <Plus className="w-4 h-4" />
                 {t.planGenerator.addVertex}
               </button>
+            )}
+            
+            {/* Add Vertex Form */}
+            {!polygonClosed && addVertexFormOpen && (
+              <div className="p-3 rounded border border-[var(--border-primary)] bg-[var(--bg-secondary)] space-y-2">
+                <div className="text-xs font-semibold text-[var(--text-secondary)] mb-1">{t.planGenerator.addVertex}</div>
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-[var(--text-tertiary)]">Lat:</label>
+                  <input
+                    type="text"
+                    value={addVertexLat}
+                    onChange={(e) => setAddVertexLat(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); (document.getElementById('add-vertex-confirm-btn') as HTMLButtonElement)?.click(); } }}
+                    className="flex-1 px-1.5 py-0.5 bg-[var(--input-bg)] border border-[var(--input-border)] rounded text-[var(--text-primary)] text-xs focus:outline-none focus:ring-1 focus:ring-purple-500"
+                    placeholder="Latitude"
+                    autoFocus
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-[var(--text-tertiary)]">Lng:</label>
+                  <input
+                    type="text"
+                    value={addVertexLng}
+                    onChange={(e) => setAddVertexLng(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); (document.getElementById('add-vertex-confirm-btn') as HTMLButtonElement)?.click(); } }}
+                    className="flex-1 px-1.5 py-0.5 bg-[var(--input-bg)] border border-[var(--input-border)] rounded text-[var(--text-primary)] text-xs focus:outline-none focus:ring-1 focus:ring-purple-500"
+                    placeholder="Longitude"
+                  />
+                </div>
+                {addVertexError && (
+                  <p className="text-[10px] text-red-400">{addVertexError}</p>
+                )}
+                <div className="flex gap-2 mt-2">
+                  <button
+                    id="add-vertex-confirm-btn"
+                    type="button"
+                    onClick={() => {
+                      const lat = parseFloat(addVertexLat);
+                      const lng = parseFloat(addVertexLng);
+                      if (isNaN(lat) || isNaN(lng)) {
+                        setAddVertexError(t.planGenerator.invalidNumber);
+                        return;
+                      }
+                      if (lat < -90 || lat > 90) {
+                        setAddVertexError(t.planGenerator.latRange);
+                        return;
+                      }
+                      if (lng < -180 || lng > 180) {
+                        setAddVertexError(t.planGenerator.lngRange);
+                        return;
+                      }
+                      if (!isWithinBounds(lat, lng, serviceBounds)) {
+                        setAddVertexError(t.planGenerator.outsideServiceArea);
+                        return;
+                      }
+                      setPolygonVertices(prev => [...prev, { lat, lng }]);
+                      setAddVertexFormOpen(false);
+                      setAddVertexError(null);
+                    }}
+                    className="flex-1 px-3 py-1.5 rounded text-xs font-medium bg-[var(--color-primary)] text-white hover:bg-blue-800 transition-colors"
+                  >
+                    Add
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAddVertexFormOpen(false);
+                      setAddVertexError(null);
+                    }}
+                    className="flex-1 px-3 py-1.5 rounded text-xs font-medium bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
             )}
 
             {/* Close Polygon Button */}

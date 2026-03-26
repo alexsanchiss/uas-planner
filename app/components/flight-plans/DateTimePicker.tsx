@@ -112,6 +112,14 @@ export function DateTimePicker({
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
   }, [])
   const [minDateTime, setMinDateTime] = useState(getNowLocal)
+
+  // Check if a local datetime string represents a past date
+  const isDateInPast = useCallback((localDatetimeString: string): boolean => {
+    if (!localDatetimeString) return false
+    const date = new Date(localDatetimeString)
+    if (isNaN(date.getTime())) return false
+    return date < new Date()
+  }, [])
   
   // Sync local state with API value when it changes externally
   useEffect(() => {
@@ -153,10 +161,15 @@ export function DateTimePicker({
         onChange('')
         return
       }
+      // Refresh minDateTime and reject past dates
+      setMinDateTime(getNowLocal())
+      if (isDateInPast(localInput)) {
+        return
+      }
       const utcIso = localDatetimeStringToUtc(localInput)
       onChange(utcIso)
     }, 800)
-  }, [onChange])
+  }, [onChange, getNowLocal, isDateInPast])
   
   // Refresh min datetime on focus so it's always current when interacting
   const handleFocus = useCallback(() => {
@@ -173,12 +186,17 @@ export function DateTimePicker({
       onChange('')
       return
     }
+    // Refresh minDateTime and reject past dates
+    setMinDateTime(getNowLocal())
+    if (isDateInPast(localValue)) {
+      return
+    }
     const utcIso = localDatetimeStringToUtc(localValue)
     // Only call onChange if value actually changed
     if (utcIso !== (value ? new Date(value as string).toISOString() : '')) {
       onChange(utcIso)
     }
-  }, [localValue, value, onChange])
+  }, [localValue, value, onChange, getNowLocal, isDateInPast])
   
   // Cleanup timer on unmount
   useEffect(() => {
