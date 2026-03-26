@@ -322,25 +322,13 @@ export async function POST(
           );
         }
 
-        // Handle other errors (network, timeout, etc.)
+        // Handle other errors (network, timeout, etc.) - don't persist, allow retry
         const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-        const uplanString = JSON.stringify(uplan);
-        
-        await prisma.flightPlan.update({
-          where: { id },
-          data: {
-            uplan: uplanString,
-            authorizationStatus: 'denegado',
-            authorizationMessage: err instanceof Error 
-              ? JSON.parse(JSON.stringify(err)) 
-              : String(err),
-            externalResponseNumber: `error: ${errorMessage}`,
-          },
-        });
+        console.error('Network/timeout error sending U-Plan:', errorMessage);
 
         return NextResponse.json(
-          { error: 'denegado', message: errorMessage },
-          { status: 500 }
+          { error: 'FAS communication error. Please try again later.', message: errorMessage },
+          { status: 503 }
         );
       }
     }

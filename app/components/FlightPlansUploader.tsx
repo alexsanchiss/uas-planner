@@ -691,9 +691,9 @@ export function FlightPlansUploader() {
     } catch (error) {
       console.error('Authorization error:', error)
       
-      // Show different message for FAS unavailability vs other errors
+      // Show the actual error message from the backend
       const errorMessage = error instanceof Error ? error.message : 'Error requesting authorization.'
-      toast.error("Denied: Outside of the FAS service area", {
+      toast.error(errorMessage, {
         onRetry: () => handleAuthorizePlan(planId),
       })
     } finally {
@@ -885,16 +885,21 @@ export function FlightPlansUploader() {
       })
 
       if (!response.ok) {
-        throw new Error('Error resetting plan')
+        const errorData = await response.json();
+        if (errorData.error === 'Cannot reset an externally uploaded plan') {
+          throw new Error('Cannot reset plans uploaded directly by the user. Only plans created in the system can be reset.');
+        }
+        throw new Error(errorData.error || 'Error resetting plan');
       }
 
       await refreshPlans()
       toast.success('Plan reset successfully.')
     } catch (error) {
       console.error('Reset error:', error)
-      toast.error('Error resetting plan.', {
-        onRetry: confirmResetPlan,
-      })
+      const errorMessage = error instanceof Error ? error.message : 'Error resetting plan.';
+      toast.error(errorMessage, {
+        ...(errorMessage.includes('Cannot reset plans uploaded') ? {} : { onRetry: confirmResetPlan }),
+      });
     } finally {
       removeLoadingPlan('resetting', planId)
     }
