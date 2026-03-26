@@ -77,6 +77,8 @@ export interface ScanPatternGeneratorV2Props {
     updateLanding: (lat: number, lng: number) => void;
     updateVertex: (index: number, lat: number, lng: number) => void;
   } | null) => void;
+  /** Callback to fly the map to a specific position */
+  onFlyTo?: (lat: number, lng: number) => void;
 }
 
 // ============================================================================
@@ -210,6 +212,7 @@ export default function ScanPatternGeneratorV2({
   onMapClick,
   onOverlaysChange,
   onDragHandlers,
+  onFlyTo,
 }: ScanPatternGeneratorV2Props) {
   const { t } = useI18n();
   // ---- State ----
@@ -793,6 +796,7 @@ export default function ScanPatternGeneratorV2({
                         return;
                       }
                       setPolygonVertices(prev => [...prev, { lat, lng }]);
+                      onFlyTo?.(lat, lng);
                       setAddVertexFormOpen(false);
                       setAddVertexError(null);
                     }}

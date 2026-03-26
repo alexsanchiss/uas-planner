@@ -1079,6 +1079,10 @@ export default function PlanGenerator() {
                       onMapClick={handleSetScanMapClickHandler}
                       onOverlaysChange={setScanOverlays}
                       onDragHandlers={handleSetScanDragHandlers}
+                      onFlyTo={(lat, lng) => {
+                        setFlyToPosition(null);
+                        setTimeout(() => setFlyToPosition([lat, lng]), 0);
+                      }}
                     />
                   </div>
                 )}
