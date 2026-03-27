@@ -422,7 +422,7 @@ export function generateOrientedVolumes(
     const t2 = isRelativeTime ? startTimestamp + wp2.time : wp2.time;
 
     // Calculate altitude bounds
-    const minAlt = Math.max(midAlt - verticalBuffer, 0); // Minimum 0m AGL
+    const minAlt = Math.max(midAlt - verticalBuffer, 10); // Minimum 10m AGL (regulatory requirement)
     const maxAlt = midAlt + verticalBuffer;
 
     volumes.push({
@@ -545,7 +545,7 @@ export function generateOrientedBBox(
     // Altitude bounds
     result.alt[key] = [
       midAlt + verticalBuffer, // max
-      Math.max(midAlt - verticalBuffer, 0), // min (at least 0m)
+      Math.max(midAlt - verticalBuffer, 10), // min (at least 10m AGL - regulatory requirement)
     ];
 
     // Time bounds
