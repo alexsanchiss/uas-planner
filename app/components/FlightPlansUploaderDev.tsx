@@ -66,13 +66,45 @@ import { useToast } from "../hooks/useToast";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
 import Papa from 'papaparse';
-import { MapContainer, TileLayer, Polyline, Marker, Tooltip, CircleMarker, useMap, Polygon } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
 import dynamic from 'next/dynamic';
+
+// Lazy load Leaflet components to avoid SSR issues with Next.js 16 Turbopack
+const MapContainer = dynamic(
+  () => import('react-leaflet').then(mod => mod.MapContainer),
+  { ssr: false }
+);
+const TileLayer = dynamic(
+  () => import('react-leaflet').then(mod => mod.TileLayer),
+  { ssr: false }
+);
+const Polyline = dynamic(
+  () => import('react-leaflet').then(mod => mod.Polyline),
+  { ssr: false }
+);
+const Marker = dynamic(
+  () => import('react-leaflet').then(mod => mod.Marker),
+  { ssr: false }
+);
+const LeafletTooltip = dynamic(
+  () => import('react-leaflet').then(mod => mod.Tooltip),
+  { ssr: false }
+);
+const CircleMarker = dynamic(
+  () => import('react-leaflet').then(mod => mod.CircleMarker),
+  { ssr: false }
+);
+const Polygon = dynamic(
+  () => import('react-leaflet').then(mod => mod.Polygon),
+  { ssr: false }
+);
+
 const MapModal = dynamic(() => import('./MapModal'), { ssr: false });
 const UplanViewModal = dynamic(() => import('./UplanViewModal'), { ssr: false });
 const BulkUplanViewModal = dynamic(() => import('./BulkUplanViewModal'), { ssr: false });
+const FitBoundsHandler = dynamic(
+  () => import('./map/FitBoundsHandler').then(mod => mod.FitBoundsHandler),
+  { ssr: false }
+);
 
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -165,23 +197,6 @@ function parseTrajectoryCsv(csv: string): TrajectoryRow[] {
     qw: row.qw, qx: row.qx, qy: row.qy, qz: row.qz,
     Vx: row.Vx, Vy: row.Vy, Vz: row.Vz
   })).filter((row: any) => !isNaN(row.Lat) && !isNaN(row.Lon));
-}
-
-// Helper to fit bounds only when trajectory set changes
-function FitBoundsHandler({ bounds, names }: { bounds: [[number, number], [number, number]], names: string[] }) {
-  const map = useMap();
-  const lastNamesRef = useRef<string[]>([]);
-  useEffect(() => {
-    const namesStr = names.join(',');
-    if (namesStr !== lastNamesRef.current.join(',')) {
-      if (bounds && bounds[0] && bounds[1]) {
-        map.fitBounds(bounds, { padding: [30, 30] });
-      }
-      lastNamesRef.current = names;
-    }
-    // eslint-disable-next-line
-  }, [bounds, names, map]);
-  return null;
 }
 
 // Uplan Error Modal

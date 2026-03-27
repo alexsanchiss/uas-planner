@@ -14,12 +14,13 @@ const updateDraftSchema = z.object({
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const auth = await withAuth(request)
   if (isAuthError(auth)) return auth
 
-  const id = parseInt(params.id, 10)
+  const { id: idParam } = await params
+  const id = parseInt(idParam, 10)
   if (isNaN(id)) {
     return NextResponse.json({ error: 'Invalid draft ID' }, { status: 400 })
   }
@@ -40,12 +41,13 @@ export async function GET(
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const auth = await withAuth(request)
   if (isAuthError(auth)) return auth
 
-  const id = parseInt(params.id, 10)
+  const { id: idParam } = await params
+  const id = parseInt(idParam, 10)
   if (isNaN(id)) {
     return NextResponse.json({ error: 'Invalid draft ID' }, { status: 400 })
   }
@@ -88,12 +90,13 @@ export async function PATCH(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const auth = await withAuth(request)
   if (isAuthError(auth)) return auth
 
-  const id = parseInt(params.id, 10)
+  const { id: idParam } = await params
+  const id = parseInt(idParam, 10)
   if (isNaN(id)) {
     return NextResponse.json({ error: 'Invalid draft ID' }, { status: 400 })
   }
