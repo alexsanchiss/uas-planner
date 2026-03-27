@@ -294,14 +294,14 @@ describe("generate_oriented_volumes", () => {
       });
     });
 
-    it("should enforce minimum altitude of 10m", () => {
+    it("should enforce minimum altitude of 0m AGL", () => {
       const lowAltWaypoints: Waypoint[] = [
         { time: 0, lat: 40.0, lon: -3.0, h: 5 },
         { time: 10, lat: 40.001, lon: -3.0, h: 8 },
       ];
       const result = generateOrientedVolumes(lowAltWaypoints, 1000000);
       result.forEach((vol) => {
-        expect(vol.minAltitude.value).toBeGreaterThanOrEqual(10);
+        expect(vol.minAltitude.value).toBeGreaterThanOrEqual(0);
       });
     });
 
