@@ -46,10 +46,6 @@ if (process.env.NODE_ENV === 'development') {
 // =============================================================================
 // Next.js Configuration
 // =============================================================================
-const nextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-};
+const nextConfig = {};
 
 export default nextConfig;

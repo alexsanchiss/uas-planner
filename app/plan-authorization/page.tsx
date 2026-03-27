@@ -1,8 +1,14 @@
 "use client";
 
+import dynamic from 'next/dynamic';
 import { FlightPlansUploader } from "../components/FlightPlansUploader";
-import { FlightPlansUploaderDev } from "../components/FlightPlansUploaderDev";
 import { ProtectedRoute } from "../components/auth/protected-route";
+
+// Dynamic import for Dev component to avoid Leaflet SSR issues in Next.js 16
+const FlightPlansUploaderDev = dynamic(
+  () => import("../components/FlightPlansUploaderDev").then(mod => mod.FlightPlansUploaderDev),
+  { ssr: false }
+);
 
 // Use NEXT_PUBLIC_PRODUCTION_MODE to determine which component to render
 // Default to Dev mode (false) since Production component isn't fully built yet
