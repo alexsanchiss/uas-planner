@@ -43,6 +43,11 @@ function encodeSSEData(data: unknown): Uint8Array {
   return new TextEncoder().encode(text)
 }
 
+function encodeSSEString(event: string, data: unknown): string {
+  const payload = typeof data === 'string' ? data : JSON.stringify(data)
+  return `event: ${event}\ndata: ${payload}\n\n`
+}
+
 // ─── route handler ──────────────────────────────────────────────────────────
 
 export async function GET(
@@ -55,7 +60,7 @@ export async function GET(
   const serviceIp = process.env.GEOAWARENESS_SERVICE_IP
   if (!serviceIp) {
     console.warn('[GeoawarenessSSE] GEOAWARENESS_SERVICE_IP not configured')
-    const body = encodeSSE('error', { error: 'Geoawareness service not configured (GEOAWARENESS_SERVICE_IP missing)' })
+    const body = encodeSSEString('error', { error: 'Geoawareness service not configured (GEOAWARENESS_SERVICE_IP missing)' })
     return new Response(body, {
       status: 200,
       headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' },
