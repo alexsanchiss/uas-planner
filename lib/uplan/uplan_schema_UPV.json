@@ -129,6 +129,13 @@
         },
         "privateFlight": {
           "type": "boolean"
+        },
+        "waypoints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GeoJSONPoint"
+          },
+          "description": "List of waypoints used to generate the flight plan. Each waypoint has [longitude, latitude, altitude] coordinates. This field is internal and not user-editable."
         }
       },
       "required": [
