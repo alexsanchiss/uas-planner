@@ -122,6 +122,11 @@ export const FlightDetailsSchema = z.object({
     (val) => val === undefined || val === null ? false : val === 'true' || val === true || val === 1,
     z.boolean()
   ),
+  // Internal field: waypoints used to generate the flight plan (not user-editable)
+  waypoints: z.array(z.object({
+    type: z.literal('Point'),
+    coordinates: z.tuple([z.number(), z.number(), z.number()]), // [lon, lat, alt]
+  })).optional(),
 });
 export type FlightDetails = z.infer<typeof FlightDetailsSchema>;
 

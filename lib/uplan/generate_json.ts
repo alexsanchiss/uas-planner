@@ -51,11 +51,15 @@ export function generateJSON(bbox: VolumeData, waypoints: Waypoint[], uplan: unk
     emails: [],
   };
   // Corrige privateFlight a número y claves en minúsculas en flightCharacteristics
+  // Preserve existing waypoints if present, otherwise generate from trajectory
+  const existingWaypoints = (uplan as any).flightDetails?.waypoints;
   jsonData.flightDetails = {
     mode: (uplan as any).flightDetails?.mode || "",
     category: (uplan as any).flightDetails?.category || "",
     specialOperation: (uplan as any).flightDetails?.specialOperation || "",
     privateFlight: (uplan as any).flightDetails?.privateFlight ? 1 : 0,
+    // Waypoints: preserve existing or undefined (will be set from QGC plan if available)
+    ...(existingWaypoints ? { waypoints: existingWaypoints } : {}),
   };
   jsonData.takeoffLocation = {
     type: "Point",

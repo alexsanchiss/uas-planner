@@ -73,6 +73,104 @@ const MAX_BULK_ITEMS = 2000;
 const CHUNK_SIZE = 200;
 
 /**
+ * Extract waypoints from QGC plan fileContent and return as GeoJSON Points.
+ * 
+ * All waypoints (including takeoff at alt 0 and landing at alt 0) are
+ * recorded with the cruise altitude. The takeoff waypoint gets the altitude
+ * of the first non-zero altitude waypoint, and the landing waypoint gets
+ * the altitude of the penultimate waypoint.
+ * 
+ * @param fileContent - QGC plan JSON string
+ * @returns Array of waypoints in GeoJSON Point format, or undefined if extraction fails
+ */
+function extractWaypointsFromQGC(fileContent: string): Array<{ type: 'Point'; coordinates: [number, number, number] }> | undefined {
+  try {
+    const qgcPlan = JSON.parse(fileContent);
+    if (!qgcPlan?.mission?.items || !Array.isArray(qgcPlan.mission.items)) {
+      return undefined;
+    }
+    
+    const items = qgcPlan.mission.items;
+    // Filter to only waypoint commands: 22 (takeoff), 16 (waypoint), 21 (landing)
+    const waypointItems = items.filter((item: any) => 
+      [22, 16, 21].includes(item.command) && 
+      item.params && 
+      typeof item.params[4] === 'number' && // lat
+      typeof item.params[5] === 'number'    // lng
+    );
+    
+    if (waypointItems.length === 0) {
+      return undefined;
+    }
+    
+    // Find the cruise altitude (first non-zero altitude from intermediate waypoints)
+    let cruiseAltitude = 100; // default fallback
+    for (const item of waypointItems) {
+      const alt = item.params[6];
+      if (typeof alt === 'number' && alt > 0) {
+        cruiseAltitude = alt;
+        break;
+      }
+    }
+    
+    // Convert to GeoJSON Points
+    const waypoints: Array<{ type: 'Point'; coordinates: [number, number, number] }> = [];
+    
+    for (let i = 0; i < waypointItems.length; i++) {
+      const item = waypointItems[i];
+      const lat = item.params[4];
+      const lng = item.params[5];
+      let alt = item.params[6];
+      
+      // Takeoff (command 22) or landing (command 21) with alt 0: use cruise altitude
+      // For landing, use the altitude of the previous waypoint
+      if (item.command === 22 && alt === 0) {
+        alt = cruiseAltitude;
+      } else if (item.command === 21) {
+        // Landing: use altitude of penultimate waypoint
+        if (i > 0) {
+          const prevAlt = waypointItems[i - 1].params[6];
+          alt = (typeof prevAlt === 'number' && prevAlt > 0) ? prevAlt : cruiseAltitude;
+        } else {
+          alt = cruiseAltitude;
+        }
+      }
+      
+      waypoints.push({
+        type: 'Point',
+        coordinates: [lng, lat, alt] // [longitude, latitude, altitude]
+      });
+    }
+    
+    return waypoints;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Generate initial uplan with waypoints extracted from fileContent.
+ * This creates a minimal uplan structure with the waypoints field set,
+ * all other fields empty for user to fill later.
+ * 
+ * @param fileContent - QGC plan JSON string
+ * @returns Initial uplan object with waypoints, or null if extraction fails
+ */
+function generateInitialUplan(fileContent: string): object | null {
+  const waypoints = extractWaypointsFromQGC(fileContent);
+  if (!waypoints || waypoints.length === 0) {
+    return null;
+  }
+  
+  // Create minimal uplan structure with waypoints in flightDetails
+  return {
+    flightDetails: {
+      waypoints
+    }
+  };
+}
+
+/**
  * GET /api/flightPlans
  * List all flight plans for the authenticated user
  * 
@@ -133,6 +231,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   // Helper to convert input to database record
+  // Generates initial uplan with waypoints if no uplan is provided
   const toRecord = (p: {
     customName: string;
     status: string;
@@ -141,16 +240,24 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     uplan?: unknown;
     scheduledAt?: string | null;
     geoawarenessData?: unknown;
-  }) => ({
-    customName: p.customName,
-    status: p.status,
-    fileContent: p.fileContent,
-    userId, // Always from auth token
-    folderId: p.folderId ?? null,
-    uplan: p.uplan !== undefined && p.uplan !== null ? JSON.stringify(p.uplan) : null,
-    scheduledAt: p.scheduledAt ?? null,
-    geoawarenessData: p.geoawarenessData !== undefined && p.geoawarenessData !== null ? p.geoawarenessData : Prisma.DbNull,
-  });
+  }) => {
+    // If no uplan provided, generate initial uplan with waypoints from fileContent
+    let uplanData: unknown = p.uplan;
+    if ((uplanData === undefined || uplanData === null) && p.fileContent) {
+      uplanData = generateInitialUplan(p.fileContent);
+    }
+    
+    return {
+      customName: p.customName,
+      status: p.status,
+      fileContent: p.fileContent,
+      userId, // Always from auth token
+      folderId: p.folderId ?? null,
+      uplan: uplanData !== undefined && uplanData !== null ? JSON.stringify(uplanData) : null,
+      scheduledAt: p.scheduledAt ?? null,
+      geoawarenessData: p.geoawarenessData !== undefined && p.geoawarenessData !== null ? p.geoawarenessData : Prisma.DbNull,
+    };
+  };
 
   try {
     // Check if this is an external UPLAN import
