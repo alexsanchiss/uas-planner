@@ -1,8 +1,18 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { verifyEmailSchema } from '@/lib/validators'
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 
 export async function POST(request: Request) {
+  const ip = getClientIp(request);
+  const { allowed, resetIn } = checkRateLimit(`verify-email:${ip}`, 10, 15 * 60 * 1000);
+  if (!allowed) {
+    return NextResponse.json(
+      { error: 'Too many verification attempts. Please try again later.' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(resetIn / 1000)) } }
+    );
+  }
+
   try {
     const body = await request.json()
     const result = verifyEmailSchema.safeParse(body)

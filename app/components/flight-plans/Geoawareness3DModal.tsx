@@ -195,6 +195,27 @@ function fmtDate(d: string | undefined | null): string {
   try { return new Date(d).toLocaleString() } catch { return d }
 }
 
+// ─── HTML Escaping (XSS Prevention) ───────────────────────────────────────────
+
+function escapeHtml(str: string): string {
+  if (!str) return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function isValidUrl(url: string): boolean {
+  return /^https?:\/\//i.test(url);
+}
+
+function sanitizeUrl(url: string): string {
+  if (!url) return '#';
+  return isValidUrl(url) ? escapeHtml(url) : '#';
+}
+
 /** Build InfoBox HTML description for a geozone */
 function buildGeozoneHTML(gz: GeozoneData, lowerAlt: number, upperAlt: number): string {
   const p = gz.properties as any
@@ -218,32 +239,32 @@ function buildGeozoneHTML(gz: GeozoneData, lowerAlt: number, upperAlt: number): 
 
   // Header
   html += `<div style="background:${color};padding:8px 12px;border-radius:4px 4px 0 0;margin-bottom:8px">`
-  html += `<div style="color:#fff;font-size:15px;font-weight:bold">${identifier}</div>`
-  if (name) html += `<div style="color:#ffffffcc;font-size:11px;margin-top:2px">${name}</div>`
+  html += `<div style="color:#fff;font-size:15px;font-weight:bold">${escapeHtml(identifier)}</div>`
+  if (name) html += `<div style="color:#ffffffcc;font-size:11px;margin-top:2px">${escapeHtml(name)}</div>`
   html += `</div>`
 
   // General info
   html += `<table style="width:100%;border-collapse:collapse;margin-bottom:8px">`
-  if (country) html += `<tr><td style="padding:3px 6px;font-weight:bold;color:#ccc">Country</td><td style="padding:3px 6px">${country}</td></tr>`
-  if (region) html += `<tr><td style="padding:3px 6px;font-weight:bold;color:#ccc">Region</td><td style="padding:3px 6px">${region}</td></tr>`
-  html += `<tr><td style="padding:3px 6px;font-weight:bold;color:#ccc">Type</td><td style="padding:3px 6px">${type}</td></tr>`
-  html += `<tr><td style="padding:3px 6px;font-weight:bold;color:#ccc">Lower</td><td style="padding:3px 6px">${lowerAlt.toFixed(0)} m ${vr.lowerReference ? `(${vr.lowerReference})` : 'AGL'}</td></tr>`
-  html += `<tr><td style="padding:3px 6px;font-weight:bold;color:#ccc">Upper</td><td style="padding:3px 6px">${upperAlt.toFixed(0)} m ${vr.upperReference ? `(${vr.upperReference})` : 'AGL'}</td></tr>`
+  if (country) html += `<tr><td style="padding:3px 6px;font-weight:bold;color:#ccc">Country</td><td style="padding:3px 6px">${escapeHtml(country)}</td></tr>`
+  if (region) html += `<tr><td style="padding:3px 6px;font-weight:bold;color:#ccc">Region</td><td style="padding:3px 6px">${escapeHtml(region)}</td></tr>`
+  html += `<tr><td style="padding:3px 6px;font-weight:bold;color:#ccc">Type</td><td style="padding:3px 6px">${escapeHtml(type)}</td></tr>`
+  html += `<tr><td style="padding:3px 6px;font-weight:bold;color:#ccc">Lower</td><td style="padding:3px 6px">${lowerAlt.toFixed(0)} m ${vr.lowerReference ? `(${escapeHtml(vr.lowerReference)})` : 'AGL'}</td></tr>`
+  html += `<tr><td style="padding:3px 6px;font-weight:bold;color:#ccc">Upper</td><td style="padding:3px 6px">${upperAlt.toFixed(0)} m ${vr.upperReference ? `(${escapeHtml(vr.upperReference)})` : 'AGL'}</td></tr>`
   html += `</table>`
 
   // Restriction conditions
   if (rc.authorized || rc.uasClass || rc.maxNoise || rc.photograph || rc.specialOperation || rc.specialoperation) {
     html += `<div style="font-weight:bold;color:#ccc;margin-bottom:4px;border-top:1px solid #555;padding-top:6px">Restriction Conditions</div>`
     html += `<table style="width:100%;border-collapse:collapse;margin-bottom:8px">`
-    if (rc.authorized) html += `<tr><td style="padding:2px 6px;font-weight:bold;color:#ccc">Authorization</td><td style="padding:2px 6px">${rc.authorized}</td></tr>`
-    if (rc.uasClass?.length) html += `<tr><td style="padding:2px 6px;font-weight:bold;color:#ccc">UAS Classes</td><td style="padding:2px 6px">${rc.uasClass.join(', ')}</td></tr>`
+    if (rc.authorized) html += `<tr><td style="padding:2px 6px;font-weight:bold;color:#ccc">Authorization</td><td style="padding:2px 6px">${escapeHtml(rc.authorized)}</td></tr>`
+    if (rc.uasClass?.length) html += `<tr><td style="padding:2px 6px;font-weight:bold;color:#ccc">UAS Classes</td><td style="padding:2px 6px">${escapeHtml(rc.uasClass.join(', '))}</td></tr>`
     if (rc.uasOperationMode) {
       const modes = Array.isArray(rc.uasOperationMode) ? rc.uasOperationMode.join(', ') : rc.uasOperationMode
-      html += `<tr><td style="padding:2px 6px;font-weight:bold;color:#ccc">Op. Mode</td><td style="padding:2px 6px">${modes}</td></tr>`
+      html += `<tr><td style="padding:2px 6px;font-weight:bold;color:#ccc">Op. Mode</td><td style="padding:2px 6px">${escapeHtml(modes)}</td></tr>`
     }
-    if (rc.maxNoise != null) html += `<tr><td style="padding:2px 6px;font-weight:bold;color:#ccc">Max Noise</td><td style="padding:2px 6px">${rc.maxNoise} dB</td></tr>`
-    if (rc.photograph) html += `<tr><td style="padding:2px 6px;font-weight:bold;color:#ccc">Photography</td><td style="padding:2px 6px">${rc.photograph}</td></tr>`
-    if (rc.specialOperation || rc.specialoperation) html += `<tr><td style="padding:2px 6px;font-weight:bold;color:#ccc">Special Ops</td><td style="padding:2px 6px">${rc.specialOperation || rc.specialoperation}</td></tr>`
+    if (rc.maxNoise != null) html += `<tr><td style="padding:2px 6px;font-weight:bold;color:#ccc">Max Noise</td><td style="padding:2px 6px">${escapeHtml(String(rc.maxNoise))} dB</td></tr>`
+    if (rc.photograph) html += `<tr><td style="padding:2px 6px;font-weight:bold;color:#ccc">Photography</td><td style="padding:2px 6px">${escapeHtml(rc.photograph)}</td></tr>`
+    if (rc.specialOperation || rc.specialoperation) html += `<tr><td style="padding:2px 6px;font-weight:bold;color:#ccc">Special Ops</td><td style="padding:2px 6px">${escapeHtml(rc.specialOperation || rc.specialoperation)}</td></tr>`
     html += `</table>`
   }
 
@@ -251,11 +272,11 @@ function buildGeozoneHTML(gz: GeozoneData, lowerAlt: number, upperAlt: number): 
   if (za.name || za.phone || za.email || za.SiteURL || za.siteURL) {
     html += `<div style="font-weight:bold;color:#ccc;margin-bottom:4px;border-top:1px solid #555;padding-top:6px">Authority Information</div>`
     html += `<table style="width:100%;border-collapse:collapse;margin-bottom:8px">`
-    if (za.name) html += `<tr><td style="padding:2px 6px;font-weight:bold;color:#ccc">Name</td><td style="padding:2px 6px">${za.name}</td></tr>`
-    if (za.phone) html += `<tr><td style="padding:2px 6px;font-weight:bold;color:#ccc">Phone</td><td style="padding:2px 6px">${za.phone}</td></tr>`
-    if (za.email) html += `<tr><td style="padding:2px 6px;font-weight:bold;color:#ccc">Email</td><td style="padding:2px 6px">${za.email}</td></tr>`
+    if (za.name) html += `<tr><td style="padding:2px 6px;font-weight:bold;color:#ccc">Name</td><td style="padding:2px 6px">${escapeHtml(za.name)}</td></tr>`
+    if (za.phone) html += `<tr><td style="padding:2px 6px;font-weight:bold;color:#ccc">Phone</td><td style="padding:2px 6px">${escapeHtml(za.phone)}</td></tr>`
+    if (za.email) html += `<tr><td style="padding:2px 6px;font-weight:bold;color:#ccc">Email</td><td style="padding:2px 6px">${escapeHtml(za.email)}</td></tr>`
     const url = za.SiteURL || za.siteURL
-    if (url) html += `<tr><td style="padding:2px 6px;font-weight:bold;color:#ccc">Website</td><td style="padding:2px 6px"><a href="${url}" target="_blank" style="color:#6cb4ee">Visit</a></td></tr>`
+    if (url) html += `<tr><td style="padding:2px 6px;font-weight:bold;color:#ccc">Website</td><td style="padding:2px 6px"><a href="${sanitizeUrl(url)}" target="_blank" style="color:#6cb4ee">Visit</a></td></tr>`
     html += `</table>`
   }
 
@@ -265,10 +286,10 @@ function buildGeozoneHTML(gz: GeozoneData, lowerAlt: number, upperAlt: number): 
   if (startDt || endDt) {
     html += `<div style="font-weight:bold;color:#ccc;margin-bottom:4px;border-top:1px solid #555;padding-top:6px">Applicability</div>`
     html += `<table style="width:100%;border-collapse:collapse">`
-    if (startDt) html += `<tr><td style="padding:2px 6px;font-weight:bold;color:#ccc">Start</td><td style="padding:2px 6px">${fmtDate(startDt)}</td></tr>`
-    if (endDt) html += `<tr><td style="padding:2px 6px;font-weight:bold;color:#ccc">End</td><td style="padding:2px 6px">${fmtDate(endDt)}</td></tr>`
+    if (startDt) html += `<tr><td style="padding:2px 6px;font-weight:bold;color:#ccc">Start</td><td style="padding:2px 6px">${escapeHtml(fmtDate(startDt))}</td></tr>`
+    if (endDt) html += `<tr><td style="padding:2px 6px;font-weight:bold;color:#ccc">End</td><td style="padding:2px 6px">${escapeHtml(fmtDate(endDt))}</td></tr>`
     if (la.schedule && typeof la.schedule === 'object' && la.schedule.day) {
-      html += `<tr><td style="padding:2px 6px;font-weight:bold;color:#ccc">Days</td><td style="padding:2px 6px">${Array.isArray(la.schedule.day) ? la.schedule.day.join(', ') : la.schedule.day}</td></tr>`
+      html += `<tr><td style="padding:2px 6px;font-weight:bold;color:#ccc">Days</td><td style="padding:2px 6px">${escapeHtml(Array.isArray(la.schedule.day) ? la.schedule.day.join(', ') : la.schedule.day)}</td></tr>`
     }
     html += `</table>`
   }

@@ -1,22 +1,37 @@
-# Usa una imagen base con Node.js 22 LTS
-FROM node:22.11
+# Use specific Node.js version with slim image
+FROM node:22-slim
 
-# Define el directorio de trabajo
+# Create non-root user for security
+RUN groupadd -r nodejs && useradd -r -g nodejs nodejs
+
+# Install git (needed for git pull in docker-compose commands) and clean up apt cache
+RUN apt-get update && apt-get install -y --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Define working directory
 WORKDIR /app
 
-# Clona el repositorio de GitHub y navega a la rama principal
-RUN git clone git@github.com:0xMastxr/uas-planner.git . && \
-    git pull origin master
+# Copy package files first for better layer caching
+COPY package*.json ./
 
-# Instala las dependencias de la app
-RUN npm install
+# Install dependencies and clean npm cache
+RUN npm ci && npm cache clean --force
 
-# Construye la aplicación Next.js
+# Copy application code with proper ownership
+COPY --chown=nodejs:nodejs . .
+
+# Build the Next.js application
 RUN npm run build
 
-# Exposición de puertos necesarios
+# Change ownership of the app directory to non-root user
+RUN chown -R nodejs:nodejs /app
+
+# Expose necessary ports
 EXPOSE 3000
 EXPOSE 5555
 
-# Comando por defecto (se usa en docker-compose para lanzar servicios específicos)
+# Switch to non-root user
+USER nodejs
+
+# Default command
 CMD ["npm", "start"]

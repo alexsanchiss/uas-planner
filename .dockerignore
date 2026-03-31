@@ -1,0 +1,63 @@
+# Environment files - NEVER copy secrets into images
+.env
+.env.*
+.env.local
+.env.development
+.env.production
+.env.test
+
+# Git
+.git
+.gitignore
+
+# Dependencies - will be installed fresh in container
+node_modules
+
+# Key files and secrets
+*.pem
+*.key
+*.crt
+id_rsa*
+*.p12
+*.pfx
+secrets/
+credentials/
+
+# Test and coverage directories
+coverage/
+.nyc_output/
+test/
+tests/
+__tests__/
+*.test.js
+*.test.ts
+*.spec.js
+*.spec.ts
+
+# Build artifacts and caches
+.next/
+dist/
+build/
+.cache/
+*.log
+npm-debug.log*
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Docker files (avoid recursive builds)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Documentation (not needed in runtime)
+*.md
+docs/
+
+# OS files
+.DS_Store
+Thumbs.db

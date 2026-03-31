@@ -4,19 +4,40 @@ services:
   app:
     build: .
     ports:
-      - "3000:3000"  # Mapea puerto 3000 para Next.js
-    command: /bin/sh -c "git pull origin master && npm start"  # Ejecuta git pull y luego inicia Next.js
+      - "3000:3000"  # Maps port 3000 for Next.js
+    command: /bin/sh -c "git pull origin master && npm start"
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1'
 
   traj-assigner:
     build: .
-    command: /bin/sh -c "git pull origin master && node traj-assigner.ts"  # Ejecuta git pull y luego el script traj-assigner
+    command: /bin/sh -c "git pull origin master && node traj-assigner.ts"
     depends_on:
       - app
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
 
   prisma-studio:
     build: .
     ports:
-      - "5555:5555"  # Mapea puerto 5555 para Prisma Studio
-    command: /bin/sh -c "git pull origin master && npx prisma studio"  # Ejecuta git pull y luego Prisma Studio
+      - "127.0.0.1:5555:5555"  # Localhost only - internal database tool
+    command: /bin/sh -c "git pull origin master && npx prisma studio"
     depends_on:
       - app
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
