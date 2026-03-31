@@ -12,6 +12,9 @@
  * and streams the messages to the client using SSE, which works over HTTPS
  * without any TLS requirement on the geoawareness side.
  *
+ * NOTE: No authentication required - this is an internal backend-to-service call.
+ * The geoawareness service runs on localhost and is not exposed externally.
+ *
  * SSE event types emitted:
  *   - (default)  : geoawareness data message (JSON payload forwarded as-is)
  *   - connected  : WebSocket to geoawareness service opened successfully
@@ -25,7 +28,6 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import WebSocket from 'ws'
-import { withAuth, isAuthError } from '@/lib/auth-middleware'
 
 const USPACE_ID_REGEX = /^[a-zA-Z0-9_-]{1,50}$/;
 
@@ -57,9 +59,6 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ uspaceId: string }> }
 ) {
-  const auth = await withAuth(request);
-  if (isAuthError(auth)) return auth;
-
   const { uspaceId } = await params;
   if (!USPACE_ID_REGEX.test(uspaceId)) {
     return NextResponse.json(

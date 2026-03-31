@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { withAuth, isAuthError } from '@/lib/auth-middleware'
 
 /**
  * U-Space boundary point
@@ -88,6 +87,9 @@ function getTestUspaces(): USpace[] {
  * Proxy endpoint for fetching the list of available U-spaces from the
  * geoawareness service. This avoids CORS issues when calling from the client.
  * 
+ * NOTE: No authentication required - this is an internal backend-to-service call.
+ * The geoawareness service runs on localhost and is not exposed externally.
+ * 
  * Environment variables:
  * - GEOAWARENESS_SERVICE_IP: IP address of the geoawareness service
  * - GEOAWARENESS_USPACES_ENDPOINT: Endpoint for U-spaces list (default: 'uspaces')
@@ -95,10 +97,7 @@ function getTestUspaces(): USpace[] {
  * 
  * @returns List of U-spaces with their boundaries
  */
-export async function GET(request: NextRequest) {
-  const auth = await withAuth(request);
-  if (isAuthError(auth)) return auth;
-
+export async function GET() {
   try {
     // Get geoawareness service configuration
     const serviceIp = process.env.GEOAWARENESS_SERVICE_IP
