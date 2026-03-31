@@ -620,10 +620,12 @@ export function useGeoawarenessWebSocket({
    * The Next.js backend creates an internal ws:// connection to the geoawareness
    * service and relays each message back as an SSE event — so the browser never
    * has to deal with WebSocket protocol or mixed-content restrictions.
+   * 
+   * GLOBAL_U_SPACE: Skip connection for internal U-space with no geoawareness service
    */
   const connect = useCallback(() => {
-    // Don't connect if disabled or no uspaceId
-    if (!enabled || !uspaceId) {
+    // Don't connect if disabled, no uspaceId, or GLOBAL_U_SPACE (internal, no geoawareness)
+    if (!enabled || !uspaceId || uspaceId === 'GLOBAL_U_SPACE') {
       return
     }
 
