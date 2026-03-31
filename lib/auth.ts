@@ -150,7 +150,7 @@ export function generateRefreshToken(userId: number): string {
  */
 export function verifyToken(token: string): { userId: number } | null {
   try {
-    const decoded = verify(token, JWT_SECRET) as JwtPayload & { userId: number; type?: string }
+    const decoded = verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as JwtPayload & { userId: number; type?: string }
     // Ensure it's an access token (or legacy token without type)
     if (decoded.type && decoded.type !== 'access') {
       return null
@@ -179,7 +179,7 @@ export function verifyToken(token: string): { userId: number } | null {
  */
 export function verifyRefreshToken(token: string): { userId: number } | null {
   try {
-    const decoded = verify(token, REFRESH_SECRET) as JwtPayload & { userId: number; type: string }
+    const decoded = verify(token, REFRESH_SECRET, { algorithms: ['HS256'] }) as JwtPayload & { userId: number; type: string }
     if (decoded.type !== 'refresh') {
       return null
     }
@@ -206,7 +206,7 @@ export function verifyRefreshToken(token: string): { userId: number } | null {
  */
 export function decodeToken(token: string): JwtPayload | null {
   try {
-    const decoded = verify(token, JWT_SECRET, { ignoreExpiration: true }) as JwtPayload
+    const decoded = verify(token, JWT_SECRET, { algorithms: ['HS256'], ignoreExpiration: true }) as JwtPayload
     return decoded
   } catch {
     return null

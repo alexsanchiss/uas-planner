@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     }
 
     const { token, newPassword } = result.data
-    const hashedToken = crypto.createHash('sha256').update(token).digest('hex')
+    const hashedToken = crypto.createHmac('sha256', process.env.JWT_SECRET || '').update(token).digest('hex')
 
     const user = await prisma.user.findFirst({
       where: {

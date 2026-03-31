@@ -3,6 +3,56 @@
 import React, { useState } from 'react'
 import { AuthorizationStatusBadge, type AuthorizationStatus } from './StatusBadge'
 
+type TokenType = 'key' | 'string' | 'number' | 'boolean' | 'null' | 'punctuation';
+
+interface Token {
+  type: TokenType;
+  value: string;
+}
+
+function tokenizeJSONLine(line: string): Token[] {
+  const tokens: Token[] = [];
+  const regex = /("(?:[^"\\]|\\.)*")\s*:|("(?:[^"\\]|\\.)*")|(-?\d+\.?\d*(?:[eE][+-]?\d+)?)|(\btrue\b|\bfalse\b)|(\bnull\b)|([{}\[\]:,])|(\s+)/g;
+  let match;
+  while ((match = regex.exec(line)) !== null) {
+    if (match[1]) {
+      tokens.push({ type: 'key', value: match[1] });
+      tokens.push({ type: 'punctuation', value: ':' });
+    } else if (match[2]) {
+      tokens.push({ type: 'string', value: match[2] });
+    } else if (match[3]) {
+      tokens.push({ type: 'number', value: match[3] });
+    } else if (match[4]) {
+      tokens.push({ type: 'boolean', value: match[4] });
+    } else if (match[5]) {
+      tokens.push({ type: 'null', value: match[5] });
+    } else if (match[6]) {
+      tokens.push({ type: 'punctuation', value: match[6] });
+    } else if (match[7]) {
+      tokens.push({ type: 'punctuation', value: match[7] });
+    }
+  }
+  return tokens;
+}
+
+function getTokenClassName(type: TokenType): string {
+  switch (type) {
+    case 'key': return 'text-purple-600 dark:text-purple-400';
+    case 'string': return 'text-green-600 dark:text-green-400';
+    case 'number': return 'text-blue-600 dark:text-blue-400';
+    case 'boolean': return 'text-orange-600 dark:text-orange-400';
+    case 'null': return 'text-red-600 dark:text-red-400';
+    default: return '';
+  }
+}
+
+function renderHighlightedJSON(line: string): React.ReactNode {
+  const tokens = tokenizeJSONLine(line);
+  return tokens.map((token, i) => (
+    <span key={i} className={getTokenClassName(token.type)}>{token.value}</span>
+  ));
+}
+
 export interface AuthorizationPanelProps {
   planId: string
   authorizationStatus: AuthorizationStatus
@@ -126,19 +176,9 @@ function FASResponseViewer({
         {isJson ? (
           <pre className="p-3 text-xs font-mono whitespace-pre overflow-x-auto">
             <code className="text-gray-800 dark:text-gray-200">
-              {formatted.split('\n').map((line, index) => {
-                // Simple syntax highlighting for JSON
-                const highlightedLine = line
-                  .replace(/"([^"]+)":/g, '<span class="text-purple-600 dark:text-purple-400">"$1"</span>:')
-                  .replace(/: "(.*?)"/g, ': <span class="text-green-600 dark:text-green-400">"$1"</span>')
-                  .replace(/: (\d+\.?\d*)/g, ': <span class="text-blue-600 dark:text-blue-400">$1</span>')
-                  .replace(/: (true|false)/g, ': <span class="text-orange-600 dark:text-orange-400">$1</span>')
-                  .replace(/: (null)/g, ': <span class="text-red-600 dark:text-red-400">$1</span>')
-                
-                return (
-                  <div key={index} className="leading-relaxed" dangerouslySetInnerHTML={{ __html: highlightedLine }} />
-                )
-              })}
+              {formatted.split('\n').map((line, index) => (
+                <div key={index} className="leading-relaxed">{renderHighlightedJSON(line)}</div>
+              ))}
             </code>
           </pre>
         ) : (

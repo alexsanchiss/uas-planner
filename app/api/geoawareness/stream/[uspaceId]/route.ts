@@ -23,8 +23,11 @@
  *   GEOAWARENESS_ENDPOINT    – WS path prefix (default: "ws/gas/")
  */
 
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import WebSocket from 'ws'
+import { withAuth, isAuthError } from '@/lib/auth-middleware'
+
+const USPACE_ID_REGEX = /^[a-zA-Z0-9_-]{1,50}$/;
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -51,10 +54,19 @@ function encodeSSEString(event: string, data: unknown): string {
 // ─── route handler ──────────────────────────────────────────────────────────
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ uspaceId: string }> }
 ) {
-  const { uspaceId } = await params
+  const auth = await withAuth(request);
+  if (isAuthError(auth)) return auth;
+
+  const { uspaceId } = await params;
+  if (!USPACE_ID_REGEX.test(uspaceId)) {
+    return NextResponse.json(
+      { error: 'Invalid uspace ID format' },
+      { status: 400 }
+    );
+  }
 
   // ── 1. Validate configuration ──────────────────────────────────────────
   const serviceIp = process.env.GEOAWARENESS_SERVICE_IP

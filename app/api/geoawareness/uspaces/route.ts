@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { withAuth, isAuthError } from '@/lib/auth-middleware'
 
 /**
  * U-Space boundary point
@@ -94,7 +95,10 @@ function getTestUspaces(): USpace[] {
  * 
  * @returns List of U-spaces with their boundaries
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const auth = await withAuth(request);
+  if (isAuthError(auth)) return auth;
+
   try {
     // Get geoawareness service configuration
     const serviceIp = process.env.GEOAWARENESS_SERVICE_IP
