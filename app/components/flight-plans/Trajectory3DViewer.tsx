@@ -293,12 +293,9 @@ const Trajectory3DViewer: React.FC<Trajectory3DViewerProps> = ({
         Cesium.Ion.defaultAccessToken = token
         ;(window as any).CESIUM_BASE_URL = '/cesium'
 
-        // 5. Create viewer with OSM base layer (no Bing Maps API key needed)
+        // 5. Create viewer
         const viewer = new Cesium.Viewer(containerRef.current!, {
           terrain: Cesium.Terrain.fromWorldTerrain(),
-          imageryProvider: new Cesium.OpenStreetMapImageryProvider({
-            url: 'https://a.tile.openstreetmap.org/',
-          }),
           animation: false,
           timeline: false,
           baseLayerPicker: false,
