@@ -374,6 +374,9 @@ function Cesium3DView({ volumes, isApproved, conflictingIndices, geozones, allGe
 
         const viewer = new Cesium.Viewer(containerRef.current!, {
           terrain: Cesium.Terrain.fromWorldTerrain(),
+          imageryProvider: new Cesium.OpenStreetMapImageryProvider({
+            url: 'https://a.tile.openstreetmap.org/',
+          }),
           animation: false,
           timeline: false,
           baseLayerPicker: false,

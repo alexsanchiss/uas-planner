@@ -255,9 +255,12 @@ const Denial3DModal: React.FC<Denial3DModalProps> = ({ isOpen, onClose, uplan, a
         Cesium.Ion.defaultAccessToken = token
         ;(window as any).CESIUM_BASE_URL = '/cesium'
 
-        // 4. Create viewer
+        // 4. Create viewer with OSM base layer (no Bing Maps API key needed)
         const viewer = new Cesium.Viewer(containerRef.current!, {
           terrain: Cesium.Terrain.fromWorldTerrain(),
+          imageryProvider: new Cesium.OpenStreetMapImageryProvider({
+            url: 'https://a.tile.openstreetmap.org/',
+          }),
           animation: false,
           timeline: false,
           baseLayerPicker: false,
