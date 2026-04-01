@@ -1099,113 +1099,7 @@ export default function UplanFormModal({
                 </FormField>
               </div>
 
-              {/* Flight Characteristics Subsection */}
-              <div className="mt-4 p-3 bg-gray-700/30 rounded-md">
-                <h4 className="text-sm font-semibold text-gray-300 mb-3">Flight Characteristics</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField 
-                    label="MTOM (kg)" 
-                    required 
-                    error={validationErrors?.nestedErrors?.uas?.flightCharacteristics?.['uasMTOM']}
-                    hasValidationError={hasFieldError('uas.flightCharacteristics.uasMTOM')}
-                    helpText="Maximum Take-Off Mass — total mass of the UAS at takeoff including payload and batteries, in kilograms"
-                  >
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.uas?.flightCharacteristics?.uasMTOM ?? ''}
-                      onChange={(e) => {
-                        let val: number | undefined = e.target.value ? parseFloat(e.target.value) : undefined;
-                        const selectedClass = formData.uas?.generalCharacteristics?.uasClass;
-                        const constraints = selectedClass ? UAS_CLASS_CONSTRAINTS[selectedClass] : null;
-                        if (constraints?.maxMTOM !== null && constraints?.maxMTOM !== undefined && val !== undefined && !isNaN(val) && val > constraints.maxMTOM) {
-                          val = constraints.maxMTOM;
-                          toast.warning(`MTOM capped to ${constraints.maxMTOM} kg for class ${selectedClass}`);
-                        }
-                        updateField('uas.flightCharacteristics.uasMTOM', val);
-                      }}
-                      placeholder="e.g., 2.5"
-                      hasValidationError={hasFieldError('uas.flightCharacteristics.uasMTOM')}
-                    />
-                  </FormField>
-                  <FormField 
-                    label="Max Speed (m/s)" 
-                    required 
-                    error={validationErrors?.nestedErrors?.uas?.flightCharacteristics?.['uasMaxSpeed']}
-                    hasValidationError={hasFieldError('uas.flightCharacteristics.uasMaxSpeed')}
-                    helpText="Maximum flight speed of the UAS in meters per second"
-                  >
-                    <Input
-                      type="number"
-                      step="0.1"
-                      min="0"
-                      value={formData.uas?.flightCharacteristics?.uasMaxSpeed ?? ''}
-                      onChange={(e) => {
-                        let val: number | undefined = e.target.value ? parseFloat(e.target.value) : undefined;
-                        const selectedClass = formData.uas?.generalCharacteristics?.uasClass;
-                        const constraints = selectedClass ? UAS_CLASS_CONSTRAINTS[selectedClass] : null;
-                        if (constraints?.maxSpeed !== undefined && val !== undefined && !isNaN(val) && val > constraints.maxSpeed) {
-                          val = constraints.maxSpeed;
-                          toast.warning(`Max speed capped to ${constraints.maxSpeed} m/s for class ${selectedClass}`);
-                        }
-                        updateField('uas.flightCharacteristics.uasMaxSpeed', val);
-                      }}
-                      placeholder="e.g., 15"
-                      hasValidationError={hasFieldError('uas.flightCharacteristics.uasMaxSpeed')}
-                    />
-                  </FormField>
-                  <FormField 
-                    label="Connectivity" 
-                    required 
-                    error={validationErrors?.nestedErrors?.uas?.flightCharacteristics?.['Connectivity']}
-                    hasValidationError={hasFieldError('uas.flightCharacteristics.Connectivity')}
-                    helpText="Communication protocol used by the UAS for command and control (e.g., LTE, 5G, WiFi)"
-                  >
-                    <SelectField
-                      value={formData.uas?.flightCharacteristics?.Connectivity}
-                      onChange={(v) => updateField('uas.flightCharacteristics.Connectivity', v as Connectivity)}
-                      options={UplanDropdownOptions.connectivity}
-                      placeholder="Select..."
-                      hasValidationError={hasFieldError('uas.flightCharacteristics.Connectivity')}
-                    />
-                  </FormField>
-                  <FormField 
-                    label="ID Technology" 
-                    required 
-                    error={validationErrors?.nestedErrors?.uas?.flightCharacteristics?.['idTechnology']}
-                    hasValidationError={hasFieldError('uas.flightCharacteristics.idTechnology')}
-                    helpText="Remote identification technology — how the UAS broadcasts its identity (e.g., Direct Remote ID, Network Remote ID)"
-                  >
-                    <SelectField
-                      value={formData.uas?.flightCharacteristics?.idTechnology}
-                      onChange={(v) => updateField('uas.flightCharacteristics.idTechnology', v as IdTechnology)}
-                      options={UplanDropdownOptions.idTechnology}
-                      placeholder="Select..."
-                      hasValidationError={hasFieldError('uas.flightCharacteristics.idTechnology')}
-                    />
-                  </FormField>
-                  <FormField 
-                    label="Max Flight Time (min)" 
-                    required 
-                    error={validationErrors?.nestedErrors?.uas?.flightCharacteristics?.['maxFlightTime']}
-                    hasValidationError={hasFieldError('uas.flightCharacteristics.maxFlightTime')}
-                    helpText="Maximum duration the UAS can fly on a single battery charge, in minutes"
-                  >
-                    <Input
-                      type="number"
-                      step="1"
-                      min="1"
-                      value={formData.uas?.flightCharacteristics?.maxFlightTime ?? ''}
-                      onChange={(e) => updateField('uas.flightCharacteristics.maxFlightTime', e.target.value ? parseInt(e.target.value) : undefined)}
-                      placeholder="e.g., 30"
-                      hasValidationError={hasFieldError('uas.flightCharacteristics.maxFlightTime')}
-                    />
-                  </FormField>
-                </div>
-              </div>
-
-              {/* General Characteristics Subsection */}
+{/* General Characteristics Subsection */}
               <div className="mt-4 p-3 bg-gray-700/30 rounded-md">
                 <h4 className="text-sm font-semibold text-gray-300 mb-3">General Characteristics</h4>
                 <div className="grid grid-cols-2 gap-4">
@@ -1335,6 +1229,114 @@ export default function UplanFormModal({
                   </FormField>
                 </div>
               </div>
+              
+              {/* Flight Characteristics Subsection */}
+              <div className="mt-4 p-3 bg-gray-700/30 rounded-md">
+                <h4 className="text-sm font-semibold text-gray-300 mb-3">Flight Characteristics</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField 
+                    label="MTOM (kg)" 
+                    required 
+                    error={validationErrors?.nestedErrors?.uas?.flightCharacteristics?.['uasMTOM']}
+                    hasValidationError={hasFieldError('uas.flightCharacteristics.uasMTOM')}
+                    helpText="Maximum Take-Off Mass — total mass of the UAS at takeoff including payload and batteries, in kilograms"
+                  >
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.uas?.flightCharacteristics?.uasMTOM ?? ''}
+                      onChange={(e) => {
+                        let val: number | undefined = e.target.value ? parseFloat(e.target.value) : undefined;
+                        const selectedClass = formData.uas?.generalCharacteristics?.uasClass;
+                        const constraints = selectedClass ? UAS_CLASS_CONSTRAINTS[selectedClass] : null;
+                        if (constraints?.maxMTOM !== null && constraints?.maxMTOM !== undefined && val !== undefined && !isNaN(val) && val > constraints.maxMTOM) {
+                          val = constraints.maxMTOM;
+                          toast.warning(`MTOM capped to ${constraints.maxMTOM} kg for class ${selectedClass}`);
+                        }
+                        updateField('uas.flightCharacteristics.uasMTOM', val);
+                      }}
+                      placeholder="e.g., 2.5"
+                      hasValidationError={hasFieldError('uas.flightCharacteristics.uasMTOM')}
+                    />
+                  </FormField>
+                  <FormField 
+                    label="Max Speed (m/s)" 
+                    required 
+                    error={validationErrors?.nestedErrors?.uas?.flightCharacteristics?.['uasMaxSpeed']}
+                    hasValidationError={hasFieldError('uas.flightCharacteristics.uasMaxSpeed')}
+                    helpText="Maximum flight speed of the UAS in meters per second"
+                  >
+                    <Input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      value={formData.uas?.flightCharacteristics?.uasMaxSpeed ?? ''}
+                      onChange={(e) => {
+                        let val: number | undefined = e.target.value ? parseFloat(e.target.value) : undefined;
+                        const selectedClass = formData.uas?.generalCharacteristics?.uasClass;
+                        const constraints = selectedClass ? UAS_CLASS_CONSTRAINTS[selectedClass] : null;
+                        if (constraints?.maxSpeed !== undefined && val !== undefined && !isNaN(val) && val > constraints.maxSpeed) {
+                          val = constraints.maxSpeed;
+                          toast.warning(`Max speed capped to ${constraints.maxSpeed} m/s for class ${selectedClass}`);
+                        }
+                        updateField('uas.flightCharacteristics.uasMaxSpeed', val);
+                      }}
+                      placeholder="e.g., 15"
+                      hasValidationError={hasFieldError('uas.flightCharacteristics.uasMaxSpeed')}
+                    />
+                  </FormField>
+                  <FormField 
+                    label="Connectivity" 
+                    required 
+                    error={validationErrors?.nestedErrors?.uas?.flightCharacteristics?.['Connectivity']}
+                    hasValidationError={hasFieldError('uas.flightCharacteristics.Connectivity')}
+                    helpText="Communication protocol used by the UAS for command and control (e.g., LTE, 5G, WiFi)"
+                  >
+                    <SelectField
+                      value={formData.uas?.flightCharacteristics?.Connectivity}
+                      onChange={(v) => updateField('uas.flightCharacteristics.Connectivity', v as Connectivity)}
+                      options={UplanDropdownOptions.connectivity}
+                      placeholder="Select..."
+                      hasValidationError={hasFieldError('uas.flightCharacteristics.Connectivity')}
+                    />
+                  </FormField>
+                  <FormField 
+                    label="ID Technology" 
+                    required 
+                    error={validationErrors?.nestedErrors?.uas?.flightCharacteristics?.['idTechnology']}
+                    hasValidationError={hasFieldError('uas.flightCharacteristics.idTechnology')}
+                    helpText="Remote identification technology — how the UAS broadcasts its identity (e.g., Direct Remote ID, Network Remote ID)"
+                  >
+                    <SelectField
+                      value={formData.uas?.flightCharacteristics?.idTechnology}
+                      onChange={(v) => updateField('uas.flightCharacteristics.idTechnology', v as IdTechnology)}
+                      options={UplanDropdownOptions.idTechnology}
+                      placeholder="Select..."
+                      hasValidationError={hasFieldError('uas.flightCharacteristics.idTechnology')}
+                    />
+                  </FormField>
+                  <FormField 
+                    label="Max Flight Time (min)" 
+                    required 
+                    error={validationErrors?.nestedErrors?.uas?.flightCharacteristics?.['maxFlightTime']}
+                    hasValidationError={hasFieldError('uas.flightCharacteristics.maxFlightTime')}
+                    helpText="Maximum duration the UAS can fly on a single battery charge, in minutes"
+                  >
+                    <Input
+                      type="number"
+                      step="1"
+                      min="1"
+                      value={formData.uas?.flightCharacteristics?.maxFlightTime ?? ''}
+                      onChange={(e) => updateField('uas.flightCharacteristics.maxFlightTime', e.target.value ? parseInt(e.target.value) : undefined)}
+                      placeholder="e.g., 30"
+                      hasValidationError={hasFieldError('uas.flightCharacteristics.maxFlightTime')}
+                    />
+                  </FormField>
+                </div>
+              </div>
+
+              
             </CollapsibleSection>
 
             {/* Operator Section */}

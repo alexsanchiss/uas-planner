@@ -1045,6 +1045,11 @@ export function FlightPlansUploader() {
     }
   }, [selectedPlanId, updateFlightPlan, toast])
 
+  // Handler for past date errors from DateTimePicker
+  const handlePastDateError = useCallback((message: string) => {
+    toast.error(message)
+  }, [toast])
+
   // Handle plan click/selection - toggles selection only, does NOT open map
   const handlePlanClick = useCallback((planId: string) => {
     // Toggle selection for workflow UI
@@ -1523,6 +1528,7 @@ export function FlightPlansUploader() {
               <DateTimePicker
                 value={selectedPlan.scheduledAt || ''}
                 onChange={handleDateTimeChange}
+                onPastDateError={handlePastDateError}
                 label="Scheduled date and time"
                 disabled={isScheduledAtLocked}
                 className="max-w-xs"
