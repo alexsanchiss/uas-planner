@@ -129,6 +129,7 @@ export async function POST(
         fileContent: true,
         authorizationStatus: true,
         externalResponseNumber: true,
+        uplan: true, // Need full uplan to extract waypoints
       },
     });
 
@@ -186,12 +187,39 @@ export async function POST(
 
     // 2. Perform reset in a transaction
     // Delete CSV result (if exists) and reset flight plan fields
+    // IMPORTANT: Preserve waypoints from flightDetails when resetting uplan
+    
+    // First, extract waypoints from current uplan if they exist
+    let waypointsToPreserve: unknown = null;
+    if (flightPlan.uplan) {
+      try {
+        const currentUplan = typeof flightPlan.uplan === 'string' 
+          ? JSON.parse(flightPlan.uplan)
+          : flightPlan.uplan;
+        
+        if (currentUplan && typeof currentUplan === 'object') {
+          const flightDetails = (currentUplan as Record<string, unknown>).flightDetails as Record<string, unknown> | undefined;
+          if (flightDetails?.waypoints) {
+            waypointsToPreserve = flightDetails.waypoints;
+            console.log('[Reset] Preserving waypoints:', waypointsToPreserve);
+          }
+        }
+      } catch (error) {
+        console.warn('[Reset] Failed to parse uplan for waypoint preservation:', error);
+      }
+    }
+    
+    // Build the uplan to set (null or minimal structure with waypoints)
+    const resetUplan = waypointsToPreserve 
+      ? JSON.stringify({ flightDetails: { waypoints: waypointsToPreserve } })
+      : null;
+    
     const [deletedCsvResult, updatedPlan] = await prisma.$transaction([
       // Delete CSV result by the flight plan's ID (1:1 relationship)
       prisma.csvResult.deleteMany({
         where: { id },
       }),
-      // Reset flight plan to initial state
+      // Reset flight plan to initial state (preserving waypoints)
       prisma.flightPlan.update({
         where: { id },
         data: {
@@ -199,7 +227,7 @@ export async function POST(
           csvResult: null,
           authorizationStatus: 'sin autorización',
           authorizationMessage: null,
-          uplan: null,
+          uplan: resetUplan, // null or minimal structure with waypoints
           externalResponseNumber: null,
           machineAssignedId: null,
         },
