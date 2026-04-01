@@ -342,29 +342,63 @@ export default function UplanFormModal({
   const handleLoadDraft = async (draftId: number) => {
     if (!authToken) return;
     try {
+      // Step 1: Fetch the draft data
       const res = await fetch(`/api/user/drafts/${draftId}`, {
         headers: { Authorization: `Bearer ${authToken}` },
       });
       if (!res.ok) throw new Error('Failed to load draft');
       const draft = await res.json();
-      const merged = mergeWithDefaults(draft.draftData);
       
-      // Preserve waypoints from existing uplan if they exist
-      if (existingUplan && typeof existingUplan === 'object') {
+      // Step 2: Fetch FRESH uplan from database to get current waypoints
+      const planRes = await fetch(`/api/flightPlans/${planId}`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      
+      let waypointsToPreserve: unknown = undefined;
+      if (planRes.ok) {
+        const planData = await planRes.json();
+        const currentUplan = planData.uplan;
+        if (currentUplan && typeof currentUplan === 'object') {
+          const flightDetails = currentUplan.flightDetails as Record<string, unknown> | undefined;
+          if (flightDetails?.waypoints) {
+            waypointsToPreserve = flightDetails.waypoints;
+            console.log('[LoadDraft] Preserving waypoints from current plan:', waypointsToPreserve);
+          }
+        }
+      }
+      
+      // If we couldn't get fresh waypoints, fall back to existingUplan
+      if (!waypointsToPreserve && existingUplan && typeof existingUplan === 'object') {
         const existing = existingUplan as Record<string, unknown>;
         const flightDetails = existing.flightDetails as Record<string, unknown> | undefined;
         if (flightDetails?.waypoints) {
-          // Preserve waypoints in the merged data
-          if (!merged.flightDetails) merged.flightDetails = {};
-          (merged.flightDetails as Record<string, unknown>).waypoints = flightDetails.waypoints;
+          waypointsToPreserve = flightDetails.waypoints;
+          console.log('[LoadDraft] Preserving waypoints from existingUplan (fallback):', waypointsToPreserve);
         }
+      }
+      
+      if (!waypointsToPreserve) {
+        console.warn('[LoadDraft] No waypoints found to preserve');
+      }
+      
+      // Step 3: Merge draft data with defaults
+      const merged = mergeWithDefaults(draft.draftData);
+      
+      // Step 4: Inject waypoints into merged data
+      if (waypointsToPreserve) {
+        if (!merged.flightDetails) {
+          merged.flightDetails = {};
+        }
+        (merged.flightDetails as Record<string, unknown>).waypoints = waypointsToPreserve;
+        console.log('[LoadDraft] Waypoints injected into merged data');
       }
       
       setFormData(merged);
       setLoadedDraftId(draftId);
       setValidationErrors(null);
       toast.success(`Draft "${draft.name}" loaded`);
-    } catch {
+    } catch (error) {
+      console.error('[LoadDraft] Error:', error);
       toast.error('Failed to load draft');
     }
   };
