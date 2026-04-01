@@ -348,6 +348,18 @@ export default function UplanFormModal({
       if (!res.ok) throw new Error('Failed to load draft');
       const draft = await res.json();
       const merged = mergeWithDefaults(draft.draftData);
+      
+      // Preserve waypoints from existing uplan if they exist
+      if (existingUplan && typeof existingUplan === 'object') {
+        const existing = existingUplan as Record<string, unknown>;
+        const flightDetails = existing.flightDetails as Record<string, unknown> | undefined;
+        if (flightDetails?.waypoints) {
+          // Preserve waypoints in the merged data
+          if (!merged.flightDetails) merged.flightDetails = {};
+          (merged.flightDetails as Record<string, unknown>).waypoints = flightDetails.waypoints;
+        }
+      }
+      
       setFormData(merged);
       setLoadedDraftId(draftId);
       setValidationErrors(null);
