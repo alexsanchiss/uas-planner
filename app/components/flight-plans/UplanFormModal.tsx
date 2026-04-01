@@ -563,14 +563,21 @@ export default function UplanFormModal({
 
     try {
       // Merge form data with existing U-Plan to preserve auto-generated fields
-      // (operationVolumes, takeoffLocation, landingLocation, gcsLocation, etc.)
+      // (operationVolumes, takeoffLocation, landingLocation, gcsLocation, waypoints, etc.)
       const existingData = (typeof existingUplan === 'object' && existingUplan !== null) 
         ? existingUplan as Record<string, unknown>
         : {};
       
+      // Deep merge flightDetails to preserve waypoints
+      const mergedFlightDetails = {
+        ...(existingData.flightDetails as Record<string, unknown> || {}),
+        ...(formData.flightDetails as Record<string, unknown> || {}),
+      };
+      
       const mergedUplan = {
-        ...existingData, // Preserve auto-generated fields
-        ...formData,     // Overwrite with user edits
+        ...existingData,     // Preserve auto-generated fields
+        ...formData,         // Overwrite with user edits
+        flightDetails: mergedFlightDetails, // Deep merge flightDetails to preserve waypoints
       };
 
       const response = await fetch(`/api/flightPlans/${planId}`, {
@@ -609,9 +616,16 @@ export default function UplanFormModal({
         ? existingUplan as Record<string, unknown>
         : {};
       
+      // Deep merge flightDetails to preserve waypoints
+      const mergedFlightDetails = {
+        ...(existingData.flightDetails as Record<string, unknown> || {}),
+        ...(formData.flightDetails as Record<string, unknown> || {}),
+      };
+      
       const mergedUplan = {
-        ...existingData, // Preserve auto-generated fields
-        ...formData,     // Overwrite with user edits
+        ...existingData,     // Preserve auto-generated fields
+        ...formData,         // Overwrite with user edits
+        flightDetails: mergedFlightDetails, // Deep merge flightDetails to preserve waypoints
       };
 
       const saveResponse = await fetch(`/api/flightPlans/${planId}`, {
