@@ -27,6 +27,10 @@ export interface DateTimePickerProps {
   error?: string
   showTimezone?: boolean
   className?: string
+  /**
+   * Callback when user tries to enter a past date
+   */
+  onPastDateError?: (message: string) => void
 }
 
 /**
@@ -98,12 +102,14 @@ export function DateTimePicker({
   error,
   showTimezone = true,
   className = '',
+  onPastDateError,
 }: DateTimePickerProps) {
   // Convert UTC value from API to local datetime-local format
   const apiValue = useMemo(() => utcToLocalDatetimeString(value), [value])
   
   // Local state for input value (to allow typing without immediate API calls)
   const [localValue, setLocalValue] = useState(apiValue)
+  const [internalError, setInternalError] = useState<string>('')
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   // Compute current local datetime as min to prevent selecting past dates
@@ -124,6 +130,7 @@ export function DateTimePicker({
   // Sync local state with API value when it changes externally
   useEffect(() => {
     setLocalValue(apiValue)
+    setInternalError('') // Clear error when value changes from external source
   }, [apiValue])
   
   // Get timezone information
@@ -149,6 +156,7 @@ export function DateTimePicker({
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const localInput = e.target.value
     setLocalValue(localInput)
+    setInternalError('') // Clear error while typing
     
     // Clear existing timer
     if (debounceTimerRef.current) {
@@ -189,6 +197,14 @@ export function DateTimePicker({
     // Refresh minDateTime and reject past dates
     setMinDateTime(getNowLocal())
     if (isDateInPast(localValue)) {
+      const errorMessage = 'Cannot select a date/time in the past'
+      setInternalError(errorMessage)
+      // Notify parent component
+      if (onPastDateError) {
+        onPastDateError(errorMessage)
+      }
+      // Reset to previous valid value from database
+      setLocalValue(apiValue)
       return
     }
     const utcIso = localDatetimeStringToUtc(localValue)
@@ -196,7 +212,7 @@ export function DateTimePicker({
     if (utcIso !== (value ? new Date(value as string).toISOString() : '')) {
       onChange(utcIso)
     }
-  }, [localValue, value, onChange, getNowLocal, isDateInPast])
+  }, [localValue, value, onChange, getNowLocal, isDateInPast, apiValue, onPastDateError])
   
   // Cleanup timer on unmount
   useEffect(() => {
@@ -282,9 +298,9 @@ export function DateTimePicker({
       )}
 
       {/* Error message */}
-      {error && (
+      {(error || internalError) && (
         <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-          {error}
+          {error || internalError}
         </p>
       )}
     </div>
