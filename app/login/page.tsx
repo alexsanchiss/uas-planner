@@ -82,7 +82,7 @@ function LoginContent() {
         if (redirectUrl) {
           router.push(decodeURIComponent(redirectUrl));
         } else {
-          router.push("/");
+          router.push("/launch");
         }
       } else if (typeof result === 'object' && result.requiresVerification) {
         router.push(`/verify-email?email=${encodeURIComponent(result.email)}`);
