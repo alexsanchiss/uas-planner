@@ -215,7 +215,18 @@ export interface Translations {
     contactDifferentFAS: string
     fasDenialReasonHeader: string
     geozoneConflictDetails: string
-    
+
+    // Alternative trajectory (SCRS)
+    alternativeTrajectory: string
+    viewAlternative: string
+    acceptAlternative: string
+    rejectAlternative: string
+    proposedRoute: string
+    currentRoute: string
+    alternativeAcceptedToast: string
+    alternativeRejectedToast: string
+    waypointsCount: string
+
     // Trajectory viewer
     trajectoryViewer: string
     trajectory: string
@@ -640,7 +651,17 @@ export const translations: Record<Language, Translations> = {
       contactDifferentFAS: 'This operation must be authorized by a different FAS',
       fasDenialReasonHeader: 'FAS Denial Reason',
       geozoneConflictDetails: 'Geozone Conflict Details',
-      
+
+      alternativeTrajectory: 'Alternative trajectory',
+      viewAlternative: 'View alternative',
+      acceptAlternative: 'Accept alternative',
+      rejectAlternative: 'Reject alternative',
+      proposedRoute: 'Proposed route',
+      currentRoute: 'Current route',
+      alternativeAcceptedToast: 'Alternative accepted. Plan will be reprocessed.',
+      alternativeRejectedToast: 'Alternative rejected.',
+      waypointsCount: '{n} waypoints',
+
       trajectoryViewer: 'Trajectory Viewer',
       trajectory: 'Trajectory',
       points: 'points',
@@ -1047,7 +1068,17 @@ export const translations: Record<Language, Translations> = {
       contactDifferentFAS: 'Esta operación debe ser autorizada por un FAS diferente',
       fasDenialReasonHeader: 'Motivo de Denegación FAS',
       geozoneConflictDetails: 'Detalles de Conflicto de Geozona',
-      
+
+      alternativeTrajectory: 'Trayectoria alternativa',
+      viewAlternative: 'Ver alternativa',
+      acceptAlternative: 'Aceptar alternativa',
+      rejectAlternative: 'Rechazar alternativa',
+      proposedRoute: 'Ruta propuesta',
+      currentRoute: 'Ruta actual',
+      alternativeAcceptedToast: 'Alternativa aceptada. El plan será reprocesado.',
+      alternativeRejectedToast: 'Alternativa rechazada.',
+      waypointsCount: '{n} waypoints',
+
       trajectoryViewer: 'Visor de Trayectoria',
       trajectory: 'Trayectoria',
       points: 'puntos',
