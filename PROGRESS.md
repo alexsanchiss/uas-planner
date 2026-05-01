@@ -30,7 +30,7 @@
 
 | # | Tarea | Estado | Notas |
 | --- | --- | --- | --- |
-| T10 | Migración Prisma — campos activación | 🔄 | — |
+| T10 | Migración Prisma — campos activación | ✅ | — |
 | T11 | GET /api/flightPlans/[id]/terms | ⏳ | blocked: T10 |
 | T12 | POST /api/flightPlans/[id]/activate | ⏳ | blocked: T10 |
 | T13 | /api/flightPlans/active y /history | ⏳ | blocked: T10 |
