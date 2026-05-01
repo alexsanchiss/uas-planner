@@ -63,6 +63,7 @@ const PlanMap = dynamic(() => import('./PlanMap'), { ssr: false });
 const UspaceSelector = dynamic(() => import('./plan-definition/UspaceSelector'), { ssr: false });
 import ScanPatternGeneratorV2 from './plan-definition/ScanPatternGeneratorV2';
 import { Point, ScanWaypoint } from '@/lib/scan-generator';
+import { buildQgcPlan } from '@/lib/qgc-plan';
 import { useUspaces, USpace } from '@/app/hooks/useUspaces';
 import { useGeoawarenessWebSocket, type GeozoneData } from '@/app/hooks/useGeoawarenessWebSocket';
 
@@ -139,94 +140,17 @@ function clampAltitude(alt: number) {
 // Remove leaflet icon fix
 // Only keep dynamic import of PlanMap and pass props to it
 
-function generateQGCPlan(waypoints: Waypoint[]): any {
-  if (waypoints.length === 0) return {};
-  const items = [];
-  let doJumpId = 1;
-
-  // Add set speed (178) as the first item, using the speed of the first waypoint
-  items.push({
-    autoContinue: true,
-    command: 178,
-    doJumpId: doJumpId++,
-    frame: 2,
-    params: [1, waypoints[0].speed, -1, 0, 0, 0, 0],
-    type: "SimpleItem",
-  });
-
-  // Takeoff (22) for the first waypoint
-  // TASK-123: params[0] is hold time in seconds
-  const first = waypoints[0];
-  items.push({
-    AMSLAltAboveTerrain: null,
-    Altitude: first.altitude,
-    AltitudeMode: 1,
-    autoContinue: true,
-    command: 22,
-    doJumpId: doJumpId++,
-    frame: 3,
-    params: [first.pauseDuration || 0, 0, 0, null, first.lat, first.lng, first.altitude],
-    type: "SimpleItem",
-  });
-
-  // Cruise (16) for intermediate waypoints (excluding first and last)
-  // TASK-123: params[0] is hold time in seconds
-  // TASK-128: params[1] is acceptance radius - set to 0.1m for fly-over mode, 0 for fly-by (smooth curve)
-  for (let i = 1; i < waypoints.length - 1; i++) {
-    const wp = waypoints[i];
-    // For NAV_WAYPOINT (cmd 16): params = [Hold, Accept_Radius, Pass_Radius, Yaw, Lat, Lon, Alt]
-    // Accept_Radius = 0.1m forces drone to pass directly over (fly-over)
-    // Accept_Radius = 0 allows smooth curving (fly-by, default)
-    const acceptRadius = wp.flyOverMode ? 0.1 : 0;
-    items.push({
-      AMSLAltAboveTerrain: null,
-      Altitude: wp.altitude,
-      AltitudeMode: 1,
-      autoContinue: true,
-      command: 16,
-      doJumpId: doJumpId++,
-      frame: 3,
-      params: [wp.pauseDuration || 0, acceptRadius, 0, null, wp.lat, wp.lng, wp.altitude],
-      type: "SimpleItem",
-    });
-  }
-
-  // Landing (21) for the last waypoint
-  // TASK-123: params[0] is hold time in seconds (typically 0 for landing)
-  if (waypoints.length > 1) {
-    const last = waypoints[waypoints.length - 1];
-    items.push({
-      AMSLAltAboveTerrain: null,
-      Altitude: 0,
-      AltitudeMode: 1,
-      autoContinue: true,
-      command: 21,
-      doJumpId: doJumpId++,
-      frame: 3,
-      params: [last.pauseDuration || 0, 0, 0, null, last.lat, last.lng, 0],
-      type: "SimpleItem",
-    });
-  }
-
-  const plannedHome = waypoints[0];
-  const homeAltitude = Number(process.env.NEXT_PUBLIC_PLANNED_HOME_ALTITUDE || '15');
-  return {
-    fileType: "Plan",
-    geoFence: { circles: [], polygons: [], version: 2 },
-    groundStation: "QGroundControl",
-    mission: {
-      cruiseSpeed: 15,
-      firmwareType: 12,
-      globalPlanAltitudeMode: 1,
-      hoverSpeed: 5,
-      items,
-      plannedHomePosition: [plannedHome.lat, plannedHome.lng, homeAltitude],
-      vehicleType: 2,
-      version: 2,
-    },
-    rallyPoints: { points: [], version: 2 },
-    version: 1,
-  };
+function generateQGCPlan(waypoints: Waypoint[]): unknown {
+  return buildQgcPlan(
+    waypoints.map((wp) => ({
+      lat: wp.lat,
+      lng: wp.lng,
+      alt: wp.altitude,
+      pauseDuration: wp.pauseDuration,
+      speed: wp.speed,
+      flyOverMode: wp.flyOverMode,
+    }))
+  );
 }
 
 export default function PlanGenerator() {
