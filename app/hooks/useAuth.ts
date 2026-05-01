@@ -14,14 +14,8 @@ interface User {
 const AUTH_TOKEN_KEY = 'authToken'
 const SENSITIVE_STORAGE_KEYS = [AUTH_TOKEN_KEY] // Add other keys if needed
 
-// Inactivity threshold: 10 minutes
-const INACTIVITY_TIMEOUT_MS = 10 * 60 * 1000
-
 // Retry delay for failed refresh: 5 seconds
 const REFRESH_RETRY_DELAY_MS = 5_000
-
-// Throttle interval for activity tracking: 1 second
-const ACTIVITY_THROTTLE_MS = 1_000
 
 // Decode JWT payload without verification (client-side)
 function decodeTokenPayload(token: string): { exp?: number; userId?: number } | null {
@@ -69,9 +63,7 @@ function notifySessionExpired(reason?: string): void {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('auth:session-expired', {
       detail: {
-        message: reason === 'inactivity'
-          ? 'You have been disconnected due to inactivity.'
-          : 'Your session has expired. Please log in again.',
+        message: 'Your session has expired. Please log in again.',
         reason: reason ?? 'expired',
       }
     }))
@@ -84,7 +76,6 @@ export function useAuth() {
   const refreshingRef = useRef(false)
   const refreshTimerRef = useRef<NodeJS.Timeout | null>(null)
   const sessionExpiredNotifiedRef = useRef(false)
-  const lastActivityRef = useRef(Date.now())
 
   /**
    * Refresh the access token using the httpOnly refresh token cookie
@@ -146,7 +137,7 @@ export function useAuth() {
 
   /**
    * Schedule automatic token refresh before expiration
-   * Includes inactivity check and defensive re-scheduling
+   * Defensive re-scheduling on successful refresh
    */
   const scheduleTokenRefresh = useCallback((token: string) => {
     // Clear existing timer
@@ -164,14 +155,6 @@ export function useAuth() {
     const delay = Math.max(refreshAt - Date.now(), 0)
 
     const executeRefresh = async () => {
-      // Check inactivity before refreshing
-      const idleTime = Date.now() - lastActivityRef.current
-      if (idleTime > INACTIVITY_TIMEOUT_MS) {
-        console.debug('[auth] Refresh skipped — user inactive for', Math.round(idleTime / 1000), 'seconds')
-        handleSessionExpired('inactivity')
-        return
-      }
-
       const newToken = await refreshWithRetry()
       if (newToken) {
         scheduleTokenRefresh(newToken)
@@ -267,18 +250,6 @@ export function useAuth() {
     // Initial load
     fetchUser()
 
-    // --- Activity tracking (throttled to ~1s) ---
-    let lastTracked = 0
-    const trackActivity = () => {
-      const now = Date.now()
-      if (now - lastTracked > ACTIVITY_THROTTLE_MS) {
-        lastTracked = now
-        lastActivityRef.current = now
-      }
-    }
-    const activityEvents: (keyof WindowEventMap)[] = ['mousemove', 'keydown', 'scroll', 'touchstart', 'click']
-    activityEvents.forEach(evt => window.addEventListener(evt, trackActivity, { passive: true }))
-
     // Listen for auth changes from other tabs (cross-tab synchronization)
     const onStorage = (e: StorageEvent) => {
       if (e.key === AUTH_TOKEN_KEY) {
@@ -313,7 +284,6 @@ export function useAuth() {
     return () => {
       window.removeEventListener('storage', onStorage)
       window.removeEventListener('auth:changed', onAuthChanged as EventListener)
-      activityEvents.forEach(evt => window.removeEventListener(evt, trackActivity))
       // Clear refresh timer on unmount
       if (refreshTimerRef.current) {
         clearTimeout(refreshTimerRef.current)
