@@ -98,3 +98,9 @@ export {
   DenialMapModal,
   type DenialMapModalProps,
 } from './DenialMapModal'
+
+// Alternative trajectory modal for SCRS route proposals
+export {
+  AlternativeTrajectoryModal,
+  type AlternativeTrajectoryModalProps,
+} from './AlternativeTrajectoryModal'
