@@ -34,7 +34,7 @@
 | T11 | GET /api/flightPlans/[id]/terms | ⏳ | blocked: T10 |
 | T12 | POST /api/flightPlans/[id]/activate | ⏳ | blocked: T10 |
 | T13 | /api/flightPlans/active y /history | ⏳ | blocked: T10 |
-| T14 | JsonViewerSections recursivo | 🔄 | — |
+| T14 | JsonViewerSections recursivo | ✅ | 36 tests |
 | T15 | ActivateFlightModal | ⏳ | blocked: T11, T12, T14 |
 | T16 | FlightPlanActivationCard + countdown UI | ⏳ | blocked: T15 |
 | T17 | HistoricalFlightPlanList | ⏳ | blocked: T13 |
