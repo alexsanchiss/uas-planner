@@ -27,6 +27,7 @@ import { useFlightPlans, type FlightPlan as FlightPlanData } from '../hooks/useF
 import { useFolders } from '../hooks/useFolders'
 import { useVolumeRegeneration } from '../hooks/useVolumeRegeneration'
 import { isUplanComplete } from '@/lib/validators/uplan-validator'
+import { parseScrsAlternative } from '@/lib/scrs'
 import {
   FolderList,
   FlightPlanCard,
@@ -78,6 +79,12 @@ const Trajectory3DViewer = dynamic(() => import('./flight-plans/Trajectory3DView
 
 // Task 32: Dynamic import for 3D Geoawareness viewer with extruded geozones (requires Cesium)
 const Geoawareness3DModal = dynamic(() => import('./flight-plans/Geoawareness3DModal'), { ssr: false })
+
+// T7: Dynamic import for AlternativeTrajectoryModal (uses Leaflet, requires SSR disabled)
+const AlternativeTrajectoryModal = dynamic(
+  () => import('./flight-plans/AlternativeTrajectoryModal'),
+  { ssr: false }
+)
 
 /**
  * Transform API flight plan data to component flight plan format
@@ -228,6 +235,14 @@ export function FlightPlansUploader() {
     status: 'aprobado' | 'denegado' | 'withdrawn' | null
     uplan: unknown
   }>({ open: false, planId: null, planName: '', message: null, status: null, uplan: null })
+  // T7: Alternative trajectory modal state — SCRS proposed route
+  const [altTrajectoryModal, setAltTrajectoryModal] = useState<{
+    open: boolean
+    planId: string | null
+    currentWaypoints: Array<{ lat: number; lon: number; alt?: number }>
+    alternativeWaypoints: Array<{ lat: number; lon: number; alt?: number }>
+  }>({ open: false, planId: null, currentWaypoints: [], alternativeWaypoints: [] })
+  const [acceptingAlternative, setAcceptingAlternative] = useState(false)
   // U-Plan review modal state - shows U-Plan before authorization
   // TASK-079: Include fileContent for waypoint visualization
   const [uplanViewModal, setUplanViewModal] = useState<{
@@ -1311,6 +1326,62 @@ export function FlightPlansUploader() {
     })
   }, [authorizationMessageModal])
 
+  // T7: Open alternative trajectory modal — SCRS proposed route
+  const handleViewAlternative = useCallback(() => {
+    if (!authorizationMessageModal.planId || !authorizationMessageModal.message) return
+
+    const messageStr = typeof authorizationMessageModal.message === 'string'
+      ? authorizationMessageModal.message
+      : JSON.stringify(authorizationMessageModal.message)
+
+    const alternative = parseScrsAlternative(messageStr)
+    if (!alternative) return
+
+    // Extract current waypoints from uplan
+    const uplanObj = authorizationMessageModal.uplan as { flightDetails?: { waypoints?: Array<{ lat: number; lon: number; h?: number }> } } | null
+    const currentWaypoints = (uplanObj?.flightDetails?.waypoints ?? []).map(wp => ({
+      lat: wp.lat,
+      lon: wp.lon,
+      alt: wp.h,
+    }))
+
+    setAltTrajectoryModal({
+      open: true,
+      planId: authorizationMessageModal.planId,
+      currentWaypoints,
+      alternativeWaypoints: alternative.flatWaypoints,
+    })
+  }, [authorizationMessageModal])
+
+  // T7: Accept alternative trajectory — calls accept-alternative endpoint
+  const handleAcceptAlternative = useCallback(async () => {
+    if (!altTrajectoryModal.planId) return
+    setAcceptingAlternative(true)
+    try {
+      const token = localStorage.getItem('authToken')
+      const response = await fetch(`/api/flightPlans/${altTrajectoryModal.planId}/accept-alternative`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+      if (!response.ok) {
+        const err = await response.json()
+        toast.error(err.error || 'Error accepting alternative')
+        return
+      }
+      setAltTrajectoryModal({ open: false, planId: null, currentWaypoints: [], alternativeWaypoints: [] })
+      setAuthorizationMessageModal({ open: false, planId: null, planName: '', message: null, status: null, uplan: null })
+      toast.success('Alternative accepted. Plan will be reprocessed.')
+      refreshPlans()
+    } catch {
+      toast.error('Network error accepting alternative')
+    } finally {
+      setAcceptingAlternative(false)
+    }
+  }, [altTrajectoryModal.planId, toast, refreshPlans])
+
   // Task 11: Open raw JSON modal from denial map (secondary access)
   const handleViewRawDenial = useCallback(() => {
     // Find the plan that matches the current denial modal's uplan
@@ -2094,6 +2165,23 @@ export function FlightPlansUploader() {
                     View denial on map
                   </button>
                 )}
+                {/* T7: SCRS alternative trajectory button */}
+                {authorizationMessageModal.status === 'denegado' && (() => {
+                  const msgStr = typeof authorizationMessageModal.message === 'string'
+                    ? authorizationMessageModal.message
+                    : authorizationMessageModal.message != null ? JSON.stringify(authorizationMessageModal.message) : null
+                  return msgStr && parseScrsAlternative(msgStr) !== null
+                })() && (
+                  <button
+                    onClick={handleViewAlternative}
+                    className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                    </svg>
+                    Ver alternativa
+                  </button>
+                )}
               </div>
               <button
                 onClick={() => setAuthorizationMessageModal({ open: false, planId: null, planName: '', message: null, status: null, uplan: null })}
@@ -2113,6 +2201,17 @@ export function FlightPlansUploader() {
         uplan={denialMapModal.uplan as { operationVolumes?: { geometry: { type: string; coordinates: number[][][] }; [key: string]: unknown }[] } | null}
         authorizationMessage={denialMapModal.authorizationMessage}
         geoawarenessData={denialMapModal.geoawarenessData}
+      />
+
+      {/* T7: Alternative trajectory modal — SCRS proposed route */}
+      <AlternativeTrajectoryModal
+        open={altTrajectoryModal.open}
+        onClose={() => setAltTrajectoryModal({ open: false, planId: null, currentWaypoints: [], alternativeWaypoints: [] })}
+        currentWaypoints={altTrajectoryModal.currentWaypoints}
+        alternativeWaypoints={altTrajectoryModal.alternativeWaypoints}
+        onAccept={handleAcceptAlternative}
+        onReject={() => setAltTrajectoryModal({ open: false, planId: null, currentWaypoints: [], alternativeWaypoints: [] })}
+        isProcessing={acceptingAlternative}
       />
 
       {/* U-Plan map viewer modal - shows operation volumes on map */}

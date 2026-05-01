@@ -215,7 +215,7 @@ export interface Translations {
     contactDifferentFAS: string
     fasDenialReasonHeader: string
     geozoneConflictDetails: string
-    
+
     // Alternative trajectory (SCRS)
     alternativeTrajectory: string
     viewAlternative: string
