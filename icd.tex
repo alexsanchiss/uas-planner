@@ -21,7 +21,7 @@
 % Used inside tables to avoid overflow when showing endpoints.
 \newcommand{\icdendpoint}[1]{\begingroup\small\path{#1}\endgroup}
 
-\title{ SPIRIT \\ \small{ICD - V\_{2.2.1}}}
+\title{ SPIRIT \\ \small{ICD - V\_{2.3.0}}}
 \author{U-Plan Preparation Service (UPPS) \\ Álex Sanchis}
 \date{\today}
 
@@ -1047,6 +1047,27 @@ La aplicación se estructura en componentes modulares organizados por funcionali
     \item Persistencia en \texttt{localStorage}.
     \item Soporte para \texttt{MutationObserver} en componentes dinámicos (header, footer).
     \item Variables de estado: \texttt{--status-success-bg}, \texttt{--status-error-bg}, etc.
+\end{itemize}
+
+
+% ============================================================
+\subsection*{Novedades en V2.3.0}
+% ============================================================
+
+\subsubsection*{Correcciones y estabilidad}
+\begin{itemize}
+    \item \textbf{Eliminación del cierre de sesión por inactividad} (\texttt{fix(auth)}): Se elimina completamente la lógica de \textit{inactivity timeout} (10~min) del hook \texttt{useAuth.ts}. La sesión ahora solo expira cuando el \textit{refresh token} caduca; no se cierran sesiones activas por ausencia de eventos de ratón/teclado.
+    \item \textbf{Corrección del error SSR de Leaflet} (\texttt{fix(ui)}): El componente \texttt{DenialMapModal} importaba \texttt{react-leaflet} directamente, provocando el error \texttt{window is not defined} en el servidor. Se aisla la lógica del mapa en \texttt{DenialMapContent.tsx} con importaciones dinámicas (\texttt{ssr: false}), siguiendo el patrón ya presente en \texttt{TrajectoryMapViewer} y \texttt{GeoawarenessViewer}.
+\end{itemize}
+
+\subsubsection*{Propuesta de trayectoria alternativa SCRS}
+\begin{itemize}
+    \item \textbf{Parser de mensajes SCRS} (\texttt{lib/scrs.ts}): Nuevo módulo que extrae la alternativa de trayectoria del campo \texttt{scr\_dispatch} del \texttt{authorizationMessage} del FAS. Guarda: \texttt{sent=true}, \texttt{status\_code=200}, \texttt{response.status='success'}, segmentos no vacíos. Convierte coordenadas GeoJSON $[\text{lon}, \text{lat}, \text{alt}]$ a \texttt{\{lat, lon, alt\}} y concatena los \texttt{route\_path} de todos los segmentos, deduplicando puntos en las costuras.
+    \item \textbf{Builder QGC reutilizable} (\texttt{lib/qgc-plan.ts}): Extracción de la función de generación de planes \texttt{.plan} (QGroundControl) a una librería independiente (\texttt{buildQgcPlan}). El componente \texttt{PlanGenerator.tsx} se refactoriza para llamar a este helper. Permite reutilización desde el endpoint de aceptación.
+    \item \textbf{Modal comparativo de trayectorias} (\texttt{AlternativeTrajectoryModal}): Nuevo componente SSR-safe que muestra la trayectoria actual (polilínea azul) y la propuesta por el SCRS (polilínea verde discontinua) sobre un mapa Leaflet. Incluye \texttt{FitBoundsHandler}, estadísticas de waypoints y botones \textit{Rechazar} / \textit{Aceptar alternativa}.
+    \item \textbf{Endpoint de aceptación} (\texttt{POST /api/flightPlans/{id}/accept-alternative}): Cuando el usuario acepta la alternativa, el endpoint: (1) valida la alternativa SCRS; (2) construye la lista de waypoints (puntos SCRS + waypoint de aterrizaje final a 0~m); (3) regenera \texttt{fileContent} en formato QGC \texttt{.plan}; (4) actualiza \texttt{uplan.flightDetails.waypoints} y vacía \texttt{operationVolumes}; (5) ejecuta una transacción Prisma que borra el \texttt{csvResult} y reinicia el plan a \texttt{status='sin procesar'} preservando \texttt{scheduledAt} y los metadatos del U-Plan.
+    \item \textbf{Integración en UI} (\texttt{FlightPlansUploader}): El modal de resultado de autorización muestra un botón \textit{Ver alternativa} (verde) solo cuando el plan está denegado y el mensaje contiene un \texttt{scr\_dispatch} válido. El flujo de aceptación llama al nuevo endpoint, muestra toast de confirmación y refresca la lista de planes.
+    \item \textbf{Compatibilidad del flujo de reautorización}: El plan reprocesado sigue el pipeline estándar (\textit{sin procesar} $\rightarrow$ \textit{en cola} $\rightarrow$ \textit{procesado} $\rightarrow$ autorización FAS $\rightarrow$ email de resultado), sin cambios en los componentes existentes.
 \end{itemize}
 
 \end{document}
