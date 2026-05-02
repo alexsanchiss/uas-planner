@@ -446,6 +446,15 @@ export interface Translations {
     inHours: string
     inDays: string
   }
+
+  // Plan Activation
+  planActivation: {
+    historicalSection: string
+    noHistory: string
+    previousPage: string
+    nextPage: string
+    pageOf: string
+  }
 }
 
 export const translations: Record<Language, Translations> = {
@@ -854,8 +863,15 @@ export const translations: Record<Language, Translations> = {
       inHours: 'in {n} hours',
       inDays: 'in {n} days',
     },
+    planActivation: {
+      historicalSection: 'Flight history',
+      noHistory: 'No flights in history',
+      previousPage: 'Previous',
+      nextPage: 'Next',
+      pageOf: 'Page {current} of {total}',
+    },
   },
-  
+
   es: {
     common: {
       loading: 'Cargando...',
@@ -1260,6 +1276,13 @@ export const translations: Record<Language, Translations> = {
       inMinutes: 'en {n} minutos',
       inHours: 'en {n} horas',
       inDays: 'en {n} días',
+    },
+    planActivation: {
+      historicalSection: 'Historial de vuelos',
+      noHistory: 'No hay vuelos en el historial',
+      previousPage: 'Anterior',
+      nextPage: 'Siguiente',
+      pageOf: 'Página {current} de {total}',
     },
   },
 }
