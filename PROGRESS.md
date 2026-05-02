@@ -40,7 +40,7 @@
 | T17 | HistoricalFlightPlanList | ✅ | — |
 | T18 | Reemplazo plan-activation/page.tsx | ⏳ | blocked: T16, T17 |
 | T19 | useActivationPlans + tick 1s | ✅ | — |
-| T20 | i18n completo Plan Activation | ⏳ | blocked: T18 |
+| T20 | i18n completo Plan Activation | ✅ | 23 keys en/es + interface |
 | T21 | End-to-end manual v2.4.0 | ⏳ | blocked: T20 |
 | T22 | Release v2.4.0 | ⏳ | blocked: T21 |
 
