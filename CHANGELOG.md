@@ -5,6 +5,26 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [2.4.0] — 2026-05-02
+
+### Added
+- **`GET /api/flightPlans/[id]/terms`** — Proxy autenticado al FAS que devuelve los términos y condiciones para un plan aprobado, bajo demanda en cada apertura del modal.
+- **`POST /api/flightPlans/[id]/activate`** — Endpoint de activación: valida ventana ±60 s de `scheduledAt`, cooldown de 5 s, llama al FAS `GET /activation/[externalResponseNumber]` y persiste el resultado (`activatedAt`, `activationStatus`, `activationMessage`).
+- **`GET /api/flightPlans/active`** — Lista planes aprobados del usuario con `scheduledAt` entre `now-1h` y `now+24h`.
+- **`GET /api/flightPlans/history`** — Lista planes históricos paginados (activados, ventana pasada, denegados/retirados). Parámetros `limit` (max 100) y `offset`.
+- **`ActivateFlightModal`** — Modal que carga los T&C del FAS con `JsonViewerSections`, requiere checkbox de aceptación, ejecuta la activación y muestra cooldown de 5 s en reintentos denegados.
+- **`FlightPlanActivationCard`** — Tarjeta de plan activable: muestra nombre, `scheduledAt`, estado de autorización, panel verde "PUEDE DESPEGAR" con countdown de 60 s, y botón "Activar vuelo" deshabilitado fuera de la ventana.
+- **`HistoricalFlightPlanList`** — Lista paginada (10 por página) de planes históricos con nombre, fecha, estado de autorización y estado de activación.
+- **`JsonViewerSections`** — Componente recursivo que renderiza JSON arbitrario como secciones colapsables con jerarquía visual (h3/h4/dl/ul), maxDepth configurable.
+- **`useActivationPlans`** — Hook con polling a 30 s, tick local de 1 s para ventanas en tiempo real, y función `activate(planId, termsAccepted)`.
+- **`/plan-activation` page** — Página completa: sección "Vuelos activables" (filtrado ±60 s en cliente con tick 1 s) y sección "Historial" colapsable.
+- **Campos de activación en `flightPlan`**: `activationStatus`, `activatedAt`, `activationMessage`, `termsAcceptedAt`, `lastActivationAttempt`.
+
+### Fixed
+- **Traducciones i18n duplicadas** — Bloque `planActivation` consolidado en interfaz, `en` y `es` con 25 claves completas (sin duplicados).
+
+---
+
 ## [2.3.0] — 2026-05-01
 
 ### Added

@@ -21,7 +21,7 @@
 % Used inside tables to avoid overflow when showing endpoints.
 \newcommand{\icdendpoint}[1]{\begingroup\small\path{#1}\endgroup}
 
-\title{ SPIRIT \\ \small{ICD - V\_{2.3.0}}}
+\title{ SPIRIT \\ \small{ICD - V\_{2.4.0}}}
 \author{U-Plan Preparation Service (UPPS) \\ Álex Sanchis}
 \date{\today}
 
@@ -1051,6 +1051,20 @@ La aplicación se estructura en componentes modulares organizados por funcionali
 
 
 % ============================================================
+\subsection*{Novedades en V2.4.0}
+
+\subsubsection*{Plan Activation — Flujo completo de activación de vuelo}
+
+\begin{itemize}
+  \item \textbf{Nuevos campos en \texttt{flightPlan}}: \texttt{activationStatus}, \texttt{activatedAt}, \texttt{activationMessage}, \texttt{termsAcceptedAt}, \texttt{lastActivationAttempt}. Estados posibles de \texttt{activationStatus}: \textit{no activable}, \textit{activable}, \textit{activando}, \textit{autorizado\_despegue}, \textit{denegado\_activacion}, \textit{ventana\_pasada}.
+  \item \textbf{\texttt{GET /api/flightPlans/[id]/terms}}: Proxy autenticado al FAS. Devuelve los T\&C del plan aprobado bajo demanda. Requiere \texttt{authorizationStatus = aprobado} y \texttt{externalResponseNumber} presente.
+  \item \textbf{\texttt{POST /api/flightPlans/[id]/activate}}: Valida ventana $\pm 60\,\text{s}$ respecto a \texttt{scheduledAt}, cooldown de 5 s entre intentos, y \texttt{termsAccepted = true} en el cuerpo. Llama a \texttt{GET /activation/[externalResponseNumber]} en el FAS con timeout de 10 s. Persiste resultado en \texttt{activatedAt} / \texttt{activationStatus}.
+  \item \textbf{\texttt{GET /api/flightPlans/active}}: Lista planes aprobados con \texttt{scheduledAt} en $[\text{now}-1\text{h},\,\text{now}+24\text{h}]$.
+  \item \textbf{\texttt{GET /api/flightPlans/history}}: Lista paginada de planes históricos (activados, ventana pasada, denegados/retirados). Parámetros \texttt{limit} (máx.\ 100) y \texttt{offset}.
+  \item \textbf{Página \texttt{/plan-activation}}: Sección ``Vuelos activables'' (filtrado $\pm 60\,\text{s}$ en cliente con tick de 1 s) y sección ``Historial'' colapsable con paginación.
+  \item \textbf{\texttt{ActivateFlightModal}}: Carga T\&C del FAS en \texttt{JsonViewerSections}, exige aceptación explícita, ejecuta la activación y muestra ``PUEDE DESPEGAR'' durante 60 s tras respuesta positiva.
+\end{itemize}
+
 \subsection*{Novedades en V2.3.0}
 % ============================================================
 
