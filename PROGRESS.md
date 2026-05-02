@@ -31,9 +31,9 @@
 | # | Tarea | Estado | Notas |
 | --- | --- | --- | --- |
 | T10 | Migración Prisma — campos activación | ✅ | — |
-| T11 | GET /api/flightPlans/[id]/terms | ⏳ | blocked: T10 |
-| T12 | POST /api/flightPlans/[id]/activate | ⏳ | blocked: T10 |
-| T13 | /api/flightPlans/active y /history | ⏳ | blocked: T10 |
+| T11 | GET /api/flightPlans/[id]/terms | ✅ | 9 tests |
+| T12 | POST /api/flightPlans/[id]/activate | ✅ | 14 tests |
+| T13 | /api/flightPlans/active y /history | ✅ | 9+11 tests |
 | T14 | JsonViewerSections recursivo | ✅ | 36 tests |
 | T15 | ActivateFlightModal | ⏳ | blocked: T11, T12, T14 |
 | T16 | FlightPlanActivationCard + countdown UI | ⏳ | blocked: T15 |
