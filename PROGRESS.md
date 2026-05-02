@@ -35,13 +35,13 @@
 | T12 | POST /api/flightPlans/[id]/activate | ✅ | 14 tests |
 | T13 | /api/flightPlans/active y /history | ✅ | 9+11 tests |
 | T14 | JsonViewerSections recursivo | ✅ | 36 tests |
-| T15 | ActivateFlightModal | ⏳ | blocked: T11, T12, T14 |
-| T16 | FlightPlanActivationCard + countdown UI | ⏳ | blocked: T15 |
+| T15 | ActivateFlightModal | ✅ | — |
+| T16 | FlightPlanActivationCard + countdown UI | ✅ | — |
 | T17 | HistoricalFlightPlanList | ✅ | — |
-| T18 | Reemplazo plan-activation/page.tsx | ⏳ | blocked: T16, T17 |
+| T18 | Reemplazo plan-activation/page.tsx | ✅ | — |
 | T19 | useActivationPlans + tick 1s | ✅ | — |
 | T20 | i18n completo Plan Activation | ✅ | 23 keys en/es + interface |
-| T21 | End-to-end manual v2.4.0 | ⏳ | blocked: T20 |
+| T21 | End-to-end manual v2.4.0 | ⏳ | — |
 | T22 | Release v2.4.0 | ⏳ | blocked: T21 |
 
 ---

@@ -471,6 +471,8 @@ export interface Translations {
     modalTitle: string
     cancel: string
     activateButton: string
+    activationDeniedStatus: string
+    noActivablePlans: string
   }
 
   // Time/Date
@@ -483,33 +485,6 @@ export interface Translations {
     inMinutes: string
     inHours: string
     inDays: string
-  }
-
-  // Plan Activation
-  planActivation: {
-    title: string
-    activableSection: string
-    canTakeoff: string
-    canTakeoffCountdown: string
-    windowNotOpen: string
-    windowClosed: string
-    activateButton: string
-    activationDeniedStatus: string
-    activationDenied: string
-    acceptTerms: string
-    activate: string
-    activating: string
-    termsRequired: string
-    retryIn: string
-    loadingTerms: string
-    termsError: string
-    modalTitle: string
-    cancel: string
-    historicalSection: string
-    noHistory: string
-    previousPage: string
-    nextPage: string
-    pageOf: string
   }
 }
 
@@ -919,31 +894,6 @@ export const translations: Record<Language, Translations> = {
       serverError: 'Server error',
       loadingFailed: 'Failed to load data',
     },
-    planActivation: {
-      title: 'Plan Activation',
-      activableSection: 'Activatable flights',
-      historicalSection: 'Flight history',
-      activate: 'Activate',
-      activating: 'Activating...',
-      canTakeoff: 'CLEARED FOR TAKEOFF',
-      canTakeoffCountdown: 'Time remaining: {s}s',
-      windowNotOpen: 'Activation window not open',
-      windowClosed: 'Activation window closed',
-      cooldown: 'Please wait before retrying',
-      acceptTerms: 'I have read and accept the FAS terms and conditions for this flight',
-      termsRequired: 'You must accept the terms to activate',
-      activationDenied: 'Activation denied',
-      retryIn: 'Retry in {s}s',
-      noHistory: 'No flights in history',
-      previousPage: 'Previous',
-      nextPage: 'Next',
-      pageOf: 'Page {current} of {total}',
-      loadingTerms: 'Loading terms and conditions...',
-      termsError: 'Error loading terms',
-      modalTitle: 'Flight Activation',
-      cancel: 'Cancel',
-      activateButton: 'Activate flight',
-    },
     time: {
       now: 'now',
       justNow: 'just now',
@@ -978,6 +928,8 @@ export const translations: Record<Language, Translations> = {
       previousPage: 'Previous',
       nextPage: 'Next',
       pageOf: 'Page {current} of {total}',
+      cooldown: 'Please wait before retrying',
+      noActivablePlans: 'No activatable flights at this moment',
     },
   },
 
@@ -1386,31 +1338,6 @@ export const translations: Record<Language, Translations> = {
       serverError: 'Error del servidor',
       loadingFailed: 'Error al cargar datos',
     },
-    planActivation: {
-      title: 'Activación de Planes',
-      activableSection: 'Vuelos activables',
-      historicalSection: 'Historial de vuelos',
-      activate: 'Activar',
-      activating: 'Activando...',
-      canTakeoff: 'PUEDE DESPEGAR',
-      canTakeoffCountdown: 'Tiempo restante: {s}s',
-      windowNotOpen: 'Ventana de activación no abierta',
-      windowClosed: 'Ventana de activación cerrada',
-      cooldown: 'Por favor espere antes de reintentar',
-      acceptTerms: 'He leído y acepto los términos y condiciones del FAS para este vuelo',
-      termsRequired: 'Debe aceptar los términos para activar',
-      activationDenied: 'Activación denegada',
-      retryIn: 'Reintentar en {s}s',
-      noHistory: 'No hay vuelos en el historial',
-      previousPage: 'Anterior',
-      nextPage: 'Siguiente',
-      pageOf: 'Página {current} de {total}',
-      loadingTerms: 'Cargando términos y condiciones...',
-      termsError: 'Error al cargar los términos',
-      modalTitle: 'Activación de Vuelo',
-      cancel: 'Cancelar',
-      activateButton: 'Activar vuelo',
-    },
     time: {
       now: 'ahora',
       justNow: 'hace un momento',
@@ -1445,6 +1372,8 @@ export const translations: Record<Language, Translations> = {
       previousPage: 'Anterior',
       nextPage: 'Siguiente',
       pageOf: 'Página {current} de {total}',
+      cooldown: 'Por favor espere antes de reintentar',
+      noActivablePlans: 'No hay vuelos activables en este momento',
     },
   },
 }

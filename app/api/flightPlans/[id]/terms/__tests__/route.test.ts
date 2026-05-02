@@ -132,7 +132,7 @@ describe('GET /api/flightPlans/[id]/terms', () => {
     });
 
     it('returns 403 when the plan belongs to a different user', async () => {
-      mockFindUnique.mockResolvedValue({ ...basePlan }); // userId: 42
+      mockFindUnique.mockResolvedValue({ ...basePlan } as never); // userId: 42
 
       const res = await GET(makeRequest(), makeParams());
       const body = await json(res);
@@ -153,7 +153,7 @@ describe('GET /api/flightPlans/[id]/terms', () => {
       mockFindUnique.mockResolvedValue({
         ...basePlan,
         authorizationStatus: 'pendiente',
-      });
+      } as never);
 
       const res = await GET(makeRequest(), makeParams());
       const body = await json(res);
@@ -166,7 +166,7 @@ describe('GET /api/flightPlans/[id]/terms', () => {
       mockFindUnique.mockResolvedValue({
         ...basePlan,
         authorizationStatus: 'sin autorización',
-      });
+      } as never);
 
       const res = await GET(makeRequest(), makeParams());
       const body = await json(res);
@@ -187,7 +187,7 @@ describe('GET /api/flightPlans/[id]/terms', () => {
       mockFindUnique.mockResolvedValue({
         ...basePlan,
         externalResponseNumber: null,
-      });
+      } as never);
 
       const res = await GET(makeRequest(), makeParams());
       const body = await json(res);
@@ -200,7 +200,7 @@ describe('GET /api/flightPlans/[id]/terms', () => {
       mockFindUnique.mockResolvedValue({
         ...basePlan,
         externalResponseNumber: '',
-      });
+      } as never);
 
       const res = await GET(makeRequest(), makeParams());
       const body = await json(res);
@@ -215,7 +215,7 @@ describe('GET /api/flightPlans/[id]/terms', () => {
     beforeEach(() => {
       mockWithAuth.mockResolvedValue({ userId: 42 });
       mockIsAuthError.mockReturnValue(false);
-      mockFindUnique.mockResolvedValue({ ...basePlan });
+      mockFindUnique.mockResolvedValue({ ...basePlan } as never);
     });
 
     it('returns 502 when fetch throws a network error', async () => {
@@ -250,7 +250,7 @@ describe('GET /api/flightPlans/[id]/terms', () => {
     beforeEach(() => {
       mockWithAuth.mockResolvedValue({ userId: 42 });
       mockIsAuthError.mockReturnValue(false);
-      mockFindUnique.mockResolvedValue({ ...basePlan });
+      mockFindUnique.mockResolvedValue({ ...basePlan } as never);
     });
 
     it('returns 200 and forwards FAS JSON response verbatim', async () => {

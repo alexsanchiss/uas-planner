@@ -112,7 +112,7 @@ describe('POST /api/flightPlans/[id]/activate', () => {
     });
 
     it('returns 403 when plan belongs to another user', async () => {
-      mockFindUnique.mockResolvedValue({ ...basePlan, userId: 99 });
+      mockFindUnique.mockResolvedValue({ ...basePlan, userId: 99 } as never);
       const res = await POST(makeRequest(), makeParams());
       const body = await json(res);
       expect(res.status).toBe(403);
@@ -120,7 +120,7 @@ describe('POST /api/flightPlans/[id]/activate', () => {
     });
 
     it('returns 400 when plan is not aprobado', async () => {
-      mockFindUnique.mockResolvedValue({ ...basePlan, authorizationStatus: 'denegado' });
+      mockFindUnique.mockResolvedValue({ ...basePlan, authorizationStatus: 'denegado' } as never);
       const res = await POST(makeRequest(), makeParams());
       const body = await json(res);
       expect(res.status).toBe(400);
@@ -128,7 +128,7 @@ describe('POST /api/flightPlans/[id]/activate', () => {
     });
 
     it('returns 400 when externalResponseNumber is null', async () => {
-      mockFindUnique.mockResolvedValue({ ...basePlan, externalResponseNumber: null });
+      mockFindUnique.mockResolvedValue({ ...basePlan, externalResponseNumber: null } as never);
       const res = await POST(makeRequest(), makeParams());
       const body = await json(res);
       expect(res.status).toBe(400);
@@ -144,7 +144,7 @@ describe('POST /api/flightPlans/[id]/activate', () => {
 
     it('returns 429 when last attempt was less than 5s ago', async () => {
       const recentAttempt = new Date(now - 2000); // 2s ago
-      mockFindUnique.mockResolvedValue({ ...basePlan, lastActivationAttempt: recentAttempt });
+      mockFindUnique.mockResolvedValue({ ...basePlan, lastActivationAttempt: recentAttempt } as never);
 
       const res = await POST(makeRequest(), makeParams());
       const body = await json(res);
@@ -155,7 +155,7 @@ describe('POST /api/flightPlans/[id]/activate', () => {
 
     it('allows activation when last attempt was more than 5s ago', async () => {
       const oldAttempt = new Date(now - 10000); // 10s ago
-      mockFindUnique.mockResolvedValue({ ...basePlan, lastActivationAttempt: oldAttempt });
+      mockFindUnique.mockResolvedValue({ ...basePlan, lastActivationAttempt: oldAttempt } as never);
       mockUpdate.mockResolvedValue({ ...basePlan } as never);
       mockFetch.mockResolvedValue({
         ok: true,
@@ -177,7 +177,7 @@ describe('POST /api/flightPlans/[id]/activate', () => {
 
     it('returns 400 when window is not yet open (scheduledAt 5min in future)', async () => {
       const futureScheduledAt = new Date(now + 5 * 60 * 1000); // 5min from now
-      mockFindUnique.mockResolvedValue({ ...basePlan, scheduledAt: futureScheduledAt });
+      mockFindUnique.mockResolvedValue({ ...basePlan, scheduledAt: futureScheduledAt } as never);
 
       const res = await POST(makeRequest(), makeParams());
       const body = await json(res);
@@ -187,7 +187,7 @@ describe('POST /api/flightPlans/[id]/activate', () => {
 
     it('returns 400 when window is closed (scheduledAt 5min in past)', async () => {
       const pastScheduledAt = new Date(now - 5 * 60 * 1000); // 5min ago
-      mockFindUnique.mockResolvedValue({ ...basePlan, scheduledAt: pastScheduledAt });
+      mockFindUnique.mockResolvedValue({ ...basePlan, scheduledAt: pastScheduledAt } as never);
 
       const res = await POST(makeRequest(), makeParams());
       const body = await json(res);
@@ -200,7 +200,7 @@ describe('POST /api/flightPlans/[id]/activate', () => {
     beforeEach(() => {
       mockWithAuth.mockResolvedValue({ userId: 42 });
       mockIsAuthError.mockReturnValue(false);
-      mockFindUnique.mockResolvedValue({ ...basePlan });
+      mockFindUnique.mockResolvedValue({ ...basePlan } as never);
       // First update call (persist attempt start)
       mockUpdate.mockResolvedValueOnce({ ...basePlan, activationStatus: 'activando' } as never);
     });
