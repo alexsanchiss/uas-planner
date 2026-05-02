@@ -470,6 +470,11 @@ export interface Translations {
     termsError: string
     modalTitle: string
     cancel: string
+    historicalSection: string
+    noHistory: string
+    previousPage: string
+    nextPage: string
+    pageOf: string
   }
 }
 
@@ -900,6 +905,11 @@ export const translations: Record<Language, Translations> = {
       termsError: 'Error loading terms and conditions',
       modalTitle: 'Flight Activation',
       cancel: 'Cancel',
+      historicalSection: 'Flight history',
+      noHistory: 'No flights in history',
+      previousPage: 'Previous',
+      nextPage: 'Next',
+      pageOf: 'Page {current} of {total}',
     },
   },
 
@@ -1329,6 +1339,11 @@ export const translations: Record<Language, Translations> = {
       termsError: 'Error al cargar los términos y condiciones',
       modalTitle: 'Activación de Vuelo',
       cancel: 'Cancelar',
+      historicalSection: 'Historial de vuelos',
+      noHistory: 'No hay vuelos en el historial',
+      previousPage: 'Anterior',
+      nextPage: 'Siguiente',
+      pageOf: 'Página {current} de {total}',
     },
   },
 }
