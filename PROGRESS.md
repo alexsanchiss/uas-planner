@@ -37,9 +37,9 @@
 | T14 | JsonViewerSections recursivo | ✅ | 36 tests |
 | T15 | ActivateFlightModal | ⏳ | blocked: T11, T12, T14 |
 | T16 | FlightPlanActivationCard + countdown UI | ⏳ | blocked: T15 |
-| T17 | HistoricalFlightPlanList | ⏳ | blocked: T13 |
+| T17 | HistoricalFlightPlanList | ✅ | — |
 | T18 | Reemplazo plan-activation/page.tsx | ⏳ | blocked: T16, T17 |
-| T19 | useActivationPlans + tick 1s | ⏳ | blocked: T13 |
+| T19 | useActivationPlans + tick 1s | ✅ | — |
 | T20 | i18n completo Plan Activation | ⏳ | blocked: T18 |
 | T21 | End-to-end manual v2.4.0 | ⏳ | blocked: T20 |
 | T22 | Release v2.4.0 | ⏳ | blocked: T21 |
