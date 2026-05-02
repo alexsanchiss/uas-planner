@@ -41,8 +41,8 @@
 | T18 | Reemplazo plan-activation/page.tsx | ✅ | — |
 | T19 | useActivationPlans + tick 1s | ✅ | — |
 | T20 | i18n completo Plan Activation | ✅ | 23 keys en/es + interface |
-| T21 | End-to-end manual v2.4.0 | ⏳ | — |
-| T22 | Release v2.4.0 | ⏳ | blocked: T21 |
+| T21 | End-to-end manual v2.4.0 | ✅ | lint:0err · 455tests · 0 TS errors |
+| T22 | Release v2.4.0 | ✅ | tag v2.4.0 |
 
 ---
 
