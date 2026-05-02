@@ -446,6 +446,33 @@ export interface Translations {
     inHours: string
     inDays: string
   }
+
+  // Plan Activation
+  planActivation: {
+    title: string
+    activableSection: string
+    canTakeoff: string
+    canTakeoffCountdown: string
+    windowNotOpen: string
+    windowClosed: string
+    activateButton: string
+    activationDeniedStatus: string
+    activationDenied: string
+    acceptTerms: string
+    activate: string
+    activating: string
+    termsRequired: string
+    retryIn: string
+    loadingTerms: string
+    termsError: string
+    modalTitle: string
+    cancel: string
+    historicalSection: string
+    noHistory: string
+    previousPage: string
+    nextPage: string
+    pageOf: string
+  }
 }
 
 export const translations: Record<Language, Translations> = {
@@ -854,8 +881,33 @@ export const translations: Record<Language, Translations> = {
       inHours: 'in {n} hours',
       inDays: 'in {n} days',
     },
+    planActivation: {
+      title: 'Plan Activation',
+      activableSection: 'Activatable flights',
+      canTakeoff: 'CAN TAKE OFF',
+      canTakeoffCountdown: 'Time remaining: {s}s',
+      windowNotOpen: 'Activation window not open',
+      windowClosed: 'Activation window closed',
+      activateButton: 'Activate flight',
+      activationDeniedStatus: 'Activation denied',
+      activationDenied: 'Activation denied',
+      acceptTerms: 'I have read and accept the FAS terms and conditions for this flight',
+      activate: 'Activate',
+      activating: 'Activating...',
+      termsRequired: 'You must accept the terms and conditions to activate',
+      retryIn: 'Retry in {s}s',
+      loadingTerms: 'Loading terms and conditions...',
+      termsError: 'Error loading terms and conditions',
+      modalTitle: 'Flight Activation',
+      cancel: 'Cancel',
+      historicalSection: 'Flight history',
+      noHistory: 'No flights in history',
+      previousPage: 'Previous',
+      nextPage: 'Next',
+      pageOf: 'Page {current} of {total}',
+    },
   },
-  
+
   es: {
     common: {
       loading: 'Cargando...',
@@ -1260,6 +1312,31 @@ export const translations: Record<Language, Translations> = {
       inMinutes: 'en {n} minutos',
       inHours: 'en {n} horas',
       inDays: 'en {n} días',
+    },
+    planActivation: {
+      title: 'Activación de Planes',
+      activableSection: 'Vuelos activables',
+      canTakeoff: 'PUEDE DESPEGAR',
+      canTakeoffCountdown: 'Tiempo restante: {s}s',
+      windowNotOpen: 'Ventana de activación no abierta',
+      windowClosed: 'Ventana de activación cerrada',
+      activateButton: 'Activar vuelo',
+      activationDeniedStatus: 'Activación denegada',
+      activationDenied: 'Activación denegada',
+      acceptTerms: 'He leído y acepto los términos y condiciones del FAS para este vuelo',
+      activate: 'Activar',
+      activating: 'Activando...',
+      termsRequired: 'Debe aceptar los términos y condiciones para activar',
+      retryIn: 'Reintentar en {s}s',
+      loadingTerms: 'Cargando términos y condiciones...',
+      termsError: 'Error al cargar los términos y condiciones',
+      modalTitle: 'Activación de Vuelo',
+      cancel: 'Cancelar',
+      historicalSection: 'Historial de vuelos',
+      noHistory: 'No hay vuelos en el historial',
+      previousPage: 'Anterior',
+      nextPage: 'Siguiente',
+      pageOf: 'Página {current} de {total}',
     },
   },
 }
