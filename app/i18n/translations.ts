@@ -446,6 +446,20 @@ export interface Translations {
     inHours: string
     inDays: string
   }
+
+  // Plan Activation
+  planActivation: {
+    acceptTerms: string
+    activate: string
+    activating: string
+    termsRequired: string
+    activationDenied: string
+    retryIn: string
+    loadingTerms: string
+    termsError: string
+    modalTitle: string
+    cancel: string
+  }
 }
 
 export const translations: Record<Language, Translations> = {
@@ -854,8 +868,20 @@ export const translations: Record<Language, Translations> = {
       inHours: 'in {n} hours',
       inDays: 'in {n} days',
     },
+    planActivation: {
+      acceptTerms: 'I have read and accept the FAS terms and conditions for this flight',
+      activate: 'Activate',
+      activating: 'Activating...',
+      termsRequired: 'You must accept the terms and conditions to activate',
+      activationDenied: 'Activation denied',
+      retryIn: 'Retry in {s}s',
+      loadingTerms: 'Loading terms and conditions...',
+      termsError: 'Error loading terms and conditions',
+      modalTitle: 'Flight Activation',
+      cancel: 'Cancel',
+    },
   },
-  
+
   es: {
     common: {
       loading: 'Cargando...',
@@ -1260,6 +1286,18 @@ export const translations: Record<Language, Translations> = {
       inMinutes: 'en {n} minutos',
       inHours: 'en {n} horas',
       inDays: 'en {n} días',
+    },
+    planActivation: {
+      acceptTerms: 'He leído y acepto los términos y condiciones del FAS para este vuelo',
+      activate: 'Activar',
+      activating: 'Activando...',
+      termsRequired: 'Debe aceptar los términos y condiciones para activar',
+      activationDenied: 'Activación denegada',
+      retryIn: 'Reintentar en {s}s',
+      loadingTerms: 'Cargando términos y condiciones...',
+      termsError: 'Error al cargar los términos y condiciones',
+      modalTitle: 'Activación de Vuelo',
+      cancel: 'Cancelar',
     },
   },
 }
