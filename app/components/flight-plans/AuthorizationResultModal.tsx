@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { useGeoawarenessWebSocket, type GeozoneData } from '@/app/hooks/useGeoawarenessWebSocket'
-import { parseScrsAlternative } from '@/lib/scrs'
+import { parseScrsAlternative, hasFailedScrsAlternative } from '@/lib/scrs'
 import type { Auth2DMapProps } from './AuthorizationResult2DMap'
 
 const Auth2DMap = dynamic(() => import('./AuthorizationResult2DMap'), { ssr: false })
@@ -716,6 +716,11 @@ const AuthorizationResultModal: React.FC<AuthorizationResultModalProps> = ({
     return parseScrsAlternative(reason)
   }, [isApproved, reason])
 
+  const failedScrsAlternative = useMemo(() => {
+    if (isApproved) return false
+    return hasFailedScrsAlternative(reason)
+  }, [isApproved, reason])
+
   // Current waypoints extracted from uplan for the alternative trajectory viewer
   const currentWaypoints = useMemo(() => {
     if (!uplanData) return []
@@ -1168,7 +1173,7 @@ const AuthorizationResultModal: React.FC<AuthorizationResultModalProps> = ({
             {geozonePolygons2D.length > 0 && ` · ${geozonePolygons2D.length} geozone${geozonePolygons2D.length !== 1 ? 's' : ''}`}
           </span>
           <div className="flex items-center gap-2">
-            {scrsAlternative && onViewScrsAlternative && (
+            {scrsAlternative && onViewScrsAlternative ? (
               <button
                 onClick={() => onViewScrsAlternative(currentWaypoints, scrsAlternative.flatWaypoints)}
                 className="px-4 py-1.5 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors flex items-center gap-1.5"
@@ -1178,7 +1183,14 @@ const AuthorizationResultModal: React.FC<AuthorizationResultModalProps> = ({
                 </svg>
                 View SCRS alternative
               </button>
-            )}
+            ) : failedScrsAlternative ? (
+              <div className="px-4 py-1.5 text-sm font-medium text-red-600 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 dark:text-red-400 rounded-md flex items-center gap-1.5">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                No alternative found
+              </div>
+            ) : null}
             <button
               onClick={onClose}
               className="px-4 py-1.5 text-sm font-medium text-[var(--text-secondary)] dark:text-gray-300 bg-[var(--bg-tertiary)] dark:bg-gray-700 rounded-md hover:bg-[var(--bg-hover)] dark:hover:bg-gray-600 transition-colors"

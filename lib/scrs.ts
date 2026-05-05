@@ -199,3 +199,72 @@ export function parseScrsAlternative(
     return null
   }
 }
+
+/**
+ * Checks if the authorizationMessage contains an SCRS dispatch that failed
+ * (either the response status is not success, or any segment has FAILED or error).
+ */
+export function hasFailedScrsAlternative(
+  authorizationMessage: string | null | undefined
+): boolean {
+  if (!authorizationMessage) {
+    return false
+  }
+
+  try {
+    let parsed: unknown
+    if (typeof authorizationMessage === 'string') {
+      parsed = JSON.parse(authorizationMessage)
+    } else {
+      parsed = authorizationMessage
+    }
+
+    if (typeof parsed !== 'object' || parsed === null) {
+      return false
+    }
+
+    const root = parsed as Record<string, unknown>
+    const scrDispatch = root.scr_dispatch
+
+    if (typeof scrDispatch !== 'object' || scrDispatch === null) {
+      return false
+    }
+
+    const dispatch = scrDispatch as Record<string, unknown>
+
+    if (dispatch.sent !== true || dispatch.status_code !== 200) {
+      return false
+    }
+
+    const response = dispatch.response
+    if (typeof response !== 'object' || response === null) {
+      return false
+    }
+
+    const resp = response as Record<string, unknown>
+
+    if (resp.status !== 'success') {
+      return true
+    }
+
+    const rawSegments = resp.segments
+    if (!Array.isArray(rawSegments) || rawSegments.length === 0) {
+      return true
+    }
+
+    for (const rawSeg of rawSegments) {
+      if (typeof rawSeg !== 'object' || rawSeg === null) {
+        return true
+      }
+      const seg = rawSeg as Record<string, unknown>
+      const solutionMethod = typeof seg.solution_method === 'string' ? seg.solution_method : ''
+      if (solutionMethod === 'FAILED' || typeof seg.error === 'string') {
+        return true
+      }
+    }
+
+    return false
+  } catch {
+    return false
+  }
+}
