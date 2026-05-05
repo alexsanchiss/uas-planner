@@ -424,11 +424,10 @@ export function FlightPlansUploader() {
     if (!selectedPlan) return false
     
     // When an alternative is accepted, the plan is reset to 'sin procesar'
-    // but it already has both a uplan and fileContent. In this state, we 
-    // want to lock the scheduled time to prevent the user from changing it.
+    // and its authorizationMessage is set to 'ACCEPTED_ALTERNATIVE' as a hidden flag
+    // to distinguish it from freshly created plans (e.g., from plan-definition).
     const isAcceptedAlternative = selectedPlan.status === 'sin procesar' && 
-                                  !!selectedPlan.uplan && 
-                                  !!selectedPlan.fileContent
+                                  selectedPlan.authorizationMessage === 'ACCEPTED_ALTERNATIVE'
                                   
     return hasProcessingStarted(
       getWorkflowState(selectedPlan.status, selectedPlan.authorizationStatus)

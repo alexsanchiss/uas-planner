@@ -238,7 +238,7 @@ describe('POST /api/flightPlans/[id]/accept-alternative', () => {
     expect(updateCall.where).toEqual({ id: planId });
     expect(updateCall.data.status).toBe('sin procesar');
     expect(updateCall.data.authorizationStatus).toBe('sin autorización');
-    expect(updateCall.data.authorizationMessage).toBeNull();
+    expect(updateCall.data.authorizationMessage).toBe('ACCEPTED_ALTERNATIVE');
     expect(updateCall.data.externalResponseNumber).toBeNull();
     expect(updateCall.data.machineAssignedId).toBeNull();
     expect(updateCall.data.csvResult).toBeNull();

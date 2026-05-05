@@ -212,7 +212,7 @@ export async function POST(
           status: 'sin procesar',
           csvResult: null,
           authorizationStatus: 'sin autorización',
-          authorizationMessage: null,
+          authorizationMessage: 'ACCEPTED_ALTERNATIVE', // Use as a hidden flag to lock scheduled time
           externalResponseNumber: null,
           machineAssignedId: null,
         },
