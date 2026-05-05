@@ -49,7 +49,7 @@ const ArrayNode: React.FC<NodeProps> = ({ value, depth, maxDepth }) => {
   if (arr.length === 0) {
     return (
       <span className="text-sm italic" style={{ color: 'var(--text-muted)' }}>
-        (vacío)
+        (empty)
       </span>
     );
   }

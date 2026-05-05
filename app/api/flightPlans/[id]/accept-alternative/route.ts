@@ -148,19 +148,15 @@ export async function POST(
         if (currentUplan && typeof currentUplan === 'object') {
           const uplan = currentUplan as Record<string, unknown>;
 
-          // Build new waypoints in uplan format: {time, lat, lon, h}
-          const newUplanWaypoints = flatWaypoints.map((wp, index) => ({
-            time: index,
-            lat: wp.lat,
-            lon: wp.lon,
-            h: wp.alt,
+          // Build new waypoints in uplan format: { type: "Point", coordinates: [lon, lat, alt] }
+          const newUplanWaypoints = flatWaypoints.map((wp) => ({
+            type: "Point",
+            coordinates: [wp.lon, wp.lat, wp.alt],
           }));
           // Add landing waypoint at altitude 0
           newUplanWaypoints.push({
-            time: flatWaypoints.length,
-            lat: last.lat,
-            lon: last.lon,
-            h: 0,
+            type: "Point",
+            coordinates: [last.lon, last.lat, 0],
           });
 
           // Preserve all existing flightDetails fields except waypoints
@@ -188,17 +184,13 @@ export async function POST(
       }
     } else {
       // No existing uplan — create a minimal one with the new waypoints
-      const newUplanWaypoints = flatWaypoints.map((wp, index) => ({
-        time: index,
-        lat: wp.lat,
-        lon: wp.lon,
-        h: wp.alt,
+      const newUplanWaypoints = flatWaypoints.map((wp) => ({
+        type: "Point",
+        coordinates: [wp.lon, wp.lat, wp.alt],
       }));
       newUplanWaypoints.push({
-        time: flatWaypoints.length,
-        lat: last.lat,
-        lon: last.lon,
-        h: 0,
+        type: "Point",
+        coordinates: [last.lon, last.lat, 0],
       });
 
       updatedUplanString = JSON.stringify({

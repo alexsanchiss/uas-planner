@@ -144,7 +144,7 @@ export function ActivateFlightModal({
 
       const body = await res.json().catch(() => ({}))
 
-      if (res.ok && body?.message === 'Activación autorizada') {
+      if (res.ok) {
         onActivated()
         onClose()
         return

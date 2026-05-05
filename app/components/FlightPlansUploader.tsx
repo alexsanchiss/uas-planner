@@ -301,12 +301,13 @@ export function FlightPlansUploader() {
   // Task 18: Unified Authorization Result modal state
   const [authResultModal, setAuthResultModal] = useState<{
     open: boolean
+    planId: string | null
     uplanData: unknown
     status: string
     reason: string | null
     geoawarenessData: unknown
     planName: string
-  }>({ open: false, uplanData: null, status: '', reason: null, geoawarenessData: null, planName: '' })
+  }>({ open: false, planId: null, uplanData: null, status: '', reason: null, geoawarenessData: null, planName: '' })
   // Task 20: 3D Trajectory viewer state
   const [trajectory3DViewer, setTrajectory3DViewer] = useState<{
     open: boolean
@@ -421,9 +422,17 @@ export function FlightPlansUploader() {
   // TASK-087: Check if scheduledAt editing should be locked
   const isScheduledAtLocked = useMemo(() => {
     if (!selectedPlan) return false
+    
+    // When an alternative is accepted, the plan is reset to 'sin procesar'
+    // but it already has both a uplan and fileContent. In this state, we 
+    // want to lock the scheduled time to prevent the user from changing it.
+    const isAcceptedAlternative = selectedPlan.status === 'sin procesar' && 
+                                  !!selectedPlan.uplan && 
+                                  !!selectedPlan.fileContent
+                                  
     return hasProcessingStarted(
       getWorkflowState(selectedPlan.status, selectedPlan.authorizationStatus)
-    )
+    ) || isAcceptedAlternative
   }, [selectedPlan])
 
   // Workflow state
@@ -1303,6 +1312,7 @@ export function FlightPlansUploader() {
       // Task 18: Open unified AuthorizationResultModal for both approved and denied
       setAuthResultModal({
         open: true,
+        planId,
         uplanData,
         status: plan.authorizationStatus === 'aprobado' ? 'aprobado' : plan.authorizationStatus === 'withdrawn' ? 'withdrawn' : 'denegado',
         reason: messageStr,
@@ -1311,6 +1321,20 @@ export function FlightPlansUploader() {
       })
     }
   }, [flightPlans])
+
+  // T7: Wire SCRS alternative from the unified AuthorizationResultModal
+  const handleViewScrsFromResult = useCallback((
+    currentWps: Array<{ lat: number; lon: number; alt?: number }>,
+    alternativeWps: Array<{ lat: number; lon: number; alt?: number }>
+  ) => {
+    if (!authResultModal.planId) return
+    setAltTrajectoryModal({
+      open: true,
+      planId: authResultModal.planId,
+      currentWaypoints: currentWps,
+      alternativeWaypoints: alternativeWps,
+    })
+  }, [authResultModal.planId])
 
   // Task 11: Open denial map from authorization message modal
   const handleOpenDenialMap = useCallback(() => {
@@ -1337,13 +1361,12 @@ export function FlightPlansUploader() {
     const alternative = parseScrsAlternative(messageStr)
     if (!alternative) return
 
-    // Extract current waypoints from uplan
-    const uplanObj = authorizationMessageModal.uplan as { flightDetails?: { waypoints?: Array<{ lat: number; lon: number; h?: number }> } } | null
-    const currentWaypoints = (uplanObj?.flightDetails?.waypoints ?? []).map(wp => ({
-      lat: wp.lat,
-      lon: wp.lon,
-      alt: wp.h,
-    }))
+    // Extract current waypoints from uplan (GeoJSON Point format: [lon, lat, alt])
+    type GeoPoint = { type: string; coordinates: [number, number, number] }
+    const uplanObj = authorizationMessageModal.uplan as { flightDetails?: { waypoints?: GeoPoint[] } } | null
+    const currentWaypoints = (uplanObj?.flightDetails?.waypoints ?? [])
+      .filter(wp => wp.type === 'Point' && Array.isArray(wp.coordinates))
+      .map(wp => ({ lat: wp.coordinates[1], lon: wp.coordinates[0], alt: wp.coordinates[2] }))
 
     setAltTrajectoryModal({
       open: true,
@@ -1352,6 +1375,30 @@ export function FlightPlansUploader() {
       alternativeWaypoints: alternative.flatWaypoints,
     })
   }, [authorizationMessageModal])
+
+  // T7: Open alternative trajectory modal from the detail panel (without opening AuthorizationResultModal)
+  const handleViewScrsFromDetail = useCallback(() => {
+    if (!selectedPlan) return
+    const msgStr = typeof selectedPlan.authorizationMessage === 'string'
+      ? selectedPlan.authorizationMessage
+      : selectedPlan.authorizationMessage != null
+        ? JSON.stringify(selectedPlan.authorizationMessage)
+        : null
+    if (!msgStr) return
+    const alternative = parseScrsAlternative(msgStr)
+    if (!alternative) return
+    type GeoPoint = { type: string; coordinates: [number, number, number] }
+    const uplanObj = selectedPlan.uplan as { flightDetails?: { waypoints?: GeoPoint[] } } | null
+    const currentWaypoints = (uplanObj?.flightDetails?.waypoints ?? [])
+      .filter((wp: GeoPoint) => wp.type === 'Point' && Array.isArray(wp.coordinates))
+      .map((wp: GeoPoint) => ({ lat: wp.coordinates[1], lon: wp.coordinates[0], alt: wp.coordinates[2] }))
+    setAltTrajectoryModal({
+      open: true,
+      planId: selectedPlan.id,
+      currentWaypoints,
+      alternativeWaypoints: alternative.flatWaypoints,
+    })
+  }, [selectedPlan])
 
   // T7: Accept alternative trajectory — calls accept-alternative endpoint
   const handleAcceptAlternative = useCallback(async () => {
@@ -1830,6 +1877,26 @@ export function FlightPlansUploader() {
                     )}
                   </button>
                   {/* View Denial 3D button removed — use View Authorization Result (3D tab) instead */}
+                  {/* View SCRS alternative button — only for denied plans with a SCRS alternative */}
+                  {selectedPlan.authorizationStatus === 'denegado' &&
+                    (() => {
+                      const msgStr = typeof selectedPlan.authorizationMessage === 'string'
+                        ? selectedPlan.authorizationMessage
+                        : selectedPlan.authorizationMessage != null
+                          ? JSON.stringify(selectedPlan.authorizationMessage)
+                          : null
+                      return msgStr && parseScrsAlternative(msgStr) !== null
+                    })() && (
+                    <button
+                      onClick={handleViewScrsFromDetail}
+                      className="w-full px-4 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition-all flex items-center justify-center gap-2"
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                      </svg>
+                      View SCRS alternative
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -2179,7 +2246,7 @@ export function FlightPlansUploader() {
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                     </svg>
-                    Ver alternativa
+                    View SCRS alternative
                   </button>
                 )}
               </div>
@@ -2283,15 +2350,21 @@ export function FlightPlansUploader() {
       />
 
       {/* Task 18: Unified Authorization Result modal (approved + denied) */}
-      <AuthorizationResultModal
-        isOpen={authResultModal.open}
-        onClose={() => setAuthResultModal({ open: false, uplanData: null, status: '', reason: null, geoawarenessData: null, planName: '' })}
-        uplanData={authResultModal.uplanData as any}
-        status={authResultModal.status}
-        reason={authResultModal.reason}
-        geoawarenessData={authResultModal.geoawarenessData}
-        planName={authResultModal.planName}
-      />
+      {/* Conditional mount ensures fresh React state on every open, preventing
+          Leaflet's "Map container is already initialized" on repeated opens. */}
+      {authResultModal.open && (
+        <AuthorizationResultModal
+          isOpen={authResultModal.open}
+          onClose={() => setAuthResultModal({ open: false, planId: null, uplanData: null, status: '', reason: null, geoawarenessData: null, planName: '' })}
+          uplanData={authResultModal.uplanData as any}
+          status={authResultModal.status}
+          reason={authResultModal.reason}
+          geoawarenessData={authResultModal.geoawarenessData}
+          planName={authResultModal.planName}
+          planId={authResultModal.planId}
+          onViewScrsAlternative={handleViewScrsFromResult}
+        />
+      )}
 
       {/* Task 20: 3D Trajectory viewer with drone animation */}
       {trajectory3DViewer.planId && (

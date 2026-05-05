@@ -7,6 +7,8 @@ interface ModalProps {
   children: React.ReactNode;
   /** Use 'wide' for map modals that need more horizontal space */
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '4xl' | 'full';
+  /** Tailwind z-index class for the overlay (default: 'z-50') */
+  overlayZIndex?: string;
 }
 
 const maxWidthClasses: Record<string, string> = {
@@ -25,11 +27,12 @@ export const Modal: React.FC<ModalProps> = ({
   title,
   children,
   maxWidth = 'md',
+  overlayZIndex = 'z-50',
 }) => {
   if (!open) return null;
   const widthClass = maxWidthClasses[maxWidth] || 'max-w-md';
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 p-4">
+    <div className={`fixed inset-0 ${overlayZIndex} flex items-center justify-center bg-black bg-opacity-60 p-4`}>
       <div className={`bg-gray-900 rounded-lg shadow-lg p-6 ${widthClass} w-full relative max-h-[90vh] overflow-y-auto`}>
         <button
           onClick={onClose}

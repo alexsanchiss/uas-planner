@@ -59,7 +59,7 @@ export default function RootLayout({
 
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="min-h-screen flex flex-col bg-[var(--bg-primary)] text-[var(--text-primary)]">
+      <body suppressHydrationWarning className="min-h-screen flex flex-col bg-[var(--bg-primary)] text-[var(--text-primary)]">
         <I18nProvider>
         <AuthProvider>
         <ToastProvider>

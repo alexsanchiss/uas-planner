@@ -1,9 +1,12 @@
 'use client'
 
 import React, { useState, useMemo, useEffect, useRef } from 'react'
-import { MapContainer, TileLayer, Polygon, Tooltip, useMap } from 'react-leaflet'
-import 'leaflet/dist/leaflet.css'
+import dynamic from 'next/dynamic'
 import { useGeoawarenessWebSocket, type GeozoneData } from '@/app/hooks/useGeoawarenessWebSocket'
+import { parseScrsAlternative } from '@/lib/scrs'
+import type { Auth2DMapProps } from './AuthorizationResult2DMap'
+
+const Auth2DMap = dynamic(() => import('./AuthorizationResult2DMap'), { ssr: false })
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -56,6 +59,11 @@ export interface AuthorizationResultModalProps {
   reason: string | null | undefined
   geoawarenessData?: unknown
   planName: string
+  planId?: string | null
+  onViewScrsAlternative?: (
+    currentWaypoints: Array<{ lat: number; lon: number; alt?: number }>,
+    alternativeWaypoints: Array<{ lat: number; lon: number; alt?: number }>
+  ) => void
 }
 
 type TabId = '2d' | '3d' | 'details'
@@ -271,41 +279,6 @@ function loadCesiumScript(): Promise<any> {
     script.onerror = () => reject(new Error('Failed to load Cesium script'))
     document.head.appendChild(script)
   })
-}
-
-// ─── Leaflet helpers ─────────────────────────────────────────────────────────
-
-function FitBoundsHandler({ allCoords }: { allCoords: [number, number][] }) {
-  const map = useMap()
-  // Fit once when coordinates become available — never re-fit so the user
-  // can pan/zoom freely after the initial view.
-  const fittedRef = useRef(false)
-  useEffect(() => {
-    if (fittedRef.current || allCoords.length === 0) return
-    const lats = allCoords.map(c => c[0])
-    const lngs = allCoords.map(c => c[1])
-    const bounds: [[number, number], [number, number]] = [
-      [Math.min(...lats), Math.min(...lngs)],
-      [Math.max(...lats), Math.max(...lngs)],
-    ]
-    map.fitBounds(bounds, { padding: [40, 40] })
-    fittedRef.current = true
-  }, [map, allCoords])
-  return null
-}
-
-function MapResizeHandler() {
-  const map = useMap()
-  useEffect(() => {
-    const timer = setTimeout(() => map.invalidateSize(), 100)
-    const handleResize = () => map.invalidateSize()
-    window.addEventListener('resize', handleResize)
-    return () => {
-      clearTimeout(timer)
-      window.removeEventListener('resize', handleResize)
-    }
-  }, [map])
-  return null
 }
 
 // Stable empty-set constants — reused as fallback props so that component
@@ -726,11 +699,32 @@ const AuthorizationResultModal: React.FC<AuthorizationResultModalProps> = ({
   reason,
   geoawarenessData,
   planName,
+  planId,
+  onViewScrsAlternative,
 }) => {
-  const [activeTab, setActiveTab] = useState<TabId>('2d')
+  // Start on '3d' tab so MapContainer never mounts during React StrictMode's
+  // initial mount→cleanup→remount cycle. The 2D map only renders on user click.
+  const [activeTab, setActiveTab] = useState<TabId>('3d')
+  const [mapKey, setMapKey] = useState(0)
 
   const isApproved = status === 'aprobado'
   const denial = useMemo(() => (isApproved ? null : parseDenialMessage(reason)), [isApproved, reason])
+
+  // SCRS alternative detection — only for denied plans
+  const scrsAlternative = useMemo(() => {
+    if (isApproved) return null
+    return parseScrsAlternative(reason)
+  }, [isApproved, reason])
+
+  // Current waypoints extracted from uplan for the alternative trajectory viewer
+  const currentWaypoints = useMemo(() => {
+    if (!uplanData) return []
+    type GeoPoint = { type: string; coordinates: [number, number, number] }
+    const ud = uplanData as { flightDetails?: { waypoints?: GeoPoint[] } }
+    return (ud.flightDetails?.waypoints ?? [])
+      .filter(wp => wp.type === 'Point' && Array.isArray(wp.coordinates))
+      .map(wp => ({ lat: wp.coordinates[1], lon: wp.coordinates[0], alt: wp.coordinates[2] }))
+  }, [uplanData])
 
   // Extract uspaceId from stored geoawarenessData (field: uspace_identifier)
   const uspaceId = useMemo(() => {
@@ -943,9 +937,13 @@ const AuthorizationResultModal: React.FC<AuthorizationResultModalProps> = ({
     return () => window.removeEventListener('keydown', handler)
   }, [isOpen, onClose])
 
-  // Reset tab when modal opens — default to 3D view
+  // Reset tab when modal opens — default to 3D view; bump mapKey to force
+  // Leaflet to initialize on a fresh DOM node (avoids "already initialized").
   useEffect(() => {
-    if (isOpen) setActiveTab('3d')
+    if (isOpen) {
+      setActiveTab('3d')
+      setMapKey(k => k + 1)
+    }
   }, [isOpen])
 
   if (!isOpen) return null
@@ -1028,93 +1026,14 @@ const AuthorizationResultModal: React.FC<AuthorizationResultModalProps> = ({
             <div className="p-4">
               {hasVolumes ? (
                 <div className="w-full h-[50vh] md:h-[450px] max-h-[60vh] min-h-[200px] relative overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
-                  <MapContainer
-                    center={center2D}
-                    zoom={14}
-                    scrollWheelZoom={true}
-                    style={{ width: '100%', height: '100%' }}
-                  >
-                    <FitBoundsHandler allCoords={volCoords2D} />
-                    <MapResizeHandler />
-                    <TileLayer
-                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                      attribution="&copy; OpenStreetMap contributors"
-                    />
-                    {operationVolumes2D.map(vol => {
-                      let color: string, fillColor: string, fillOpacity: number, weight: number
-                      if (isApproved) {
-                        color = '#16a34a'; fillColor = '#22c55e'; fillOpacity = 0.35; weight = 2
-                      } else if (vol.isConflicting) {
-                        color = '#dc2626'; fillColor = '#ef4444'; fillOpacity = 0.4; weight = 3
-                      } else {
-                        color = '#3b82f6'; fillColor = '#60a5fa'; fillOpacity = 0.2; weight = 1.5
-                      }
-                      return (
-                        <Polygon
-                          key={`vol-${vol.idx}`}
-                          positions={vol.coords}
-                          pathOptions={{ color, fillColor, fillOpacity, weight }}
-                        >
-                          <Tooltip direction="top" offset={[0, -10]} sticky>
-                            <div className="text-xs min-w-[140px]">
-                              <div className={`font-semibold mb-1 ${
-                                isApproved ? 'text-green-600' : vol.isConflicting ? 'text-red-600' : 'text-blue-600'
-                              }`}>
-                                {vol.label} {isApproved ? '✓ Authorized' : vol.isConflicting ? '⚠ Conflicting' : '✓ OK'}
-                              </div>
-                              <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
-                                <span className="text-gray-500">Ordinal:</span>
-                                <span>{vol.ordinal}</span>
-                                {vol.timeBegin && (
-                                  <>
-                                    <span className="text-gray-500">Start:</span>
-                                    <span>{new Date(vol.timeBegin).toISOString().replace('T', ' ').slice(0, 19)} UTC</span>
-                                  </>
-                                )}
-                                {vol.timeEnd && (
-                                  <>
-                                    <span className="text-gray-500">End:</span>
-                                    <span>{new Date(vol.timeEnd).toISOString().replace('T', ' ').slice(0, 19)} UTC</span>
-                                  </>
-                                )}
-                                <span className="text-gray-500">Alt:</span>
-                                <span>{vol.minAlt} — {vol.maxAlt}</span>
-                              </div>
-                            </div>
-                          </Tooltip>
-                        </Polygon>
-                      )
-                    })}
-                    {geozonePolygons2D.map((gz, idx) => {
-                      const typeColor = getGeozoneColor(gz.type?.toUpperCase())
-                      const color = gz.isConflicting ? '#dc2626' : typeColor
-                      const fillColor = gz.isConflicting ? '#ef4444' : typeColor
-                      return (
-                        <Polygon
-                          key={`gz-${idx}`}
-                          positions={gz.coords}
-                          pathOptions={{
-                            color,
-                            fillColor,
-                            fillOpacity: gz.isConflicting ? 0.4 : 0.25,
-                            weight: gz.isConflicting ? 3 : 1.5,
-                            dashArray: gz.isConflicting ? '8 4' : undefined,
-                          }}
-                        >
-                          <Tooltip direction="top" offset={[0, -10]} sticky>
-                            <div className="text-xs min-w-[140px]">
-                              <div className="font-semibold mb-1" style={{ color: gz.isConflicting ? '#b91c1c' : typeColor }}>
-                                {gz.isConflicting ? '🚫 ' : '📍 '}{gz.identifier}
-                              </div>
-                              {gz.name && <div className="text-gray-600 mb-1">{gz.name}</div>}
-                              <div><span className="text-gray-500">Type:</span> {gz.type}</div>
-                              {gz.isConflicting && <div className="text-red-600 font-medium mt-1">⚠ Conflicting</div>}
-                            </div>
-                          </Tooltip>
-                        </Polygon>
-                      )
-                    })}
-                  </MapContainer>
+                  <Auth2DMap
+                    key={mapKey}
+                    center2D={center2D}
+                    volCoords2D={volCoords2D}
+                    isApproved={isApproved}
+                    operationVolumes2D={operationVolumes2D}
+                    geozonePolygons2D={geozonePolygons2D}
+                  />
                 </div>
               ) : (
                 <div className="w-full h-48 flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-lg">
@@ -1248,12 +1167,25 @@ const AuthorizationResultModal: React.FC<AuthorizationResultModalProps> = ({
               : 'No operation volumes'}
             {geozonePolygons2D.length > 0 && ` · ${geozonePolygons2D.length} geozone${geozonePolygons2D.length !== 1 ? 's' : ''}`}
           </span>
-          <button
-            onClick={onClose}
-            className="px-4 py-1.5 text-sm font-medium text-[var(--text-secondary)] dark:text-gray-300 bg-[var(--bg-tertiary)] dark:bg-gray-700 rounded-md hover:bg-[var(--bg-hover)] dark:hover:bg-gray-600 transition-colors"
-          >
-            Close
-          </button>
+          <div className="flex items-center gap-2">
+            {scrsAlternative && onViewScrsAlternative && (
+              <button
+                onClick={() => onViewScrsAlternative(currentWaypoints, scrsAlternative.flatWaypoints)}
+                className="px-4 py-1.5 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors flex items-center gap-1.5"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                </svg>
+                View SCRS alternative
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="px-4 py-1.5 text-sm font-medium text-[var(--text-secondary)] dark:text-gray-300 bg-[var(--bg-tertiary)] dark:bg-gray-700 rounded-md hover:bg-[var(--bg-hover)] dark:hover:bg-gray-600 transition-colors"
+            >
+              Close
+            </button>
+          </div>
         </div>
       </div>
     </div>

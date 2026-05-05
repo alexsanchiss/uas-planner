@@ -82,7 +82,7 @@ export function useActivationPlans(): UseActivationPlansReturn {
     const token = getAuthToken()
     if (!token) {
       if (mountedRef.current) {
-        setError('No autorizado')
+        setError('Unauthorized')
         setLoading(false)
       }
       return
@@ -96,7 +96,7 @@ export function useActivationPlans(): UseActivationPlansReturn {
       if (!mountedRef.current) return
 
       if (res.status === 401) {
-        setError('No autorizado')
+        setError('Unauthorized')
         setLoading(false)
         return
       }
@@ -108,12 +108,12 @@ export function useActivationPlans(): UseActivationPlansReturn {
         return
       }
 
-      const data: ActivationPlan[] = await res.json()
-      setPlans(data)
+      const body = await res.json()
+      setPlans(Array.isArray(body) ? body : (body.plans ?? []))
       setError(null)
     } catch (err) {
       if (mountedRef.current) {
-        setError(err instanceof Error ? err.message : 'Error de red')
+        setError(err instanceof Error ? err.message : 'Network error')
       }
     } finally {
       if (mountedRef.current) {
@@ -176,7 +176,7 @@ export function useActivationPlans(): UseActivationPlansReturn {
     async (planId: number, termsAccepted: boolean): Promise<ActivateResult> => {
       const token = getAuthToken()
       if (!token) {
-        return { ok: false, error: 'No autorizado' }
+        return { ok: false, error: 'Unauthorized' }
       }
 
       try {
@@ -190,7 +190,7 @@ export function useActivationPlans(): UseActivationPlansReturn {
         })
 
         if (res.status === 401) {
-          return { ok: false, error: 'No autorizado' }
+          return { ok: false, error: 'Unauthorized' }
         }
 
         const body = await res.json().catch(() => ({}))
@@ -214,7 +214,7 @@ export function useActivationPlans(): UseActivationPlansReturn {
       } catch (err) {
         return {
           ok: false,
-          error: err instanceof Error ? err.message : 'Error de red',
+          error: err instanceof Error ? err.message : 'Network error',
         }
       }
     },
