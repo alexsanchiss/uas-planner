@@ -141,6 +141,10 @@ export function parseScrsAlternative(
       const solutionMethod =
         typeof seg.solution_method === 'string' ? seg.solution_method : ''
 
+      if (solutionMethod === 'FAILED' || typeof seg.error === 'string') {
+        return null
+      }
+
       let routePath: ScrsWaypoint[] = []
       if (Array.isArray(seg.route_path) && seg.route_path.length > 0) {
         for (const rawPoint of seg.route_path) {
