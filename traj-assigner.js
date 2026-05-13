@@ -68,7 +68,14 @@ const assignNextPlan = async () => {
 
     const nextPlan = await prisma.flightPlan.findFirst({
       where: { status: 'en cola' },
-      orderBy: { createdAt: 'asc' },
+      orderBy: [
+        {
+          scheduledAt: { sort: 'asc', nulls: 'last' }, // Prioriza los programados
+        },
+        {
+          createdAt: 'asc', // Luego por orden de creación
+        },
+      ],
     });
 
     if (!nextPlan) return;
