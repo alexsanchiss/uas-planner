@@ -891,43 +891,26 @@ export function FlightPlansUploaderDev() {
     const files = e.target.files;
     if (files) {
       const virtualFiles = await expandInputFiles(files);
-      // If extremely large selection, prefer bulk endpoint in chunks
-      const BULK_THRESHOLD = 100; // switch to bulk after this many files
-      const BULK_BATCH = 500; // client-side chunk size to keep payloads manageable
-      if (virtualFiles.length >= BULK_THRESHOLD) {
-        const chunks: VirtualFile[][] = [];
-        for (let i = 0; i < virtualFiles.length; i += BULK_BATCH) {
-          chunks.push(virtualFiles.slice(i, i + BULK_BATCH));
-        }
-        const createdItems: any[] = [];
-        for (const chunk of chunks) {
-          const plansPayload = await Promise.all(
-            chunk.map(async (vf) => ({
-              customName: vf.name.replace(/\.[^/.]+$/, ""),
-              status: "sin procesar",
-              fileContent: await vf.getText(),
-              folderId: folderId,
-            }))
-          );
-          // Use the new unified API with items array
-          const res = await api.post("/api/flightPlans", { items: plansPayload });
-          if (res?.data?.items) createdItems.push(...res.data.items);
-        }
-        setFlightPlans([...flightPlans, ...createdItems]);
-      } else {
-        // Fallback to per-file uploads with limited concurrency
-        const created: any[] = [];
-        await withConcurrency(virtualFiles, 5, async (vf) => {
-          const response = await api.post("/api/flightPlans", {
+      const BATCH_SIZE = 50; // batch size to prevent payload too large errors
+      const chunks: VirtualFile[][] = [];
+      for (let i = 0; i < virtualFiles.length; i += BATCH_SIZE) {
+        chunks.push(virtualFiles.slice(i, i + BATCH_SIZE));
+      }
+      const createdItems: any[] = [];
+      for (const chunk of chunks) {
+        const plansPayload = await Promise.all(
+          chunk.map(async (vf) => ({
             customName: vf.name.replace(/\.[^/.]+$/, ""),
             status: "sin procesar",
             fileContent: await vf.getText(),
             folderId: folderId,
-          });
-          created.push({ ...response.data });
-        });
-        setFlightPlans([...flightPlans, ...created]);
+          }))
+        );
+        // Use the new unified API with items array
+        const res = await api.post("/api/flightPlans", { items: plansPayload });
+        if (res?.data?.items) createdItems.push(...res.data.items);
       }
+      setFlightPlans([...flightPlans, ...createdItems]);
     }
   };
 
@@ -1331,42 +1314,26 @@ export function FlightPlansUploaderDev() {
     const files = e.dataTransfer.files;
     if (files) {
       const virtualFiles = await expandInputFiles(files);
-      const BULK_THRESHOLD = 100;
-      const BULK_BATCH = 500;
-      if (virtualFiles.length >= BULK_THRESHOLD) {
-        const chunks: VirtualFile[][] = [];
-        for (let i = 0; i < virtualFiles.length; i += BULK_BATCH) {
-          chunks.push(virtualFiles.slice(i, i + BULK_BATCH));
-        }
-        const createdItems: any[] = [];
-        for (const chunk of chunks) {
-          const plansPayload = await Promise.all(
-            chunk.map(async (vf) => ({
-              customName: vf.name.replace(/\.[^/.]+$/, ""),
-              status: "sin procesar",
-              fileContent: await vf.getText(),
-              folderId: folderId,
-            }))
-          );
-          // Use the new unified API with items array
-          const res = await api.post("/api/flightPlans", { items: plansPayload });
-          if (res?.data?.items) createdItems.push(...res.data.items);
-        }
-        setFlightPlans([...flightPlans, ...createdItems]);
-      } else {
-        // Fallback to per-file uploads with limited concurrency
-        const created: any[] = [];
-        await withConcurrency(virtualFiles, 5, async (vf) => {
-          const response = await api.post("/api/flightPlans", {
+      const BATCH_SIZE = 50;
+      const chunks: VirtualFile[][] = [];
+      for (let i = 0; i < virtualFiles.length; i += BATCH_SIZE) {
+        chunks.push(virtualFiles.slice(i, i + BATCH_SIZE));
+      }
+      const createdItems: any[] = [];
+      for (const chunk of chunks) {
+        const plansPayload = await Promise.all(
+          chunk.map(async (vf) => ({
             customName: vf.name.replace(/\.[^/.]+$/, ""),
             status: "sin procesar",
             fileContent: await vf.getText(),
             folderId: folderId,
-          });
-          created.push({ ...response.data });
-        });
-        setFlightPlans([...flightPlans, ...created]);
+          }))
+        );
+        // Use the new unified API with items array
+        const res = await api.post("/api/flightPlans", { items: plansPayload });
+        if (res?.data?.items) createdItems.push(...res.data.items);
       }
+      setFlightPlans([...flightPlans, ...createdItems]);
     }
   };
 
@@ -2195,7 +2162,7 @@ export function FlightPlansUploaderDev() {
                                   onClick={() =>
                                     plan.status === "procesado" && plan.csvResult
                                       ? downloadCsv(
-                                          plan.csvResult,
+                                          plan.id,
                                           `${plan.customName}.csv`
                                         )
                                       : handleProcessTrajectory(plan.id)

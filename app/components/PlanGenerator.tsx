@@ -82,9 +82,9 @@ interface Waypoint {
   lat: number;
   lng: number;
   type: "takeoff" | "cruise" | "landing";
-  altitude: number;
-  speed: number;
-  pauseDuration: number; // TASK-121: Hold time in seconds (0-3600)
+  altitude: number | string;
+  speed: number | string;
+  pauseDuration: number | string; // TASK-121: Hold time in seconds (0-3600)
   flyOverMode: boolean; // TASK-126: true = fly-over (pass directly over), false = fly-by (smooth curve)
 }
 
@@ -131,8 +131,9 @@ function getWaypointsNearBoundary(waypoints: Waypoint[], limits: number[]): { in
   return nearBoundary;
 }
 
-function clampAltitude(alt: number) {
-  return Math.max(ALT_LIMITS[0], Math.min(ALT_LIMITS[1], alt));
+function clampAltitude(alt: number | string) {
+  if (alt === '') return '';
+  return Math.max(ALT_LIMITS[0], Math.min(ALT_LIMITS[1], Number(alt)));
 }
 
 // Remove all react-leaflet and leaflet imports
@@ -145,9 +146,9 @@ function generateQGCPlan(waypoints: Waypoint[]): unknown {
     waypoints.map((wp) => ({
       lat: wp.lat,
       lng: wp.lng,
-      alt: wp.altitude,
-      pauseDuration: wp.pauseDuration,
-      speed: wp.speed,
+      alt: Number(wp.altitude) || 0,
+      pauseDuration: Number(wp.pauseDuration) || 0,
+      speed: Number(wp.speed) || 5,
       flyOverMode: wp.flyOverMode,
     }))
   );
@@ -378,20 +379,25 @@ export default function PlanGenerator() {
           return wp;
         }
         if (field === "altitude") {
+          if (value === '') return { ...wp, altitude: '' };
           const clamped = clampAltitude(Number(value));
           if (clamped !== Number(value)) {
             showToast(`Altitude must be between ${ALT_LIMITS[0]} and ${ALT_LIMITS[1]} meters.`);
-            return { ...wp, altitude: clamped };
           }
           return { ...wp, altitude: clamped };
         }
         // TASK-124: Validate pause duration (0-3600 seconds)
         if (field === "pauseDuration") {
+          if (value === '') return { ...wp, pauseDuration: '' };
           const pauseValue = Math.max(0, Math.min(3600, Math.floor(Number(value))));
           if (pauseValue !== Number(value)) {
             showToast("Pause duration must be between 0 and 3600 seconds (1 hour max).");
           }
           return { ...wp, pauseDuration: pauseValue };
+        }
+        if (field === "speed") {
+          if (value === '') return { ...wp, speed: '' };
+          return { ...wp, speed: Number(value) };
         }
         if ((field === "lat" || field === "lng")) {
           // TASK-043: Check within selected U-space bounds
@@ -561,10 +567,18 @@ export default function PlanGenerator() {
       showToast("The plan cannot have more than one landing waypoint.");
       return;
     }
-    if (waypoints.length === 10) {
+    if (waypoints.length < 2) {
       showToast("The plan must have at least two waypoints.");
       return;
     }
+    
+    // Validate that no numeric fields are left empty
+    const invalidWaypointIdx = waypoints.findIndex(wp => wp.altitude === '' || wp.speed === '' || wp.pauseDuration === '');
+    if (invalidWaypointIdx !== -1) {
+      showToast(`Please fill in all empty fields (altitude, speed, pause) for waypoint ${invalidWaypointIdx + 1}.`);
+      return;
+    }
+
     setLoading(true);
     try {
       const headers = getAuthHeaders();
@@ -1204,7 +1218,7 @@ export default function PlanGenerator() {
                                         handleWaypointChange(
                                           idx,
                                           "altitude",
-                                          Number(e.target.value)
+                                          e.target.value === '' ? '' : Number(e.target.value)
                                         )
                                       }
                                       className="input w-20 text-xs py-0.5"
@@ -1224,7 +1238,7 @@ export default function PlanGenerator() {
                                         handleWaypointChange(
                                           idx,
                                           "speed",
-                                          Number(e.target.value)
+                                          e.target.value === '' ? '' : Number(e.target.value)
                                         )
                                       }
                                       className="input w-16 text-xs py-0.5"
@@ -1240,12 +1254,12 @@ export default function PlanGenerator() {
                                       type="number"
                                       min={0}
                                       max={3600}
-                                      value={wp.pauseDuration || 0}
+                                      value={wp.pauseDuration}
                                       onChange={(e) =>
                                         handleWaypointChange(
                                           idx,
                                           "pauseDuration",
-                                          Number(e.target.value)
+                                          e.target.value === '' ? '' : Number(e.target.value)
                                         )
                                       }
                                       className="input w-16 text-xs py-0.5"

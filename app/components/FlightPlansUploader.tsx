@@ -556,7 +556,7 @@ export function FlightPlansUploader() {
     const planIdToUse = String(plan.id)
     // console.log('[FlightPlansUploader] Opening trajectory viewer with planId:', planIdToUse)
     
-    setTrajectoryViewer({
+    setTrajectory3DViewer({
       open: true,
       planId: planIdToUse,
       planName: plan.customName,
