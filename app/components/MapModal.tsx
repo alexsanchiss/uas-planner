@@ -12,7 +12,7 @@ function MapResizeHandler() {
     // Invalidate size on mount to ensure proper initial render
     const timer = setTimeout(() => {
       map.invalidateSize();
-    }, 100);
+    }, 300);
     
     // Handle window resize
     const handleResize = () => {

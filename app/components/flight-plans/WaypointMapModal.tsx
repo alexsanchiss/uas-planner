@@ -2,6 +2,7 @@
 
 import React, { useMemo, useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
+import 'leaflet/dist/leaflet.css'
 import { Modal } from '../ui/modal'
 
 // Dynamic import of Leaflet components to avoid SSR issues
@@ -26,13 +27,12 @@ const Tooltip = dynamic(
   { ssr: false }
 )
 
-/**
- * Component to auto-fit map bounds to all waypoints
- * TASK-073: Auto-center map on all waypoints
- * Dynamically imported to avoid SSR issues with useMap hook
- */
 const FitBoundsToWaypoints = dynamic(
   () => import('./FitBoundsHelper').then((mod) => mod.FitBoundsToWaypoints),
+  { ssr: false }
+)
+const MapResizeHandler = dynamic(
+  () => import('./FitBoundsHelper').then((mod) => mod.MapResizeHandler),
   { ssr: false }
 )
 
@@ -132,6 +132,7 @@ export function WaypointMapModal({
               scrollWheelZoom={true}
               style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}
             >
+              <MapResizeHandler />
               {/* TASK-073: Auto-fit bounds to show all waypoints */}
               <FitBoundsToWaypoints waypoints={waypoints} />
               

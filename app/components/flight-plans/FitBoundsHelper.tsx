@@ -56,3 +56,19 @@ export function FitBoundsToWaypoints({ waypoints }: { waypoints: Waypoint[] }) {
 }
 
 export default FitBoundsToWaypoints
+
+export function MapResizeHandler() {
+  const map = useMap()
+
+  useEffect(() => {
+    const timer = setTimeout(() => map.invalidateSize(), 300)
+    const handleResize = () => map.invalidateSize()
+    window.addEventListener('resize', handleResize)
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [map])
+
+  return null
+}

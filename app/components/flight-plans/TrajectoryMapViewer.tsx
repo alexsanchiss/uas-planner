@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react'
 import dynamic from 'next/dynamic'
+import 'leaflet/dist/leaflet.css'
 
 // Dynamically import Leaflet components to avoid SSR issues
 const MapContainer = dynamic(
@@ -22,6 +23,10 @@ const CircleMarker = dynamic(
 )
 const Popup = dynamic(
   () => import('react-leaflet').then((mod) => mod.Popup),
+  { ssr: false }
+)
+const MapResizeHandler = dynamic(
+  () => import('./FitBoundsHelper').then((mod) => mod.MapResizeHandler),
   { ssr: false }
 )
 
@@ -450,6 +455,7 @@ export function TrajectoryMapViewer({ planId, planName, onClose, className = '' 
               className="w-full h-full"
               style={{ background: '#f3f4f6' }}
             >
+              <MapResizeHandler />
               <TileLayer
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'

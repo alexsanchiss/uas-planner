@@ -18,14 +18,14 @@
 import { compare, hash } from 'bcrypt'
 import { sign, verify, JwtPayload } from 'jsonwebtoken'
 
-/** Access token expiration time (15 minutes) */
-export const ACCESS_TOKEN_EXPIRY = '15m'
+/** Access token expiration time (7 days) */
+export const ACCESS_TOKEN_EXPIRY = '7d'
 
-/** Refresh token expiration time (7 days) */
-export const REFRESH_TOKEN_EXPIRY = '7d'
+/** Refresh token expiration time (30 days) */
+export const REFRESH_TOKEN_EXPIRY = '30d'
 
-/** Refresh token expiration in milliseconds (7 days) */
-export const REFRESH_TOKEN_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000
+/** Refresh token expiration in milliseconds (30 days) */
+export const REFRESH_TOKEN_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000
 
 /**
  * Retrieves the JWT secret from environment variables.

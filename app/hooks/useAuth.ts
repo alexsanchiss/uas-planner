@@ -10,14 +10,9 @@ interface User {
   phone?: string | null
 }
 
-// LocalStorage keys for sensitive data
 const AUTH_TOKEN_KEY = 'authToken'
-const SENSITIVE_STORAGE_KEYS = [AUTH_TOKEN_KEY] // Add other keys if needed
+const SENSITIVE_STORAGE_KEYS = [AUTH_TOKEN_KEY]
 
-// Retry delay for failed refresh: 5 seconds
-const REFRESH_RETRY_DELAY_MS = 5_000
-
-// Decode JWT payload without verification (client-side)
 function decodeTokenPayload(token: string): { exp?: number; userId?: number } | null {
   try {
     const parts = token.split('.')
@@ -29,73 +24,36 @@ function decodeTokenPayload(token: string): { exp?: number; userId?: number } | 
   }
 }
 
-// Check if token is about to expire (within 2 minutes)
-function isTokenExpiringSoon(token: string): boolean {
-  const payload = decodeTokenPayload(token)
-  if (!payload?.exp) return true
-  const expiresAt = payload.exp * 1000 // Convert to milliseconds
-  const twoMinutesFromNow = Date.now() + 2 * 60 * 1000
-  return expiresAt < twoMinutesFromNow
-}
-
-// Check if token is expired
 function isTokenExpired(token: string): boolean {
   const payload = decodeTokenPayload(token)
   if (!payload?.exp) return true
   return payload.exp * 1000 < Date.now()
 }
 
-/**
- * Clear all sensitive data from localStorage
- */
 function clearSensitiveData(): void {
   SENSITIVE_STORAGE_KEYS.forEach(key => {
     localStorage.removeItem(key)
   })
-  // Also clear any cached user-related data that might exist
-  // Add more keys here if you cache other sensitive data
-}
-
-/**
- * Notify about session expiration with an optional reason
- */
-function notifySessionExpired(reason?: string): void {
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('auth:session-expired', {
-      detail: {
-        message: 'Your session has expired. Please log in again.',
-        reason: reason ?? 'expired',
-      }
-    }))
-  }
 }
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const refreshingRef = useRef(false)
-  const refreshTimerRef = useRef<NodeJS.Timeout | null>(null)
-  const sessionExpiredNotifiedRef = useRef(false)
 
-  /**
-   * Refresh the access token using the httpOnly refresh token cookie
-   * Returns the new token or null if refresh failed
-   */
   const refreshAccessToken = useCallback(async (): Promise<string | null> => {
-    // Prevent concurrent refresh requests
     if (refreshingRef.current) {
       return null
     }
-    
+
     refreshingRef.current = true
     try {
       const response = await axios.post('/api/auth/refresh', {}, {
-        withCredentials: true, // Include cookies
+        withCredentials: true,
       })
       const { token } = response.data
       if (token) {
         localStorage.setItem(AUTH_TOKEN_KEY, token)
-        sessionExpiredNotifiedRef.current = false // Reset notification flag on successful refresh
         return token
       }
       return null
@@ -107,83 +65,16 @@ export function useAuth() {
     }
   }, [])
 
-  /**
-   * Handle session expiration: clear state and notify
-   */
-  const handleSessionExpired = useCallback((reason?: string) => {
-    clearSensitiveData()
-    setUser(null)
-    if (refreshTimerRef.current) {
-      clearTimeout(refreshTimerRef.current)
-      refreshTimerRef.current = null
-    }
-    if (!sessionExpiredNotifiedRef.current) {
-      sessionExpiredNotifiedRef.current = true
-      notifySessionExpired(reason)
-    }
-  }, [])
-
-  /**
-   * Attempt token refresh with one retry on failure
-   */
-  const refreshWithRetry = useCallback(async (): Promise<string | null> => {
-    const token = await refreshAccessToken()
-    if (token) return token
-
-    // Retry once after a short delay
-    await new Promise(resolve => setTimeout(resolve, REFRESH_RETRY_DELAY_MS))
-    return refreshAccessToken()
-  }, [refreshAccessToken])
-
-  /**
-   * Schedule automatic token refresh before expiration
-   * Defensive re-scheduling on successful refresh
-   */
-  const scheduleTokenRefresh = useCallback((token: string) => {
-    // Clear existing timer
-    if (refreshTimerRef.current) {
-      clearTimeout(refreshTimerRef.current)
-      refreshTimerRef.current = null
-    }
-
-    const payload = decodeTokenPayload(token)
-    if (!payload?.exp) return
-
-    // Calculate when to refresh (2 minutes before expiration)
-    const expiresAt = payload.exp * 1000
-    const refreshAt = expiresAt - 120 * 1000 // 2 minutes before expiry
-    const delay = Math.max(refreshAt - Date.now(), 0)
-
-    const executeRefresh = async () => {
-      const newToken = await refreshWithRetry()
-      if (newToken) {
-        scheduleTokenRefresh(newToken)
-      } else {
-        // Refresh failed after retry — session is over
-        handleSessionExpired()
-      }
-    }
-
-    if (delay > 0) {
-      refreshTimerRef.current = setTimeout(executeRefresh, delay)
-    } else {
-      // Token is expiring very soon or already expired — try immediately
-      executeRefresh()
-    }
-  }, [refreshWithRetry, handleSessionExpired])
-
   const fetchUser = useCallback(async () => {
     let token = localStorage.getItem(AUTH_TOKEN_KEY)
-    
+
     if (!token) {
       setUser(null)
       setLoading(false)
       return
     }
 
-    // Check if token is expired or about to expire
-    if (isTokenExpired(token) || isTokenExpiringSoon(token)) {
-      // Try to refresh the token
+    if (isTokenExpired(token)) {
       token = await refreshAccessToken()
       if (!token) {
         setUser(null)
@@ -192,9 +83,6 @@ export function useAuth() {
       }
     }
 
-    // Schedule automatic refresh for the valid token
-    scheduleTokenRefresh(token)
-
     try {
       const response = await axios.get('/api/user', {
         headers: { Authorization: `Bearer ${token}` }
@@ -202,11 +90,9 @@ export function useAuth() {
       setUser(response.data)
     } catch (error) {
       console.error('Error fetching user:', error)
-      // Handle edge case: token valid but user deleted (404) or unauthorized (401)
       if (axios.isAxiosError(error)) {
         const status = error.response?.status
-        
-        // User was deleted from database - clear auth and logout
+
         if (status === 404) {
           console.warn('User not found - account may have been deleted')
           clearSensitiveData()
@@ -214,8 +100,7 @@ export function useAuth() {
           setLoading(false)
           return
         }
-        
-        // If unauthorized, try to refresh token
+
         if (status === 401) {
           const newToken = await refreshAccessToken()
           if (newToken) {
@@ -224,10 +109,8 @@ export function useAuth() {
                 headers: { Authorization: `Bearer ${newToken}` }
               })
               setUser(retryResponse.data)
-              scheduleTokenRefresh(newToken)
               return
             } catch (retryError) {
-              // Handle edge case in retry: user deleted after token refresh
               if (axios.isAxiosError(retryError) && retryError.response?.status === 404) {
                 console.warn('User not found after token refresh - account may have been deleted')
                 clearSensitiveData()
@@ -244,29 +127,19 @@ export function useAuth() {
     } finally {
       setLoading(false)
     }
-  }, [refreshAccessToken, scheduleTokenRefresh])
+  }, [refreshAccessToken])
 
   useEffect(() => {
-    // Initial load
     fetchUser()
 
-    // Listen for auth changes from other tabs (cross-tab synchronization)
     const onStorage = (e: StorageEvent) => {
       if (e.key === AUTH_TOKEN_KEY) {
-        // If token was removed (logout in another tab)
         if (e.newValue === null && e.oldValue !== null) {
-          // Another tab logged out - sync this tab
           setUser(null)
-          if (refreshTimerRef.current) {
-            clearTimeout(refreshTimerRef.current)
-            refreshTimerRef.current = null
-          }
-          // Redirect to login if not already there
           if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
             window.location.href = '/login'
           }
         } else if (e.newValue !== null) {
-          // Token was added or changed (login in another tab) - refresh user
           setLoading(true)
           fetchUser()
         }
@@ -274,7 +147,6 @@ export function useAuth() {
     }
     window.addEventListener('storage', onStorage)
 
-    // Custom event within same tab to react immediately after login/logout
     const onAuthChanged = () => {
       setLoading(true)
       fetchUser()
@@ -284,37 +156,24 @@ export function useAuth() {
     return () => {
       window.removeEventListener('storage', onStorage)
       window.removeEventListener('auth:changed', onAuthChanged as EventListener)
-      // Clear refresh timer on unmount
-      if (refreshTimerRef.current) {
-        clearTimeout(refreshTimerRef.current)
-      }
     }
   }, [fetchUser])
 
   const login = async (email: string, password: string): Promise<boolean | { requiresVerification: true; email: string }> => {
     try {
       const response = await axios.post('/api/auth/login', { email, password }, {
-        withCredentials: true, // Include cookies for refresh token
+        withCredentials: true,
       })
 
-      // Handle unverified email response
       if (response.data.requiresVerification) {
         return { requiresVerification: true, email: response.data.email }
       }
 
       const { token } = response.data
       localStorage.setItem(AUTH_TOKEN_KEY, token)
-      
-      // Reset session expired flag on successful login
-      sessionExpiredNotifiedRef.current = false
-      
-      // Schedule automatic refresh
-      scheduleTokenRefresh(token)
-      
-      // Notify listeners and refresh user info from API
+
       window.dispatchEvent(new Event('auth:changed'))
-      
-      // Optimistically fetch user immediately
+
       try {
         const me = await axios.get('/api/user', {
           headers: { Authorization: `Bearer ${token}` }
@@ -331,29 +190,17 @@ export function useAuth() {
   }
 
   const logout = async () => {
-    // Clear refresh timer
-    if (refreshTimerRef.current) {
-      clearTimeout(refreshTimerRef.current)
-      refreshTimerRef.current = null
-    }
-    
-    // Clear all sensitive data from localStorage (TASK-043)
     clearSensitiveData()
-    
-    // Clear user state
     setUser(null)
-    
-    // Clear the refresh token cookie by calling logout endpoint
+
     try {
       await axios.post('/api/auth/logout', {}, { withCredentials: true })
     } catch {
       // Logout endpoint may fail, that's ok - local state is already cleared
     }
-    
-    // Notify other tabs and components
+
     window.dispatchEvent(new Event('auth:changed'))
   }
 
   return { user, loading, login, logout, refreshAccessToken }
 }
-
