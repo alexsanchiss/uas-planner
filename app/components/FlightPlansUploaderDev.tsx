@@ -125,6 +125,7 @@ import {
   HelpCircle,
 } from "lucide-react";
 import { Modal } from "./ui/modal";
+import { parseScrsAlternative } from "@/lib/scrs";
 
 /**
  * Create an authenticated axios instance that automatically includes
@@ -779,6 +780,7 @@ export function FlightPlansUploaderDev() {
   const [bulkErrorIdx, setBulkErrorIdx] = useState(0);
   // Uplan edit modal state
   const [uplanEditModal, setUplanEditModal] = useState<{ open: boolean, uplan: any, planId: number | null }>({ open: false, uplan: null, planId: null });
+  const [acceptingAlternative, setAcceptingAlternative] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const selectPlanHandled = useRef(false);
@@ -1274,6 +1276,21 @@ export function FlightPlansUploaderDev() {
   const countByStatus = (status: string) =>
     flightPlans.filter((plan) => plan.status === status).length;
 
+  const countByAuthStatus = (status: string) =>
+    flightPlans.filter((plan) => {
+      if (status === "denegado") {
+        return plan.authorizationStatus === "denegado" || plan.authorizationStatus === "withdrawn";
+      }
+      return plan.authorizationStatus === status;
+    }).length;
+
+  const countAlternatives = () =>
+    flightPlans.filter((plan) => {
+      if (!plan.authorizationMessage) return false;
+      const msgStr = typeof plan.authorizationMessage === 'string' ? plan.authorizationMessage : JSON.stringify(plan.authorizationMessage);
+      return parseScrsAlternative(msgStr) !== null;
+    }).length;
+
   const getFolderStatusCounts = (folderId: number) => {
     const folderPlans = flightPlans.filter(
       (plan) => plan.folderId === folderId
@@ -1429,6 +1446,9 @@ export function FlightPlansUploaderDev() {
         return plan.folderId === folderId && plan.status === status;
       }
       if (["sin autorización", "aprobado", "denegado"].includes(status)) {
+        if (status === "denegado") {
+          return plan.folderId === folderId && (plan.authorizationStatus === "denegado" || plan.authorizationStatus === "withdrawn");
+        }
         return (
           plan.folderId === folderId && plan.authorizationStatus === status
         );
@@ -1451,6 +1471,34 @@ export function FlightPlansUploaderDev() {
       ...prev,
       [folderId]: Math.max(1, Math.min(newPage, total)),
     }));
+  };
+
+  const handleAcceptAlternativesSelected = async () => {
+    const plansWithAlternatives = selectedPlans.filter(id => {
+      const plan = flightPlans.find(p => p.id === id);
+      if (!plan || !plan.authorizationMessage) return false;
+      const msgStr = typeof plan.authorizationMessage === 'string' ? plan.authorizationMessage : JSON.stringify(plan.authorizationMessage);
+      return parseScrsAlternative(msgStr) !== null;
+    });
+
+    if (plansWithAlternatives.length === 0) {
+      toast.warning("No selected plans have valid alternatives.");
+      return;
+    }
+
+    setAcceptingAlternative(true);
+    try {
+      await withConcurrency(plansWithAlternatives, 5, async (planId) => {
+        await api.post(`/api/flightPlans/${planId}/accept-alternative`);
+      });
+      toast.success("Alternatives accepted successfully. Plans have been reset.");
+      fetchData();
+    } catch (error) {
+      console.error("Error accepting alternatives:", error);
+      toast.error("Error accepting some alternatives.");
+    } finally {
+      setAcceptingAlternative(false);
+    }
   };
 
   const handleRequestAuthorizationSelected = async () => {
@@ -1694,7 +1742,7 @@ export function FlightPlansUploaderDev() {
         </h1>
 
         <div className="bg-gray-800 rounded-lg p-4 mb-6">
-          <div className="grid grid-cols-5 gap-4 text-center">
+          <div className="grid grid-cols-4 md:grid-cols-8 gap-4 text-center">
             <div className="bg-gray-700 rounded-lg p-3">
               <span className="text-gray-300">Unprocessed</span>
               <div className="text-2xl font-bold text-white">
@@ -1723,6 +1771,24 @@ export function FlightPlansUploaderDev() {
               <span className="text-gray-300">Error</span>
               <div className="text-2xl font-bold text-white">
                 {countByStatus("error")}
+              </div>
+            </div>
+            <div className="bg-gray-700 rounded-lg p-3">
+              <span className="text-gray-300">Authorized</span>
+              <div className="text-2xl font-bold text-white">
+                {countByAuthStatus("aprobado")}
+              </div>
+            </div>
+            <div className="bg-gray-700 rounded-lg p-3">
+              <span className="text-gray-300">Denied</span>
+              <div className="text-2xl font-bold text-white">
+                {countByAuthStatus("denegado")}
+              </div>
+            </div>
+            <div className="bg-gray-700 rounded-lg p-3">
+              <span className="text-gray-300 text-xs">Prop. Alternatives</span>
+              <div className="text-2xl font-bold text-white">
+                {countAlternatives()}
               </div>
             </div>
           </div>
@@ -2020,6 +2086,21 @@ export function FlightPlansUploaderDev() {
                               }
                             >
                               View selected errors
+                            </Button>
+                            <Button
+                              variant="outline"
+                              className="text-amber-400/80 hover:bg-amber-500/80 hover:text-white border-amber-400/50 hover:border-amber-500 transition-all duration-200 text-sm h-[60px] min-h-[60px] px-3 whitespace-normal flex items-center justify-center"
+                              onClick={handleAcceptAlternativesSelected}
+                              disabled={
+                                acceptingAlternative || !selectedPlans.some(id => {
+                                  const plan = flightPlans.find(p => p.id === id);
+                                  if (!plan || !plan.authorizationMessage) return false;
+                                  const msgStr = typeof plan.authorizationMessage === 'string' ? plan.authorizationMessage : JSON.stringify(plan.authorizationMessage);
+                                  return parseScrsAlternative(msgStr) !== null;
+                                })
+                              }
+                            >
+                              {acceptingAlternative ? "Accepting..." : "Accept proposed alternatives"}
                             </Button>
                           </div>
                           <div className="flex items-center gap-2">
