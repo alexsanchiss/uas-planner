@@ -1263,7 +1263,7 @@ export function FlightPlansUploaderDev() {
           count++;
         }
         usedNames.set(fileName, true);
-        zip.file(fileName, it!.fileContent as string);
+        zip.file(fileName, it!.fileContent as unknown as string);
       });
       try {
         const content = await zip.generateAsync({ type: "blob" });
