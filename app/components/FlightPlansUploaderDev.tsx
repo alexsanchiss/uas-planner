@@ -1233,6 +1233,107 @@ export function FlightPlansUploaderDev() {
     }
   };
 
+  const handleDownloadSelectedOriginalPlans = async () => {
+    if (selectedPlans.length === 0) {
+      toast.warning("No plans selected to download.");
+      return;
+    }
+
+    const plansToDownload = selectedPlans
+      .map((id) => flightPlans.find((fp) => fp.id === id))
+      .filter((p) => p && p.fileContent);
+
+    if (plansToDownload.length === 0) {
+      toast.warning("No original .plan files found for selected plans.");
+      return;
+    }
+
+    const ZIP_MAX_FILES = 1000;
+    const usedNames = new Map<string, boolean>();
+
+    for (let j = 0; j < plansToDownload.length; j += ZIP_MAX_FILES) {
+      const chunk = plansToDownload.slice(j, j + ZIP_MAX_FILES);
+      const zip = new JSZip();
+      chunk.forEach((it) => {
+        const baseName = `${it!.customName}`;
+        let fileName = `${baseName}.plan`;
+        let count = 1;
+        while (usedNames.has(fileName)) {
+          fileName = `${baseName} (${count}).plan`;
+          count++;
+        }
+        usedNames.set(fileName, true);
+        zip.file(fileName, it!.fileContent as string);
+      });
+      try {
+        const content = await zip.generateAsync({ type: "blob" });
+        const zipName = plansToDownload.length > ZIP_MAX_FILES ? `selected_original_plans_${j + 1}-${j + chunk.length}.zip` : `selected_original_plans.zip`;
+        saveAs(content, zipName);
+      } catch (error) {
+        console.error("Error bulk downloading selected .plan files:", error);
+      }
+    }
+  };
+
+  const handleDownloadSelectedUplans = async () => {
+    if (selectedPlans.length === 0) {
+      toast.warning("No plans selected to download U-plans.");
+      return;
+    }
+
+    const plansToDownload = selectedPlans
+      .map((id) => flightPlans.find((fp) => fp.id === id))
+      .filter((p) => p && p.status === "procesado" && p.scheduledAt);
+
+    if (plansToDownload.length === 0) {
+      toast.warning("No processed plans with scheduled time found among selected.");
+      return;
+    }
+
+    toast.info("Regenerating U-plans and generating ZIP file... Please wait.");
+
+    const ZIP_MAX_FILES = 1000;
+    const usedNames = new Map<string, boolean>();
+    const CONCURRENCY = 5;
+
+    for (let j = 0; j < plansToDownload.length; j += ZIP_MAX_FILES) {
+      const chunk = plansToDownload.slice(j, j + ZIP_MAX_FILES);
+      const zip = new JSZip();
+      
+      for (let i = 0; i < chunk.length; i += CONCURRENCY) {
+        const batch = chunk.slice(i, i + CONCURRENCY);
+        await Promise.all(batch.map(async (plan) => {
+          try {
+            const res = await api.post(`/api/flightPlans/${plan!.id}/generate-volumes`);
+            if (res.data && res.data.uplan) {
+              const baseName = `${plan!.customName}`;
+              let fileName = `${baseName}.json`;
+              let count = 1;
+              while (usedNames.has(fileName)) {
+                fileName = `${baseName} (${count}).json`;
+                count++;
+              }
+              usedNames.set(fileName, true);
+              zip.file(fileName, JSON.stringify(res.data.uplan, null, 2));
+            }
+          } catch (err) {
+            console.error(`Error regenerating U-plan for ${plan!.customName}:`, err);
+          }
+        }));
+      }
+
+      try {
+        const content = await zip.generateAsync({ type: "blob" });
+        const zipName = plansToDownload.length > ZIP_MAX_FILES ? `selected_uplans_${j + 1}-${j + chunk.length}.zip` : `selected_uplans.zip`;
+        saveAs(content, zipName);
+      } catch (error) {
+        console.error("Error bulk downloading selected U-plans:", error);
+      }
+    }
+    
+    fetchData(); // Refresh to update the UI with new U-plans
+  };
+
   const handleDeleteSelectedPlans = async () => {
     if (typeof window !== 'undefined' && window.confirm("Are you sure you want to delete the selected plans?")) {
       try {
@@ -1989,7 +2090,23 @@ export function FlightPlansUploaderDev() {
                                   className="text-green-500 hover:bg-green-500/80 hover:text-white border-green-300/30 hover:border-green-500 transition-all duration-200 text-sm h-[36px] px-3 whitespace-normal flex items-center justify-center"
                                 >
                                   <DownloadIcon className="h-3.5 w-3.5 mr-1.5" />
-                                  Download selected
+                                  Download CSV selected
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  onClick={() => handleDownloadSelectedOriginalPlans()}
+                                  className="text-cyan-500 hover:bg-cyan-500/80 hover:text-white border-cyan-300/30 hover:border-cyan-500 transition-all duration-200 text-sm h-[36px] px-3 whitespace-normal flex items-center justify-center"
+                                >
+                                  <DownloadIcon className="h-3.5 w-3.5 mr-1.5" />
+                                  Download .plan selected
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  onClick={() => handleDownloadSelectedUplans()}
+                                  className="text-indigo-400 hover:bg-indigo-500/80 hover:text-white border-indigo-300/30 hover:border-indigo-500 transition-all duration-200 text-sm h-[36px] px-3 whitespace-normal flex items-center justify-center"
+                                >
+                                  <DownloadIcon className="h-3.5 w-3.5 mr-1.5" />
+                                  Download U-plan selected
                                 </Button>
                                 <Button
                                   variant="outline"
