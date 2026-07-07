@@ -1,0 +1,1498 @@
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.5.13)  14 MAY 2026 12:54
+entering extended mode
+ restricted \write18 enabled.
+ file:line:error style messages enabled.
+ %&-line parsing enabled.
+**c:/Users/ASANMAR4/Desktop/uas-planner/SPIRIT_ICD_UPPS_V2_4_0.tex
+(c:/Users/ASANMAR4/Desktop/uas-planner/SPIRIT_ICD_UPPS_V2_4_0.tex
+LaTeX2e <2025-11-01>
+L3 programming layer <2026-03-20>
+(c:/texlive/2026/texmf-dist/tex/latex/base/article.cls
+Document Class: article 2025/01/22 v1.4n Standard LaTeX document class
+(c:/texlive/2026/texmf-dist/tex/latex/base/size12.clo
+File: size12.clo 2025/01/22 v1.4n Standard LaTeX file (size option)
+)
+\c@part=\count275
+\c@section=\count276
+\c@subsection=\count277
+\c@subsubsection=\count278
+\c@paragraph=\count279
+\c@subparagraph=\count280
+\c@figure=\count281
+\c@table=\count282
+\abovecaptionskip=\skip49
+\belowcaptionskip=\skip50
+\bibindent=\dimen150
+) (c:/texlive/2026/texmf-dist/tex/latex/base/inputenc.sty
+Package: inputenc 2024/02/08 v1.3d Input encoding file
+\inpenc@prehook=\toks17
+\inpenc@posthook=\toks18
+) (c:/texlive/2026/texmf-dist/tex/latex/geometry/geometry.sty
+Package: geometry 2026/03/07 v6.0 Page Geometry
+ (c:/texlive/2026/texmf-dist/tex/latex/graphics/keyval.sty
+Package: keyval 2022/05/29 v1.15 key=value parser (DPC)
+\KV@toks@=\toks19
+) (c:/texlive/2026/texmf-dist/tex/generic/iftex/ifvtex.sty
+Package: ifvtex 2019/10/25 v1.7 ifvtex legacy package. Use iftex instead.
+ (c:/texlive/2026/texmf-dist/tex/generic/iftex/iftex.sty
+Package: iftex 2024/12/12 v1.0g TeX engine tests
+))
+\Gm@cnth=\count283
+\Gm@cntv=\count284
+\c@Gm@tempcnt=\count285
+\Gm@bindingoffset=\dimen151
+\Gm@wd@mp=\dimen152
+\Gm@odd@mp=\dimen153
+\Gm@even@mp=\dimen154
+\Gm@layoutwidth=\dimen155
+\Gm@layoutheight=\dimen156
+\Gm@layouthoffset=\dimen157
+\Gm@layoutvoffset=\dimen158
+\Gm@dimlist=\toks20
+) (c:/texlive/2026/texmf-dist/tex/latex/hyperref/hyperref.sty
+Package: hyperref 2026-04-24 v7.01q Hypertext links for LaTeX
+ (c:/texlive/2026/texmf-dist/tex/latex/kvsetkeys/kvsetkeys.sty
+Package: kvsetkeys 2022-10-05 v1.19 Key value parser (HO)
+) (c:/texlive/2026/texmf-dist/tex/generic/kvdefinekeys/kvdefinekeys.sty
+Package: kvdefinekeys 2019-12-19 v1.6 Define keys (HO)
+) (c:/texlive/2026/texmf-dist/tex/generic/pdfescape/pdfescape.sty
+Package: pdfescape 2019/12/09 v1.15 Implements pdfTeX's escape features (HO)
+ (c:/texlive/2026/texmf-dist/tex/generic/ltxcmds/ltxcmds.sty
+Package: ltxcmds 2023-12-04 v1.26 LaTeX kernel commands for general use (HO)
+) (c:/texlive/2026/texmf-dist/tex/generic/pdftexcmds/pdftexcmds.sty
+Package: pdftexcmds 2020-06-27 v0.33 Utility functions of pdfTeX for LuaTeX (HO)
+ (c:/texlive/2026/texmf-dist/tex/generic/infwarerr/infwarerr.sty
+Package: infwarerr 2019/12/03 v1.5 Providing info/warning/error messages (HO)
+)
+Package pdftexcmds Info: \pdf@primitive is available.
+Package pdftexcmds Info: \pdf@ifprimitive is available.
+Package pdftexcmds Info: \pdfdraftmode found.
+)) (c:/texlive/2026/texmf-dist/tex/latex/hycolor/hycolor.sty
+Package: hycolor 2020-01-27 v1.10 Color options for hyperref/bookmark (HO)
+) (c:/texlive/2026/texmf-dist/tex/latex/hyperref/nameref.sty
+Package: nameref 2026-01-29 v2.58 Cross-referencing by name of section
+ (c:/texlive/2026/texmf-dist/tex/latex/refcount/refcount.sty
+Package: refcount 2019/12/15 v3.6 Data extraction from label references (HO)
+) (c:/texlive/2026/texmf-dist/tex/generic/gettitlestring/gettitlestring.sty
+Package: gettitlestring 2019/12/15 v1.6 Cleanup title references (HO)
+ (c:/texlive/2026/texmf-dist/tex/latex/kvoptions/kvoptions.sty
+Package: kvoptions 2022-06-15 v3.15 Key value format for package options (HO)
+))
+\c@section@level=\count286
+) (c:/texlive/2026/texmf-dist/tex/latex/etoolbox/etoolbox.sty
+Package: etoolbox 2025/10/02 v2.5m e-TeX tools for LaTeX (JAW)
+\etb@tempcnta=\count287
+) (c:/texlive/2026/texmf-dist/tex/generic/stringenc/stringenc.sty
+Package: stringenc 2019/11/29 v1.12 Convert strings between diff. encodings (HO)
+)
+\@linkdim=\dimen159
+\Hy@linkcounter=\count288
+\Hy@pagecounter=\count289
+ (c:/texlive/2026/texmf-dist/tex/latex/hyperref/pd1enc.def
+File: pd1enc.def 2026-04-24 v7.01q Hyperref: PDFDocEncoding definition (HO)
+Now handling font encoding PD1 ...
+... no UTF-8 mapping file for font encoding PD1
+) (c:/texlive/2026/texmf-dist/tex/generic/intcalc/intcalc.sty
+Package: intcalc 2019/12/15 v1.3 Expandable calculations with integers (HO)
+)
+\Hy@SavedSpaceFactor=\count290
+ (c:/texlive/2026/texmf-dist/tex/latex/hyperref/puenc.def
+File: puenc.def 2026-04-24 v7.01q Hyperref: PDF Unicode definition (HO)
+Now handling font encoding PU ...
+... no UTF-8 mapping file for font encoding PU
+)
+Package hyperref Info: Hyper figures OFF on input line 4199.
+Package hyperref Info: Link nesting OFF on input line 4204.
+Package hyperref Info: Hyper index ON on input line 4207.
+Package hyperref Info: Plain pages OFF on input line 4214.
+Package hyperref Info: Backreferencing OFF on input line 4219.
+Package hyperref Info: Implicit mode ON; LaTeX internals redefined.
+Package hyperref Info: Bookmarks ON on input line 4466.
+\c@Hy@tempcnt=\count291
+ (c:/texlive/2026/texmf-dist/tex/latex/url/url.sty
+\Urlmuskip=\muskip17
+Package: url 2013/09/16  ver 3.4  Verb mode for urls, etc.
+)
+LaTeX Info: Redefining \url on input line 4805.
+\XeTeXLinkMargin=\dimen160
+ (c:/texlive/2026/texmf-dist/tex/generic/bitset/bitset.sty
+Package: bitset 2019/12/09 v1.3 Handle bit-vector datatype (HO)
+ (c:/texlive/2026/texmf-dist/tex/generic/bigintcalc/bigintcalc.sty
+Package: bigintcalc 2019/12/15 v1.5 Expandable calculations on big integers (HO)
+))
+\Fld@menulength=\count292
+\Field@Width=\dimen161
+\Fld@charsize=\dimen162
+Package hyperref Info: Hyper figures OFF on input line 6091.
+Package hyperref Info: Link nesting OFF on input line 6096.
+Package hyperref Info: Hyper index ON on input line 6099.
+Package hyperref Info: backreferencing OFF on input line 6106.
+Package hyperref Info: Link coloring OFF on input line 6111.
+Package hyperref Info: Link coloring with OCG OFF on input line 6116.
+Package hyperref Info: PDF/A mode OFF on input line 6121.
+\Hy@abspage=\count293
+\c@Item=\count294
+\c@Hfootnote=\count295
+)
+Package hyperref Info: Driver (autodetected): hpdftex.
+ (c:/texlive/2026/texmf-dist/tex/latex/hyperref/hpdftex.def
+File: hpdftex.def 2026-04-24 v7.01q Hyperref driver for pdfTeX
+\Fld@listcount=\count296
+\c@bookmark@seq@number=\count297
+ (c:/texlive/2026/texmf-dist/tex/latex/rerunfilecheck/rerunfilecheck.sty
+Package: rerunfilecheck 2025-06-21 v1.11 Rerun checks for auxiliary files (HO)
+ (c:/texlive/2026/texmf-dist/tex/generic/uniquecounter/uniquecounter.sty
+Package: uniquecounter 2019/12/15 v1.4 Provide unlimited unique counter (HO)
+)
+Package uniquecounter Info: New unique counter `rerunfilecheck' on input line 284.
+)
+\Hy@SectionHShift=\skip51
+) (c:/texlive/2026/texmf-dist/tex/latex/tools/longtable.sty
+Package: longtable 2025-10-13 v4.24 Multi-page Table package (DPC)
+\LTleft=\skip52
+\LTright=\skip53
+\LTpre=\skip54
+\LTpost=\skip55
+\LTchunksize=\count298
+\LTcapwidth=\dimen163
+\LT@head=\box53
+\LT@firsthead=\box54
+\LT@foot=\box55
+\LT@lastfoot=\box56
+\LT@gbox=\box57
+\LT@cols=\count299
+\LT@rows=\count300
+\c@LT@tables=\count301
+\c@LT@chunks=\count302
+\LT@p@ftn=\toks21
+) (c:/texlive/2026/texmf-dist/tex/latex/tools/array.sty
+Package: array 2025/09/25 v2.6n Tabular extension package (FMi)
+\col@sep=\dimen164
+\ar@mcellbox=\box58
+\extrarowheight=\dimen165
+\NC@list=\toks22
+\extratabsurround=\skip56
+\backup@length=\skip57
+\ar@cellbox=\box59
+) (c:/texlive/2026/texmf-dist/tex/latex/listings/listings.sty
+\lst@mode=\count303
+\lst@gtempboxa=\box60
+\lst@token=\toks23
+\lst@length=\count304
+\lst@currlwidth=\dimen166
+\lst@column=\count305
+\lst@pos=\count306
+\lst@lostspace=\dimen167
+\lst@width=\dimen168
+\lst@newlines=\count307
+\lst@lineno=\count308
+\lst@maxwidth=\dimen169
+ (c:/texlive/2026/texmf-dist/tex/latex/listings/lstpatch.sty
+File: lstpatch.sty 2025/11/14 1.11b (Carsten Heinz)
+) (c:/texlive/2026/texmf-dist/tex/latex/listings/lstmisc.sty
+File: lstmisc.sty 2025/11/14 1.11b (Carsten Heinz)
+\c@lstnumber=\count309
+\lst@skipnumbers=\count310
+\lst@framebox=\box61
+) (c:/texlive/2026/texmf-dist/tex/latex/listings/listings.cfg
+File: listings.cfg 2025/11/14 1.11b listings configuration
+))
+Package: listings 2025/11/14 1.11b (Carsten Heinz)
+
+==> First Aid for listings.sty no longer applied!
+    Expected:
+        2024/09/23 1.10c (Carsten Heinz)
+    but found:
+        2025/11/14 1.11b (Carsten Heinz)
+    so I'm assuming it got fixed.
+(c:/texlive/2026/texmf-dist/tex/latex/xcolor/xcolor.sty
+Package: xcolor 2024/09/29 v3.02 LaTeX color extensions (UK)
+ (c:/texlive/2026/texmf-dist/tex/latex/graphics-cfg/color.cfg
+File: color.cfg 2016/01/02 v1.6 sample color configuration
+)
+Package xcolor Info: Driver file: pdftex.def on input line 274.
+ (c:/texlive/2026/texmf-dist/tex/latex/graphics-def/pdftex.def
+File: pdftex.def 2025/09/29 v1.2d Graphics/color driver for pdftex
+) (c:/texlive/2026/texmf-dist/tex/latex/graphics/mathcolor.ltx)
+Package xcolor Info: Model `cmy' substituted by `cmy0' on input line 1349.
+Package xcolor Info: Model `hsb' substituted by `rgb' on input line 1353.
+Package xcolor Info: Model `RGB' extended on input line 1365.
+Package xcolor Info: Model `HTML' substituted by `rgb' on input line 1367.
+Package xcolor Info: Model `Hsb' substituted by `hsb' on input line 1368.
+Package xcolor Info: Model `tHsb' substituted by `hsb' on input line 1369.
+Package xcolor Info: Model `HSB' substituted by `hsb' on input line 1370.
+Package xcolor Info: Model `Gray' substituted by `gray' on input line 1371.
+Package xcolor Info: Model `wave' substituted by `hsb' on input line 1372.
+) (c:/texlive/2026/texmf-dist/tex/latex/l3backend/l3backend-pdftex.def
+File: l3backend-pdftex.def 2026-02-18 L3 backend support: PDF output (pdfTeX)
+\l__color_backend_stack_int=\count311
+) (./SPIRIT_ICD_UPPS_V2_4_0.aux)
+\openout1 = `SPIRIT_ICD_UPPS_V2_4_0.aux'.
+
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 28.
+LaTeX Font Info:    ... okay on input line 28.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 28.
+LaTeX Font Info:    ... okay on input line 28.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 28.
+LaTeX Font Info:    ... okay on input line 28.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 28.
+LaTeX Font Info:    ... okay on input line 28.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 28.
+LaTeX Font Info:    ... okay on input line 28.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 28.
+LaTeX Font Info:    ... okay on input line 28.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 28.
+LaTeX Font Info:    ... okay on input line 28.
+LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 28.
+LaTeX Font Info:    ... okay on input line 28.
+LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 28.
+LaTeX Font Info:    ... okay on input line 28.
+
+*geometry* driver: auto-detecting
+*geometry* detected driver: pdftex
+*geometry* verbose mode - [ preamble ] result:
+* driver: pdftex
+* paper: a4paper
+* layout: <same size as paper>
+* layoutoffset:(h,v)=(0.0pt,0.0pt)
+* modes: 
+* h-part:(L,W,R)=(71.13188pt, 455.24411pt, 71.13188pt)
+* v-part:(T,H,B)=(71.13188pt, 702.78308pt, 71.13188pt)
+* \paperwidth=597.50787pt
+* \paperheight=845.04684pt
+* \textwidth=455.24411pt
+* \textheight=702.78308pt
+* \oddsidemargin=-1.1381pt
+* \evensidemargin=-1.1381pt
+* \topmargin=-38.1381pt
+* \headheight=12.0pt
+* \headsep=25.0pt
+* \topskip=12.0pt
+* \footskip=30.0pt
+* \marginparwidth=35.0pt
+* \marginparsep=10.0pt
+* \columnsep=10.0pt
+* \skip\footins=10.8pt plus 4.0pt minus 2.0pt
+* \hoffset=0.0pt
+* \voffset=0.0pt
+* \mag=1000
+* \@twocolumnfalse
+* \@twosidefalse
+* \@mparswitchfalse
+* \@reversemarginfalse
+* (1in=72.27pt=25.4mm, 1cm=28.453pt)
+
+Package hyperref Info: Link coloring OFF on input line 28.
+\@outlinefile=\write3
+\openout3 = `SPIRIT_ICD_UPPS_V2_4_0.out'.
+
+\c@lstlisting=\count312
+(c:/texlive/2026/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
+[Loading MPS to PDF converter (version 2006.09.02).]
+\scratchcounter=\count313
+\scratchdimen=\dimen170
+\scratchbox=\box62
+\nofMPsegments=\count314
+\nofMParguments=\count315
+\everyMPshowfont=\toks24
+\MPscratchCnt=\count316
+\MPscratchDim=\dimen171
+\MPnumerator=\count317
+\makeMPintoPDFobject=\count318
+\everyMPtoPDFconversion=\toks25
+)
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <14.4> on input line 30.
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <7> on input line 30.
+ [1
+
+{c:/texlive/2026/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{c:/texlive/2026/texmf-dist/fonts/enc/dvips/cm-super/cm-super-ts1.enc}]
+Overfull \hbox (2.29727pt too wide) in paragraph at lines 50--51
+[]\OT1/cmr/bx/n/12 Normalizaci^^Son de tiem-pos\OT1/cmr/m/n/12 : Las trayec-to-rias CSV se nor-mal-izan au-tom^^Saticamente
+ []
+
+
+Overfull \hbox (1.06671pt too wide) in paragraph at lines 63--64
+[]\OT1/cmr/bx/n/12 Gesti^^Son avan-zada de fold-ers\OT1/cmr/m/n/12 : Drag-and-drop para or-ga-ni-zaci^^Son de planes, secci^^Son
+ []
+
+[2]
+Overfull \hbox (106.30249pt too wide) in paragraph at lines 74--75
+\OT1/cmr/m/n/12 guard (\OT1/cmtt/m/n/12 emailVerified: false\OT1/cmr/m/n/12 ); men-saje de cooldown cor-regido en \OT1/cmtt/m/n/12 /api/auth/resend-verification\OT1/cmr/m/n/12 . 
+ []
+
+
+Overfull \hbox (16.44383pt too wide) in paragraph at lines 76--77
+\OT1/cmr/m/n/12 el archivo tiene ex-tensi^^Son in-cor-recta, no es JSON v^^Salido, o carece de \OT1/cmtt/m/n/12 operationVolumes\OT1/cmr/m/n/12 . 
+ []
+
+
+Overfull \hbox (15.57083pt too wide) in paragraph at lines 77--78
+\OT1/cmtt/m/n/12 lastName\OT1/cmr/m/n/12 , \OT1/cmtt/m/n/12 phone\OT1/cmr/m/n/12 ; nuevos end-points \OT1/cmtt/m/n/12 GET/PATCH /api/user/profile\OT1/cmr/m/n/12 ; \OT1/cmtt/m/n/12 UplanFormModal
+ []
+
+[3]
+Overfull \hbox (7.84438pt too wide) in paragraph at lines 93--94
+\OT1/cmr/m/n/12 Nuevo com-po-nente \OT1/cmtt/m/n/12 AuthorizationResultModal \OT1/cmr/m/n/12 con pesta~nas 2D/3D; mues-tra planes
+ []
+
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <12> on input line 107.
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <8> on input line 107.
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <6> on input line 107.
+LaTeX Font Info:    Font shape `OT1/cmtt/bx/n' in size <12> not available
+(Font)              Font shape `OT1/cmtt/m/n' tried instead on input line 112.
+
+Overfull \hbox (10.41322pt too wide) in paragraph at lines 114--115
+[]\OT1/cmr/m/n/12 El han-dler \OT1/cmtt/m/n/12 PUT /api/fas/<externalResponseNumber> \OT1/cmr/m/n/12 ac-tu-al-iza ahora el campo
+ []
+
+[4]
+Overfull \hbox (62.84085pt too wide) in paragraph at lines 124--125
+[]\OT1/cmr/m/n/12 Unificaci^^Son de ref-er-en-cia de al-tura: trayec-to-ria, way-points y dron usan \OT1/cmtt/m/n/12 RELATIVE[]TO[]GROUND
+ []
+
+LaTeX Font Info:    Trying to load font information for OMS+cmtt on input line 129.
+LaTeX Font Info:    No file OMScmtt.fd. on input line 129.
+
+LaTeX Font Warning: Font shape `OMS/cmtt/m/n' undefined
+(Font)              using `OMS/cmsy/m/n' instead
+(Font)              for symbol `textbraceleft' on input line 129.
+
+
+Overfull \hbox (185.53447pt too wide) in paragraph at lines 129--130
+\OT1/cmr/m/n/12 men-saje al nave-g-ador como un evento SSE (\OT1/cmr/m/it/12 Server-Sent Events\OT1/cmr/m/n/12 ) via \OT1/cmtt/m/n/12 GET /api/geoawareness/stream/\OMS/cmtt/m/n/12 f\OT1/cmtt/m/n/12 uspaceId\OMS/cmtt/m/n/12 g\OT1/cmr/m/n/12 . 
+ []
+
+[5]
+Overfull \hbox (52.58961pt too wide) in paragraph at lines 151--152
+\OT1/cmr/m/n/12 elim-ina el muestreo de ter-reno (\OT1/cmtt/m/n/12 sampleTerrainMostDetailed\OT1/cmr/m/n/12 ) del vi-sor \OT1/cmtt/m/n/12 Trajectory3DViewer\OT1/cmr/m/n/12 ;
+ []
+
+
+Overfull \hbox (95.61691pt too wide) in paragraph at lines 153--154
+[]\OT1/cmr/bx/n/12 Auto-relleno de email en for-mu-la-rio U-Plan \OT1/cmr/m/n/12 (Fea-ture 33): El campo \OT1/cmtt/m/n/12 contactDetails.emails[0]
+ []
+
+
+Overfull \hbox (15.93231pt too wide) in paragraph at lines 154--155
+\OT1/cmr/m/n/12 ple-tos: \OT1/cmtt/m/n/12 GET/POST /api/user/drafts \OT1/cmr/m/n/12 y \OT1/cmtt/m/n/12 GET/PATCH/DELETE /api/user/drafts/[id]\OT1/cmr/m/n/12 .
+ []
+
+
+Overfull \hbox (8.41154pt too wide) in paragraph at lines 155--156
+\OT1/cmr/m/n/12 Se elim-i-nan $\OMS/cmtt/m/n/12 ^^X$\OT1/cmr/m/n/12 840 l^^S^^Pneas del com-po-nente \OT1/cmtt/m/n/12 PlanGenerator \OT1/cmr/m/n/12 (es-tado \OT1/cmtt/m/n/12 flightPlanDetails\OT1/cmr/m/n/12 ,
+ []
+
+[6]
+Overfull \hbox (86.85077pt too wide) in paragraph at lines 184--185
+[]\OT1/cmr/m/n/12 Configuraci^^Son me-di-ante vari-ables de en-torno: \OT1/cmtt/m/n/12 MAILERSEND[]API[]KEY\OT1/cmr/m/n/12 , \OT1/cmtt/m/n/12 MAILERSEND[]SENDER[]EMAIL\OT1/cmr/m/n/12 . 
+ []
+
+[7]
+Overfull \hbox (5.28162pt too wide) in paragraph at lines 198--199
+[]\OT1/cmr/m/n/12 Visualizaci^^Son de pol^^S^^Pgonos con col-ores: azul (disponible), naranja (se-lec-cionado). 
+ []
+
+
+Overfull \hbox (13.10023pt too wide) in paragraph at lines 213--214
+[]\OT1/cmr/m/n/12 Bot^^Son "View De-nial on Map" vis-i-ble cuando \OT1/cmtt/m/n/12 authorizationStatus="denegado"\OT1/cmr/m/n/12 . 
+ []
+
+[8]
+Overfull \hbox (6.77031pt too wide) in paragraph at lines 239--240
+[]\OT1/cmr/m/n/12 Si to-dos los rein-ten-tos fal-lan con 500: plan vuelve a es-tado \OT1/cmtt/m/n/12 "sin autorizaci^^Son"\OT1/cmr/m/n/12 . 
+ []
+
+LaTeX Font Info:    External font `cmex10' loaded for size
+(Font)              <10.95> on input line 260.
+
+Overfull \hbox (151.58534pt too wide) in paragraph at lines 267--268
+\OT1/cmr/m/n/12 end UPPS abre una conexi^^Son Web-Socket in-terna a \OT1/cmtt/m/n/12 ws://<GEOAWARENESS[]SERVICE[]IP>/ws/gas/\OMS/cmtt/m/n/12 f\OT1/cmtt/m/n/12 USPACE[]ID\OMS/cmtt/m/n/12 g
+ []
+
+[9]
+Overfull \hbox (1.02386pt too wide) in paragraph at lines 269--270
+\OT1/cmr/m/n/12 em-bebe un \OT1/cmtt/m/n/12 iframe \OT1/cmr/m/n/12 apun-tando a \OT1/cmtt/m/n/12 http://localhost:6080/ \OT1/cmr/m/n/12 para vi-su-alizar/controlar
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 281--281
+[]|\OT1/cmr/bx/n/12 Tipo de
+ []
+
+
+Overfull \hbox (35.77354pt too wide) in alignment at lines 279--283
+ [] [] [] [] 
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 285--285
+[]|\OT1/cmr/bx/n/12 Tipo de
+ []
+
+
+Overfull \hbox (35.77354pt too wide) in alignment at lines 283--287
+ [] [] [] [] 
+ []
+
+
+Overfull \hbox (35.77354pt too wide) in alignment at lines 287--289
+ [] [] [] [] 
+ []
+
+
+Overfull \hbox (35.77354pt too wide) in alignment at lines 289--291
+ [] [] [] [] 
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 292--292
+[]|\OT1/cmr/m/n/12 Ruta
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 292--293
+[]|\OT1/cmr/m/n/12 Callback de FAS ha-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 292--293
+\OT1/cmr/m/n/12 cia UPPS: \OT1/cmtt/m/n/12 PUT $\OT1/cmtt/m/n/10.95 /api / fas /
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 294--295
+[]|\OT1/cmr/m/n/12 Campo \OT1/cmtt/m/n/12 state \OT1/cmr/m/n/12 recibido
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 294--295
+\OT1/cmr/m/n/12 en el call-back. Si
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 294--295
+\OT1/cmtt/m/n/12 state=ACCEPTED \OT1/cmr/m/n/12 se marca
+ []
+
+
+Overfull \hbox (17.79742pt too wide) in paragraph at lines 294--295
+\OT1/cmtt/m/n/12 authorizationStatus="aprobado"\OT1/cmr/m/n/12 ;
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 296--297
+[]|\OT1/cmr/m/n/12 Campo \OT1/cmtt/m/n/12 message \OT1/cmr/m/n/12 recibido en
+ []
+
+
+Underfull \hbox (badness 2735) in paragraph at lines 296--297
+\OT1/cmr/m/n/12 el call-back; se per-siste como
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 298--298
+[]|\OT1/cmr/m/n/12 Geoawareness SSE: end-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 298--298
+[]|\OT1/cmr/m/n/12 URL
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 298--299
+[]|\OT1/cmr/m/n/12 El cliente web se conecta
+ []
+
+
+Underfull \hbox (badness 5519) in paragraph at lines 298--299
+\OT1/cmr/m/n/12 al proxy del back-end: \OT1/cmtt/m/n/12 GET
+ []
+
+
+Overfull \hbox (52.76846pt too wide) in paragraph at lines 298--299
+\OT1/cmtt/m/n/12 /api/geoawareness/stream/\OMS/cmtt/m/n/12 f\OT1/cmtt/m/n/12 USPACE[]ID\OMS/cmtt/m/n/12 g\OT1/cmr/m/n/12 .
+ []
+
+
+Underfull \hbox (badness 2343) in paragraph at lines 298--299
+\OT1/cmr/m/n/12 El back-end abre in-ter-na-mente
+ []
+
+
+Underfull \hbox (badness 4582) in paragraph at lines 298--299
+\OT1/cmr/m/n/12 y re-trans-mite men-sajes como
+ []
+
+
+LaTeX Warning: Reference `sec:geoawareness-ws-format' on page 10 undefined on input line 300.
+
+
+Underfull \hbox (badness 3758) in paragraph at lines 300--301
+[]|\OT1/cmr/m/n/12 Evento SSE (tipo \OT1/cmtt/m/n/12 data\OT1/cmr/m/n/12 ) con
+ []
+
+
+Underfull \hbox (badness 1997) in paragraph at lines 300--301
+\OT1/cmr/m/n/12 el men-saje JSON del ser-vi-cio
+ []
+
+
+Underfull \hbox (badness 1867) in paragraph at lines 300--301
+\OT1/cmr/m/n/12 Geoaware-ness. Es-truc-tura de
+ []
+
+
+Overfull \hbox (35.77354pt too wide) in alignment at lines 291--302
+ [] [] [] [] 
+ []
+
+
+ignored: Infinite glue shrinkage found in box being split [10]
+Underfull \hbox (badness 10000) in paragraph at lines 307--307
+[]|\OT1/cmr/bx/n/12 Tipo de
+ []
+
+
+Overfull \hbox (35.77354pt too wide) in alignment at lines 305--309
+ [] [] [] [] 
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 311--311
+[]|\OT1/cmr/bx/n/12 Tipo de
+ []
+
+
+Overfull \hbox (35.77354pt too wide) in alignment at lines 309--313
+ [] [] [] [] 
+ []
+
+
+Overfull \hbox (35.77354pt too wide) in alignment at lines 313--315
+ [] [] [] [] 
+ []
+
+
+Overfull \hbox (35.77354pt too wide) in alignment at lines 315--317
+ [] [] [] [] 
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 319--320
+[]|\OT1/cmr/m/n/12 Identificador del usuario
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 319--320
+\OT1/cmr/m/n/12 (par^^Sametros/relaci^^Son).
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 319--320
+\OT1/cmr/m/n/12 Por ejem-plo: \OT1/cmtt/m/n/12 GET $\OT1/cmtt/m/n/10.95 /api /
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 319--320
+\OT1/cmtt/m/n/10.95 flightPlans ? userId = . . .$ \OT1/cmr/m/n/12 y
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 325--326
+[]|\OT1/cmr/m/n/12 Contenido del plan car-gado
+ []
+
+
+Underfull \hbox (badness 2409) in paragraph at lines 325--326
+\OT1/cmr/m/n/12 como texto). Se guarda en
+ []
+
+
+Overfull \hbox (1.67862pt too wide) in paragraph at lines 327--327
+[]|\OT1/cmr/m/n/12 Enumerado| 
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 327--328
+\OT1/cmtt/m/n/12 en cola\OT1/cmr/m/n/12 , \OT1/cmtt/m/n/12 procesando\OT1/cmr/m/n/12 ,
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 329--330
+[]|\OT1/cmr/m/n/12 Fecha/hora pro-gra-mada del
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 329--330
+\OT1/cmr/m/n/12 vuelo. Obli-ga-to-ria para
+ []
+
+
+Overfull \hbox (0.99931pt too wide) in paragraph at lines 331--331
+[]|\OT1/cmr/m/n/12 Object/String| 
+ []
+
+
+Overfull \hbox (1.67862pt too wide) in paragraph at lines 333--333
+[]|\OT1/cmr/m/n/12 Enumerado| 
+ []
+
+
+Underfull \hbox (badness 7925) in paragraph at lines 333--334
+[]|\OT1/cmr/m/n/12 Estado lo-cal de au-tor-izaci^^Son
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 333--334
+\OT1/cmr/m/n/12 (per-sis-tido en BD): \OT1/cmtt/m/n/12 sin
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 333--334
+\OT1/cmtt/m/n/12 autorizaci^^Son \OT1/cmr/m/n/12 (por de-fecto),
+ []
+
+
+Overfull \hbox (0.99931pt too wide) in paragraph at lines 335--335
+[]|\OT1/cmr/m/n/12 String/Object| 
+ []
+
+
+Overfull \hbox (8.85493pt too wide) in paragraph at lines 335--335
+[]|\OT1/cmr/m/n/12 Texto/JSON| 
+ []
+
+
+Underfull \hbox (badness 2443) in paragraph at lines 335--336
+[]|\OT1/cmr/m/n/12 Mensaje aso-ci-ado a la au-tor-
+ []
+
+
+Underfull \hbox (badness 1178) in paragraph at lines 341--342
+[]|\OT1/cmr/m/n/12 Credenciales recibidas en \OT1/cmtt/m/n/12 POST
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 343--343
+[]|\OT1/cmr/m/n/12 Auth: Au-tho-riza-tion
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 343--343
+[]|\OT1/cmr/m/n/12 Bearer
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 343--344
+[]|\OT1/cmr/m/n/12 Cabecera \OT1/cmtt/m/n/12 Authorization:
+ []
+
+
+Underfull \hbox (badness 7740) in paragraph at lines 343--344
+\OT1/cmtt/m/n/12 Bearer <token> \OT1/cmr/m/n/12 re-querida en
+ []
+
+
+Overfull \hbox (35.77354pt too wide) in alignment at lines 317--345
+ [] [] [] [] 
+ []
+
+
+ignored: Infinite glue shrinkage found in box being split [11]
+Underfull \hbox (badness 10000) in paragraph at lines 352--352
+[]|\OT1/cmr/bx/n/12 Tipo de
+ []
+
+
+Overfull \hbox (35.77354pt too wide) in alignment at lines 350--354
+ [] [] [] [] 
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 356--356
+[]|\OT1/cmr/bx/n/12 Tipo de
+ []
+
+
+Overfull \hbox (35.77354pt too wide) in alignment at lines 354--358
+ [] [] [] [] 
+ []
+
+
+Overfull \hbox (35.77354pt too wide) in alignment at lines 358--360
+ [] [] [] [] 
+ []
+
+
+Overfull \hbox (35.77354pt too wide) in alignment at lines 360--362
+ [] [] [] [] 
+ []
+
+
+Overfull \hbox (26.38808pt too wide) in paragraph at lines 363--363
+[]|\OT1/cmr/m/n/12 application/json| 
+ []
+
+
+Underfull \hbox (badness 2698) in paragraph at lines 363--364
+[]|\OT1/cmtt/m/n/12 POST $\OT1/cmtt/m/n/10.95 <[]FAS _ API _ URL>[]$ \OT1/cmr/m/n/12 (si no se
+ []
+
+
+Underfull \hbox (badness 3118) in paragraph at lines 363--364
+\OT1/cmr/m/n/12 path $\OT1/cmtt/m/n/10.95 /uplan$\OT1/cmr/m/n/12 ). Cuerpo: U-
+ []
+
+
+Overfull \hbox (0.53835pt too wide) in paragraph at lines 365--365
+[]|\OT1/cmr/m/n/12 text/event-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 365--366
+[]|\OT1/cmr/m/n/12 El back-end abre
+ []
+
+
+Overfull \hbox (126.32164pt too wide) in paragraph at lines 365--366
+\OT1/cmtt/m/n/12 ws://<GEOAWARENESS[]SERVICE[]IP>/ws/gas/\OMS/cmtt/m/n/12 f\OT1/cmtt/m/n/12 USPACE[]ID\OMS/cmtt/m/n/12 g
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 365--366
+\OT1/cmr/m/n/12 y re-trans-mite cada men-
+ []
+
+
+Underfull \hbox (badness 2753) in paragraph at lines 365--366
+\OT1/cmr/m/n/12 saje al cliente via SSE (\OT1/cmtt/m/n/12 GET
+ []
+
+
+Overfull \hbox (52.89186pt too wide) in paragraph at lines 365--366
+\OT1/cmtt/m/n/12 /api/geoawareness/stream/\OMS/cmtt/m/n/12 f\OT1/cmtt/m/n/12 uspaceId\OMS/cmtt/m/n/12 g\OT1/cmr/m/n/12 ).
+ []
+
+
+Overfull \hbox (35.77354pt too wide) in alignment at lines 362--367
+ [] [] [] [] 
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 372--372
+[]|\OT1/cmr/bx/n/12 Tipo de
+ []
+
+
+Overfull \hbox (35.77354pt too wide) in alignment at lines 370--374
+ [] [] [] [] 
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 376--376
+[]|\OT1/cmr/bx/n/12 Tipo de
+ []
+
+
+Overfull \hbox (35.77354pt too wide) in alignment at lines 374--378
+ [] [] [] [] 
+ []
+
+
+Overfull \hbox (35.77354pt too wide) in alignment at lines 378--380
+ [] [] [] [] 
+ []
+
+
+Overfull \hbox (35.77354pt too wide) in alignment at lines 380--382
+ [] [] [] [] 
+ []
+
+
+Underfull \hbox (badness 3179) in paragraph at lines 384--385
+[]|\OT1/cmr/m/n/12 Objeto de plan de-vuelto por
+ []
+
+
+Underfull \hbox (badness 2922) in paragraph at lines 390--391
+\OT1/cmtt/m/n/12 count \OT1/cmr/m/n/12 (ac-tu-al-izaci^^Son bulk) en
+ []
+
+
+Underfull \hbox (badness 2478) in paragraph at lines 392--393
+[]|\OT1/cmtt/m/n/12 GET $\OT1/cmtt/m/n/10.95 /api / csvResult ? id = . . .$ \OT1/cmr/m/n/12 de-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 394--395
+[]|\OT1/cmtt/m/n/12 POST $\OT1/cmtt/m/n/10.95 /api / csvResult$ \OT1/cmr/m/n/12 de-vuelve
+ []
+
+
+Overfull \hbox (47.97249pt too wide) in paragraph at lines 394--395
+\OMS/cmtt/m/n/12 f\OT1/cmtt/m/n/12 items:[\OMS/cmtt/m/n/12 f\OT1/cmtt/m/n/12 id,customName,csvResult\OMS/cmtt/m/n/12 g\OT1/cmtt/m/n/12 ]\OMS/cmtt/m/n/12 g\OT1/cmr/m/n/12 .| 
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 396--397
+[]|\OT1/cmtt/m/n/12 DELETE $\OT1/cmtt/m/n/10.95 /api / flightPlans$ \OT1/cmr/m/n/12 de-
+ []
+
+
+Overfull \hbox (26.38808pt too wide) in paragraph at lines 398--398
+[]|\OT1/cmr/m/n/12 application/json| 
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 398--399
+[]|\OT1/cmtt/m/n/12 POST $\OT1/cmtt/m/n/10.95 /api / flightPlans / <[]id >[]
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 398--399
+\OT1/cmtt/m/n/10.95 /uplan$ \OT1/cmr/m/n/12 de-vuelve \OMS/cmtt/m/n/12 f\OT1/cmtt/m/n/12 uplan,
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 400--401
+[]|\OT1/cmtt/m/n/12 POST $\OT1/cmtt/m/n/10.95 /api / flightPlans /
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 400--401
+\OT1/cmtt/m/n/10.95 <[]id >[] /geoawareness$ \OT1/cmr/m/n/12 de-vuelve
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 400--401
+\OT1/cmtt/m/n/12 geozones\OT1/cmr/m/n/12 , \OT1/cmtt/m/n/12 trajectory\OT1/cmr/m/n/12 ,
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 400--401
+\OT1/cmtt/m/n/12 uplan\OT1/cmr/m/n/12 , \OT1/cmtt/m/n/12 hasConflicts\OT1/cmr/m/n/12 ,
+ []
+
+
+Underfull \hbox (badness 2376) in paragraph at lines 402--403
+[]|\OT1/cmtt/m/n/12 POST $\OT1/cmtt/m/n/10.95 /api / auth / login$ \OT1/cmr/m/n/12 de-vuelve
+ []
+
+
+Overfull \hbox (35.77354pt too wide) in alignment at lines 382--404
+ [] [] [] [] 
+ []
+
+
+ignored: Infinite glue shrinkage found in box being split [12]
+Overfull \hbox (22.47993pt too wide) in paragraph at lines 410--411
+\OT1/cmr/m/n/12 El U-Plan se gen-era a par-tir del CSV y \OT1/cmtt/m/n/12 scheduledAt \OT1/cmr/m/n/12 y con-tiene una lista de \OT1/cmtt/m/n/12 operationVolumes
+ []
+
+[13]
+Overfull \hbox (14.11513pt too wide) in paragraph at lines 424--425
+[]\OT1/cmr/bx/n/12 Navegador $\OMS/cmtt/m/n/12 !$ \OT1/cmr/bx/n/12 Back-end (SSE)\OT1/cmr/m/n/12 : \OT1/cmtt/m/n/12 GET /api/geoawareness/stream/\OMS/cmtt/m/n/12 f\OT1/cmtt/m/n/12 uspaceId\OMS/cmtt/m/n/12 g
+ []
+
+
+Overfull \hbox (129.72089pt too wide) in paragraph at lines 425--426
+[]\OT1/cmr/bx/n/12 Backend $\OMS/cmtt/m/n/12 !$ \OT1/cmr/bx/n/12 Geoaware-ness (WS in-terno)\OT1/cmr/m/n/12 : \OT1/cmtt/m/n/12 ws://<GEOAWARENESS[]SERVICE[]IP>/ws/gas/\OMS/cmtt/m/n/12 f\OT1/cmtt/m/n/12 uspaceId\OMS/cmtt/m/n/12 g
+ []
+
+
+Overfull \hbox (24.42894pt too wide) in paragraph at lines 430--431
+[]\OT1/cmr/bx/n/12 (Deprecated) UPPS $\OMS/cmtt/m/n/12 !$ \OT1/cmr/bx/n/12 Geoaware-ness HTTP\OT1/cmr/m/n/12 : El end-point HTTP \OT1/cmtt/m/n/12 POST $\OT1/cmtt/m/n/10.95 /geozones \
+ []
+
+
+Overfull \hbox (68.54079pt too wide) in paragraph at lines 431--432
+[]\OT1/cmr/bx/n/12 (Opcional) noVNC/QGroundControl\OT1/cmr/m/n/12 : la UI in-cluye un \OT1/cmtt/m/n/12 iframe \OT1/cmr/m/n/12 a \OT1/cmtt/m/n/12 http://localhost:6080/\OT1/cmr/m/n/12 .
+ []
+
+
+Overfull \hbox (6.12175pt too wide) in paragraph at lines 447--448
+[]\OT1/cmtt/m/n/12 flightPlan.status\OT1/cmr/m/n/12 : \OT1/cmtt/m/n/12 sin procesar\OT1/cmr/m/n/12 , \OT1/cmtt/m/n/12 en cola\OT1/cmr/m/n/12 , \OT1/cmtt/m/n/12 procesando\OT1/cmr/m/n/12 , \OT1/cmtt/m/n/12 procesado\OT1/cmr/m/n/12 , \OT1/cmtt/m/n/12 error\OT1/cmr/m/n/12 . 
+ []
+
+[14]
+Overfull \hbox (1.05508pt too wide) in paragraph at lines 465--466
+[]\OT1/cmr/bx/n/12 Polling de es-tado de planes\OT1/cmr/m/n/12 : el hook \OT1/cmtt/m/n/12 useFlightPlans \OT1/cmr/m/n/12 ac-tu-al-iza au-tom^^Saticamente
+ []
+
+
+Overfull \hbox (29.43689pt too wide) in paragraph at lines 474--475
+[]\OT1/cmr/m/n/12 Se aplica en: \OT1/cmtt/m/n/12 parseCSVToTrajectory \OT1/cmr/m/n/12 (Geoaware-nessViewer, Tra-jec-to-ryMapViewer). 
+ []
+
+
+Overfull \hbox (26.11177pt too wide) in paragraph at lines 482--483
+[]$\OT1/cmtt/m/n/10.95 /api / flightPlans$\OT1/cmr/m/n/12 : el end-point acepta hasta \OT1/cmtt/m/n/12 100000 \OT1/cmr/m/n/12 IDs en ac-tu-al-iza-ciones/borrados
+ []
+
+[15]
+Overfull \hbox (33.04227pt too wide) in paragraph at lines 502--503
+[]\OT1/cmr/m/n/12 Si to-dos los rein-ten-tos fal-lan con 500: Plan per-manece en es-tado \OT1/cmtt/m/n/12 "sin autorizaci^^Son"
+ []
+
+
+Overfull \hbox (30.01396pt too wide) in paragraph at lines 503--504
+[]\OT1/cmr/bx/n/12 Errores 400/404/otros\OT1/cmr/m/n/12 : Mar-can el plan como \OT1/cmtt/m/n/12 authorizationStatus="denegado"
+ []
+
+
+Overfull \hbox (6.18071pt too wide) in paragraph at lines 516--517
+[]\OT1/cmtt/m/n/12 machine-cleaner.js \OT1/cmr/m/n/12 borra to-das las m^^Saquinas y reen-cola planes en \OT1/cmtt/m/n/12 procesando
+ []
+
+[16]
+Overfull \hbox (8.56708pt too wide) in paragraph at lines 534--535
+[]\OT1/cmr/bx/n/12 Perfil de usuario\OT1/cmr/m/n/12 : Cam-pos \OT1/cmtt/m/n/12 firstName\OT1/cmr/m/n/12 , \OT1/cmtt/m/n/12 lastName\OT1/cmr/m/n/12 , \OT1/cmtt/m/n/12 phone\OT1/cmr/m/n/12 ; end-points \OT1/cmtt/m/n/12 GET/PATCH
+ []
+
+
+Overfull \hbox (1.01997pt too wide) in paragraph at lines 539--540
+[]\OT1/cmr/bx/n/12 Visores 3D Ce-siumJS\OT1/cmr/m/n/12 : \OT1/cmtt/m/n/12 Cesium3DModal \OT1/cmr/m/n/12 (vol^^Sumenes op-er-a-tivos + OSM Build-
+ []
+
+
+Overfull \hbox (109.90303pt too wide) in paragraph at lines 539--540
+\OT1/cmr/m/n/12 ings + slider 4D); \OT1/cmtt/m/n/12 Denial3DModal \OT1/cmr/m/n/12 (pri-mas 3D de geo-zonas con-flic-ti-vas); \OT1/cmtt/m/n/12 AuthorizationResultModal
+ []
+
+
+Overfull \hbox (82.50067pt too wide) in paragraph at lines 540--541
+[]\OT1/cmr/bx/n/12 Contacto\OT1/cmr/m/n/12 : P^^Sagina \OT1/cmtt/m/n/12 /contact-us\OT1/cmr/m/n/12 ; end-point \OT1/cmtt/m/n/12 POST /api/contact\OT1/cmr/m/n/12 ; tick-ets \OT1/cmtt/m/n/12 UPPS-AAAAMMDD-XXXX\OT1/cmr/m/n/12 . 
+ []
+
+
+Overfull \hbox (53.37187pt too wide) in paragraph at lines 543--544
+[]\OT1/cmr/bx/n/12 Fix Ce-sium as-sets\OT1/cmr/m/n/12 : \OT1/cmtt/m/n/12 postinstall\OT1/cmr/m/n/12 /\OT1/cmtt/m/n/12 prebuild \OT1/cmr/m/n/12 copian di-rec-to-rio com-pleto \OT1/cmtt/m/n/12 Build/Cesium/
+ []
+
+
+Overfull \hbox (60.11644pt too wide) in paragraph at lines 544--545
+\OT1/cmtt/m/n/12 /api/contact\OT1/cmr/m/n/12 , \OT1/cmtt/m/n/12 GET /api/cesium/token\OT1/cmr/m/n/12 , \OT1/cmtt/m/n/12 GET /api/geoawareness/stream/[uspaceId]\OT1/cmr/m/n/12 . 
+ []
+
+[17]
+Overfull \hbox (1.26399pt too wide) in paragraph at lines 551--552
+[]\OT1/cmr/m/n/12 Eliminaci^^Son de secci^^Son Flight Plan De-tails de Plan Def-i-ni-tion ($\OMS/cmtt/m/n/12 ^^X$\OT1/cmr/m/n/12 840 l^^S^^Pneas). 
+ []
+
+
+Overfull \hbox (137.98506pt too wide) in paragraph at lines 556--557
+[]\OT1/cmr/bx/n/12 Fix ren-der-izado con-tinuo en \OT1/cmtt/m/n/12 Cesium3DModal \OT1/cmr/m/n/12 (F38): Se ac-tiva \OT1/cmtt/m/n/12 viewer.scene.requestRenderMode
+ []
+
+
+Overfull \hbox (36.8398pt too wide) in paragraph at lines 558--559
+\OT1/cmr/m/n/12 CSS con \OT1/cmtt/m/n/12 background: #1e1e1e !important; color: #e0e0e0 !important;
+ []
+
+
+Overfull \hbox (69.64157pt too wide) in paragraph at lines 558--559
+\OT1/cmr/m/n/12 cinco vi-sores Ce-siumJS (\OT1/cmtt/m/n/12 Cesium3DModal\OT1/cmr/m/n/12 , \OT1/cmtt/m/n/12 Denial3DModal\OT1/cmr/m/n/12 , \OT1/cmtt/m/n/12 AuthorizationResultModal\OT1/cmr/m/n/12 ,
+ []
+
+c:/Users/ASANMAR4/Desktop/uas-planner/SPIRIT_ICD_UPPS_V2_4_0.tex:561: Undefined control sequence.
+l.561 ...L calculadas expl√≠citamente (\( h_{\text
+                                                  {AMSL}} = h_{\text{terreno...
+The control sequence at the end of the top line
+of your error message was never \def'ed. If you have
+misspelled it (e.g., `\hobx'), type `I' and the correct
+spelling (e.g., `I\hbox'). Otherwise just continue,
+and I'll forget about whatever was undefined.
+
+c:/Users/ASANMAR4/Desktop/uas-planner/SPIRIT_ICD_UPPS_V2_4_0.tex:561: Undefined control sequence.
+l.561 ...≠citamente (\( h_{\text{AMSL}} = h_{\text
+                                                  {terreno}} + h_{\text{AGL}...
+The control sequence at the end of the top line
+of your error message was never \def'ed. If you have
+misspelled it (e.g., `\hobx'), type `I' and the correct
+spelling (e.g., `I\hbox'). Otherwise just continue,
+and I'll forget about whatever was undefined.
+
+c:/Users/ASANMAR4/Desktop/uas-planner/SPIRIT_ICD_UPPS_V2_4_0.tex:561: Undefined control sequence.
+l.561 ...xt{AMSL}} = h_{\text{terreno}} + h_{\text
+                                                  {AGL}} \)); esto corrige l...
+The control sequence at the end of the top line
+of your error message was never \def'ed. If you have
+misspelled it (e.g., `\hobx'), type `I' and the correct
+spelling (e.g., `I\hbox'). Otherwise just continue,
+and I'll forget about whatever was undefined.
+
+
+Overfull \hbox (5.36258pt too wide) in paragraph at lines 561--562
+\OT1/cmr/bx/n/12 3D \OT1/cmr/m/n/12 (F42): Los vol^^Sumenes de op-eraci^^Son de U-Plan en \OT1/cmtt/m/n/12 Geoawareness3DModal
+ []
+
+
+Overfull \hbox (35.69374pt too wide) in paragraph at lines 561--562
+\OT1/cmr/m/n/12 se con-vierten de AGL a AMSL me-di-ante \OT1/cmtt/m/n/12 Cesium.sampleTerrainMostDetailed()
+ []
+
+
+Overfull \hbox (9.47205pt too wide) in paragraph at lines 561--562
+\OT1/cmtt/m/n/12 RELATIVE[]TO[]GROUND \OT1/cmr/m/n/12 y \OT1/cmtt/m/n/12 extrudedHeightReference: RELATIVE[]TO[]GROUND
+ []
+
+
+Overfull \hbox (30.28862pt too wide) in paragraph at lines 563--564
+[]\OT1/cmr/bx/n/12 Nuevos end-points (Sprint 4)\OT1/cmr/m/n/12 : \OT1/cmtt/m/n/12 GET/POST /api/user/drafts\OT1/cmr/m/n/12 , \OT1/cmtt/m/n/12 GET/PATCH/DELETE
+ []
+
+[18]
+Overfull \hbox (1.10948pt too wide) in paragraph at lines 589--590
+[]\OT1/cmr/bx/n/12 Geoawareness avan-zado\OT1/cmr/m/n/12 : Auto-centrado de mapa en trayec-to-ria, mar-cadores
+ []
+
+
+Overfull \hbox (58.19681pt too wide) in paragraph at lines 594--595
+[]\OT1/cmr/bx/n/12 Arquitectura mod-u-lar\OT1/cmr/m/n/12 : Com-po-nentes or-ga-ni-za-dos en \OT1/cmtt/m/n/12 app/components/flight-plans/
+ []
+
+[19]
+Overfull \hbox (4.89009pt too wide) in paragraph at lines 597--598
+[]\OT1/cmtt/m/n/12 POST /api/flightPlans/regenerate-volumes\OT1/cmr/m/n/12 : Re-gen-eraci^^Son au-tom^^Satica
+ []
+
+
+Overfull \hbox (23.81415pt too wide) in paragraph at lines 599--600
+[]\OT1/cmr/m/n/12 Mejoras en fil-trado de planes proce-sa-dos (\OT1/cmtt/m/n/12 status='procesado'\OT1/cmr/m/n/12 , \OT1/cmtt/m/n/12 csvResult=1\OT1/cmr/m/n/12 ). 
+ []
+
+
+Overfull \hbox (66.64308pt too wide) in paragraph at lines 615--616
+[]\OT1/cmr/m/n/12 El end-point HTTP de geoaware-ness est^^Sa movido a $\OT1/cmtt/m/n/10.95 /api / deprecated / geoawareness-[]geozones$
+ []
+
+
+Overfull \hbox (33.54721pt too wide) in paragraph at lines 630--631
+[]\OT1/cmr/m/n/12 El nave-g-ador abre \OT1/cmtt/m/n/12 GET /api/geoawareness/stream/\OMS/cmtt/m/n/12 f\OT1/cmtt/m/n/12 uspaceId\OMS/cmtt/m/n/12 g \OT1/cmr/m/n/12 como \OT1/cmtt/m/n/12 EventSource
+ []
+
+
+Overfull \hbox (106.96466pt too wide) in paragraph at lines 631--632
+[]\OT1/cmr/m/n/12 El back-end Next.js (run-time Node.js) abre \OT1/cmtt/m/n/12 ws://<GEOAWARENESS[]SERVICE[]IP>/ws/gas/\OMS/cmtt/m/n/12 f\OT1/cmtt/m/n/12 uspaceId\OMS/cmtt/m/n/12 g
+ []
+
+[20]
+Overfull \hbox (6.37648pt too wide) in paragraph at lines 646--647
+[]\OT1/cmr/bx/n/12 Headers\OT1/cmr/m/n/12 : \OT1/cmtt/m/n/12 Cache-Control: no-cache, no-transform\OT1/cmr/m/n/12 , \OT1/cmtt/m/n/12 X-Accel-Buffering: no 
+ []
+
+[21]
+Overfull \hbox (9.14719pt too wide) in alignment at lines 671--675
+ [] [] [] 
+ []
+
+
+Overfull \hbox (9.14719pt too wide) in alignment at lines 675--679
+ [] [] [] 
+ []
+
+
+Overfull \hbox (9.14719pt too wide) in alignment at lines 679--681
+ [] [] [] 
+ []
+
+
+Overfull \hbox (9.14719pt too wide) in alignment at lines 681--683
+ [] [] [] 
+ []
+
+
+Underfull \hbox (badness 5592) in paragraph at lines 686--686
+[]|\OT1/cmr/m/n/12 String (ISO-
+ []
+
+
+Overfull \hbox (9.14719pt too wide) in alignment at lines 683--688
+ [] [] [] 
+ []
+
+
+Overfull \hbox (9.14719pt too wide) in alignment at lines 693--697
+ [] [] [] 
+ []
+
+
+Overfull \hbox (9.14719pt too wide) in alignment at lines 697--701
+ [] [] [] 
+ []
+
+
+Overfull \hbox (9.14719pt too wide) in alignment at lines 701--703
+ [] [] [] 
+ []
+
+
+Overfull \hbox (9.14719pt too wide) in alignment at lines 703--705
+ [] [] [] 
+ []
+
+
+Underfull \hbox (badness 2799) in paragraph at lines 710--711
+[]|\OT1/cmr/m/n/12 Bounding box [min-Lon, min-Lat, maxLon,
+ []
+
+
+Overfull \hbox (23.10562pt too wide) in paragraph at lines 720--720
+[]|\OT1/cmr/m/n/12 geometry.verticalReference| 
+ []
+
+
+Overfull \hbox (9.14719pt too wide) in alignment at lines 705--734
+ [] [] [] 
+ []
+
+
+Overfull \hbox (9.14719pt too wide) in alignment at lines 737--741
+ [] [] [] 
+ []
+
+
+Overfull \hbox (9.14719pt too wide) in alignment at lines 741--745
+ [] [] [] 
+ []
+
+
+Overfull \hbox (9.14719pt too wide) in alignment at lines 745--747
+ [] [] [] 
+ []
+
+
+Overfull \hbox (9.14719pt too wide) in alignment at lines 747--749
+ [] [] [] 
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 752--753
+[]|\OT1/cmr/m/n/12 Referencia del l^^S^^Pmite su-pe-rior (``AGL'',
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 756--757
+[]|\OT1/cmr/m/n/12 Referencia del l^^S^^Pmite in-fe-rior (``AGL'',
+ []
+
+
+Overfull \hbox (9.14719pt too wide) in alignment at lines 749--760
+ [] [] [] 
+ []
+
+
+Overfull \hbox (9.14719pt too wide) in alignment at lines 763--767
+ [] [] [] 
+ []
+
+
+Overfull \hbox (9.14719pt too wide) in alignment at lines 767--771
+ [] [] [] 
+ []
+
+
+Overfull \hbox (9.14719pt too wide) in alignment at lines 771--773
+ [] [] [] 
+ []
+
+
+Overfull \hbox (9.14719pt too wide) in alignment at lines 773--775
+ [] [] [] 
+ []
+
+
+Overfull \hbox (9.14719pt too wide) in alignment at lines 775--790
+ [] [] [] 
+ []
+
+[22]
+Overfull \hbox (9.14719pt too wide) in alignment at lines 793--797
+ [] [] [] 
+ []
+
+
+Overfull \hbox (9.14719pt too wide) in alignment at lines 797--801
+ [] [] [] 
+ []
+
+
+Overfull \hbox (9.14719pt too wide) in alignment at lines 801--803
+ [] [] [] 
+ []
+
+
+Overfull \hbox (9.14719pt too wide) in alignment at lines 803--805
+ [] [] [] 
+ []
+
+
+Overfull \hbox (9.14719pt too wide) in alignment at lines 805--822
+ [] [] [] 
+ []
+
+
+Overfull \hbox (9.14719pt too wide) in alignment at lines 825--829
+ [] [] [] 
+ []
+
+
+Overfull \hbox (9.14719pt too wide) in alignment at lines 829--833
+ [] [] [] 
+ []
+
+
+Overfull \hbox (9.14719pt too wide) in alignment at lines 833--835
+ [] [] [] 
+ []
+
+
+Overfull \hbox (9.14719pt too wide) in alignment at lines 835--837
+ [] [] [] 
+ []
+
+
+Underfull \hbox (badness 5592) in paragraph at lines 838--838
+[]|\OT1/cmr/m/n/12 String (ISO-
+ []
+
+
+Underfull \hbox (badness 5592) in paragraph at lines 840--840
+[]|\OT1/cmr/m/n/12 String (ISO-
+ []
+
+
+Overfull \hbox (9.14719pt too wide) in alignment at lines 837--852
+ [] [] [] 
+ []
+
+[23]
+LaTeX Font Info:    Font shape `OT1/cmtt/bx/n' in size <14.4> not available
+(Font)              Font shape `OT1/cmtt/m/n' tried instead on input line 911.
+ [24]
+Overfull \hbox (21.41833pt too wide) in paragraph at lines 916--917
+[]\OT1/cmtt/m/n/12 GEOAWARENESS[]ENDPOINT \OT1/cmr/m/n/12 (op-cional): pre-fijo del path Web-Socket (por de-fecto: \OT1/cmtt/m/n/12 ws/gas/\OT1/cmr/m/n/12 ). 
+ []
+
+
+Overfull \hbox (51.87724pt too wide) in paragraph at lines 919--920
+[]\OT1/cmtt/m/n/12 MAILERSEND[]SENDER[]EMAIL \OT1/cmr/m/n/12 (op-cional): Email del re-mi-tente (por de-fecto: \OT1/cmtt/m/n/12 UPPS@sna-upv.com\OT1/cmr/m/n/12 ). 
+ []
+
+
+Overfull \hbox (41.44612pt too wide) in paragraph at lines 932--933
+[]\OT1/cmtt/m/n/12 POST $\OT1/cmtt/m/n/10.95 /api / flightPlans / regenerate-[]volumes$ \OT1/cmr/m/n/12 (v2.0: re-gen-eraci^^Son au-tom^^Satica de vol^^Sumenes) 
+ []
+
+
+Overfull \hbox (30.31749pt too wide) in paragraph at lines 934--935
+[]\OT1/cmtt/m/n/12 POST $\OT1/cmtt/m/n/10.95 /api / flightPlans / <[]id >[] /generate-[]volumes$ \OT1/cmr/m/n/12 (gen-eraci^^Son bajo de-manda de vol^^Sumenes
+ []
+
+[25]
+Overfull \hbox (12.9274pt too wide) in paragraph at lines 964--965
+[]\OT1/cmtt/m/n/12 GET /api/geoawareness/stream/\OMS/cmtt/m/n/12 f\OT1/cmtt/m/n/12 uspaceId\OMS/cmtt/m/n/12 g \OT1/cmr/m/n/12 -- Proxy SSE de Geoaware-ness (v2.2.0).
+ []
+
+
+Overfull \hbox (19.3059pt too wide) in paragraph at lines 964--965
+\OT1/cmr/m/n/12 El back-end abre in-ter-na-mente \OT1/cmtt/m/n/12 ws://<GEOAWARENESS[]SERVICE[]IP>/ws/gas/\OMS/cmtt/m/n/12 f\OT1/cmtt/m/n/12 uspaceId\OMS/cmtt/m/n/12 g
+ []
+
+
+Overfull \hbox (60.43257pt too wide) in paragraph at lines 965--966
+[]\OT1/cmr/bx/n/12 (Servidor in-terno, no ex-puesto)\OT1/cmr/m/n/12 : \OT1/cmtt/m/n/12 ws://<GEOAWARENESS[]SERVICE[]IP>/ws/gas/\OMS/cmtt/m/n/12 f\OT1/cmtt/m/n/12 USPACE[]ID\OMS/cmtt/m/n/12 g
+ []
+
+[26]
+Overfull \hbox (18.5731pt too wide) in paragraph at lines 971--972
+[]\OT1/cmr/m/n/12 El cliente web conecta al proxy SSE back-end \OT1/cmtt/m/n/12 /api/geoawareness/stream/\OMS/cmtt/m/n/12 f\OT1/cmtt/m/n/12 USPACE[]ID\OMS/cmtt/m/n/12 g
+ []
+
+
+Overfull \hbox (141.54073pt too wide) in paragraph at lines 974--975
+[]\OT1/cmr/m/n/12 Tras subir, la app navega au-tom^^Saticamente a \OT1/cmr/bx/n/12 Plan Au-tho-riza-tion \OT1/cmr/m/n/12 (\OT1/cmtt/m/n/12 /plan-authorization?selectPlan=<id>\OT1/cmr/m/n/12 )
+ []
+
+[27]
+Overfull \hbox (2.55244pt too wide) in paragraph at lines 1011--1012
+[]\OT1/cmtt/m/n/12 GeoawarenessViewer\OT1/cmr/m/n/12 : Vi-su-al-izador de trayec-to-ria so-bre geo-zonas con SSE en tiempo
+ []
+
+
+Overfull \hbox (3.82352pt too wide) in paragraph at lines 1018--1019
+[]\OT1/cmtt/m/n/12 UplanFormModal\OT1/cmr/m/n/12 : For-mu-la-rio de edici^^Son de cam-pos U-Plan (con tooltips \OT1/cmtt/m/n/12 FieldHelp\OT1/cmr/m/n/12 ). 
+ []
+
+[28]
+Overfull \hbox (40.41248pt too wide) in paragraph at lines 1059--1060
+[]\OT1/cmr/bx/n/12 Nuevos cam-pos en \OT1/cmtt/m/n/12 flightPlan\OT1/cmr/m/n/12 : \OT1/cmtt/m/n/12 activationStatus\OT1/cmr/m/n/12 , \OT1/cmtt/m/n/12 activatedAt\OT1/cmr/m/n/12 , \OT1/cmtt/m/n/12 activationMessage\OT1/cmr/m/n/12 ,
+ []
+
+
+Overfull \hbox (12.65129pt too wide) in paragraph at lines 1059--1060
+\OT1/cmtt/m/n/12 termsAcceptedAt\OT1/cmr/m/n/12 , \OT1/cmtt/m/n/12 lastActivationAttempt\OT1/cmr/m/n/12 . Es-ta-dos posi-bles de \OT1/cmtt/m/n/12 activationStatus\OT1/cmr/m/n/12 :
+ []
+
+c:/Users/ASANMAR4/Desktop/uas-planner/SPIRIT_ICD_UPPS_V2_4_0.tex:1061: Undefined control sequence.
+l.1061 ...ctivate}}: Valida ventana $\pm 60\,\text
+                                                  {s}$ respecto a \texttt{sc...
+The control sequence at the end of the top line
+of your error message was never \def'ed. If you have
+misspelled it (e.g., `\hobx'), type `I' and the correct
+spelling (e.g., `I\hbox'). Otherwise just continue,
+and I'll forget about whatever was undefined.
+
+
+Overfull \hbox (31.77489pt too wide) in paragraph at lines 1061--1062
+[]\OT1/cmtt/m/n/12 POST /api/flightPlans/[id]/activate\OT1/cmr/m/n/12 : Val-ida ven-tana $\OMS/cmtt/m/n/12 ^^F\OT1/cmr/m/n/12 60 \OML/cmm/m/it/12 s$ \OT1/cmr/m/n/12 re-specto a \OT1/cmtt/m/n/12 scheduledAt\OT1/cmr/m/n/12 ,
+ []
+
+c:/Users/ASANMAR4/Desktop/uas-planner/SPIRIT_ICD_UPPS_V2_4_0.tex:1062: Undefined control sequence.
+l.1062 ...ados con \texttt{scheduledAt} en $[\text
+                                                  {now}-1\text{h},\,\text{no...
+The control sequence at the end of the top line
+of your error message was never \def'ed. If you have
+misspelled it (e.g., `\hobx'), type `I' and the correct
+spelling (e.g., `I\hbox'). Otherwise just continue,
+and I'll forget about whatever was undefined.
+
+c:/Users/ASANMAR4/Desktop/uas-planner/SPIRIT_ICD_UPPS_V2_4_0.tex:1062: Undefined control sequence.
+l.1062 ...xttt{scheduledAt} en $[\text{now}-1\text
+                                                  {h},\,\text{now}+24\text{h...
+The control sequence at the end of the top line
+of your error message was never \def'ed. If you have
+misspelled it (e.g., `\hobx'), type `I' and the correct
+spelling (e.g., `I\hbox'). Otherwise just continue,
+and I'll forget about whatever was undefined.
+
+c:/Users/ASANMAR4/Desktop/uas-planner/SPIRIT_ICD_UPPS_V2_4_0.tex:1062: Undefined control sequence.
+l.1062 ...ledAt} en $[\text{now}-1\text{h},\,\text
+                                                  {now}+24\text{h}]$.
+The control sequence at the end of the top line
+of your error message was never \def'ed. If you have
+misspelled it (e.g., `\hobx'), type `I' and the correct
+spelling (e.g., `I\hbox'). Otherwise just continue,
+and I'll forget about whatever was undefined.
+
+c:/Users/ASANMAR4/Desktop/uas-planner/SPIRIT_ICD_UPPS_V2_4_0.tex:1062: Undefined control sequence.
+l.1062 ...text{now}-1\text{h},\,\text{now}+24\text
+                                                  {h}]$.
+The control sequence at the end of the top line
+of your error message was never \def'ed. If you have
+misspelled it (e.g., `\hobx'), type `I' and the correct
+spelling (e.g., `I\hbox'). Otherwise just continue,
+and I'll forget about whatever was undefined.
+
+
+Overfull \hbox (5.6593pt too wide) in paragraph at lines 1062--1063
+[]\OT1/cmtt/m/n/12 GET /api/flightPlans/active\OT1/cmr/m/n/12 : Lista planes aproba-dos con \OT1/cmtt/m/n/12 scheduledAt \OT1/cmr/m/n/12 en $[[] \OMS/cmtt/m/n/12 ^^@
+ []
+
+c:/Users/ASANMAR4/Desktop/uas-planner/SPIRIT_ICD_UPPS_V2_4_0.tex:1064: Undefined control sequence.
+l.1064 ...os activables'' (filtrado $\pm 60\,\text
+                                                  {s}$ en cliente con tick d...
+The control sequence at the end of the top line
+of your error message was never \def'ed. If you have
+misspelled it (e.g., `\hobx'), type `I' and the correct
+spelling (e.g., `I\hbox'). Otherwise just continue,
+and I'll forget about whatever was undefined.
+
+
+Overfull \hbox (17.45644pt too wide) in paragraph at lines 1065--1066
+[]\OT1/cmtt/m/n/12 ActivateFlightModal\OT1/cmr/m/n/12 : Carga T&C del FAS en \OT1/cmtt/m/n/12 JsonViewerSections\OT1/cmr/m/n/12 , ex-ige aceptaci^^Son
+ []
+
+[29]
+Overfull \hbox (5.24901pt too wide) in paragraph at lines 1074--1075
+[]\OT1/cmr/bx/n/12 Correcci^^Son del er-ror SSR de Leaflet \OT1/cmr/m/n/12 (\OT1/cmtt/m/n/12 fix(ui)\OT1/cmr/m/n/12 ): El com-po-nente \OT1/cmtt/m/n/12 DenialMapModal
+ []
+
+
+Overfull \hbox (14.76996pt too wide) in paragraph at lines 1074--1075
+\OT1/cmr/m/n/12 im-portaba \OT1/cmtt/m/n/12 react-leaflet \OT1/cmr/m/n/12 di-rec-ta-mente, provo-cando el er-ror \OT1/cmtt/m/n/12 window is not defined
+ []
+
+
+Overfull \hbox (33.08755pt too wide) in paragraph at lines 1074--1075
+\OT1/cmr/m/n/12 ciones din^^Samicas (\OT1/cmtt/m/n/12 ssr: false\OT1/cmr/m/n/12 ), sigu-iendo el patr^^Son ya pre-sente en \OT1/cmtt/m/n/12 TrajectoryMapViewer
+ []
+
+c:/Users/ASANMAR4/Desktop/uas-planner/SPIRIT_ICD_UPPS_V2_4_0.tex:1079: Undefined control sequence.
+l.1079 ...s. Convierte coordenadas GeoJSON $[\text
+                                                  {lon}, \text{lat}, \text{a...
+The control sequence at the end of the top line
+of your error message was never \def'ed. If you have
+misspelled it (e.g., `\hobx'), type `I' and the correct
+spelling (e.g., `I\hbox'). Otherwise just continue,
+and I'll forget about whatever was undefined.
+
+c:/Users/ASANMAR4/Desktop/uas-planner/SPIRIT_ICD_UPPS_V2_4_0.tex:1079: Undefined control sequence.
+l.1079 ... coordenadas GeoJSON $[\text{lon}, \text
+                                                  {lat}, \text{alt}]$ a \tex...
+The control sequence at the end of the top line
+of your error message was never \def'ed. If you have
+misspelled it (e.g., `\hobx'), type `I' and the correct
+spelling (e.g., `I\hbox'). Otherwise just continue,
+and I'll forget about whatever was undefined.
+
+c:/Users/ASANMAR4/Desktop/uas-planner/SPIRIT_ICD_UPPS_V2_4_0.tex:1079: Undefined control sequence.
+l.1079 ... GeoJSON $[\text{lon}, \text{lat}, \text
+                                                  {alt}]$ a \texttt{\{lat, l...
+The control sequence at the end of the top line
+of your error message was never \def'ed. If you have
+misspelled it (e.g., `\hobx'), type `I' and the correct
+spelling (e.g., `I\hbox'). Otherwise just continue,
+and I'll forget about whatever was undefined.
+
+
+Overfull \hbox (24.24095pt too wide) in paragraph at lines 1080--1081
+\OT1/cmr/m/n/12 eraci^^Son de planes \OT1/cmtt/m/n/12 .plan \OT1/cmr/m/n/12 (QGround-Con-trol) a una li-brer^^S^^Pa in-de-pen-di-ente (\OT1/cmtt/m/n/12 buildQgcPlan\OT1/cmr/m/n/12 ).
+ []
+
+[30] [31] (./SPIRIT_ICD_UPPS_V2_4_0.aux)
+ ***********
+LaTeX2e <2025-11-01>
+L3 programming layer <2026-03-20>
+ ***********
+
+
+LaTeX Font Warning: Some font shapes were not available, defaults substituted.
+
+
+LaTeX Warning: There were undefined references.
+
+
+LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
+
+
+Package rerunfilecheck Warning: File `SPIRIT_ICD_UPPS_V2_4_0.out' has changed.
+(rerunfilecheck)                Rerun to get outlines right
+(rerunfilecheck)                or use package `bookmark'.
+
+Package rerunfilecheck Info: Checksums for `SPIRIT_ICD_UPPS_V2_4_0.out':
+(rerunfilecheck)             Before: <no file>
+(rerunfilecheck)             After:  543A20D27FE3C775864ABD9676FBC708;4729.
+ ) 
+Here is how much of TeX's memory you used:
+ 11026 strings out of 467349
+ 165904 string characters out of 5419862
+ 794549 words of memory out of 5000000
+ 39875 multiletter control sequences out of 15000+600000
+ 635163 words of font info for 66 fonts, out of 8000000 for 9000
+ 1141 hyphenation exceptions out of 8191
+ 75i,7n,79p,756b,1135s stack positions out of 10000i,1000n,20000p,200000b,200000s
+<c:/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb><c:/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi12.pfb><c:/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb><c:/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb><c:/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb><c:/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmr17.pfb><c:/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb><c:/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmti12.pfb><c:/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt10.pfb><c:/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt12.pfb><c:/texlive/2026/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt8.pfb><c:/texlive/2026/texmf-dist/fonts/type1/public/cm-super/sfrm1200.pfb>
+Output written on SPIRIT_ICD_UPPS_V2_4_0.pdf (31 pages, 242793 bytes).
+PDF statistics:
+ 359 PDF objects out of 1000 (max. 8388607)
+ 299 compressed objects within 3 object streams
+ 157 named destinations out of 1000 (max. 500000)
+ 1 words of extra memory for PDF output out of 10000 (max. 10000000)
+

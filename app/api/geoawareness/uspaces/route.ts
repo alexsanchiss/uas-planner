@@ -78,6 +78,17 @@ function getTestUspaces(): USpace[] {
         { latitude: 39.4150, longitude: -0.4257 },
       ],
     },
+    {
+      id: 'MUSUspace',
+      name: 'MUSUspace',
+      boundary: [
+        { latitude: 39.568707, longitude: -0.380841 }, // Suroeste (Inicio)
+        { latitude: 39.568707, longitude: -0.347210 }, // Sureste
+        { latitude: 39.589510, longitude: -0.347210 }, // Noreste
+        { latitude: 39.589510, longitude: -0.380841 }, // Noroeste
+        { latitude: 39.568707, longitude: -0.380841 }, // Suroeste (Cierre)
+      ],
+    },
   ]
 }
 

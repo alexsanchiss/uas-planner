@@ -1,33 +1,7 @@
-/**
- * Flight Plan Activation API - App Router
- *
- * Validates the activation window and calls the FAS activation endpoint.
- *
- * Authentication: Bearer token required (JWT)
- * Authorization: User can only activate their own flight plans
- *
- * Endpoint:
- * - POST /api/flightPlans/[id]/activate
- *
- * Workflow:
- * 1. Authenticate + parse id
- * 2. Validate body: termsAccepted must be true
- * 3. Fetch flight plan, verify ownership and authorizationStatus === 'aprobado'
- * 4. Check cooldown (5 s between attempts)
- * 5. Check activation window (scheduledAt ± 60 s)
- * 6. Persist attempt start to DB
- * 7. Call FAS GET /activation/<externalResponseNumber> (10 s timeout)
- * 8. Persist result and return
- */
-
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { withAuth, isAuthError } from '@/lib/auth-middleware';
+import { withMachineAuth, isMachineAuthError } from '@/lib/machine-auth-middleware';
 
-/**
- * FAS API base URL derived from the FAS_API_URL env var.
- * The env var typically ends in /uplan; we strip that suffix to get the host root.
- */
 const FAS_API_URL = process.env.FAS_API_URL || 'http://158.42.167.56:8000/uplan';
 
 function getFasBaseUrl(): string {
@@ -39,35 +13,24 @@ function getFasBaseUrl(): string {
   }
 }
 
-/**
- * Params type for dynamic route
- */
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-/**
- * Parse and validate the flight plan ID from route params.
- */
 function parseId(idParam: string): number | null {
   const id = parseInt(idParam, 10);
   return Number.isFinite(id) && id > 0 ? id : null;
 }
 
-/**
- * POST /api/flightPlans/[id]/activate
- */
 export async function POST(
   request: NextRequest,
   { params }: RouteParams,
 ): Promise<NextResponse> {
-  // ── 1. Auth ──────────────────────────────────────────────────────────────────
-  const auth = await withAuth(request);
-  if (isAuthError(auth)) {
+  const auth = withMachineAuth(request);
+  if (isMachineAuthError(auth)) {
     return auth;
   }
 
-  const { userId } = auth;
   const { id: idParam } = await params;
   const id = parseId(idParam);
 
@@ -78,7 +41,6 @@ export async function POST(
     );
   }
 
-  // ── 2. Body validation ───────────────────────────────────────────────────────
   let body: unknown;
   try {
     body = await request.json();
@@ -89,10 +51,16 @@ export async function POST(
     );
   }
 
-  const termsAccepted =
-    body !== null &&
-    typeof body === 'object' &&
-    (body as Record<string, unknown>).termsAccepted === true;
+  const payload = body as Record<string, unknown>;
+  const email = typeof payload.email === 'string' ? payload.email : null;
+  const termsAccepted = payload.termsAccepted === true;
+
+  if (!email) {
+    return NextResponse.json(
+      { error: 'Missing email in body' },
+      { status: 400 },
+    );
+  }
 
   if (!termsAccepted) {
     return NextResponse.json(
@@ -102,7 +70,18 @@ export async function POST(
   }
 
   try {
-    // ── 3. Fetch flight plan ─────────────────────────────────────────────────
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true }
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      );
+    }
+
     const flightPlan = await prisma.flightPlan.findUnique({
       where: { id },
       select: {
@@ -123,7 +102,7 @@ export async function POST(
       );
     }
 
-    if (flightPlan.userId !== userId) {
+    if (flightPlan.userId !== user.id) {
       return NextResponse.json(
         { error: 'Access denied' },
         { status: 403 },
@@ -144,7 +123,6 @@ export async function POST(
       );
     }
 
-    // ── 4. Cooldown check (5 s) ──────────────────────────────────────────────
     if (flightPlan.lastActivationAttempt) {
       const elapsed = Date.now() - flightPlan.lastActivationAttempt.getTime();
       if (elapsed < 5000) {
@@ -156,7 +134,6 @@ export async function POST(
       }
     }
 
-    // ── 5. Window check (scheduledAt ± 60 s) ────────────────────────────────
     if (!flightPlan.scheduledAt) {
       return NextResponse.json(
         { error: 'El plan no tiene hora programada' },
@@ -164,8 +141,8 @@ export async function POST(
       );
     }
 
-    const windowOpen = flightPlan.scheduledAt.getTime() - 300_000;
-    const windowClose = flightPlan.scheduledAt.getTime() + 300_000;
+    const windowOpen = flightPlan.scheduledAt.getTime() - 60_000;
+    const windowClose = flightPlan.scheduledAt.getTime() + 60_000;
     const now = Date.now();
 
     if (now < windowOpen) {
@@ -182,7 +159,6 @@ export async function POST(
       );
     }
 
-    // ── 6. Persist attempt start ─────────────────────────────────────────────
     await prisma.flightPlan.update({
       where: { id },
       data: {
@@ -192,7 +168,6 @@ export async function POST(
       },
     });
 
-    // ── 7. Call FAS activation endpoint (GET, 10 s timeout) ─────────────────
     const baseUrl = getFasBaseUrl();
     const activationUrl = `${baseUrl}/activation/${encodeURIComponent(flightPlan.externalResponseNumber)}`;
 
@@ -225,7 +200,6 @@ export async function POST(
     } catch (fetchErr) {
       clearTimeout(timeoutId);
 
-      // ── 8b. FAS error ────────────────────────────────────────────────────
       const errorMessage =
         fetchErr instanceof Error ? fetchErr.message : String(fetchErr);
 
@@ -247,7 +221,6 @@ export async function POST(
       });
     }
 
-    // ── 8a. FAS success ──────────────────────────────────────────────────────
     const updatedPlan = await prisma.flightPlan.update({
       where: { id },
       data: {
@@ -262,7 +235,7 @@ export async function POST(
       message: 'Activación autorizada',
     });
   } catch (error) {
-    console.error('Error activating flight plan:', error);
+    console.error('Error in Machine POST activate:', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 },
