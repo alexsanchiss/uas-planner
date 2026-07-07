@@ -578,7 +578,7 @@ describe('Validators', () => {
 
         const json = error.toJSON();
         expect(json.error).toBe('Validation failed');
-        expect(json.details.fieldErrors.email).toContain('Invalid email');
+        expect((json.details as any).fieldErrors.email).toContain('Invalid email');
       });
     });
 

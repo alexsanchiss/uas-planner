@@ -122,6 +122,7 @@ import {
   FolderPlusIcon,
   XIcon,
   EyeIcon, // Add EyeIcon for view button
+  CopyIcon,
   HelpCircle,
 } from "lucide-react";
 import { Modal } from "./ui/modal";
@@ -1351,6 +1352,68 @@ export function FlightPlansUploaderDev() {
     }
   };
 
+  const handleCloneFolder = async (folderId: number) => {
+    try {
+      toast.info("Clonando carpeta y planes...");
+      const res = await api.post(`/api/folders/${folderId}/clone`);
+      if (res.status === 200) {
+        setFolders((prev) => [...prev, res.data.folder]);
+        setFlightPlans((prev) => [...prev, ...res.data.flightPlans]);
+        toast.success("Carpeta clonada con éxito.");
+      }
+    } catch (error) {
+      console.error("Error clonando carpeta:", error);
+      toast.error("Error al clonar carpeta.");
+    }
+  };
+
+  const handleResetAuthSelectedPlans = async () => {
+    try {
+      setFlightPlans(
+        flightPlans.map((plan) =>
+          selectedPlans.includes(plan.id)
+            ? { ...plan, authorizationStatus: "sin autorización", authorizationMessage: null, externalResponseNumber: null }
+            : plan
+        )
+      );
+      await api.put(`/api/flightPlans`, { 
+        ids: selectedPlans, 
+        data: { authorizationStatus: "sin autorización", authorizationMessage: null, externalResponseNumber: null } 
+      });
+      toast.success("Autorización reseteada en los planes seleccionados.");
+    } catch (error) {
+      console.error("Error reseteando autorización:", error);
+      toast.error("Error al resetear autorización.");
+      fetchData();
+    }
+  };
+
+  const handleResetSelectedPlans = async () => {
+    try {
+      setFlightPlans(
+        flightPlans.map((plan) =>
+          selectedPlans.includes(plan.id)
+            ? { ...plan, status: "sin procesar", csvResult: undefined, authorizationStatus: "sin autorización", authorizationMessage: null, externalResponseNumber: null }
+            : plan
+        )
+      );
+      
+      // Delete their csvResults
+      await api.delete(`/api/csvResult`, { data: { ids: selectedPlans } });
+      
+      // Update their status
+      await api.put(`/api/flightPlans`, { 
+        ids: selectedPlans, 
+        data: { status: "sin procesar", csvResult: null, authorizationStatus: "sin autorización", authorizationMessage: null, externalResponseNumber: null } 
+      });
+      toast.success("Planes seleccionados reseteados.");
+    } catch (error) {
+      console.error("Error reseteando planes:", error);
+      toast.error("Error al resetear planes.");
+      fetchData();
+    }
+  };
+
   const downloadCsv = async (csvResultId: number, fileName: string) => {
     try {
       // Use the unified CSV API for individual downloads
@@ -2023,6 +2086,19 @@ export function FlightPlansUploaderDev() {
                         variant="outline"
                         onClick={(e) => {
                           e.stopPropagation();
+                          handleCloneFolder(folder.id);
+                        }}
+                        className="text-amber-400 hover:bg-amber-500/90 hover:text-white border-amber-400/50 hover:border-amber-500 transition-all duration-200"
+                      >
+                        <div className="flex items-center">
+                          <CopyIcon className="h-4 w-4 mr-2" />
+                          Copy
+                        </div>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
                           handleDeleteFolder(folder.id);
                         }}
                         className="text-rose-400 hover:bg-rose-500/90 hover:text-white border-rose-400/50 hover:border-rose-500 transition-all duration-200"
@@ -2107,6 +2183,22 @@ export function FlightPlansUploaderDev() {
                                 >
                                   <DownloadIcon className="h-3.5 w-3.5 mr-1.5" />
                                   Download U-plan selected
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  onClick={() => handleResetAuthSelectedPlans()}
+                                  className="text-orange-400 hover:bg-orange-500/80 hover:text-white border-orange-300/30 hover:border-orange-500 transition-all duration-200 text-sm h-[36px] px-3 whitespace-normal flex items-center justify-center"
+                                >
+                                  <RotateCwIcon className="h-3.5 w-3.5 mr-1.5" />
+                                  Reset Auth
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  onClick={() => handleResetSelectedPlans()}
+                                  className="text-yellow-400 hover:bg-yellow-500/80 hover:text-white border-yellow-300/30 hover:border-yellow-500 transition-all duration-200 text-sm h-[36px] px-3 whitespace-normal flex items-center justify-center"
+                                >
+                                  <RotateCwIcon className="h-3.5 w-3.5 mr-1.5" />
+                                  Reset
                                 </Button>
                                 <Button
                                   variant="outline"
