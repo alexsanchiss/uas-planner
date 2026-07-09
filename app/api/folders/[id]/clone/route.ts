@@ -45,6 +45,7 @@ export async function POST(
     // Fetch the original plans
     const originalPlans = await prisma.flightPlan.findMany({
       where: { folderId },
+      orderBy: { id: 'asc' },
     });
 
     // We fetch all csv results for these plans to clone them
@@ -62,6 +63,7 @@ export async function POST(
         userId: userId,
         minScheduledAt: originalFolder.minScheduledAt,
         maxScheduledAt: originalFolder.maxScheduledAt,
+        createdAt: originalFolder.createdAt,
       },
     });
 
@@ -88,6 +90,7 @@ export async function POST(
           activationMessage: plan.activationMessage,
           termsAcceptedAt: plan.termsAcceptedAt,
           lastActivationAttempt: plan.lastActivationAttempt,
+          createdAt: plan.createdAt,
         },
       });
 
