@@ -1666,7 +1666,8 @@ export function FlightPlansUploaderDev() {
   };
 
   const handleRequestAuthorizationSelected = async () => {
-    for (const planId of selectedPlans) {
+    const sortedPlanIds = [...selectedPlans].sort((a, b) => a - b);
+    for (const planId of sortedPlanIds) {
       const plan = flightPlans.find((p) => p.id === planId);
       if (
         plan &&
@@ -1675,6 +1676,7 @@ export function FlightPlansUploaderDev() {
           plan.authorizationStatus === "sin autorización")
       ) {
         await handleRequestAuthorization(planId);
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     }
   };
