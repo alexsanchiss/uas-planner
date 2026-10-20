@@ -2,7 +2,7 @@
 
 import { AppChoice } from "../components/app-choice";
 import { useRouter } from "next/navigation";
-import { HelpCircle } from "lucide-react";
+import { HelpCircle, Map, Plane, ShieldCheck } from "lucide-react";
 import dynamic from "next/dynamic";
 
 const ShaderBackground = dynamic(
@@ -15,19 +15,19 @@ const apps = [
     name: "Plan Definition",
     description:
       "Design your flight mission on an interactive map. Set waypoints, configure scan patterns, and define your operational volume.",
-    image: "/images/plan-definition.png",
+    icon: Map,
   },
   {
     name: "Plan Authorization",
     description:
       "Submit your flight plan for airspace approval. Track its status in real time and receive authorization to operate.",
-    image: "/images/plan-authorization.png",
+    icon: ShieldCheck,
   },
   {
     name: "Plan Activation",
     description:
       "Go live. Activate your authorized flight plan and monitor geoawareness data for a safe operation.",
-    image: "/images/plan-activation.png",
+    icon: Plane,
   },
 ];
 

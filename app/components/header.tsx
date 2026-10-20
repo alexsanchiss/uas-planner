@@ -7,46 +7,7 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "./ui/button";
 import { ThemeToggle } from "./ui/theme-toggle";
 import { useAuthContext } from "./auth/auth-provider";
-
-/**
- * Theme-aware logo component
- * Uses logo.png for dark theme, logo_black.png for light theme
- */
-function ThemedLogo({ width, height, className }: { width: number; height: number; className?: string }) {
-  const [isLightTheme, setIsLightTheme] = useState(false);
-  
-  useEffect(() => {
-    // Check initial theme
-    const checkTheme = () => {
-      setIsLightTheme(document.documentElement.getAttribute('data-theme') === 'light');
-    };
-    
-    checkTheme();
-    
-    // Watch for theme changes
-    const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (mutation.attributeName === 'data-theme') {
-          checkTheme();
-        }
-      });
-    });
-    
-    observer.observe(document.documentElement, { attributes: true });
-    
-    return () => observer.disconnect();
-  }, []);
-  
-  return (
-    <Image
-      src={isLightTheme ? "/images/logo_black.png" : "/images/logo.png"}
-      alt="UPPS Logo"
-      width={width}
-      height={height}
-      className={`object-contain ${className || ''}`}
-    />
-  );
-}
+import { BrandMark } from "./brand-mark";
 
 /**
  * Loading skeleton component for user info
@@ -268,8 +229,8 @@ export function Header({ transparent = false }: { transparent?: boolean }) {
           </div>
           {/* Logo centrado */}
           <div className="flex justify-center flex-shrink-0">
-            <Link href="/" className="flex-shrink-0">
-              <ThemedLogo width={150} height={50} />
+            <Link href="/" aria-label="PAUTHFLY home" className="flex-shrink-0">
+              <BrandMark transparent={transparent} />
             </Link>
           </div>
           {/* Botones de usuario a la derecha */}
@@ -300,12 +261,8 @@ export function Header({ transparent = false }: { transparent?: boolean }) {
           </button>
 
           {/* Logo centered */}
-          <Link href="/" className="flex-shrink-0">
-            <ThemedLogo 
-              width={120} 
-              height={40} 
-              className="sm:w-[150px] sm:h-[50px]" 
-            />
+          <Link href="/" aria-label="PAUTHFLY home" className="flex-shrink-0">
+            <BrandMark compact transparent={transparent} />
           </Link>
 
           {/* User controls */}

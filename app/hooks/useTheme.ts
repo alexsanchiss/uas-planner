@@ -16,6 +16,7 @@ import { useState, useEffect, useCallback } from "react";
 export type Theme = "light" | "dark";
 
 const THEME_STORAGE_KEY = "uas-planner-theme";
+const THEME_CHANGE_EVENT = "uas-planner-theme-change";
 
 /**
  * Get the system's preferred color scheme
@@ -30,7 +31,7 @@ function getSystemPreference(): Theme {
 /**
  * Get the stored theme preference or fall back to system preference
  */
-function getStoredTheme(): Theme {
+export function getStoredTheme(): Theme {
   if (typeof window === "undefined") return "dark";
   
   const stored = localStorage.getItem(THEME_STORAGE_KEY);
@@ -82,23 +83,32 @@ export function useTheme() {
     setMounted(true);
   }, []);
 
-  // NOTE: We no longer listen for system preference changes
-  // The theme is controlled by user selection only, defaulting to dark
+  // The system preference is only used when no app theme has been saved.
 
-  // Listen for storage changes (cross-tab sync)
+  // Keep duplicate controls in this window and other tabs in sync.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === THEME_STORAGE_KEY && e.newValue) {
-        const newTheme = e.newValue as Theme;
-        setThemeState(newTheme);
-        applyTheme(newTheme, true);
-      }
+
+    const syncTheme = () => {
+      const currentTheme = getStoredTheme();
+      setThemeState(currentTheme);
+      const rootTheme =
+        document.documentElement.getAttribute("data-theme") === "light"
+          ? "light"
+          : "dark";
+      if (rootTheme !== currentTheme) applyTheme(currentTheme, true);
     };
-    
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === THEME_STORAGE_KEY) syncTheme();
+    };
+
     window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
+    window.addEventListener(THEME_CHANGE_EVENT, syncTheme);
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener(THEME_CHANGE_EVENT, syncTheme);
+    };
   }, []);
 
   /**
@@ -108,6 +118,7 @@ export function useTheme() {
     setThemeState(newTheme);
     localStorage.setItem(THEME_STORAGE_KEY, newTheme);
     applyTheme(newTheme, true);
+    window.dispatchEvent(new Event(THEME_CHANGE_EVENT));
   }, []);
 
   /**
@@ -126,6 +137,7 @@ export function useTheme() {
     const systemTheme = getSystemPreference();
     setThemeState(systemTheme);
     applyTheme(systemTheme, true);
+    window.dispatchEvent(new Event(THEME_CHANGE_EVENT));
   }, []);
 
   return {

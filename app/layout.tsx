@@ -9,19 +9,17 @@ import { I18nProvider } from "./i18n";
 import React, { useEffect, useState } from "react";
 import { Modal } from "./components/ui/modal";
 import { usePathname } from "next/navigation";
+import { getStoredTheme } from "./hooks/useTheme";
 
 /**
- * Initialize theme before React hydration to prevent flash
- * NOTE: Default is dark theme, NOT system preference
+ * Keep the root theme in sync with the saved app theme or system fallback.
  */
 function initializeTheme() {
   if (typeof window === "undefined") return;
-  
-  const stored = localStorage.getItem("uas-planner-theme");
-  if (stored === "light") {
+
+  if (getStoredTheme() === "light") {
     document.documentElement.setAttribute("data-theme", "light");
   } else {
-    // Default to dark theme (do NOT check system preference)
     document.documentElement.removeAttribute("data-theme");
   }
 }

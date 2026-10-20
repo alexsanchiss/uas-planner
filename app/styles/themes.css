@@ -11,7 +11,7 @@
    DARK THEME (Default)
    ============================================ */
 :root {
-  /* Block system color-scheme influence on form elements/scrollbars */
+  /* Native controls follow the active app theme instead of the OS setting. */
   color-scheme: dark;
 
   /* Background colors */
@@ -260,7 +260,6 @@
    LIGHT THEME
    ============================================ */
 [data-theme="light"] {
-  /* Block system color-scheme influence on form elements/scrollbars */
   color-scheme: light;
 
   /* Background colors */
@@ -503,6 +502,15 @@
 
   /* Sidebar */
   --app-sidebar-bg: #ffffff;
+}
+
+/* Keep unclassed controls readable; utility and component styles can override these. */
+input,
+select,
+textarea,
+option {
+  color: var(--input-text);
+  background-color: var(--input-bg);
 }
 
 /* ============================================

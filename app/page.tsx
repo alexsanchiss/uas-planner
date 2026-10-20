@@ -6,6 +6,7 @@ import { InteractiveHoverButton } from "./components/ui/interactive-hover-button
 import { ContainerScroll } from "./components/ui/container-scroll-animation";
 import { EvervaultCard } from "./components/ui/evervault-card";
 import { Gallery4 } from "./components/ui/gallery4";
+import { ServiceMark } from "./components/brand-mark";
 
 const ShaderBackground = dynamic(
   () => import("@/components/ui/animated-shader-background"),
@@ -98,11 +99,12 @@ export default function LandingPage() {
         {/* ─── Hero Section ─── */}
         <section className="min-h-screen flex items-center justify-center">
           <div className="flex flex-col items-center text-center px-4 max-w-2xl">
+            <ServiceMark className="mb-4 h-12 w-12 rounded-xl" />
             <h1
               className="text-6xl sm:text-7xl md:text-8xl font-extrabold tracking-tight text-white splash-fade-in-up"
               style={{ animationDelay: "0.2s" }}
             >
-              PAUTHFLY
+              <span translate="no">PAUTHFLY</span>
             </h1>
             <p
               className="mt-4 text-lg sm:text-xl md:text-2xl text-gray-300 font-light tracking-wide splash-fade-in-up"
