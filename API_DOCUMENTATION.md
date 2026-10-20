@@ -20,6 +20,25 @@ Authorization: Bearer <access_token>
 
 ## 📚 API Endpoints
 
+### Machine API
+
+Machine endpoints use `x-machine-api-key: <MACHINE_API_KEY>` instead of a user JWT.
+
+#### **GET /api/machine/flightPlans/by-external-response-number/{externalResponseNumber}**
+Returns the flight plan name linked to a FAS external response number. URL-encode the path value.
+
+```http
+GET /api/machine/flightPlans/by-external-response-number/FAS-2024-001234
+x-machine-api-key: <MACHINE_API_KEY>
+```
+
+```json
+// 200
+{ "customName": "Inspección de cubierta" }
+```
+
+Returns `400` for an empty, whitespace-only, over-255-character, or control-character identifier; `401` for missing or invalid machine credentials; `404` when no plan matches; and `500` for a database failure. Error responses contain an `error` field.
+
 ### Authentication (`/api/auth`)
 
 #### **POST /api/auth/signup** - Register User

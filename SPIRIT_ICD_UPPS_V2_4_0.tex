@@ -1,6 +1,7 @@
 \documentclass[12pt,a4paper]{article}
 \usepackage[utf8]{inputenc}
 \usepackage{geometry}
+\usepackage{amsmath}
 \geometry{margin=2.5cm}
 \usepackage{hyperref}
 \usepackage{longtable}
@@ -1052,6 +1053,11 @@ La aplicación se estructura en componentes modulares organizados por funcionali
 
 % ============================================================
 \subsection*{Novedades en V2.4.0}
+
+\subsubsection*{Consulta de planes para sistemas máquina-a-máquina}
+\begin{itemize}
+  \item \texttt{GET /api/machine/flightPlans/by-external-response-number/<externalResponseNumber>}: devuelve \texttt{\{customName\}} del plan asociado al identificador externo de FAS. Requiere la cabecera \texttt{x-machine-api-key} con la clave configurada en \texttt{MACHINE\_API\_KEY}. El cliente debe codificar el identificador como segmento de URL. Respuestas: \texttt{200} (coincidencia), \texttt{400} (identificador vacío, solo espacios, con caracteres de control o superior a 255 caracteres), \texttt{401} (clave ausente o no válida), \texttt{404} (sin coincidencia) y \texttt{500} (fallo interno de base de datos).
+\end{itemize}
 
 \subsubsection*{Plan Activation — Flujo completo de activación de vuelo}
 
