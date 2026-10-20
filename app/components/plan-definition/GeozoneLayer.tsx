@@ -243,14 +243,6 @@ function GeozonePolygon({
       pathOptions={pathOptions}
       eventHandlers={{
         click: (e) => {
-          // TASK-053: Prevent map click event from firing (avoid waypoint placement on geozone click)
-          // Stop propagation on the original DOM event to prevent useMapEvents from receiving it
-          if (e.originalEvent) {
-            e.originalEvent.stopPropagation();
-            e.originalEvent.preventDefault();
-          }
-          // Also stop Leaflet event propagation
-          L.DomEvent.stopPropagation(e);
           onClick?.(geozone, e);
         },
         mouseover: () => setIsHovered(true),
