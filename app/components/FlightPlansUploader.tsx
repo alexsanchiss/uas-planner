@@ -49,6 +49,7 @@ import { FlightPlansListSkeleton } from './ui/loading-skeleton'
 import { LoadingSpinner } from './ui/loading-spinner'
 import { Modal } from './ui/modal'
 import { useToast } from '../hooks/useToast'
+import { useI18n } from '@/app/i18n'
 
 // Dynamic import for UplanViewModal (uses Leaflet, requires SSR disabled)
 const UplanViewModal = dynamic(() => import('./UplanViewModal'), { ssr: false })
@@ -161,6 +162,7 @@ function getCompletedSteps(plan: FlightPlan | null): WorkflowStep[] {
 export function FlightPlansUploader() {
   const { user } = useAuth()
   const toast = useToast()
+  const { t } = useI18n()
   const {
     flightPlans,
     loading: plansLoading,
@@ -207,6 +209,12 @@ export function FlightPlansUploader() {
     planName: string
     isApproved: boolean
   }>({ open: false, planId: null, planName: '', isApproved: false })
+  // Delete-plan confirmation dialog state (replaces the native confirm())
+  const [deleteConfirmDialog, setDeleteConfirmDialog] = useState<{
+    open: boolean
+    planId: string | null
+    planName: string
+  }>({ open: false, planId: null, planName: '' })
   // Authorization confirmation dialog state
   const [authorizationConfirmDialog, setAuthorizationConfirmDialog] = useState<{
     open: boolean
@@ -489,10 +497,8 @@ export function FlightPlansUploader() {
     }
   }, [updateFolder, addLoadingFolder, removeLoadingFolder])
 
+  // The user already confirmed in FolderCard's ConfirmDialog (no second native confirm here).
   const handleDeleteFolder = useCallback(async (folderId: string) => {
-    if (!confirm('Are you sure you want to delete this folder and all its flight plans?')) {
-      return
-    }
     addLoadingFolder('deleting', folderId)
     try {
       await deleteFolder(Number(folderId))
@@ -929,10 +935,18 @@ export function FlightPlansUploader() {
     }
   }, [resetConfirmDialog.planId, refreshPlans, addLoadingPlan, removeLoadingPlan, toast])
 
-  const handleDeletePlan = useCallback(async (planId: string) => {
-    if (!confirm('Are you sure you want to delete this flight plan?')) {
-      return
-    }
+  // Opens the confirmation dialog; the deletion itself runs in confirmDeletePlan.
+  const handleDeletePlan = useCallback((planId: string) => {
+    const plan = flightPlans.find(p => String(p.id) === planId)
+    if (!plan) return
+    setDeleteConfirmDialog({ open: true, planId, planName: plan.customName })
+  }, [flightPlans])
+
+  const confirmDeletePlan = useCallback(async () => {
+    const planId = deleteConfirmDialog.planId
+    if (!planId) return
+
+    setDeleteConfirmDialog(prev => ({ ...prev, open: false }))
 
     addLoadingPlan('deleting', planId)
     try {
@@ -943,7 +957,7 @@ export function FlightPlansUploader() {
     } finally {
       removeLoadingPlan('deleting', planId)
     }
-  }, [deleteFlightPlan, selectedPlanId, addLoadingPlan, removeLoadingPlan])
+  }, [deleteConfirmDialog.planId, deleteFlightPlan, selectedPlanId, addLoadingPlan, removeLoadingPlan])
 
   // TASK-221: Rename plan handler
   const handleRenamePlan = useCallback(async (planId: string, newName: string) => {
@@ -2127,7 +2141,19 @@ export function FlightPlansUploader() {
         warning={resetConfirmDialog.isApproved ? 'This plan has been approved by the FAS. Resetting will cancel the authorization and the plan will be denied.' : undefined}
         confirmLabel="Reset"
         cancelLabel="Cancel"
-        variant="warning"
+        variant="danger"
+      />
+
+      {/* Delete plan confirmation dialog */}
+      <ConfirmDialog
+        open={deleteConfirmDialog.open}
+        onClose={() => setDeleteConfirmDialog(prev => ({ ...prev, open: false }))}
+        onConfirm={confirmDeletePlan}
+        title={`${t.common.delete} ${t.flightPlans.flightPlan.toLowerCase()}`}
+        message={`${t.flightPlans.confirmDelete}\n\n"${deleteConfirmDialog.planName}". ${t.flightPlans.actionCannotBeUndone}`}
+        confirmLabel={t.common.delete}
+        cancelLabel={t.common.cancel}
+        variant="danger"
       />
 
       {/* TASK-219: Trajectory map viewer - replaces CSV download */}

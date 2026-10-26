@@ -127,6 +127,7 @@ import {
   HelpCircle,
 } from "lucide-react";
 import { Modal } from "./ui/modal";
+import { ConfirmDialog } from "./ui/confirm-dialog";
 import { parseScrsAlternative } from "@/lib/scrs";
 
 /**
@@ -145,6 +146,51 @@ function createAuthenticatedAxios(): AxiosInstance {
   });
   
   return instance;
+}
+
+type DevConfirmAction =
+  | { kind: 'deleteFolder'; id: number; name: string; planCount: number }
+  | { kind: 'deletePlan'; id: number; name: string }
+  | { kind: 'deleteSelected'; count: number }
+  | { kind: 'resetAuthSelected'; count: number }
+  | { kind: 'resetSelected'; count: number };
+
+const plansLabel = (n: number) => `${n} ${n === 1 ? 'plan' : 'planes'}`;
+
+/** Title, consequence text and confirm label of each destructive action (UI language: Spanish). */
+function confirmCopy(a: DevConfirmAction): { title: string; message: string; confirmLabel: string } {
+  switch (a.kind) {
+    case 'deleteFolder':
+      return {
+        title: 'Eliminar carpeta',
+        message: `Se eliminará la carpeta "${a.name}"${a.planCount > 0 ? ` y los ${plansLabel(a.planCount)} que contiene, con sus trayectorias y estados de autorización` : ''}. Esta acción no se puede deshacer.`,
+        confirmLabel: 'Eliminar carpeta',
+      };
+    case 'deletePlan':
+      return {
+        title: 'Eliminar plan de vuelo',
+        message: `Se eliminará el plan "${a.name}" con su trayectoria y su estado de autorización. Esta acción no se puede deshacer.`,
+        confirmLabel: 'Eliminar plan',
+      };
+    case 'deleteSelected':
+      return {
+        title: `Eliminar ${plansLabel(a.count)}`,
+        message: `Se eliminarán ${plansLabel(a.count)} seleccionados con sus trayectorias y estados de autorización. Esta acción no se puede deshacer.`,
+        confirmLabel: `Eliminar ${plansLabel(a.count)}`,
+      };
+    case 'resetAuthSelected':
+      return {
+        title: 'Resetear autorización',
+        message: `Se borrará el estado de autorización de ${plansLabel(a.count)} (estado, mensaje y número de respuesta del FAS). Los planes no se eliminan; los que estuvieran aprobados dejarán de estarlo.`,
+        confirmLabel: 'Resetear autorización',
+      };
+    case 'resetSelected':
+      return {
+        title: 'Resetear planes',
+        message: `Se borrarán la trayectoria procesada y el estado de autorización de ${plansLabel(a.count)}, que volverán a "sin procesar". Esta acción no se puede deshacer.`,
+        confirmLabel: 'Resetear planes',
+      };
+  }
 }
 
 interface Folder {
@@ -780,6 +826,13 @@ export function FlightPlansUploaderDev() {
   const [bulkUplanViewModal, setBulkUplanViewModal] = useState<{ open: boolean, uplans: any[], names: string[] }>({ open: false, uplans: [], names: [] });
   const [bulkErrorViewModal, setBulkErrorViewModal] = useState<{ open: boolean, errors: {name: string, message: any}[], idx: number }>({ open: false, errors: [], idx: 0 });
   const [bulkErrorIdx, setBulkErrorIdx] = useState(0);
+  // Destructive actions (delete / reset, single and bulk) always go through ConfirmDialog.
+  // `action` is kept after closing so the text does not blank out during the exit animation.
+  const [confirmState, setConfirmState] = useState<{ open: boolean; action: DevConfirmAction | null }>({
+    open: false,
+    action: null,
+  });
+  const askConfirm = (action: DevConfirmAction) => setConfirmState({ open: true, action });
   // Uplan edit modal state
   const [uplanEditModal, setUplanEditModal] = useState<{ open: boolean, uplan: any, planId: number | null }>({ open: false, uplan: null, planId: null });
   const [acceptingAlternative, setAcceptingAlternative] = useState(false);
@@ -1035,34 +1088,29 @@ export function FlightPlansUploaderDev() {
     }
   };
 
+  // Runs only after the user accepted the ConfirmDialog (see askConfirm / runConfirmedAction).
   const handleDeleteFolder = async (folderId: number) => {
-    if (
-      typeof window !== 'undefined' && window.confirm(
-        "Are you sure you want to delete this folder and all its plans?"
-      )
-    ) {
-      try {
-        // Obtener todos los planes de la carpeta
-        const folderPlans = flightPlans.filter((p) => p.folderId === folderId);
-        const ids = folderPlans.map(p => p.id);
-        if (ids.length > 0) {
-          // Use the unified index route for bulk deletion
-          await api.delete(`/api/flightPlans`, { data: { ids } });
-        }
-        // Eliminar la carpeta usando la API optimizada
-        await api.delete(`/api/folders/${folderId}`);
-        // Actualizar estado local después de que todo se haya eliminado correctamente
-        setFolders((prevFolders) =>
-          prevFolders.filter((f) => f.id !== folderId)
-        );
-        setFlightPlans((prevPlans) =>
-          prevPlans.filter((p) => p.folderId !== folderId)
-        );
-      } catch (error) {
-        console.error("Error deleting folder:", error);
-        // Recargar los datos en caso de error
-        fetchData();
+    try {
+      // Obtener todos los planes de la carpeta
+      const folderPlans = flightPlans.filter((p) => p.folderId === folderId);
+      const ids = folderPlans.map(p => p.id);
+      if (ids.length > 0) {
+        // Use the unified index route for bulk deletion
+        await api.delete(`/api/flightPlans`, { data: { ids } });
       }
+      // Eliminar la carpeta usando la API optimizada
+      await api.delete(`/api/folders/${folderId}`);
+      // Actualizar estado local después de que todo se haya eliminado correctamente
+      setFolders((prevFolders) =>
+        prevFolders.filter((f) => f.id !== folderId)
+      );
+      setFlightPlans((prevPlans) =>
+        prevPlans.filter((p) => p.folderId !== folderId)
+      );
+    } catch (error) {
+      console.error("Error deleting folder:", error);
+      // Recargar los datos en caso de error
+      fetchData();
     }
   };
 
@@ -1337,19 +1385,30 @@ export function FlightPlansUploaderDev() {
   };
 
   const handleDeleteSelectedPlans = async () => {
-    if (typeof window !== 'undefined' && window.confirm("Are you sure you want to delete the selected plans?")) {
-      try {
-        const ids = [...selectedPlans];
-        if (ids.length > 0) {
-          // Use the unified index route for bulk deletion
-          await api.delete(`/api/flightPlans`, { data: { ids } });
-        }
-        setFlightPlans(flightPlans.filter((p) => !ids.includes(p.id)));
-        setSelectedPlans([]);
-      } catch (error) {
-        console.error("Error deleting selected plans:", error);
-        fetchData();
+    try {
+      const ids = [...selectedPlans];
+      if (ids.length > 0) {
+        // Use the unified index route for bulk deletion
+        await api.delete(`/api/flightPlans`, { data: { ids } });
       }
+      setFlightPlans(flightPlans.filter((p) => !ids.includes(p.id)));
+      setSelectedPlans([]);
+    } catch (error) {
+      console.error("Error deleting selected plans:", error);
+      fetchData();
+    }
+  };
+
+  const runConfirmedAction = async () => {
+    const action = confirmState.action;
+    setConfirmState((s) => ({ ...s, open: false }));
+    if (!action) return;
+    switch (action.kind) {
+      case 'deleteFolder': return handleDeleteFolder(action.id);
+      case 'deletePlan': return handleDeletePlan(action.id);
+      case 'deleteSelected': return handleDeleteSelectedPlans();
+      case 'resetAuthSelected': return handleResetAuthSelectedPlans();
+      case 'resetSelected': return handleResetSelectedPlans();
     }
   };
 
@@ -2102,7 +2161,12 @@ export function FlightPlansUploaderDev() {
                         variant="outline"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleDeleteFolder(folder.id);
+                          askConfirm({
+                            kind: 'deleteFolder',
+                            id: folder.id,
+                            name: folder.name,
+                            planCount: flightPlans.filter((p) => p.folderId === folder.id).length,
+                          });
                         }}
                         className="text-rose-400 hover:bg-rose-500/90 hover:text-white border-rose-400/50 hover:border-rose-500 transition-all duration-200"
                       >
@@ -2189,7 +2253,7 @@ export function FlightPlansUploaderDev() {
                                 </Button>
                                 <Button
                                   variant="outline"
-                                  onClick={() => handleResetAuthSelectedPlans()}
+                                  onClick={() => askConfirm({ kind: 'resetAuthSelected', count: selectedPlans.length })}
                                   className="text-orange-400 hover:bg-orange-500/80 hover:text-white border-orange-300/30 hover:border-orange-500 transition-all duration-200 text-sm h-[36px] px-3 whitespace-normal flex items-center justify-center"
                                 >
                                   <RotateCwIcon className="h-3.5 w-3.5 mr-1.5" />
@@ -2197,7 +2261,7 @@ export function FlightPlansUploaderDev() {
                                 </Button>
                                 <Button
                                   variant="outline"
-                                  onClick={() => handleResetSelectedPlans()}
+                                  onClick={() => askConfirm({ kind: 'resetSelected', count: selectedPlans.length })}
                                   className="text-yellow-400 hover:bg-yellow-500/80 hover:text-white border-yellow-300/30 hover:border-yellow-500 transition-all duration-200 text-sm h-[36px] px-3 whitespace-normal flex items-center justify-center"
                                 >
                                   <RotateCwIcon className="h-3.5 w-3.5 mr-1.5" />
@@ -2205,7 +2269,7 @@ export function FlightPlansUploaderDev() {
                                 </Button>
                                 <Button
                                   variant="outline"
-                                  onClick={() => handleDeleteSelectedPlans()}
+                                  onClick={() => askConfirm({ kind: 'deleteSelected', count: selectedPlans.length })}
                                   className="text-rose-400/80 hover:bg-rose-500/80 hover:text-white border-rose-400/30 hover:border-rose-500 transition-all duration-200 text-sm h-[36px] px-3 whitespace-normal flex items-center justify-center"
                                 >
                                   <Trash2Icon className="h-3.5 w-3.5 mr-1.5" />
@@ -2588,7 +2652,8 @@ export function FlightPlansUploaderDev() {
                                 </div>
                                 <Button
                                   variant="outline"
-                                  onClick={() => handleDeletePlan(plan.id)}
+                                  onClick={() => askConfirm({ kind: 'deletePlan', id: plan.id, name: plan.customName })}
+                                  aria-label={`Eliminar plan ${plan.customName}`}
                                   className="text-rose-400 hover:bg-rose-500/90 hover:text-white border-rose-400/50 hover:border-rose-500 transition-all duration-200 p-2 shrink-0 h-10 min-h-[48px] flex items-center justify-center ml-2"
                                 >
                                   <Trash2Icon className="h-5 w-5" />
@@ -2687,16 +2752,6 @@ export function FlightPlansUploaderDev() {
         uplan={uplanViewModal.uplan}
         name={uplanViewModal.name}
       />
-      {/* Bulk Uplan Modal placeholder */}
-      <Modal open={bulkUplanViewModal.open} onClose={() => setBulkUplanViewModal({ open: false, uplans: [], names: [] })} title="Bulk U-Plan Viewer">
-        <div className="p-4 text-white">Bulk U-Plan visualization coming soon.</div>
-        <Button onClick={() => setBulkUplanViewModal({ open: false, uplans: [], names: [] })} className="mt-4">Close</Button>
-      </Modal>
-      {/* Bulk Error Modal placeholder */}
-      <Modal open={bulkErrorViewModal.open} onClose={() => setBulkErrorViewModal({ open: false, errors: [], idx: 0 })} title="Bulk Error Viewer">
-        <div className="p-4 text-white">Bulk error viewing coming soon.</div>
-        <Button onClick={() => setBulkErrorViewModal({ open: false, errors: [], idx: 0 })} className="mt-4">Close</Button>
-      </Modal>
       <BulkUplanViewModal
         open={bulkUplanViewModal.open}
         onClose={() => setBulkUplanViewModal({ open: false, uplans: [], names: [] })}
@@ -2716,6 +2771,16 @@ export function FlightPlansUploaderDev() {
         onClose={() => setUplanEditModal({ open: false, uplan: null, planId: null })}
         uplan={uplanEditModal.uplan}
         onSave={handleSaveUplanEdit}
+      />
+      <ConfirmDialog
+        open={confirmState.open}
+        onClose={() => setConfirmState((s) => ({ ...s, open: false }))}
+        onConfirm={runConfirmedAction}
+        variant="danger"
+        cancelLabel="Cancelar"
+        {...(confirmState.action
+          ? confirmCopy(confirmState.action)
+          : { title: '', message: '', confirmLabel: '' })}
       />
     </div>
   );
