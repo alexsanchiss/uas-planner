@@ -1,5 +1,6 @@
 'use client'
 
+import { loadCesium } from '@/lib/cesium-loader'
 import React, { useEffect, useRef, useState, useMemo } from 'react'
 
 interface OperationVolume {
@@ -49,39 +50,6 @@ export interface Denial3DModalProps {
   uplan: { operationVolumes?: OperationVolume[]; [key: string]: unknown } | null | undefined
   authorizationMessage?: string | null
   geoawarenessData?: unknown
-}
-
-/** Load Cesium from the pre-built UMD bundle via script tag */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function loadCesiumScript(): Promise<any> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if ((window as any).Cesium) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return Promise.resolve((window as any).Cesium)
-  }
-
-  return new Promise((resolve, reject) => {
-    if (!document.querySelector('link[href="/cesium/Widgets/widgets.css"]')) {
-      const link = document.createElement('link')
-      link.rel = 'stylesheet'
-      link.href = '/cesium/Widgets/widgets.css'
-      document.head.appendChild(link)
-    }
-
-    const script = document.createElement('script')
-    script.src = '/cesium/Cesium.js'
-    script.onload = () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Cesium loaded dynamically, no static types
-      if ((window as any).Cesium) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Cesium loaded dynamically, no static types
-        resolve((window as any).Cesium)
-      } else {
-        reject(new Error('Cesium failed to load'))
-      }
-    }
-    script.onerror = () => reject(new Error('Failed to load Cesium script'))
-    document.head.appendChild(script)
-  })
 }
 
 function parseDenialMessage(authorizationMessage?: string | null): ParsedDenial {
@@ -250,14 +218,10 @@ const Denial3DModal: React.FC<Denial3DModalProps> = ({ isOpen, onClose, uplan, a
         if (destroyed) return
 
         // 2. Load Cesium
-        const Cesium = await loadCesiumScript()
+        const Cesium = await loadCesium(token)
 
         if (destroyed) return
 
-        // 3. Configure Cesium
-        Cesium.Ion.defaultAccessToken = token
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Cesium loaded dynamically, no static types
-        ;(window as any).CESIUM_BASE_URL = '/cesium'
 
         // 4. Create viewer
         const viewer = new Cesium.Viewer(containerRef.current!, {

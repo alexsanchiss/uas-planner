@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- Cesium loaded dynamically, no static types */
 'use client'
 
+import { loadCesium } from '@/lib/cesium-loader'
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 
 interface OperationVolume {
@@ -34,34 +35,6 @@ interface VolumeTimeRange {
 function formatDateTime(ms: number): string {
   const date = new Date(ms)
   return date.toISOString().replace('T', ' ').slice(0, 19) + ' UTC'
-}
-
-/** Load Cesium from the pre-built UMD bundle via script tag */
-function loadCesiumScript(): Promise<any> {
-  if ((window as any).Cesium) {
-    return Promise.resolve((window as any).Cesium)
-  }
-
-  return new Promise((resolve, reject) => {
-    if (!document.querySelector('link[href="/cesium/Widgets/widgets.css"]')) {
-      const link = document.createElement('link')
-      link.rel = 'stylesheet'
-      link.href = '/cesium/Widgets/widgets.css'
-      document.head.appendChild(link)
-    }
-
-    const script = document.createElement('script')
-    script.src = '/cesium/Cesium.js'
-    script.onload = () => {
-      if ((window as any).Cesium) {
-        resolve((window as any).Cesium)
-      } else {
-        reject(new Error('Cesium failed to load'))
-      }
-    }
-    script.onerror = () => reject(new Error('Failed to load Cesium script'))
-    document.head.appendChild(script)
-  })
 }
 
 const SPEED_OPTIONS = [1, 2, 5, 10] as const
@@ -161,14 +134,11 @@ const Cesium3DModal: React.FC<Cesium3DModalProps> = ({ isOpen, onClose, uplanDat
         if (destroyed) return
 
         // 2. Load Cesium from pre-built bundle
-        const Cesium = await loadCesiumScript()
+        const Cesium = await loadCesium(token)
         cesiumRef.current = Cesium
 
         if (destroyed) return
 
-        // 3. Set access token and base URL
-        Cesium.Ion.defaultAccessToken = token
-        ;(window as any).CESIUM_BASE_URL = '/cesium'
 
         // 4. Create viewer
         const viewer = new Cesium.Viewer(containerRef.current!, {

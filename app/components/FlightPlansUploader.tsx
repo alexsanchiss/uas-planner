@@ -50,6 +50,7 @@ import { LoadingSpinner } from './ui/loading-spinner'
 import { Modal } from './ui/modal'
 import { useToast } from '../hooks/useToast'
 import { useI18n } from '@/app/i18n'
+import { shouldGenerateRandomUplan } from '@/lib/uplan/random-data'
 
 // Dynamic import for UplanViewModal (uses Leaflet, requires SSR disabled)
 const UplanViewModal = dynamic(() => import('./UplanViewModal'), { ssr: false })
@@ -604,7 +605,7 @@ export function FlightPlansUploader() {
       try { uplanData = JSON.parse(uplanData) } catch { uplanData = null }
     }
     
-    const GENERATE_RANDOM_DATA = process.env.NEXT_PUBLIC_GENERATE_RANDOM_UPLAN_DATA === 'true'
+    const GENERATE_RANDOM_DATA = shouldGenerateRandomUplan()
 
     // Step 1: Check if uplanData exists and skip volume regeneration
     if (!uplanData) {

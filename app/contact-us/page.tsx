@@ -60,7 +60,7 @@ export default function ContactUsPage() {
   };
 
   return (
-    <main className="max-w-2xl mx-auto py-12 px-4">
+    <div className="max-w-2xl mx-auto py-12 px-4">
       <h1 className="text-3xl font-bold mb-4 text-[var(--color-primary)]">
         {t.contactPage.title}
       </h1>
@@ -186,6 +186,6 @@ export default function ContactUsPage() {
       <p className="mt-8 text-sm text-[var(--text-secondary)]">
         {t.contactPage.demoNote}
       </p>
-    </main>
+    </div>
   );
 }

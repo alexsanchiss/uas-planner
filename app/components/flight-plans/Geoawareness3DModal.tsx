@@ -17,6 +17,7 @@
  * - UOM conversion (M, FT) and AGL height reference
  */
 
+import { loadCesium } from '@/lib/cesium-loader'
 import React, { useEffect, useRef, useState } from 'react'
 import { useGeoawarenessWebSocket, type GeozoneData } from '@/app/hooks/useGeoawarenessWebSocket'
 
@@ -56,25 +57,6 @@ function geozoneColor(type: string | undefined): string {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function loadCesiumScript(): Promise<any> {
-  if ((window as any).Cesium) return Promise.resolve((window as any).Cesium)
-  return new Promise((resolve, reject) => {
-    if (!document.querySelector('link[href="/cesium/Widgets/widgets.css"]')) {
-      const link = document.createElement('link')
-      link.rel = 'stylesheet'
-      link.href = '/cesium/Widgets/widgets.css'
-      document.head.appendChild(link)
-    }
-    const script = document.createElement('script')
-    script.src = '/cesium/Cesium.js'
-    script.onload = () => {
-      ;(window as any).Cesium ? resolve((window as any).Cesium) : reject(new Error('Cesium failed to load'))
-    }
-    script.onerror = () => reject(new Error('Failed to load Cesium script'))
-    document.head.appendChild(script)
-  })
-}
 
 function extractAlt(alt: unknown): number | null {
   if (alt == null) return null
@@ -361,13 +343,9 @@ const Geoawareness3DModal: React.FC<Geoawareness3DModalProps> = ({
         if (destroyed) return
 
         // 2. Load Cesium
-        const Cesium = await loadCesiumScript()
+        const Cesium = await loadCesium(token)
         cesiumRef.current = Cesium
         if (destroyed) return
-
-        // 3. Configure
-        Cesium.Ion.defaultAccessToken = token
-        ;(window as any).CESIUM_BASE_URL = '/cesium'
 
         // 4. Create viewer
         const viewer = new Cesium.Viewer(containerRef.current!, {

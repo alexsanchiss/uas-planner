@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { ProtectedRoute } from '@/app/components/auth/protected-route'
 import { FlightPlanActivationCard } from '@/app/components/plan-activation/FlightPlanActivationCard'
 import { HistoricalFlightPlanList } from '@/app/components/plan-activation/HistoricalFlightPlanList'
 import { useActivationPlans } from '@/app/hooks/useActivationPlans'
@@ -96,8 +95,6 @@ function PlanActivationContent() {
 
 export default function PlanActivationPage() {
   return (
-    <ProtectedRoute>
-      <PlanActivationContent />
-    </ProtectedRoute>
+    <PlanActivationContent />
   )
 }

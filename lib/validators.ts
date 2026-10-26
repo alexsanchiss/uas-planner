@@ -23,6 +23,7 @@
  */
 
 import { z } from 'zod'
+import './zod-config'
 
 // ============================================================================
 // Common Schemas & Utilities

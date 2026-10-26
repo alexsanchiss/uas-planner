@@ -264,6 +264,13 @@ export async function DELETE(
       where: { folderId, userId },
     });
 
+    // Legacy data (SEC-06): plans of other users may still point at this folder. The owner's plans are
+    // already gone, so whatever remains is detached (not deleted) or the FK would block the delete.
+    await prisma.flightPlan.updateMany({
+      where: { folderId },
+      data: { folderId: null },
+    });
+
     // Delete the folder
     await prisma.folder.delete({
       where: { id: folderId },

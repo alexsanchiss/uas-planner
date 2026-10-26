@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { sendAuthorizationResultEmail } from "@/lib/email";
-import { getSourceIp } from "@/lib/http";
+import { getSourceIp } from "@/lib/request-ip";
 
 /**
  * FAS Callback Endpoint

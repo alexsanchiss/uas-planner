@@ -1,8 +1,11 @@
 import React from "react";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Política de Privacidad" };
 
 export default function PrivacyPolicyPage() {
   return (
-    <main className="max-w-2xl mx-auto py-12 px-4">
+    <div className="max-w-2xl mx-auto py-12 px-4">
       <h1 className="text-3xl font-bold mb-4">Privacy Policy</h1>
       <p className="mb-4">
         At SNA, your privacy and trust are our top priorities. As this is a DEMO
@@ -50,6 +53,6 @@ export default function PrivacyPolicyPage() {
         handle your data, please contact us. Thank you for helping us build a
         better platform.
       </p>
-    </main>
+    </div>
   );
 }

@@ -1473,7 +1473,7 @@ export default function PlanGenerator() {
           </div>
         </aside>
         {/* Map on the right */}
-        <main className="plan-gen-map flex-1">
+        <div className="plan-gen-map flex-1">
           {/* The MapContainer and its logic have been moved to PlanMap.tsx */}
           {/* The PlanMap component will be rendered here */}
           {/* TASK-216: Use ref-based handler for stable click handling in SCAN mode */}
@@ -1505,7 +1505,7 @@ export default function PlanGenerator() {
             // TASK-3: Fly map to manually added waypoint
             flyToPosition={flyToPosition}
           />
-        </main>
+        </div>
       </div>
     </div>
   );

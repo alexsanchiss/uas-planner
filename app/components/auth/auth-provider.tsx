@@ -1,33 +1,21 @@
 "use client";
 
-import React, { createContext, useContext, ReactNode } from 'react';
-import { useAuth } from '../../hooks/useAuth';
+import React, { ReactNode } from 'react';
+import { AuthContext, useAuth, useAuthState } from '../../hooks/useAuth';
+import type { AuthState } from '../../hooks/useAuth';
 
-interface User {
-  id: number;
-  username: string;
-}
-
-interface AuthContextType {
-  user: User | null;
-  loading: boolean;
-  login: (email: string, password: string) => Promise<boolean | { requiresVerification: true; email: string }>;
-  logout: () => Promise<void>;
-  refreshAccessToken: () => Promise<string | null>;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+type AuthContextType = AuthState;
 
 interface AuthProviderProps {
   children: ReactNode;
 }
 
 /**
- * AuthProvider wraps the useAuth hook in a React context
- * to provide authentication state to all child components
+ * AuthProvider owns the single auth state (useAuthState) and shares it through
+ * context; every component reads it with useAuth()/useAuthContext().
  */
 export function AuthProvider({ children }: AuthProviderProps) {
-  const auth = useAuth();
+  const auth = useAuthState();
 
   return (
     <AuthContext.Provider value={auth}>
@@ -36,16 +24,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   );
 }
 
-/**
- * Custom hook to consume the AuthContext
- * Throws an error if used outside of AuthProvider
- */
-export function useAuthContext(): AuthContextType {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuthContext must be used within an AuthProvider');
-  }
-  return context;
-}
+/** Same as useAuth(); throws if used outside AuthProvider. */
+export const useAuthContext = useAuth;
 
-export type { User, AuthContextType };
+export type { AuthContextType };

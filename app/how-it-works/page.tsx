@@ -1,8 +1,11 @@
 import React from "react";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Cómo Funciona" };
 
 export default function HowItWorksPage() {
   return (
-    <main className="max-w-3xl mx-auto py-12 px-4">
+    <div className="max-w-3xl mx-auto py-12 px-4">
       <h1 className="text-3xl font-bold mb-6 text-[var(--color-primary)]">How It Works</h1>
       <section className="mb-10 bg-[var(--surface-primary)] border border-[var(--border-primary)] rounded-lg shadow p-6 text-[var(--text-primary)]">
         <h2 className="text-2xl font-bold mb-2 text-[var(--color-primary)]">Getting Started</h2>
@@ -113,6 +116,6 @@ export default function HowItWorksPage() {
         </div>
         <p className="mt-2 text-[var(--text-secondary)] text-sm">You can read the full papers by clicking the links above.</p>
       </section>
-    </main>
+    </div>
   );
 }

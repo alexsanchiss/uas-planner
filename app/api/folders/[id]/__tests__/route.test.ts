@@ -40,6 +40,11 @@ jest.mock('@/lib/prisma', () => ({
         mockDb.plans = mockDb.plans.filter((p) => !gone.includes(p));
         return { count: gone.length };
       }),
+      updateMany: jest.fn(async ({ where, data }: { where: Where; data: { folderId: number | null } }) => {
+        const hit = mockDb.plans.filter((p) => matches(p, where));
+        hit.forEach((p) => { p.folderId = data.folderId; });
+        return { count: hit.length };
+      }),
     },
     csvResult: {
       deleteMany: jest.fn(async ({ where }: { where: { id: { in: number[] } } }) => {
@@ -106,10 +111,9 @@ describe('DELETE /api/folders/[id]', () => {
     expect(mockDb.csv.has(21)).toBe(false);
   });
 
-  // KNOWN GAP (round-2 review): a leftover foreign plan keeps the folder FK-locked, so the real route
-  // answers 500 after having already deleted the caller's plans. Detach foreign plans
-  // (folderId = null) before folder.delete; remove `.failing` then.
-  it.failing('a leftover foreign plan does not block deleting the folder (it is detached, not deleted)', async () => {
+  // A leftover foreign plan would keep the folder FK-locked (500 after the caller's plans were already
+  // deleted): the route detaches it (folderId = null) before folder.delete.
+  it('a leftover foreign plan does not block deleting the folder (it is detached, not deleted)', async () => {
     mockDb.plans.push({ id: 23, folderId: 3, userId: B });
     mockDb.csv.add(23);
 

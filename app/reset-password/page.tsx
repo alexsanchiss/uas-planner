@@ -56,7 +56,7 @@ function ResetPasswordContent() {
   if (!token) {
     return (
       <div className="flex flex-col bg-[var(--bg-primary)] min-h-0">
-        <main className="flex items-center justify-center w-full py-20">
+        <div className="flex items-center justify-center w-full py-20">
           <div className="bg-[var(--surface-primary)] p-6 rounded-lg shadow-md w-full max-w-sm">
             <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-4">
               {t.auth.invalidLink}
@@ -71,14 +71,14 @@ function ResetPasswordContent() {
               {t.auth.requestNewResetLink}
             </a>
           </div>
-        </main>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="flex flex-col bg-[var(--bg-primary)] min-h-0">
-      <main className="flex items-center justify-center w-full py-20">
+      <div className="flex items-center justify-center w-full py-20">
         <div className="bg-[var(--surface-primary)] p-6 rounded-lg shadow-md w-full max-w-sm">
           <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-2">
             {t.auth.resetPasswordTitle}
@@ -135,7 +135,7 @@ function ResetPasswordContent() {
             </>
           )}
         </div>
-      </main>
+      </div>
     </div>
   );
 }
@@ -143,7 +143,7 @@ function ResetPasswordContent() {
 function ResetPasswordLoading() {
   return (
     <div className="flex flex-col bg-[var(--bg-primary)] min-h-0">
-      <main className="flex items-center justify-center w-full py-20">
+      <div className="flex items-center justify-center w-full py-20">
         <div className="bg-[var(--surface-primary)] p-6 rounded-lg shadow-md w-full max-w-sm animate-pulse">
           <div className="h-8 bg-[var(--bg-tertiary)] rounded w-48 mb-6"></div>
           <div className="space-y-4">
@@ -152,7 +152,7 @@ function ResetPasswordLoading() {
             <div className="h-10 bg-[var(--bg-tertiary)] rounded"></div>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

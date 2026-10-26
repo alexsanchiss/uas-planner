@@ -95,7 +95,7 @@ function LoginContent() {
 
   return (
     <div className="flex flex-col bg-[var(--bg-primary)] min-h-0">
-      <main className="flex items-center justify-center w-full py-20">
+      <div className="flex items-center justify-center w-full py-20">
         <div className="bg-[var(--surface-primary)] p-6 rounded-lg shadow-md w-full max-w-sm my-0">
           <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-6">
             {isSignup ? t.auth.signUp : t.auth.login}
@@ -198,7 +198,7 @@ function LoginContent() {
             </button>
           </p>
         </div>
-      </main>
+      </div>
     </div>
   );
 }
@@ -206,7 +206,7 @@ function LoginContent() {
 function LoginLoading() {
   return (
     <div className="flex flex-col bg-[var(--bg-primary)] min-h-0">
-      <main className="flex items-center justify-center w-full py-20">
+      <div className="flex items-center justify-center w-full py-20">
         <div className="bg-[var(--surface-primary)] p-6 rounded-lg shadow-md w-full max-w-sm my-0 animate-pulse">
           <div className="h-8 bg-[var(--bg-tertiary)] rounded w-24 mb-6"></div>
           <div className="space-y-4">
@@ -215,7 +215,7 @@ function LoginLoading() {
             <div className="h-10 bg-[var(--bg-tertiary)] rounded"></div>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

@@ -15,10 +15,8 @@
 
 import { useState, useCallback, useMemo } from 'react'
 import axios from 'axios'
+import { apiJson, getAuthToken } from '@/lib/api-client'
 import { usePolling } from './usePolling'
-
-// Auth token key (same as useAuth)
-const AUTH_TOKEN_KEY = 'authToken'
 
 /**
  * Flight plan status types
@@ -143,15 +141,8 @@ interface UseFlightPlansReturn {
 }
 
 /**
- * Get the auth token from localStorage
- */
-function getAuthToken(): string | null {
-  if (typeof window === 'undefined') return null
-  return localStorage.getItem(AUTH_TOKEN_KEY)
-}
-
-/**
- * Create axios headers with auth token
+ * Axios headers with auth token (only importExternalUplan still uses axios: the uploader reads
+ * the AxiosError shape it throws; move it to apiJson when the uploader is migrated)
  */
 function getAuthHeaders() {
   const token = getAuthToken()
@@ -167,11 +158,7 @@ async function fetchFlightPlans(): Promise<FlightPlan[]> {
     throw new Error('Not authenticated')
   }
 
-  const response = await axios.get<FlightPlan[]>('/api/flightPlans', {
-    headers: getAuthHeaders(),
-  })
-
-  return response.data
+  return apiJson<FlightPlan[]>('/api/flightPlans')
 }
 
 /**
@@ -271,12 +258,10 @@ export function useFlightPlans(options: UseFlightPlansOptions = {}): UseFlightPl
    */
   const createFlightPlan = useCallback(async (data: FlightPlanCreateData): Promise<FlightPlan | null> => {
     try {
-      const response = await axios.post<FlightPlan>('/api/flightPlans', data, {
-        headers: getAuthHeaders(),
-      })
+      const created = await apiJson<FlightPlan>('/api/flightPlans', { method: 'POST', body: data })
       // Refresh to get the new plan in the list
       await refresh()
-      return response.data
+      return created
     } catch (err) {
       console.error('Error creating flight plan:', err)
       return null
@@ -290,14 +275,13 @@ export function useFlightPlans(options: UseFlightPlansOptions = {}): UseFlightPl
     items: FlightPlanCreateData[]
   ): Promise<{ createdCount: number; items: FlightPlan[] } | null> => {
     try {
-      const response = await axios.post<{ createdCount: number; items: FlightPlan[] }>(
+      const created = await apiJson<{ createdCount: number; items: FlightPlan[] }>(
         '/api/flightPlans',
-        { items },
-        { headers: getAuthHeaders() }
+        { method: 'POST', body: { items } }
       )
       // Refresh to get the new plans in the list
       await refresh()
-      return response.data
+      return created
     } catch (err) {
       console.error('Error creating flight plans:', err)
       return null
@@ -315,11 +299,9 @@ export function useFlightPlans(options: UseFlightPlansOptions = {}): UseFlightPl
     optimisticUpdate(id, data as Partial<FlightPlan>)
 
     try {
-      const response = await axios.put<FlightPlan>('/api/flightPlans', {
-        id,
-        data,
-      }, {
-        headers: getAuthHeaders(),
+      const updated = await apiJson<FlightPlan>('/api/flightPlans', {
+        method: 'PUT',
+        body: { id, data },
       })
 
       // Clear optimistic state after successful update
@@ -327,7 +309,7 @@ export function useFlightPlans(options: UseFlightPlansOptions = {}): UseFlightPl
       // Refresh to sync with server
       await refresh()
       
-      return response.data
+      return updated
     } catch (err) {
       console.error('Error updating flight plan:', err)
       // Revert optimistic update on error
@@ -348,11 +330,9 @@ export function useFlightPlans(options: UseFlightPlansOptions = {}): UseFlightPl
     ids.forEach(id => optimisticUpdate(id, data as Partial<FlightPlan>))
 
     try {
-      const response = await axios.put<{ count: number }>('/api/flightPlans', {
-        ids,
-        data,
-      }, {
-        headers: getAuthHeaders(),
+      const updated = await apiJson<{ count: number }>('/api/flightPlans', {
+        method: 'PUT',
+        body: { ids, data },
       })
 
       // Clear optimistic states
@@ -360,7 +340,7 @@ export function useFlightPlans(options: UseFlightPlansOptions = {}): UseFlightPl
       // Refresh to sync with server
       await refresh()
 
-      return response.data
+      return updated
     } catch (err) {
       console.error('Error updating flight plans:', err)
       // Revert optimistic updates on error
@@ -378,10 +358,7 @@ export function useFlightPlans(options: UseFlightPlansOptions = {}): UseFlightPl
     optimisticRemove(id)
 
     try {
-      await axios.delete('/api/flightPlans', {
-        data: { id },
-        headers: getAuthHeaders(),
-      })
+      await apiJson('/api/flightPlans', { method: 'DELETE', body: { id } })
 
       // Clear optimistic state after successful delete
       clearOptimistic(id)
@@ -408,15 +385,12 @@ export function useFlightPlans(options: UseFlightPlansOptions = {}): UseFlightPl
     ids.forEach(id => optimisticRemove(id))
 
     try {
-      const response = await axios.delete<{
+      const result = await apiJson<{
         deletedPlans: number
         deletedCsvs: number
         totalDeleted: number
         message: string
-      }>('/api/flightPlans', {
-        data: { ids },
-        headers: getAuthHeaders(),
-      })
+      }>('/api/flightPlans', { method: 'DELETE', body: { ids } })
 
       // Clear optimistic states
       ids.forEach(id => clearOptimistic(id))
@@ -424,8 +398,8 @@ export function useFlightPlans(options: UseFlightPlansOptions = {}): UseFlightPl
       await refresh()
 
       return {
-        deletedPlans: response.data.deletedPlans,
-        deletedCsvs: response.data.deletedCsvs,
+        deletedPlans: result.deletedPlans,
+        deletedCsvs: result.deletedCsvs,
       }
     } catch (err) {
       console.error('Error deleting flight plans:', err)

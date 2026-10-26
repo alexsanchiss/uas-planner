@@ -3,11 +3,7 @@ import Papa from "papaparse";
 import { generateOrientedBBox, Waypoint, DEFAULT_UPLAN_CONFIG, UplanConfig } from "./generate_oriented_volumes";
 import { generateRandomJSON } from "./generate_random_json";
 import { generateJSON } from "./generate_json";
-
-// Environment variable to control random data generation
-// When true (default): generates complete U-Plan with random placeholder data
-// When false: generates only operation volumes, user must fill other fields
-const GENERATE_RANDOM_UPLAN_DATA = process.env.NEXT_PUBLIC_GENERATE_RANDOM_UPLAN_DATA !== 'false';
+import { shouldGenerateRandomUplan } from "./random-data";
 
 export interface TrayToUplanParams {
   scheduledAt: number; // POSIX timestamp (segundos)
@@ -154,11 +150,11 @@ export function trayToUplan({
   if (uplan && typeof uplan === "object") {
     // If GENERATE_RANDOM_UPLAN_DATA is enabled, fill missing fields with random data
     // Otherwise, only use the provided uplan data (user must fill fields manually)
-    const processedUplan = GENERATE_RANDOM_UPLAN_DATA ? fillUplan(uplan) : uplan;
+    const processedUplan = shouldGenerateRandomUplan() ? fillUplan(uplan) : uplan;
     return generateJSON(bbox, wpReduced, processedUplan);
   }
   // No uplan provided - generate with random data if enabled, otherwise empty structure
-  if (GENERATE_RANDOM_UPLAN_DATA) {
+  if (shouldGenerateRandomUplan()) {
     return generateRandomJSON(bbox, wpReduced);
   }
   // Generate with empty uplan fields - user must fill through form

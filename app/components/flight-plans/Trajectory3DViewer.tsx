@@ -1,5 +1,6 @@
 'use client'
 
+import { loadCesium } from '@/lib/cesium-loader'
 import React, { useEffect, useRef, useState, useMemo } from 'react'
 
 interface Trajectory3DViewerProps {
@@ -19,33 +20,6 @@ interface TrajectoryPoint {
 const SPEED_OPTIONS = [1, 2, 5, 10] as const
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/** Load Cesium from the pre-built UMD bundle via script tag */
-function loadCesiumScript(): Promise<any> {
-  if ((window as any).Cesium) {
-    return Promise.resolve((window as any).Cesium)
-  }
-
-  return new Promise((resolve, reject) => {
-    if (!document.querySelector('link[href="/cesium/Widgets/widgets.css"]')) {
-      const link = document.createElement('link')
-      link.rel = 'stylesheet'
-      link.href = '/cesium/Widgets/widgets.css'
-      document.head.appendChild(link)
-    }
-
-    const script = document.createElement('script')
-    script.src = '/cesium/Cesium.js'
-    script.onload = () => {
-      if ((window as any).Cesium) {
-        resolve((window as any).Cesium)
-      } else {
-        reject(new Error('Cesium failed to load'))
-      }
-    }
-    script.onerror = () => reject(new Error('Failed to load Cesium script'))
-    document.head.appendChild(script)
-  })
-}
 
 /** Parse CSV content to trajectory points. Times normalised to start at 0. */
 function parseCSVToTrajectory(csvContent: string): TrajectoryPoint[] {
@@ -285,13 +259,10 @@ const Trajectory3DViewer: React.FC<Trajectory3DViewerProps> = ({
         setPoints(parsedPoints)
 
         // 3. Load Cesium
-        const Cesium = await loadCesiumScript()
+        const Cesium = await loadCesium(token)
         cesiumRef.current = Cesium
         if (destroyed) return
 
-        // 4. Configure Cesium
-        Cesium.Ion.defaultAccessToken = token
-        ;(window as any).CESIUM_BASE_URL = '/cesium'
 
         // 5. Create viewer
         const viewer = new Cesium.Viewer(containerRef.current!, {

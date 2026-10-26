@@ -12,12 +12,9 @@
  */
 
 import { useState, useCallback, useMemo } from 'react'
-import axios from 'axios'
+import { apiJson, getAuthToken } from '@/lib/api-client'
 import { usePolling } from './usePolling'
 import type { FlightPlan } from './useFlightPlans'
-
-// Auth token key (same as useAuth)
-const AUTH_TOKEN_KEY = 'authToken'
 
 /**
  * Folder data structure
@@ -88,22 +85,6 @@ interface UseFoldersReturn {
 }
 
 /**
- * Get the auth token from localStorage
- */
-function getAuthToken(): string | null {
-  if (typeof window === 'undefined') return null
-  return localStorage.getItem(AUTH_TOKEN_KEY)
-}
-
-/**
- * Create axios headers with auth token
- */
-function getAuthHeaders() {
-  const token = getAuthToken()
-  return token ? { Authorization: `Bearer ${token}` } : {}
-}
-
-/**
  * Fetch all folders from the API
  */
 async function fetchFolders(): Promise<Folder[]> {
@@ -112,11 +93,7 @@ async function fetchFolders(): Promise<Folder[]> {
     throw new Error('Not authenticated')
   }
 
-  const response = await axios.get<Folder[]>('/api/folders', {
-    headers: getAuthHeaders(),
-  })
-
-  return response.data
+  return apiJson<Folder[]>('/api/folders')
 }
 
 /**
@@ -219,12 +196,10 @@ export function useFolders(options: UseFoldersOptions = {}): UseFoldersReturn {
    */
   const createFolder = useCallback(async (data: FolderCreateData): Promise<Folder | null> => {
     try {
-      const response = await axios.post<Folder>('/api/folders', data, {
-        headers: getAuthHeaders(),
-      })
+      const created = await apiJson<Folder>('/api/folders', { method: 'POST', body: data })
       // Refresh to get the new folder in the list
       await refresh()
-      return response.data
+      return created
     } catch (err) {
       console.error('Error creating folder:', err)
       return null
@@ -242,16 +217,14 @@ export function useFolders(options: UseFoldersOptions = {}): UseFoldersReturn {
     optimisticUpdate(id, data as Partial<Folder>)
 
     try {
-      const response = await axios.put<Folder>(`/api/folders/${id}`, data, {
-        headers: getAuthHeaders(),
-      })
+      const updated = await apiJson<Folder>(`/api/folders/${id}`, { method: 'PUT', body: data })
 
       // Clear optimistic state after successful update
       clearOptimistic(id)
       // Refresh to sync with server
       await refresh()
 
-      return response.data
+      return updated
     } catch (err) {
       console.error('Error updating folder:', err)
       // Revert optimistic update on error
@@ -269,9 +242,7 @@ export function useFolders(options: UseFoldersOptions = {}): UseFoldersReturn {
     optimisticRemove(id)
 
     try {
-      await axios.delete(`/api/folders/${id}`, {
-        headers: getAuthHeaders(),
-      })
+      await apiJson(`/api/folders/${id}`, { method: 'DELETE' })
 
       // Clear optimistic state after successful delete
       clearOptimistic(id)

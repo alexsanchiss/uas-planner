@@ -30,10 +30,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ requiresVerification: true, email: user.email }, { status: 200 })
     }
 
-    // Generate access token (short-lived, 15 minutes)
+    // Generate access token (7 days)
     const token = generateToken(user.id)
     
-    // Generate refresh token (long-lived, 7 days)
+    // Generate refresh token (long-lived, 30 days)
     const refreshToken = generateRefreshToken(user.id)
 
     // Create response with access token in body

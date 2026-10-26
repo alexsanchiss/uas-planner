@@ -12,7 +12,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react'
-import axios, { AxiosError } from 'axios'
+import { apiFetch } from '@/lib/api-client'
 
 /**
  * U-Space boundary point
@@ -111,35 +111,30 @@ export function useUspaces(): UseUspacesReturn {
     }
 
     try {
-      const response = await axios.get<USpacesApiResponse>('/api/geoawareness/uspaces')
+      const response = await apiFetch('/api/geoawareness/uspaces').catch(() => null)
+      if (!response) throw new Error('Failed to fetch U-spaces')
+      const data = (await response.json().catch(() => null)) as USpacesApiResponse | null
 
       if (!mountedRef.current) return
 
-      if (response.data.success && response.data.uspaces) {
-        setUspaces(response.data.uspaces)
+      if (!response.ok) {
+        throw new Error(
+          response.status === 503 ? 'Geoawareness service is not configured or unavailable'
+          : response.status === 504 ? 'Geoawareness service timeout'
+          : data?.error || 'Failed to fetch U-spaces'
+        )
+      }
+
+      if (data?.success && data.uspaces) {
+        setUspaces(data.uspaces)
         setError(null)
       } else {
-        throw new Error(response.data.error || 'Failed to fetch U-spaces')
+        throw new Error(data?.error || 'Failed to fetch U-spaces')
       }
     } catch (err) {
       if (!mountedRef.current) return
 
-      let errorMessage = 'Failed to fetch U-spaces'
-      
-      if (axios.isAxiosError(err)) {
-        const axiosError = err as AxiosError<{ error?: string }>
-        if (axiosError.response?.status === 503) {
-          errorMessage = 'Geoawareness service is not configured or unavailable'
-        } else if (axiosError.response?.status === 504) {
-          errorMessage = 'Geoawareness service timeout'
-        } else if (axiosError.response?.data?.error) {
-          errorMessage = axiosError.response.data.error
-        }
-      } else if (err instanceof Error) {
-        errorMessage = err.message
-      }
-
-      setError(new Error(errorMessage))
+      setError(new Error(err instanceof Error ? err.message : 'Failed to fetch U-spaces'))
     } finally {
       if (mountedRef.current) {
         setLoading(false)

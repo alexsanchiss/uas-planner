@@ -1,5 +1,6 @@
 'use client'
 
+import { loadCesium } from '@/lib/cesium-loader'
 import React, { useState, useMemo, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { useGeoawarenessWebSocket, type GeozoneData } from '@/app/hooks/useGeoawarenessWebSocket'
@@ -249,38 +250,6 @@ function extractGeozoneAltsFromWs(gz: GeozoneData): { lower: number; upper: numb
   return { lower, upper }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function loadCesiumScript(): Promise<any> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if ((window as any).Cesium) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return Promise.resolve((window as any).Cesium)
-  }
-
-  return new Promise((resolve, reject) => {
-    if (!document.querySelector('link[href="/cesium/Widgets/widgets.css"]')) {
-      const link = document.createElement('link')
-      link.rel = 'stylesheet'
-      link.href = '/cesium/Widgets/widgets.css'
-      document.head.appendChild(link)
-    }
-
-    const script = document.createElement('script')
-    script.src = '/cesium/Cesium.js'
-    script.onload = () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if ((window as any).Cesium) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        resolve((window as any).Cesium)
-      } else {
-        reject(new Error('Cesium failed to load'))
-      }
-    }
-    script.onerror = () => reject(new Error('Failed to load Cesium script'))
-    document.head.appendChild(script)
-  })
-}
-
 // Stable empty-set constants — reused as fallback props so that component
 // renders for approved plans never pass a freshly-allocated `new Set()` to
 // Cesium3DView's effect dependency array, which would retrigger a full viewer
@@ -339,12 +308,8 @@ function Cesium3DView({ volumes, isApproved, conflictingIndices, geozones, allGe
         const { token } = await tokenRes.json()
         if (destroyed) return
 
-        const Cesium = await loadCesiumScript()
+        const Cesium = await loadCesium(token)
         if (destroyed) return
-
-        Cesium.Ion.defaultAccessToken = token
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Cesium loaded dynamically, no static types
-        ;(window as any).CESIUM_BASE_URL = '/cesium'
 
         const viewer = new Cesium.Viewer(containerRef.current!, {
           terrain: Cesium.Terrain.fromWorldTerrain(),

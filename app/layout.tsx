@@ -1,107 +1,38 @@
-"use client";
-
 import "./globals.css";
-import { Footer } from "./components/footer";
-import { Header } from "./components/header";
-import { AuthProvider } from "./components/auth/auth-provider";
-import { ToastProvider } from "./components/ui/toast-provider";
-import { I18nProvider } from "./i18n";
-import React, { useEffect, useState } from "react";
-import { Modal } from "./components/ui/modal";
-import { usePathname } from "next/navigation";
-import { getStoredTheme } from "./hooks/useTheme";
+import type { Metadata, Viewport } from "next";
+import React from "react";
+import { Providers } from "./providers";
 
-/**
- * Keep the root theme in sync with the saved app theme or system fallback.
- */
-function initializeTheme() {
-  if (typeof window === "undefined") return;
+export const metadata: Metadata = {
+  title: { template: "%s · UPPS", default: "UPPS" },
+  description:
+    "UPPS: servicio de preparación de U-plans y planes de vuelo para operadores de drones.",
+};
 
-  if (getStoredTheme() === "light") {
-    document.documentElement.setAttribute("data-theme", "light");
-  } else {
-    document.documentElement.removeAttribute("data-theme");
-  }
-}
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+};
+
+// Runs before first paint. Mirrors getStoredTheme() in hooks/useTheme.ts:
+// saved "light"/"dark" wins, otherwise the system preference. Dark = no attribute.
+const THEME_SCRIPT = `(function(){try{var s=localStorage.getItem("uas-planner-theme");if(s==="light"||(s!=="dark"&&window.matchMedia("(prefers-color-scheme: light)").matches)){document.documentElement.setAttribute("data-theme","light")}}catch(e){}})();`;
 
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
-  const isSplash = pathname === "/";
-  const isLaunch = pathname === "/launch";
-  const [showDemoPopup, setShowDemoPopup] = useState(false);
-
-  useEffect(() => {
-    // Initialize theme on mount
-    initializeTheme();
-    
-    if (typeof window === "undefined") return;
-    // Show if just logged in/signed up (sessionStorage flag)
-    if (sessionStorage.getItem("showDemoPopupAfterAuth")) {
-      setShowDemoPopup(true);
-      sessionStorage.removeItem("showDemoPopupAfterAuth");
-      return;
-    }
-    // Show for unregistered users first time on main page (localStorage flag)
-    if (window.location.pathname === "/") {
-      if (!localStorage.getItem("demoPopupShownForGuest")) {
-        setShowDemoPopup(true);
-        localStorage.setItem("demoPopupShownForGuest", "true");
-      }
-    }
-  }, []);
-
   return (
     <html lang="en" suppressHydrationWarning>
-      <body suppressHydrationWarning className="min-h-screen flex flex-col bg-[var(--bg-primary)] text-[var(--text-primary)]">
-        <I18nProvider>
-        <AuthProvider>
-        <ToastProvider>
-        {!isSplash && <Header transparent={isLaunch} />}
-        <Modal
-          open={showDemoPopup}
-          onClose={() => setShowDemoPopup(false)}
-          title="Welcome to the SNA U-plan Preparation Service DEMO!"
-        >
-          <p className="mb-3">
-            <span className="font-semibold">
-              This is a <span className="text-blue-400">DEMO</span> version of
-              our UPPS.
-            </span>
-          </p>
-          <p className="mb-3">
-            We are actively working to improve the app and user experience. Your
-            effort in trying our app is greatly appreciated!
-          </p>
-          <p className="mb-3">
-            We welcome all feedback and encourage you to get in touch via the{" "}
-            <a
-              href="/contact-us"
-              className="text-blue-400 hover:underline hover:text-blue-300"
-            >
-              Contact
-            </a>{" "}
-            section.
-          </p>
-          <p>
-            Want to know more? Learn how the system works in the{" "}
-            <a
-              href="/how-it-works"
-              className="text-blue-400 hover:underline hover:text-blue-300"
-            >
-              How it works
-            </a>{" "}
-            section.
-          </p>
-        </Modal>
-        <main className="flex-1 flex flex-col">{children}</main>
-        {!isSplash && <Footer transparent={isLaunch} />}
-          </ToastProvider>
-        </AuthProvider>
-        </I18nProvider>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
+      <body
+        suppressHydrationWarning
+        className="min-h-screen flex flex-col bg-[var(--bg-primary)] text-[var(--text-primary)]"
+      >
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

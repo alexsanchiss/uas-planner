@@ -1,4 +1,4 @@
-import { getSourceIp } from '@/lib/http';
+import { getSourceIp } from '@/lib/request-ip';
 
 // Simple in-memory rate limiter
 // For production, use Redis-based solution

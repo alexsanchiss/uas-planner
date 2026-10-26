@@ -65,7 +65,7 @@ export default function LaunchPage() {
       </a>
 
       {/* Content */}
-      <main className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         {/* Page heading */}
         <div className="text-center mb-12">
           <h1 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
@@ -86,7 +86,7 @@ export default function LaunchPage() {
             />
           ))}
         </div>
-      </main>
+      </div>
     </div>
   );
 }

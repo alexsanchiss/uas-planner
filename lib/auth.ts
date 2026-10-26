@@ -3,8 +3,8 @@
  * 
  * This module provides JWT-based authentication utilities including:
  * - Password hashing with bcrypt
- * - Access token generation and verification (15 minute expiry)
- * - Refresh token generation and verification (7 day expiry)
+ * - Access token generation and verification (7 day expiry)
+ * - Refresh token generation and verification (30 day expiry)
  * - Token decoding and expiration checking
  * 
  * Security Requirements:
@@ -95,7 +95,7 @@ export async function comparePasswords(password: string, hashedPassword: string)
 }
 
 /**
- * Generates a short-lived JWT access token (15 minutes).
+ * Generates a JWT access token (7 days).
  * The token contains the user ID and token type ('access').
  * 
  * @param userId - The user's database ID
@@ -112,7 +112,7 @@ export function generateToken(userId: number): string {
 }
 
 /**
- * Generates a long-lived JWT refresh token (7 days).
+ * Generates a long-lived JWT refresh token (30 days).
  * The token contains the user ID and token type ('refresh').
  * Should be stored in an httpOnly cookie for security.
  * 

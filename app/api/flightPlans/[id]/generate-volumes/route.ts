@@ -16,12 +16,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { withAuth, isAuthError } from '@/lib/auth-middleware';
 import { trayToUplan } from '@/lib/uplan/tray_to_uplan';
+import { shouldGenerateRandomUplan } from '@/lib/uplan/random-data';
 import { parseId } from '@/lib/http';
-
-/**
- * Environment variable to control random data generation
- */
-const GENERATE_RANDOM_UPLAN_DATA = process.env.NEXT_PUBLIC_GENERATE_RANDOM_UPLAN_DATA !== 'false';
 
 /**
  * Params type for dynamic route (Next.js 15 App Router)
@@ -164,7 +160,7 @@ export async function POST(
     return NextResponse.json({
       success: true,
       volumesGenerated,
-      randomDataGenerated: GENERATE_RANDOM_UPLAN_DATA,
+      randomDataGenerated: shouldGenerateRandomUplan(),
       uplan: newUplan,
     });
   } catch (error) {

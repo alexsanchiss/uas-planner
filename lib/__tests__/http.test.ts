@@ -1,5 +1,5 @@
 /**
- * lib/http.ts: parseId, getSourceIp (the one client-IP rule shared by rate limits and the FAS callback
+ * lib/http.ts: parseId, lib/request-ip.ts getSourceIp (the one client-IP rule shared by rate limits and the FAS callback
  * allowlist) and userOwnsFolders (the folder-ownership primitive behind SEC-06).
  * The prisma fake counts folders honouring `where`, so a missing userId filter is caught.
  */
@@ -10,7 +10,8 @@ jest.mock('@/lib/prisma', () => ({
   default: { folder: { count: (...a: unknown[]) => mockFolderCount(...a) } },
 }));
 
-import { getSourceIp, parseId, userOwnsFolders } from '../http';
+import { parseId, userOwnsFolders } from '../http';
+import { getSourceIp } from '../request-ip';
 
 const FOLDERS = [
   { id: 1, userId: 10 },
