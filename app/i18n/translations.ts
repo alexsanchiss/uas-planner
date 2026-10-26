@@ -6,9 +6,12 @@
  * Supported languages: English (en), Spanish (es)
  */
 
+import { pageEn, pageEs, type PageTranslations } from './pages'
+
 export type Language = 'en' | 'es'
 
-export interface Translations {
+// Shell, boundaries, titles, Plan Activation, auth pages and account pages live in ./pages.
+export interface Translations extends PageTranslations {
   // Common
   common: {
     loading: string
@@ -490,6 +493,7 @@ export interface Translations {
 
 export const translations: Record<Language, Translations> = {
   en: {
+    ...pageEn,
     common: {
       loading: 'Loading...',
       error: 'Error',
@@ -934,6 +938,7 @@ export const translations: Record<Language, Translations> = {
   },
 
   es: {
+    ...pageEs,
     common: {
       loading: 'Cargando...',
       error: 'Error',

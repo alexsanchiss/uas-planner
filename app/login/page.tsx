@@ -1,12 +1,16 @@
 "use client";
 
 import { useState, Suspense } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "../hooks/useAuth";
 import { Input } from "../components/ui/input";
-import { Button } from "../components/ui/button";
+import { AuthButton, AuthCard, AuthCardSkeleton, AuthError, authLinkClass } from "../components/auth/auth-card";
 import { useI18n } from "../i18n";
 import axios from "axios";
+
+const TAB_BASE =
+  "flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring";
 
 function LoginContent() {
   const { t } = useI18n();
@@ -19,12 +23,20 @@ function LoginContent() {
   const [isSignup, setIsSignup] = useState(false);
   const [acceptPolicy, setAcceptPolicy] = useState(false);
   const [error, setError] = useState("");
+  const [pending, setPending] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login } = useAuth();
 
+  const switchMode = (signup: boolean) => {
+    if (signup === isSignup) return;
+    setIsSignup(signup);
+    setError("");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (pending) return;
 
     if (isSignup) {
       // Sign Up
@@ -40,9 +52,11 @@ function LoginContent() {
         setError(t.auth.passwordsDoNotMatch);
         return;
       }
-      
+
+      setError("");
+      setPending(true);
       try {
-        const response = await axios.post("/api/auth/signup", { 
+        await axios.post("/api/auth/signup", { 
           email, 
           password,
           confirmPassword,
@@ -50,10 +64,11 @@ function LoginContent() {
           lastName: lastName || undefined,
           phone: phone || undefined,
         });
-        // After signup, redirect to verification page
+        // After signup, redirect to verification page (stays pending while navigating)
         router.push(`/verify-email?email=${encodeURIComponent(email)}`);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- axios-like error shape not typed
       } catch (err: any) {
+        setPending(false);
         // Handle validation errors from API
         if (err.response?.data?.error) {
           const errorMessage = err.response.data.error;
@@ -76,6 +91,8 @@ function LoginContent() {
       }
     } else {
       // Login
+      setError("");
+      setPending(true);
       const result = await login(email, password);
       if (result === true) {
         // Check for redirect query param, otherwise go to home
@@ -88,136 +105,159 @@ function LoginContent() {
       } else if (typeof result === 'object' && result.requiresVerification) {
         router.push(`/verify-email?email=${encodeURIComponent(result.email)}`);
       } else {
+        setPending(false);
         setError(t.auth.invalidCredentials);
       }
     }
   };
 
+  const mode = isSignup ? "signup" : "login";
+  const optional = t.authForm.optional;
+  const [policyBefore, policyAfter] = t.auth.acceptPrivacyPolicy.split('{link}');
+
   return (
-    <div className="flex flex-col bg-[var(--bg-primary)] min-h-0">
-      <div className="flex items-center justify-center w-full py-20">
-        <div className="bg-[var(--surface-primary)] p-6 rounded-lg shadow-md w-full max-w-sm my-0">
-          <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-6">
-            {isSignup ? t.auth.signUp : t.auth.login}
-          </h1>
-          {error && <p className="text-[var(--status-error)] mb-4">{error}</p>}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <Input
-              type="email"
-              placeholder={t.auth.email}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-            <Input
-              type="password"
-              placeholder={t.auth.password}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-            {isSignup && (
+    <AuthCard title={isSignup ? t.auth.signUp : t.auth.login} hideTitle>
+      {/* Login / sign-up share this URL: two tabs, no query parameter */}
+      <div
+        role="tablist"
+        aria-label={t.authForm.tabsLabel}
+        className="mb-6 flex gap-1 rounded-lg bg-subtle p-1"
+        onKeyDown={(e) => {
+          if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+            e.preventDefault();
+            switchMode(e.key === "ArrowRight");
+            document.getElementById(e.key === "ArrowRight" ? "auth-tab-signup" : "auth-tab-login")?.focus();
+          }
+        }}
+      >
+        <button
+          type="button"
+          role="tab"
+          id="auth-tab-login"
+          aria-selected={!isSignup}
+          aria-controls="auth-panel"
+          tabIndex={isSignup ? -1 : 0}
+          onClick={() => switchMode(false)}
+          className={`${TAB_BASE} ${!isSignup ? "bg-surface text-fg shadow-theme-sm" : "text-fg-2 hover:text-fg"}`}
+        >
+          {t.auth.login}
+        </button>
+        <button
+          type="button"
+          role="tab"
+          id="auth-tab-signup"
+          aria-selected={isSignup}
+          aria-controls="auth-panel"
+          tabIndex={isSignup ? 0 : -1}
+          onClick={() => switchMode(true)}
+          className={`${TAB_BASE} ${isSignup ? "bg-surface text-fg shadow-theme-sm" : "text-fg-2 hover:text-fg"}`}
+        >
+          {t.auth.signUp}
+        </button>
+      </div>
+
+      <div role="tabpanel" id="auth-panel" aria-labelledby={`auth-tab-${mode}`}>
+        {error && <AuthError>{error}</AuthError>}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Input
+            type="email"
+            name="email"
+            label={t.auth.email}
+            autoComplete={isSignup ? "email" : "username"}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <Input
+            type="password"
+            name="password"
+            label={t.auth.password}
+            autoComplete={isSignup ? "new-password" : "current-password"}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+          {isSignup && (
+            <>
               <Input
                 type="password"
-                placeholder={t.auth.confirmPassword}
+                name="confirmPassword"
+                label={t.auth.confirmPassword}
+                autoComplete="new-password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
               />
-            )}
-            {isSignup && (
-              <>
-                <Input
-                  type="text"
-                  placeholder="First Name (optional)"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
+              <Input
+                type="text"
+                name="firstName"
+                label={`${t.authForm.firstName} ${optional}`}
+                autoComplete="given-name"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+              />
+              <Input
+                type="text"
+                name="lastName"
+                label={`${t.authForm.lastName} ${optional}`}
+                autoComplete="family-name"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+              />
+              <Input
+                type="tel"
+                name="phone"
+                label={`${t.authForm.phone} ${optional}`}
+                autoComplete="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+              />
+              <div className="mb-2 rounded border border-warning-line bg-warning-soft p-2 text-xs text-warning-text">
+                <strong>{t.auth.advice}:</strong> {t.auth.demoDisclaimer}
+              </div>
+              <label className="flex items-center text-xs text-fg-2">
+                <input
+                  type="checkbox"
+                  checked={acceptPolicy}
+                  onChange={(e) => setAcceptPolicy(e.target.checked)}
+                  className="mr-2 align-middle accent-brand"
+                  required
                 />
-                <Input
-                  type="text"
-                  placeholder="Last Name (optional)"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                />
-                <Input
-                  type="tel"
-                  placeholder="Phone (optional)"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                />
-              </>
-            )}
-            {isSignup && (
-              <>
-                <div className="bg-[var(--status-warning-bg)] border border-[var(--status-warning-border)] rounded p-2 text-[var(--status-warning-text)] text-xs mb-2">
-                  <strong>{t.auth.advice}:</strong> {t.auth.demoDisclaimer}
-                </div>
-                <label className="flex items-center text-xs text-[var(--text-secondary)]">
-                  <input
-                    type="checkbox"
-                    checked={acceptPolicy}
-                    onChange={(e) => setAcceptPolicy(e.target.checked)}
-                    className="accent-[var(--color-primary)] mr-2 align-middle"
-                    required
-                  />
-                  <span>
-                    {t.auth.acceptPrivacyPolicy.split('{link}')[0]}
-                    <a
-                      href="/privacy-policy"
-                      className="text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] hover:underline"
-                      target="_blank"
-                    >
-                      {t.nav.privacyPolicy}
-                    </a>
-                    {t.auth.acceptPrivacyPolicy.split('{link}')[1]}
-                  </span>
-                </label>
-              </>
-            )}
-            <Button type="submit" className="w-full">
-              {isSignup ? t.auth.signUp : t.auth.login}
-            </Button>
-          </form>
-          {!isSignup && (
-            <p className="text-sm mt-3 text-center">
-              <a
-                href="/forgot-password"
-                className="text-[var(--color-primary)] hover:underline hover:text-[var(--color-primary-hover)]"
-              >
-                {t.auth.forgotPassword}
-              </a>
-            </p>
+                <span>
+                  {policyBefore}
+                  <Link
+                    href="/privacy-policy"
+                    className={authLinkClass}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`${t.nav.privacyPolicy} (${t.authForm.showPolicy})`}
+                  >
+                    {t.nav.privacyPolicy}
+                  </Link>
+                  {policyAfter}
+                </span>
+              </label>
+            </>
           )}
-          <p className="text-[var(--text-tertiary)] text-sm mt-4 text-center">
-            {isSignup ? t.auth.alreadyHaveAccount : t.auth.dontHaveAccount}{" "}
-            <button
-              onClick={() => setIsSignup(!isSignup)}
-              className="text-[var(--color-primary)] hover:underline hover:text-[var(--color-primary-hover)]"
-            >
-              {isSignup ? t.auth.login : t.auth.signUp}
-            </button>
+          <AuthButton type="submit" pending={pending}>
+            {pending ? t.authForm.submitting : isSignup ? t.auth.signUp : t.auth.login}
+          </AuthButton>
+        </form>
+        {!isSignup && (
+          <p className="mt-4 text-center text-sm">
+            <Link href="/forgot-password" className={authLinkClass}>
+              {t.auth.forgotPassword}
+            </Link>
           </p>
-        </div>
+        )}
       </div>
-    </div>
+    </AuthCard>
   );
 }
 
 function LoginLoading() {
-  return (
-    <div className="flex flex-col bg-[var(--bg-primary)] min-h-0">
-      <div className="flex items-center justify-center w-full py-20">
-        <div className="bg-[var(--surface-primary)] p-6 rounded-lg shadow-md w-full max-w-sm my-0 animate-pulse">
-          <div className="h-8 bg-[var(--bg-tertiary)] rounded w-24 mb-6"></div>
-          <div className="space-y-4">
-            <div className="h-10 bg-[var(--bg-tertiary)] rounded"></div>
-            <div className="h-10 bg-[var(--bg-tertiary)] rounded"></div>
-            <div className="h-10 bg-[var(--bg-tertiary)] rounded"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  const { t } = useI18n();
+  return <AuthCardSkeleton label={t.common.loading} />;
 }
 
 export default function AuthPage() {

@@ -3,7 +3,14 @@
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Input } from "../components/ui/input";
-import { Button } from "../components/ui/button";
+import {
+  AuthButton,
+  AuthCard,
+  AuthCardSkeleton,
+  AuthError,
+  AuthLink,
+  AuthSuccess,
+} from "../components/auth/auth-card";
 import { useI18n } from "../i18n";
 import axios from "axios";
 
@@ -55,106 +62,64 @@ function ResetPasswordContent() {
 
   if (!token) {
     return (
-      <div className="flex flex-col bg-[var(--bg-primary)] min-h-0">
-        <div className="flex items-center justify-center w-full py-20">
-          <div className="bg-[var(--surface-primary)] p-6 rounded-lg shadow-md w-full max-w-sm">
-            <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-4">
-              {t.auth.invalidLink}
-            </h1>
-            <p className="text-[var(--text-secondary)] text-sm mb-4">
-              {t.auth.invalidResetLink}
-            </p>
-            <a
-              href="/forgot-password"
-              className="text-[var(--color-primary)] hover:underline hover:text-[var(--color-primary-hover)] text-sm"
-            >
-              {t.auth.requestNewResetLink}
-            </a>
-          </div>
-        </div>
-      </div>
+      <AuthCard title={t.auth.invalidLink} description={t.auth.invalidResetLink}>
+        <p className="text-sm">
+          <AuthLink href="/forgot-password">{t.auth.requestNewResetLink}</AuthLink>
+        </p>
+      </AuthCard>
     );
   }
 
   return (
-    <div className="flex flex-col bg-[var(--bg-primary)] min-h-0">
-      <div className="flex items-center justify-center w-full py-20">
-        <div className="bg-[var(--surface-primary)] p-6 rounded-lg shadow-md w-full max-w-sm">
-          <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-2">
-            {t.auth.resetPasswordTitle}
-          </h1>
-
-          {success ? (
-            <>
-              <p className="text-green-400 mb-4">
-                {t.auth.passwordResetSuccessDesc}
-              </p>
-              <Button className="w-full" onClick={() => router.push("/login")}>
-                {t.auth.goToLogin}
-              </Button>
-            </>
-          ) : (
-            <>
-              <p className="text-[var(--text-secondary)] text-sm mb-6">
-                {t.auth.enterNewPasswordDesc}
-              </p>
-              {error && (
-                <p className="text-[var(--status-error)] mb-4 text-sm">
-                  {error}
-                </p>
-              )}
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <Input
-                  type="password"
-                  placeholder={t.auth.newPassword}
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  required
-                  minLength={8}
-                />
-                <Input
-                  type="password"
-                  placeholder={t.auth.confirmNewPassword}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  minLength={8}
-                />
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? t.auth.resettingPassword : t.auth.resetPassword}
-                </Button>
-              </form>
-              <p className="text-[var(--text-tertiary)] text-sm mt-4 text-center">
-                <a
-                  href="/login"
-                  className="text-[var(--color-primary)] hover:underline hover:text-[var(--color-primary-hover)]"
-                >
-                  {t.auth.backToLogin}
-                </a>
-              </p>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
+    <AuthCard
+      title={t.auth.resetPasswordTitle}
+      description={success ? undefined : t.auth.enterNewPasswordDesc}
+    >
+      {success ? (
+        <>
+          <AuthSuccess>{t.auth.passwordResetSuccessDesc}</AuthSuccess>
+          <AuthButton onClick={() => router.push("/login")}>{t.auth.goToLogin}</AuthButton>
+        </>
+      ) : (
+        <>
+          {error && <AuthError>{error}</AuthError>}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <Input
+              type="password"
+              name="newPassword"
+              label={t.auth.newPassword}
+              autoComplete="new-password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              required
+              minLength={8}
+            />
+            <Input
+              type="password"
+              name="confirmPassword"
+              label={t.auth.confirmNewPassword}
+              autoComplete="new-password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              minLength={8}
+            />
+            <AuthButton type="submit" pending={loading}>
+              {loading ? t.auth.resettingPassword : t.auth.resetPassword}
+            </AuthButton>
+          </form>
+          <p className="mt-4 text-center text-sm">
+            <AuthLink href="/login">{t.auth.backToLogin}</AuthLink>
+          </p>
+        </>
+      )}
+    </AuthCard>
   );
 }
 
 function ResetPasswordLoading() {
-  return (
-    <div className="flex flex-col bg-[var(--bg-primary)] min-h-0">
-      <div className="flex items-center justify-center w-full py-20">
-        <div className="bg-[var(--surface-primary)] p-6 rounded-lg shadow-md w-full max-w-sm animate-pulse">
-          <div className="h-8 bg-[var(--bg-tertiary)] rounded w-48 mb-6"></div>
-          <div className="space-y-4">
-            <div className="h-10 bg-[var(--bg-tertiary)] rounded"></div>
-            <div className="h-10 bg-[var(--bg-tertiary)] rounded"></div>
-            <div className="h-10 bg-[var(--bg-tertiary)] rounded"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  const { t } = useI18n();
+  return <AuthCardSkeleton label={t.common.loading} />;
 }
 
 export default function ResetPasswordPage() {

@@ -1,14 +1,24 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MotionConfig } from "framer-motion";
 import { Footer } from "./components/footer";
 import { Header } from "./components/header";
 import { AuthProvider } from "./components/auth/auth-provider";
 import { ToastProvider } from "./components/ui/toast-provider";
-import { I18nProvider } from "./i18n";
+import { I18nProvider, useI18n } from "./i18n";
 import { Modal } from "./components/ui/modal";
+
+/** Keeps <html lang> equal to the active UI language (layout.tsx renders the default language). */
+function HtmlLang() {
+  const { language } = useI18n();
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
+  return null;
+}
 
 /**
  * Client shell of the app: providers, header/footer by pathname, welcome popup.
@@ -40,6 +50,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <MotionConfig reducedMotion="user">
       <I18nProvider>
+        <HtmlLang />
         <AuthProvider>
           <ToastProvider>
             {!isSplash && <Header transparent={isLaunch} />}
@@ -60,16 +71,16 @@ export function Providers({ children }: { children: React.ReactNode }) {
               </p>
               <p className="mb-3">
                 We welcome all feedback and encourage you to get in touch via the{" "}
-                <a href="/contact-us" className="text-brand-text hover:underline">
+                <Link href="/contact-us" onClick={() => setShowDemoPopup(false)} className="text-brand-text hover:underline">
                   Contact
-                </a>{" "}
+                </Link>{" "}
                 section.
               </p>
               <p>
                 Want to know more? Learn how the system works in the{" "}
-                <a href="/how-it-works" className="text-brand-text hover:underline">
+                <Link href="/how-it-works" onClick={() => setShowDemoPopup(false)} className="text-brand-text hover:underline">
                   How it works
-                </a>{" "}
+                </Link>{" "}
                 section.
               </p>
             </Modal>

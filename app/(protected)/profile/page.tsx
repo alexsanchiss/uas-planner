@@ -3,18 +3,22 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import { useToast } from "../../hooks/useToast";
+import { useI18n } from "../../i18n";
 import { Input } from "../../components/ui/input";
-import { Button } from "../../components/ui/button";
+import { AuthButton } from "../../components/auth/auth-card";
 import { Mail, Calendar, Shield } from "lucide-react";
 
 export default function ProfilePage() {
   const { user } = useAuth();
   const toast = useToast();
+  const { t } = useI18n();
+  const a = t.account;
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [profileLoaded, setProfileLoaded] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -30,12 +34,15 @@ export default function ProfilePage() {
           setLastName(data.lastName || "");
           setPhone(data.phone || "");
           setProfileLoaded(true);
+        } else {
+          setLoadFailed(true);
         }
       })
-      .catch(() => {});
+      .catch(() => setLoadFailed(true));
   }, []);
 
-  const handleSaveProfile = async () => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
     const token = localStorage.getItem("authToken");
     if (!token) return;
     setSaving(true);
@@ -49,105 +56,112 @@ export default function ProfilePage() {
         body: JSON.stringify({ firstName, lastName, phone }),
       });
       if (!res.ok) throw new Error("Failed to update profile");
-      toast.success("Profile updated successfully");
+      toast.success(a.saved);
       window.dispatchEvent(new Event("auth:changed"));
     } catch {
-      toast.error("Failed to update profile");
+      toast.error(a.saveFailed);
     } finally {
       setSaving(false);
     }
   };
 
- 
-
   return (
-    <div className="min-h-screen bg-[var(--bg-primary)] py-8 px-4">
-      <div className="max-w-2xl mx-auto">
+    <div className="w-full bg-canvas px-4 py-8">
+      <div className="mx-auto max-w-2xl">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-[var(--text-primary)]">Profile</h1>
-          <p className="text-[var(--text-muted)] mt-1">Your account information</p>
+          <h1 className="text-3xl font-bold text-fg">{a.profileTitle}</h1>
+          <p className="mt-1 text-muted">{a.profileSubtitle}</p>
         </div>
 
         {/* Profile Card */}
-        <div className="bg-[var(--surface-primary)] border border-[var(--border-primary)] rounded-xl p-6 shadow-lg">
+        <div className="rounded-xl border border-line bg-surface p-6 shadow-theme-lg">
           {/* Avatar and Name */}
-          <div className="flex items-center gap-4 mb-6 pb-6 border-b border-[var(--border-primary)]">
-            <div className="w-20 h-20 rounded-full bg-[var(--color-primary)] flex items-center justify-center text-white text-2xl font-bold">
+          <div className="mb-6 flex items-center gap-4 border-b border-line pb-6">
+            <div
+              aria-hidden="true"
+              className="flex h-20 w-20 items-center justify-center rounded-full bg-brand text-2xl font-bold text-brand-fg"
+            >
               {user?.firstName?.charAt(0)?.toUpperCase() || user?.username?.charAt(0)?.toUpperCase() || "U"}
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-[var(--text-primary)]">
+              <h2 className="text-xl font-semibold text-fg">
                 {user?.firstName && user?.lastName
                   ? `${user.firstName} ${user.lastName}`
-                  : user?.username || "User"}
+                  : user?.username || a.userFallback}
               </h2>
-              <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--status-success-bg)] text-[var(--status-success-text)] border border-[var(--status-success-border)]">
-                <Shield className="w-3 h-3" />
-                Active Account
+              <span className="mt-1 inline-flex items-center gap-1 rounded-full border border-success-line bg-success-soft px-2 py-0.5 text-xs font-medium text-success-text">
+                <Shield className="h-3 w-3" aria-hidden="true" />
+                {a.activeAccount}
               </span>
             </div>
           </div>
 
+          {loadFailed && (
+            <p role="alert" className="mb-4 rounded-md border border-danger-line bg-danger-soft px-3 py-2 text-sm text-danger-text">
+              {a.loadFailed}
+            </p>
+          )}
+
           {/* Editable Profile Fields */}
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">First Name</label>
-              <Input
-                type="text"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                placeholder="Enter your first name"
-              />
-            </div>
+          <form onSubmit={handleSaveProfile} className="space-y-4">
+            <Input
+              type="text"
+              name="firstName"
+              label={a.firstName}
+              autoComplete="given-name"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              placeholder={a.firstNamePlaceholder}
+            />
+            <Input
+              type="text"
+              name="lastName"
+              label={a.lastName}
+              autoComplete="family-name"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              placeholder={a.lastNamePlaceholder}
+            />
+            <Input
+              type="tel"
+              name="phone"
+              label={a.phone}
+              autoComplete="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder={a.phonePlaceholder}
+            />
 
-            <div>
-              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Last Name</label>
-              <Input
-                type="text"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                placeholder="Enter your last name"
-              />
+            <div className="sm:w-48">
+              <AuthButton type="submit" pending={saving} disabled={!profileLoaded}>
+                {saving ? a.saving : a.save}
+              </AuthButton>
             </div>
+          </form>
 
-            <div>
-              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Phone</label>
-              <Input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="Enter your phone number"
-              />
-            </div>
-
-            <div>
-              <Button onClick={handleSaveProfile} disabled={saving || !profileLoaded}>
-                {saving ? "Saving..." : "Save Profile"}
-              </Button>
-            </div>
-
-            {/* Read-only fields */}
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-[var(--bg-secondary)]">
-              <div className="w-10 h-10 rounded-full bg-[var(--color-primary-light)] flex items-center justify-center">
-                <Mail className="w-5 h-5 text-[var(--color-primary)]" />
+          {/* Read-only fields */}
+          <dl className="mt-4 space-y-4">
+            <div className="flex items-center gap-3 rounded-lg bg-surface-2 p-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-info-soft">
+                <Mail className="h-5 w-5 text-brand-text" aria-hidden="true" />
               </div>
               <div>
-                <p className="text-xs text-[var(--text-muted)]">Email</p>
-                <p className="text-[var(--text-primary)] font-medium">{user?.email || "Not set"}</p>
+                <dt className="text-xs text-muted">{a.email}</dt>
+                <dd className="font-medium text-fg">{user?.email || a.notSet}</dd>
               </div>
             </div>
 
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-[var(--bg-secondary)]">
-              <div className="w-10 h-10 rounded-full bg-[var(--color-primary-light)] flex items-center justify-center">
-                <Calendar className="w-5 h-5 text-[var(--color-primary)]" />
+            <div className="flex items-center gap-3 rounded-lg bg-surface-2 p-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-info-soft">
+                <Calendar className="h-5 w-5 text-brand-text" aria-hidden="true" />
               </div>
               <div>
-                <p className="text-xs text-[var(--text-muted)]">Account ID</p>
-                <p className="text-[var(--text-primary)] font-medium">#{user?.id || "—"}</p>
+                <dt className="text-xs text-muted">{a.accountId}</dt>
+                <dd className="font-medium text-fg">#{user?.id || "-"}</dd>
               </div>
             </div>
-          </div>
+          </dl>
         </div>
       </div>
     </div>

@@ -3,7 +3,14 @@
 import { useState, useEffect, Suspense, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Input } from "../components/ui/input";
-import { Button } from "../components/ui/button";
+import {
+  AuthButton,
+  AuthCard,
+  AuthCardSkeleton,
+  AuthError,
+  AuthLink,
+  AuthSuccess,
+} from "../components/auth/auth-card";
 import { useI18n } from "../i18n";
 import axios from "axios";
 
@@ -39,6 +46,7 @@ function VerifyEmailContent() {
           );
         });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   const handleCodeSubmit = async (e: React.FormEvent) => {
@@ -81,146 +89,97 @@ function VerifyEmailContent() {
   // Token auto-verify: show verifying/success/error state
   if (token) {
     return (
-      <div className="flex flex-col bg-[var(--bg-primary)] min-h-0">
-        <div className="flex items-center justify-center w-full py-20">
-          <div className="bg-[var(--surface-primary)] p-6 rounded-lg shadow-md w-full max-w-sm">
-            <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-4">
-              {t.auth.verifyEmail}
-            </h1>
-            {state === "verifying" && (
-              <p className="text-[var(--text-secondary)]">{t.auth.verifying}</p>
-            )}
-            {state === "success" && (
-              <>
-                <p className="text-green-400 mb-4">
-                  {t.auth.emailVerifiedSuccess}
-                </p>
-                <Button className="w-full" onClick={() => router.push("/login")}>
-                  {t.auth.goToLogin}
-                </Button>
-              </>
-            )}
-            {state === "error" && (
-              <>
-                <p className="text-[var(--status-error)] mb-4">{errorMessage}</p>
-                <Button
-                  className="w-full"
-                  variant="outline"
-                  onClick={() => router.push("/verify-email")}
-                >
-                  {t.auth.enterCodeManually}
-                </Button>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
+      <AuthCard title={t.auth.verifyEmail}>
+        {state === "verifying" && (
+          <p role="status" className="text-fg-2">{t.auth.verifying}</p>
+        )}
+        {state === "success" && (
+          <>
+            <AuthSuccess>{t.auth.emailVerifiedSuccess}</AuthSuccess>
+            <AuthButton onClick={() => router.push("/login")}>{t.auth.goToLogin}</AuthButton>
+          </>
+        )}
+        {state === "error" && (
+          <>
+            <AuthError>{errorMessage}</AuthError>
+            <AuthButton variant="secondary" onClick={() => router.push("/verify-email")}>
+              {t.auth.enterCodeManually}
+            </AuthButton>
+          </>
+        )}
+      </AuthCard>
     );
   }
 
   // Code entry form
   return (
-    <div className="flex flex-col bg-[var(--bg-primary)] min-h-0">
-      <div className="flex items-center justify-center w-full py-20">
-        <div className="bg-[var(--surface-primary)] p-6 rounded-lg shadow-md w-full max-w-sm">
-          <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-2">
-            {t.auth.verifyYourEmail}
-          </h1>
-          <p className="text-[var(--text-secondary)] text-sm mb-6">
-            {t.auth.enterVerificationCode}
+    <AuthCard title={t.auth.verifyYourEmail} description={t.auth.enterVerificationCode}>
+      {state === "success" ? (
+        <>
+          <AuthSuccess>{t.auth.emailVerifiedSuccess}</AuthSuccess>
+          <AuthButton onClick={() => router.push("/login")}>{t.auth.goToLogin}</AuthButton>
+        </>
+      ) : (
+        <>
+          {state === "error" && <AuthError>{errorMessage}</AuthError>}
+
+          <form onSubmit={handleCodeSubmit} className="space-y-4">
+            <Input
+              type="email"
+              name="email"
+              label={t.auth.email}
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+            <Input
+              type="text"
+              name="code"
+              label={t.authForm.verificationCode}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              pattern="[0-9]{6}"
+              maxLength={6}
+              placeholder={t.auth.verificationCodePlaceholder}
+              value={code}
+              onChange={(e) => {
+                const val = e.target.value.replace(/\D/g, "").slice(0, 6);
+                setCode(val);
+              }}
+              required
+            />
+            <AuthButton type="submit" pending={state === "verifying"}>
+              {state === "verifying" ? t.auth.verifying : t.auth.verifyEmail}
+            </AuthButton>
+          </form>
+
+          <div className="mt-4 text-center">
+            <button
+              type="button"
+              onClick={handleResend}
+              disabled={resending || !email}
+              className="rounded-sm text-sm text-brand-text hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {resending ? t.auth.resending : t.auth.resendCode}
+            </button>
+            <p role="status" className="mt-2 text-xs text-fg-2">
+              {resendMessage}
+            </p>
+          </div>
+
+          <p className="mt-4 text-center text-sm">
+            <AuthLink href="/login">{t.auth.backToLogin}</AuthLink>
           </p>
-
-          {state === "success" ? (
-            <>
-              <p className="text-green-400 mb-4">
-                {t.auth.emailVerifiedSuccess}
-                </p>
-              <Button className="w-full" onClick={() => router.push("/login")}>
-                {t.auth.goToLogin}
-              </Button>
-            </>
-          ) : (
-            <>
-              {state === "error" && (
-                <p className="text-[var(--status-error)] mb-4">{errorMessage}</p>
-              )}
-
-              <form onSubmit={handleCodeSubmit} className="space-y-4">
-                <Input
-                  type="email"
-                  placeholder={t.auth.email}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-                <Input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]{6}"
-                  maxLength={6}
-                  placeholder={t.auth.verificationCodePlaceholder}
-                  value={code}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/\D/g, "").slice(0, 6);
-                    setCode(val);
-                  }}
-                  required
-                />
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={state === "verifying"}
-                >
-                  {state === "verifying" ? t.auth.verifying : t.auth.verifyEmail}
-                </Button>
-              </form>
-
-              <div className="mt-4 text-center">
-                <button
-                  onClick={handleResend}
-                  disabled={resending || !email}
-                  className="text-[var(--color-primary)] hover:underline hover:text-[var(--color-primary-hover)] text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {resending ? t.auth.resending : t.auth.resendCode}
-                </button>
-                {resendMessage && (
-                  <p className="text-[var(--text-secondary)] text-xs mt-2">
-                    {resendMessage}
-                  </p>
-                )}
-              </div>
-
-              <p className="text-[var(--text-tertiary)] text-sm mt-4 text-center">
-                <a
-                  href="/login"
-                  className="text-[var(--color-primary)] hover:underline hover:text-[var(--color-primary-hover)]"
-                >
-                  {t.auth.backToLogin}
-                </a>
-              </p>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
+        </>
+      )}
+    </AuthCard>
   );
 }
 
 function VerifyEmailLoading() {
-  return (
-    <div className="flex flex-col bg-[var(--bg-primary)] min-h-0">
-      <div className="flex items-center justify-center w-full py-20">
-        <div className="bg-[var(--surface-primary)] p-6 rounded-lg shadow-md w-full max-w-sm animate-pulse">
-          <div className="h-8 bg-[var(--bg-tertiary)] rounded w-48 mb-6"></div>
-          <div className="space-y-4">
-            <div className="h-10 bg-[var(--bg-tertiary)] rounded"></div>
-            <div className="h-10 bg-[var(--bg-tertiary)] rounded"></div>
-            <div className="h-10 bg-[var(--bg-tertiary)] rounded"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  const { t } = useI18n();
+  return <AuthCardSkeleton label={t.common.loading} />;
 }
 
 export default function VerifyEmailPage() {

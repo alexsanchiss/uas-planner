@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
+import { defaultLanguage, getTranslation } from "@/app/i18n/translations";
 
-export const metadata: Metadata = { title: "Configuración" };
+export const metadata: Metadata = {
+  title: getTranslation(defaultLanguage).titles.settings,
+};
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return children;

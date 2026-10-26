@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Input } from "../components/ui/input";
-import { Button } from "../components/ui/button";
+import { AuthButton, AuthCard, AuthError, AuthLink } from "../components/auth/auth-card";
 import { useI18n } from "../i18n";
 import axios from "axios";
 
@@ -29,59 +29,36 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="flex flex-col bg-[var(--bg-primary)] min-h-0">
-      <div className="flex items-center justify-center w-full py-20">
-        <div className="bg-[var(--surface-primary)] p-6 rounded-lg shadow-md w-full max-w-sm">
-          <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-2">
-            {t.auth.forgotPasswordTitle}
-          </h1>
-
-          {submitted ? (
-            <>
-              <p className="text-[var(--text-secondary)] text-sm mb-6">
-                {t.auth.resetLinkSentDesc}
-              </p>
-              <a
-                href="/login"
-                className="text-[var(--color-primary)] hover:underline hover:text-[var(--color-primary-hover)] text-sm"
-              >
-                {t.auth.backToLogin}
-              </a>
-            </>
-          ) : (
-            <>
-              <p className="text-[var(--text-secondary)] text-sm mb-6">
-                {t.auth.forgotPasswordDesc}
-              </p>
-              {error && (
-                <p className="text-[var(--status-error)] mb-4 text-sm">
-                  {error}
-                </p>
-              )}
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <Input
-                  type="email"
-                  placeholder={t.auth.email}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? t.auth.sending : t.auth.sendResetLink}
-                </Button>
-              </form>
-              <p className="text-[var(--text-tertiary)] text-sm mt-4 text-center">
-                <a
-                  href="/login"
-                  className="text-[var(--color-primary)] hover:underline hover:text-[var(--color-primary-hover)]"
-                >
-                  {t.auth.backToLogin}
-                </a>
-              </p>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
+    <AuthCard
+      title={t.auth.forgotPasswordTitle}
+      description={submitted ? t.auth.resetLinkSentDesc : t.auth.forgotPasswordDesc}
+    >
+      {submitted ? (
+        <p className="text-sm">
+          <AuthLink href="/login">{t.auth.backToLogin}</AuthLink>
+        </p>
+      ) : (
+        <>
+          {error && <AuthError>{error}</AuthError>}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <Input
+              type="email"
+              name="email"
+              label={t.auth.email}
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+            <AuthButton type="submit" pending={loading}>
+              {loading ? t.auth.sending : t.auth.sendResetLink}
+            </AuthButton>
+          </form>
+          <p className="mt-4 text-center text-sm">
+            <AuthLink href="/login">{t.auth.backToLogin}</AuthLink>
+          </p>
+        </>
+      )}
+    </AuthCard>
   );
 }

@@ -4,7 +4,9 @@ import React, { useState } from 'react'
 import { useI18n, interpolate } from '@/app/i18n'
 import { AuthorizationStatusBadge } from '@/app/components/flight-plans/StatusBadge'
 import { formatDateForDisplay } from '@/lib/date-utils'
+import { CircleAlert, Clock, Loader2, Plane, Timer } from 'lucide-react'
 import ActivateFlightModal from './ActivateFlightModal'
+import { Countdown } from './Countdown'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -27,34 +29,6 @@ export interface FlightPlanActivationCardProps {
   now: Date
   onActivated: () => void
 }
-
-// ── Spinner ──────────────────────────────────────────────────────────────────
-
-const Spinner: React.FC<{ size?: number }> = ({ size = 16 }) => (
-  <svg
-    className="animate-spin"
-    xmlns="http://www.w3.org/2000/svg"
-    fill="none"
-    viewBox="0 0 24 24"
-    width={size}
-    height={size}
-    aria-hidden="true"
-  >
-    <circle
-      className="opacity-25"
-      cx="12"
-      cy="12"
-      r="10"
-      stroke="currentColor"
-      strokeWidth="4"
-    />
-    <path
-      className="opacity-75"
-      fill="currentColor"
-      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-    />
-  </svg>
-)
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -85,6 +59,7 @@ export function FlightPlanActivationCard({
 }: FlightPlanActivationCardProps) {
   const { t } = useI18n()
   const pt = t.planActivation
+  const at = t.activation
 
   const [modalOpen, setModalOpen] = useState(false)
 
@@ -107,7 +82,7 @@ export function FlightPlanActivationCard({
     nowMs >= windowOpenMs &&
     nowMs <= windowCloseMs
 
-  // ── "PUEDE DESPEGAR" state ─────────────────────────────────────────────
+  // ── "Can take off" state ─────────────────────────────────────────────
 
   const activatedAtMs = plan.activatedAt ? new Date(plan.activatedAt).getTime() : null
   const msSinceActivation = activatedAtMs !== null ? nowMs - activatedAtMs : null
@@ -146,24 +121,13 @@ export function FlightPlanActivationCard({
 
   return (
     <>
-      <div
-        className="rounded-lg border p-4 flex flex-col gap-3"
-        style={{
-          backgroundColor: 'var(--surface-primary)',
-          borderColor: 'var(--border-primary)',
-        }}
-      >
+      <div className="flex flex-col gap-3 rounded-lg border border-line bg-surface p-4">
         {/* ── Header ── */}
-        <div className="flex items-start justify-between gap-2 flex-wrap">
-          <div className="flex flex-col gap-1 min-w-0">
-            <span
-              className="font-semibold text-base truncate"
-              style={{ color: 'var(--text-primary)' }}
-            >
-              {plan.customName}
-            </span>
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="flex min-w-0 flex-col gap-1">
+            <span className="truncate text-base font-semibold text-fg">{plan.customName}</span>
             {plan.scheduledAt && (
-              <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              <span className="text-sm text-fg-2">
                 {formatDateForDisplay(plan.scheduledAt, {
                   year: 'numeric',
                   month: 'short',
@@ -179,25 +143,28 @@ export function FlightPlanActivationCard({
           />
         </div>
 
-        {/* ── "PUEDE DESPEGAR" panel ── */}
+        {/* ── Window countdown (text + icon; coarse aria-live) ── */}
+        {!canTakeoff && windowIsOpen && !alreadyActivated && windowCloseMs !== null && (
+          <Countdown
+            seconds={(windowCloseMs - nowMs) / 1000}
+            template={at.windowClosesIn}
+            icon={Timer}
+            className="text-fg-2"
+          />
+        )}
+
+        {/* ── Can-take-off panel ── */}
         {canTakeoff && (
           <div
-            className="rounded-md px-4 py-3 flex flex-col items-center gap-1 text-center"
-            style={{
-              backgroundColor: 'var(--color-success-bg, #dcfce7)',
-              border: '2px solid var(--color-success, #16a34a)',
-            }}
+            role="status"
+            className="flex flex-col items-center gap-1 rounded-md border-2 border-success bg-success-soft px-4 py-3 text-center text-success-text"
           >
-            <span
-              className="text-xl font-extrabold tracking-wide"
-              style={{ color: 'var(--color-success, #16a34a)' }}
-            >
+            <span className="flex items-center gap-2 text-xl font-extrabold tracking-wide">
+              <Plane className="h-5 w-5" aria-hidden="true" />
               {pt.canTakeoff}
             </span>
-            <span
-              className="text-sm font-medium"
-              style={{ color: 'var(--color-success, #16a34a)' }}
-            >
+            {/* aria-hidden: ticks every second, the status text above is announced once */}
+            <span aria-hidden="true" className="text-sm font-medium tabular-nums">
               {interpolate(pt.canTakeoffCountdown, { s: takeoffSecondsRemaining })}
             </span>
           </div>
@@ -208,39 +175,34 @@ export function FlightPlanActivationCard({
           <>
             {plan.activationStatus === 'denegado_activacion' && (
               <div
-                className="rounded-md px-3 py-2 text-sm"
-                style={{
-                  backgroundColor: 'var(--color-error-bg, #fef2f2)',
-                  border: '1px solid var(--color-error, #f87171)',
-                  color: 'var(--color-error, #b91c1c)',
-                }}
+                role="alert"
+                className="flex items-start gap-2 rounded-md border border-danger-line bg-danger-soft px-3 py-2 text-sm text-danger-text"
               >
-                <span className="font-semibold">{pt.activationDeniedStatus}</span>
-                {parsedMessage && (
-                  <p className="mt-1 text-xs">{parsedMessage}</p>
-                )}
+                <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                <div>
+                  <span className="font-semibold">{pt.activationDeniedStatus}</span>
+                  {parsedMessage && <p className="mt-1 text-xs">{parsedMessage}</p>}
+                </div>
               </div>
             )}
 
             {plan.activationStatus === 'ventana_pasada' && (
-              <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
+              <p className="flex items-center gap-2 text-sm text-muted">
+                <Clock className="h-4 w-4 shrink-0" aria-hidden="true" />
                 {pt.windowClosed}
               </p>
             )}
 
             {isActivating && (
-              <div
-                className="flex items-center gap-2 text-sm"
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                <Spinner size={14} />
+              <div role="status" className="flex items-center gap-2 text-sm text-fg-2">
+                <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
                 <span>{pt.activating}</span>
               </div>
             )}
           </>
         )}
 
-        {/* ── "Activar vuelo" button ── */}
+        {/* ── "Activate flight" button ── */}
         {!canTakeoff && (
           <div className="flex justify-end">
             <button
@@ -248,16 +210,7 @@ export function FlightPlanActivationCard({
               disabled={buttonDisabled}
               title={buttonTooltip}
               onClick={() => setModalOpen(true)}
-              className="rounded-md px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-              style={{
-                backgroundColor: buttonDisabled
-                  ? undefined
-                  : 'var(--brand-primary, #2563eb)',
-                color: buttonDisabled ? undefined : '#fff',
-                borderWidth: buttonDisabled ? '1px' : undefined,
-                borderStyle: buttonDisabled ? 'solid' : undefined,
-                borderColor: buttonDisabled ? 'var(--border-primary)' : undefined,
-              }}
+              className="rounded-md bg-brand px-4 py-2 text-sm font-medium text-brand-fg transition-colors hover:bg-brand-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring disabled:cursor-not-allowed disabled:border disabled:border-line disabled:bg-surface-2 disabled:text-muted"
             >
               {pt.activateButton}
             </button>
@@ -277,6 +230,46 @@ export function FlightPlanActivationCard({
         planName={plan.customName}
       />
     </>
+  )
+}
+
+/**
+ * Compact, informative row for an authorized flight whose activation window is not open yet.
+ * No Activate button: the window opens 1 minute before the scheduled time.
+ */
+export function UpcomingPlanCard({ plan, now }: { plan: FlightPlanActivationCardPlan; now: Date }) {
+  const { t } = useI18n()
+  const scheduledMs = plan.scheduledAt ? new Date(plan.scheduledAt).getTime() : null
+  const opensInSeconds = scheduledMs !== null ? (scheduledMs - 60_000 - now.getTime()) / 1000 : 0
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-surface p-4">
+      <div className="flex min-w-0 flex-col gap-1">
+        <span className="truncate text-base font-semibold text-fg">{plan.customName}</span>
+        {plan.scheduledAt && (
+          <span className="text-sm text-fg-2">
+            {formatDateForDisplay(plan.scheduledAt, {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+            })}
+          </span>
+        )}
+      </div>
+      <div className="flex flex-col items-start gap-2 sm:items-end">
+        <AuthorizationStatusBadge
+          status={plan.authorizationStatus as Parameters<typeof AuthorizationStatusBadge>[0]['status']}
+        />
+        <Countdown
+          seconds={opensInSeconds}
+          template={t.activation.windowOpensIn}
+          icon={Clock}
+          className="text-fg-2"
+        />
+      </div>
+    </div>
   )
 }
 

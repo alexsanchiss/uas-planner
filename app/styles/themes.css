@@ -10,7 +10,10 @@
 /* ============================================
    DARK THEME (Default)
    ============================================ */
-:root {
+/* `[data-theme="dark"]` on an element re-scopes the dark tokens there, for always-dark stages
+   (landing/launch over the shader) that must stay dark while the app theme is light. */
+:root,
+[data-theme="dark"] {
   /* Native controls follow the active app theme instead of the OS setting. */
   color-scheme: dark;
 
