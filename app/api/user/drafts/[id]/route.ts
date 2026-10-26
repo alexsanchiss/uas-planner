@@ -6,7 +6,7 @@ import type { Prisma } from '@prisma/client'
 
 const updateDraftSchema = z.object({
   name: z.string().min(1).max(255).optional(),
-  draftData: z.record(z.unknown()).optional(),
+  draftData: z.record(z.string(), z.unknown()).optional(),
 })
 
 /**

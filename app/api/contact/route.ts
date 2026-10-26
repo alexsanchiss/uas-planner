@@ -16,7 +16,7 @@ const CATEGORIES = [
 
 const contactSchema = z.object({
   subject: z.string().min(1, 'Subject is required').max(200, 'Subject too long'),
-  category: z.enum(CATEGORIES, { errorMap: () => ({ message: 'Invalid category' }) }),
+  category: z.enum(CATEGORIES, { error: 'Invalid category' }),
   description: z.string().min(10, 'Description must be at least 10 characters').max(5000, 'Description too long'),
 });
 

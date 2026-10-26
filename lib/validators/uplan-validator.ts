@@ -620,7 +620,7 @@ export function isUplanComplete(data: unknown): UplanCompletionResult {
  * Generates a user-friendly field name from a path array.
  * Example: ['uas', 'flightCharacteristics', 'uasMTOM'] -> 'MTOM (UAS Flight Characteristics)'
  */
-function generateUserFriendlyFieldName(path: (string | number)[]): string {
+function generateUserFriendlyFieldName(path: PropertyKey[]): string {
   if (path.length === 0) return 'Unknown field';
   
   // Map field names to user-friendly labels
