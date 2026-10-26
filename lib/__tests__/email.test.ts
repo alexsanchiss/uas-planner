@@ -38,18 +38,18 @@ jest.mock('mailersend', () => {
   }
 
   class MockEmailParams {
-    from: any;
-    to: any;
+    from: unknown;
+    to: unknown;
     subject: string = '';
     html: string = '';
     text: string = '';
-    attachments: any[] = [];
-    setFrom(from: any) { this.from = from; return this; }
-    setTo(to: any) { this.to = to; return this; }
+    attachments: unknown[] = [];
+    setFrom(from: unknown) { this.from = from; return this; }
+    setTo(to: unknown) { this.to = to; return this; }
     setSubject(s: string) { this.subject = s; return this; }
     setHtml(h: string) { this.html = h; return this; }
     setText(t: string) { this.text = t; return this; }
-    setAttachments(a: any[]) { this.attachments = a; return this; }
+    setAttachments(a: unknown[]) { this.attachments = a; return this; }
   }
 
   class MockMailerSend {
