@@ -4,7 +4,8 @@
  * Pins what must stay byte-compatible with FAS: POST to FAS_API_URL (same default), body = the
  * U-Plan JSON, `Content-Type: application/json`, no auth header; the response (string or JSON) is
  * stored as externalResponseNumber; 400 -> withdrawn, other 4xx -> denegado with FAS's status;
- * 500 -> retry. The only addition is the 30 s axios timeout, whose expiry is a network error
+ * 500 -> retry. The only addition is the 120 s axios timeout (long on purpose: FAS may register the
+ * plan and answer late, and an early abort makes the retry create a duplicate), whose expiry is a network error
  * (503, nothing persisted) like any other. Real JWT auth; axios and prisma are faked.
  */
 
@@ -126,12 +127,12 @@ describe('FAS request', () => {
     expect(config.headers).toEqual({ 'Content-Type': 'application/json' });
   });
 
-  it('adds only a 30 s timeout to the request config', async () => {
+  it('adds only a 120 s timeout to the request config (the U-Plan POST is the one slow FAS call)', async () => {
     await submit();
 
     const config = mockAxiosPost.mock.calls[0][2];
     expect(Object.keys(config).sort()).toEqual(['headers', 'timeout']);
-    expect(config.timeout).toBe(30_000);
+    expect(config.timeout).toBe(120_000);
   });
 });
 
@@ -202,14 +203,14 @@ describe('FAS response handling (unchanged)', () => {
   });
 
   it('a timeout / network error (no HTTP response) is 503, persists nothing and lets the user retry', async () => {
-    mockAxiosPost.mockRejectedValue(axiosError(null, undefined, 'timeout of 30000ms exceeded'));
+    mockAxiosPost.mockRejectedValue(axiosError(null, undefined, 'timeout of 120000ms exceeded'));
 
     const res = await submit();
 
     expect(res.status).toBe(503);
     expect(await res.json()).toEqual({
       error: 'FAS communication error. Please try again later.',
-      message: 'timeout of 30000ms exceeded',
+      message: 'timeout of 120000ms exceeded',
     });
     expect(mockPlanUpdate).not.toHaveBeenCalled();
     expect(mockAxiosPost).toHaveBeenCalledTimes(1);

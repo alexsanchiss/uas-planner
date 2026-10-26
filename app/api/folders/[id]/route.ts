@@ -246,7 +246,7 @@ export async function DELETE(
     // Get all flight plans associated with this folder
 
     const folderPlans = await prisma.flightPlan.findMany({
-      where: { folderId },
+      where: { folderId, userId },
       select: { id: true },
     });
 
@@ -261,7 +261,7 @@ export async function DELETE(
 
     // Delete all flight plans in the folder
     await prisma.flightPlan.deleteMany({
-      where: { folderId },
+      where: { folderId, userId },
     });
 
     // Delete the folder

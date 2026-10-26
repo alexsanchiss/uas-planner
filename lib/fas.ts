@@ -8,8 +8,14 @@
 /** Production default; kept byte-identical to the historical per-route copies. */
 const DEFAULT_FAS_API_URL = 'http://158.42.167.56:8000/uplan';
 
-/** Timeout for every outbound FAS request. */
+/** Timeout for every outbound FAS request except the U-Plan POST. */
 export const FAS_TIMEOUT_MS = 30_000;
+
+/**
+ * Timeout for the U-Plan POST. Longer on purpose: FAS may register the plan and answer
+ * late, and aborting early would make the user's retry create a duplicate authorization.
+ */
+export const FAS_UPLAN_TIMEOUT_MS = 120_000;
 
 /** Full FAS U-Plan endpoint (POST target). */
 export function getFasApiUrl(): string {

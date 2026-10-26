@@ -1,5 +1,6 @@
 /**
- * lib/http.ts: parseId and userOwnsFolders (the folder-ownership primitive behind SEC-06).
+ * lib/http.ts: parseId, getSourceIp (the one client-IP rule shared by rate limits and the FAS callback
+ * allowlist) and userOwnsFolders (the folder-ownership primitive behind SEC-06).
  * The prisma fake counts folders honouring `where`, so a missing userId filter is caught.
  */
 
@@ -9,7 +10,7 @@ jest.mock('@/lib/prisma', () => ({
   default: { folder: { count: (...a: unknown[]) => mockFolderCount(...a) } },
 }));
 
-import { parseId, userOwnsFolders } from '../http';
+import { getSourceIp, parseId, userOwnsFolders } from '../http';
 
 const FOLDERS = [
   { id: 1, userId: 10 },
@@ -58,5 +59,31 @@ describe('userOwnsFolders', () => {
   it('is false for a folder that does not exist', async () => {
     await expect(userOwnsFolders(10, [999])).resolves.toBe(false);
     await expect(userOwnsFolders(10, [1, 999])).resolves.toBe(false);
+  });
+});
+
+describe('getSourceIp (right-most X-Forwarded-For: the entry the trusted proxy appended)', () => {
+  const ip = (headers: Record<string, string>) => getSourceIp(new Headers(headers));
+
+  it('takes the RIGHT-most entry: everything to its left is client-controlled', () => {
+    expect(ip({ 'x-forwarded-for': '203.0.113.7' })).toBe('203.0.113.7');
+    expect(ip({ 'x-forwarded-for': '10.0.0.5, 198.51.100.9' })).toBe('198.51.100.9');
+    expect(ip({ 'x-forwarded-for': ' 1.1.1.1 ,  2.2.2.2 , 198.51.100.9 ' })).toBe('198.51.100.9');
+  });
+
+  it('X-Forwarded-For wins over X-Real-IP; X-Real-IP is only the fallback', () => {
+    expect(ip({ 'x-forwarded-for': '198.51.100.9', 'x-real-ip': '10.0.0.5' })).toBe('198.51.100.9');
+    expect(ip({ 'x-real-ip': ' 10.0.0.5 ' })).toBe('10.0.0.5');
+  });
+
+  it('strips the ::ffff: IPv4-mapped prefix, case-insensitively, from either header', () => {
+    expect(ip({ 'x-forwarded-for': '::ffff:198.51.100.9' })).toBe('198.51.100.9');
+    expect(ip({ 'x-forwarded-for': '1.1.1.1, ::FFFF:198.51.100.9' })).toBe('198.51.100.9');
+    expect(ip({ 'x-real-ip': '::ffff:10.0.0.5' })).toBe('10.0.0.5');
+  });
+
+  it('is null when no header carries an address', () => {
+    expect(ip({})).toBeNull();
+    expect(ip({ 'x-forwarded-for': '' })).toBeNull();
   });
 });

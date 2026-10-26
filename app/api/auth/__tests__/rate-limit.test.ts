@@ -78,3 +78,33 @@ it('signup and resend-verification keep independent counters for the same IP', a
   expect((await post(signup, ip)).status).toBe(429);
   expect((await post(resend, ip)).status).toBe(400);
 });
+
+describe('the rate-limit key is the proxy-appended (right-most) address', () => {
+  const withChain = (handler: typeof signup, chain: string) =>
+    handler(
+      new Request('http://localhost/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-forwarded-for': chain },
+        body: '{}',
+      }),
+    );
+
+  it.each([
+    ['signup', signup, 5],
+    ['resend-verification', resend, 3],
+  ] as const)('%s: rotating the client-controlled left-most entries does not reset the budget', async (_name, handler, limit) => {
+    const real = freshIp();
+    for (let i = 0; i < limit; i++) expect((await withChain(handler, `192.0.2.${i + 1}, ${real}`)).status).toBe(400);
+
+    const blocked = await withChain(handler, `192.0.2.250, ${real}`);
+
+    expect(blocked.status).toBe(429);
+  });
+
+  it('the ::ffff: form of an address shares the bucket of the plain form', async () => {
+    const real = freshIp();
+    for (let i = 0; i < 3; i++) await withChain(resend, real);
+
+    expect((await withChain(resend, `::ffff:${real}`)).status).toBe(429);
+  });
+});

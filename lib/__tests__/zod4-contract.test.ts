@@ -220,9 +220,9 @@ describe('update / delete payloads', () => {
 
   it('accepts partial updates, explicit nulls and strips unknown keys', () => {
     expect(flightPlanUpdateDataSchema.parse({ customName: 'x', hacked: true })).toEqual({ customName: 'x' });
-    expect(flightPlanUpdateDataSchema.parse({ uplan: null, machineAssignedId: null })).toEqual({
+    expect(flightPlanUpdateDataSchema.parse({ uplan: null, csvResult: null })).toEqual({
       uplan: null,
-      machineAssignedId: null,
+      csvResult: null,
     });
   });
 

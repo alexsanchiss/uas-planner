@@ -109,36 +109,40 @@ export const flightPlanStatusSchema = z.enum([
 ]);
 export type FlightPlanStatus = z.infer<typeof flightPlanStatusSchema>;
 
-/** Valid authorization statuses */
-export const authorizationStatusSchema = z.enum([
-  'sin autorización',
-  'pendiente',
-  'autorizado',
-  'rechazado',
-]);
-export type AuthorizationStatus = z.infer<typeof authorizationStatusSchema>;
+/**
+ * Plan state is owned by the server / FAS / the VMs. This is the ONLY list of values a
+ * client may write (verified against every UI call): enqueue / reset a plan, mark it as
+ * "being authorized", or clear authorization data. Anything else (aprobado, denegado,
+ * pendiente, externalResponseNumber, a FAS message, machine/CSV assignment...) is rejected
+ * so users cannot self-approve or confuse the assigner.
+ */
+const clientWritablePlanFields = {
+  status: z.enum(['en cola', 'sin procesar']).optional(),
+  authorizationStatus: z.enum(['sin autorización', 'procesando autorización']).optional(),
+  authorizationMessage: z.null().optional(),
+  externalResponseNumber: z.null().optional(),
+  csvResult: z.union([z.null(), z.literal(0)]).optional(),
+  machineAssignedId: z.never().optional(),
+};
 
 /**
- * Authorization state is owned by FAS / the server (aprobado, denegado, withdrawn,
- * pendiente, externalResponseNumber, FAS message). Clients may only reset a plan or
- * mark it as being processed; any other write is rejected so users cannot self-approve.
+ * Check the restricted fields of a raw, client-supplied plan update (pre-sanitize).
+ * Reuses the zod shape above. Returns an error message, or null when acceptable.
  */
-export const USER_WRITABLE_AUTHORIZATION_STATUSES = ['sin autorización', 'procesando autorización'] as const;
-export const userWritableAuthorizationStatusSchema = z.enum(USER_WRITABLE_AUTHORIZATION_STATUSES);
-
-/**
- * Check the authorization fields of a client-supplied plan update (raw, pre-sanitize).
- * Returns an error message, or null when the fields are acceptable.
- */
-export function checkUserAuthorizationFields(data: Record<string, unknown>): string | null {
-  const { authorizationStatus: status, authorizationMessage: message, externalResponseNumber: ext } = data;
-  if (status !== undefined && !userWritableAuthorizationStatusSchema.safeParse(status).success) {
-    return `Invalid authorizationStatus. Allowed: ${USER_WRITABLE_AUTHORIZATION_STATUSES.join(', ')}`;
-  }
-  if (message !== undefined && message !== null) return 'authorizationMessage can only be reset to null';
-  if (ext !== undefined && ext !== null) return 'externalResponseNumber can only be reset to null';
-  return null;
+export function checkClientPlanFields(data: unknown): string | null {
+  const result = z.object(clientWritablePlanFields).safeParse(data);
+  if (result.success) return null;
+  const field = result.error.issues[0].path.join('.') || 'data';
+  return `Invalid or forbidden value for "${field}"`;
 }
+
+/**
+ * Plans in these authorization states are frozen: editing their U-Plan after FAS saw it
+ * would make the authorization meaningless. Resetting to 'sin autorización' in the same
+ * request unfreezes it.
+ */
+export const AUTH_LOCKED_STATUSES: string[] = ['aprobado', 'pendiente'];
+export const PLAN_LOCKED_UPLAN_ERROR = 'Cannot edit the U-Plan of a plan that is approved or pending authorization';
 
 /** Create a single flight plan */
 export const flightPlanCreateSchema = z.object({
@@ -161,15 +165,10 @@ export type FlightPlanBulkCreateInput = z.infer<typeof flightPlanBulkCreateSchem
 /** Update a single flight plan (partial) */
 export const flightPlanUpdateDataSchema = z.object({
   customName: z.string().min(1).max(255).optional(),
-  status: flightPlanStatusSchema.optional(),
   fileContent: z.string().min(1).optional(),
-  authorizationStatus: userWritableAuthorizationStatusSchema.optional(),
-  authorizationMessage: z.null().optional(),
-  externalResponseNumber: z.null().optional(),
+  ...clientWritablePlanFields,
   uplan: z.unknown().nullable().optional(),
   scheduledAt: optionalDateSchema,
-  csvResult: z.number().int().positive().nullable().optional(),
-  machineAssignedId: z.number().int().positive().nullable().optional(),
   folderId: z.number().int().positive().nullable().optional(),
 }).refine((data) => Object.keys(data).length > 0, {
   message: 'At least one field must be provided for update',

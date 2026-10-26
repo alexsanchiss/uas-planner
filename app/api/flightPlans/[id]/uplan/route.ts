@@ -36,7 +36,7 @@ import { trayToUplan } from '@/lib/uplan/tray_to_uplan';
 import { sendAuthorizationResultEmail } from '@/lib/email';
 import axios from 'axios';
 import { parseId } from '@/lib/http';
-import { getFasApiUrl, FAS_TIMEOUT_MS } from '@/lib/fas';
+import { getFasApiUrl, FAS_UPLAN_TIMEOUT_MS } from '@/lib/fas';
 
 /**
  * Params type for dynamic route
@@ -215,7 +215,7 @@ export async function POST(
         const response = await axios.post(
           getFasApiUrl(),
           uplan,
-          { headers: { 'Content-Type': 'application/json' }, timeout: FAS_TIMEOUT_MS }
+          { headers: { 'Content-Type': 'application/json' }, timeout: FAS_UPLAN_TIMEOUT_MS }
         );
 
         externalResponseNumber =

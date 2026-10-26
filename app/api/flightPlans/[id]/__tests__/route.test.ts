@@ -1,9 +1,11 @@
 /**
  * /api/flightPlans/[id] PUT + DELETE.
  *
- * PUT: clients cannot write FAS-owned authorization fields (SEC-04, zod schema) and cannot move a
- * plan into another user's folder (SEC-06). DELETE: the FAS cancellation request is the E4
- * contract (DELETE {origin}/uplan_cancelation/{enc(n)}, no headers/body, only a timeout signal).
+ * PUT: clients cannot write FAS/VM-owned fields (SEC-04, one zod shape: authorization fields, status,
+ * csvResult, machineAssignedId), cannot edit the U-Plan of an approved/pending plan, and cannot move a
+ * plan into another user's folder (SEC-06). DELETE: the FAS cancellation request is the E4 contract
+ * (DELETE {origin}/uplan_cancelation/{enc(n)}, no headers/body, only a timeout signal) and the CSV row
+ * deleted is the PLAN's own (flightPlan.csvResult is a 0/1 flag, never an id).
  * Real JWT auth; prisma and fetch are faked.
  */
 
@@ -14,6 +16,7 @@ const mockPlanFindUnique = jest.fn();
 const mockPlanUpdate = jest.fn();
 const mockPlanDelete = jest.fn();
 const mockCsvDelete = jest.fn();
+const mockCsvDeleteMany = jest.fn();
 const mockUserFindUnique = jest.fn();
 const mockFolderCount = jest.fn();
 const mockTransaction = jest.fn();
@@ -26,7 +29,10 @@ jest.mock('@/lib/prisma', () => ({
       update: (...a: unknown[]) => mockPlanUpdate(...a),
       delete: (...a: unknown[]) => mockPlanDelete(...a),
     },
-    csvResult: { delete: (...a: unknown[]) => mockCsvDelete(...a) },
+    csvResult: {
+      delete: (...a: unknown[]) => mockCsvDelete(...a),
+      deleteMany: (...a: unknown[]) => mockCsvDeleteMany(...a),
+    },
     user: { findUnique: (...a: unknown[]) => mockUserFindUnique(...a) },
     folder: { count: (...a: unknown[]) => mockFolderCount(...a) },
     $transaction: (...a: unknown[]) => mockTransaction(...a),
@@ -73,7 +79,7 @@ beforeEach(() => {
   global.fetch = mockFetch as unknown as typeof fetch;
   jest.spyOn(console, 'error').mockImplementation(() => {});
   jest.spyOn(console, 'warn').mockImplementation(() => {});
-  mockPlanFindUnique.mockResolvedValue({ userId: OWNER });
+  mockPlanFindUnique.mockResolvedValue({ userId: OWNER, authorizationStatus: 'sin autorización' });
   mockPlanUpdate.mockImplementation(async ({ data }: { data: Record<string, unknown> }) => ({ id: 5, ...data }));
   mockFolderCount.mockImplementation(async ({ where }: { where: { id: { in: number[] }; userId: number } }) =>
     [{ id: OWN_FOLDER, userId: OWNER }, { id: FOREIGN_FOLDER, userId: STRANGER }].filter(
@@ -83,6 +89,7 @@ beforeEach(() => {
   mockTransaction.mockImplementation((ops: Promise<unknown>[]) => Promise.all(ops));
   mockPlanDelete.mockImplementation(async ({ where }: { where: { id: number } }) => ({ id: where.id, customName: 'Plan 5' }));
   mockCsvDelete.mockResolvedValue({});
+  mockCsvDeleteMany.mockResolvedValue({ count: 1 });
   mockUserFindUnique.mockResolvedValue({ email: 'owner@example.com' });
   mockSendDeletionEmail.mockResolvedValue(undefined);
 });
@@ -154,6 +161,104 @@ describe('PUT /api/flightPlans/[id]: authorization fields', () => {
 
     expect(res.status).toBe(403);
     expect(mockPlanUpdate).not.toHaveBeenCalled();
+  });
+});
+
+describe('PUT /api/flightPlans/[id]: status / csvResult / machineAssignedId are not client-writable', () => {
+  it.each(['procesado', 'procesando', 'error', 'aprobado', 'anything'])('rejects status %s', async (status) => {
+    const res = await call(PUT, { status });
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe('Validation failed');
+    expect(mockPlanUpdate).not.toHaveBeenCalled();
+  });
+
+  it.each([1, 5, -1, '1', true])('rejects csvResult %j (the flag is written by the VMs)', async (csvResult) => {
+    expect((await call(PUT, { csvResult })).status).toBe(400);
+    expect(mockPlanUpdate).not.toHaveBeenCalled();
+  });
+
+  it.each([1, 5, 0, null])('rejects machineAssignedId %j (the assigner owns it)', async (machineAssignedId) => {
+    expect((await call(PUT, { machineAssignedId })).status).toBe(400);
+    expect(mockPlanUpdate).not.toHaveBeenCalled();
+  });
+
+  it('accepts what the UI sends: enqueue, reset to unprocessed with the flag cleared', async () => {
+    expect((await call(PUT, { status: 'en cola' })).status).toBe(200);
+    expect(mockPlanUpdate.mock.calls[0][0].data).toEqual({ status: 'en cola' });
+
+    mockPlanUpdate.mockClear();
+    const reset = {
+      status: 'sin procesar',
+      csvResult: null,
+      authorizationStatus: 'sin autorización',
+      authorizationMessage: null,
+      externalResponseNumber: null,
+    };
+    expect((await call(PUT, reset)).status).toBe(200);
+    expect(mockPlanUpdate.mock.calls[0][0].data).toEqual(reset);
+
+    mockPlanUpdate.mockClear();
+    expect((await call(PUT, { csvResult: 0 })).status).toBe(200);
+    expect(mockPlanUpdate.mock.calls[0][0].data).toEqual({ csvResult: 0 });
+  });
+});
+
+describe('PUT /api/flightPlans/[id]: the U-Plan of an approved or pending plan is frozen', () => {
+  const uplan = { operationVolumes: [{ id: 'tampered' }] };
+
+  it.each(['aprobado', 'pendiente'])("400 when editing the uplan of a '%s' plan, writing nothing", async (status) => {
+    mockPlanFindUnique.mockResolvedValue({ userId: OWNER, authorizationStatus: status });
+
+    const res = await call(PUT, { uplan });
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toMatch(/approved or pending/);
+    expect(mockPlanUpdate).not.toHaveBeenCalled();
+  });
+
+  it("an uplan edit combined with a forbidden-state workaround ('procesando autorización') is still refused", async () => {
+    mockPlanFindUnique.mockResolvedValue({ userId: OWNER, authorizationStatus: 'aprobado' });
+
+    const res = await call(PUT, { uplan, authorizationStatus: 'procesando autorización' });
+
+    expect(res.status).toBe(400);
+    expect(mockPlanUpdate).not.toHaveBeenCalled();
+  });
+
+  it("resetting to 'sin autorización' in the SAME request unfreezes it", async () => {
+    mockPlanFindUnique.mockResolvedValue({ userId: OWNER, authorizationStatus: 'aprobado' });
+
+    const res = await call(PUT, { uplan, authorizationStatus: 'sin autorización' });
+
+    expect(res.status).toBe(200);
+    expect(mockPlanUpdate.mock.calls[0][0].data).toMatchObject({
+      authorizationStatus: 'sin autorización',
+      uplan: JSON.stringify(uplan),
+    });
+  });
+
+  it.each(['sin autorización', 'procesando autorización', 'denegado', 'withdrawn'])(
+    "a '%s' plan keeps its editable U-Plan (the U-Plan form flow)",
+    async (status) => {
+      mockPlanFindUnique.mockResolvedValue({ userId: OWNER, authorizationStatus: status });
+
+      expect((await call(PUT, { uplan })).status).toBe(200);
+    },
+  );
+
+  it('everything except the uplan stays editable on an approved plan (rename, schedule: Alex decision, folder)', async () => {
+    mockPlanFindUnique.mockResolvedValue({ userId: OWNER, authorizationStatus: 'aprobado' });
+
+    expect((await call(PUT, { customName: 'renamed' })).status).toBe(200);
+    expect((await call(PUT, { scheduledAt: '2030-01-01T10:00:00.000Z' })).status).toBe(200);
+    expect((await call(PUT, { folderId: OWN_FOLDER })).status).toBe(200);
+  });
+
+  it('ownership is checked before the freeze: a non-owner gets 403, not the 400 freeze message', async () => {
+    mockPlanFindUnique.mockResolvedValue({ userId: STRANGER, authorizationStatus: 'aprobado' });
+
+    expect((await call(PUT, { uplan })).status).toBe(403);
   });
 });
 
@@ -234,17 +339,39 @@ describe('DELETE /api/flightPlans/[id]: FAS cancellation (E4)', () => {
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
-  // KNOWN BUG (found in the F4 review, not fixed by b79277a): flightPlan.csvResult is a 0/1 FLAG,
-  // never an id (CLAUDE.md "csvResult is a boolean flag, NOT an ID"); the CSV row shares the PLAN's
-  // id. The route deletes csvResult row `flightPlan.csvResult`, i.e. row 1 (somebody else's CSV)
-  // and 500s on a 0. Remove `.failing` once the route deletes `{ id }` and only when the flag is set.
-  it.failing('deletes the plan\'s own csvResult row (id = plan id), never the 0/1 flag value', async () => {
+  // flightPlan.csvResult is a 0/1 FLAG, never an id (CLAUDE.md "csvResult is a boolean flag, NOT an
+  // ID"); the CSV row shares the PLAN's id. Deleting row `flag` removed somebody else's CSV (#1) and
+  // 500ed on 0.
+  it("deletes the plan's own csvResult row (id = plan id) with deleteMany, never the row named by the flag", async () => {
     mockPlanFindUnique.mockResolvedValue({ ...approved, authorizationStatus: 'sin autorización', csvResult: 1 });
 
     const res = await call(DELETE, undefined);
 
     expect(res.status).toBe(200);
-    expect(mockCsvDelete).toHaveBeenCalledTimes(1);
-    expect(mockCsvDelete).toHaveBeenCalledWith({ where: { id: 5 } });
+    expect((await res.json()).deletedCsvResult).toBe(true);
+    expect(mockCsvDeleteMany).toHaveBeenCalledTimes(1);
+    expect(mockCsvDeleteMany).toHaveBeenCalledWith({ where: { id: 5 } });
+    expect(mockCsvDelete).not.toHaveBeenCalled();
+    expect(mockPlanDelete).toHaveBeenCalledWith({ where: { id: 5 } });
+  });
+
+  it.each([0, null])('does not touch any csvResult row when the flag is %j, and still deletes the plan', async (flag) => {
+    mockPlanFindUnique.mockResolvedValue({ ...approved, authorizationStatus: 'sin autorización', csvResult: flag });
+
+    const res = await call(DELETE, undefined);
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).deletedCsvResult).toBe(false);
+    expect(mockCsvDeleteMany).not.toHaveBeenCalled();
+    expect(mockCsvDelete).not.toHaveBeenCalled();
+    expect(mockPlanDelete).toHaveBeenCalledTimes(1);
+  });
+
+  it('a flagged plan whose csv row is already gone still deletes cleanly (no P2025 -> 500)', async () => {
+    mockPlanFindUnique.mockResolvedValue({ ...approved, authorizationStatus: 'sin autorización', csvResult: 1 });
+    mockCsvDeleteMany.mockResolvedValue({ count: 0 });
+
+    expect((await call(DELETE, undefined)).status).toBe(200);
+    expect(mockPlanDelete).toHaveBeenCalledTimes(1);
   });
 });

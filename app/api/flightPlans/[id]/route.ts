@@ -15,7 +15,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { withAuth, isAuthError } from '@/lib/auth-middleware';
-import { flightPlanUpdateDataSchema, safeParseBody } from '@/lib/validators';
+import {
+  flightPlanUpdateDataSchema,
+  safeParseBody,
+  AUTH_LOCKED_STATUSES,
+  PLAN_LOCKED_UPLAN_ERROR,
+} from '@/lib/validators';
 import { sendPlanDeletionEmail } from '@/lib/email';
 import { logger } from '@/lib/logger';
 import type { Prisma } from '@prisma/client';
@@ -188,7 +193,7 @@ export async function PUT(
     // First check if the flight plan exists and belongs to the user
     const existing = await prisma.flightPlan.findUnique({
       where: { id },
-      select: { userId: true },
+      select: { userId: true, authorizationStatus: true },
     });
 
     if (!existing) {
@@ -204,6 +209,15 @@ export async function PUT(
         { error: 'Access denied' },
         { status: 403 }
       );
+    }
+
+    // Frozen plans (approved/pending): no U-Plan edits unless the request resets authorization
+    if (
+      result.data.uplan !== undefined &&
+      result.data.authorizationStatus !== 'sin autorización' &&
+      AUTH_LOCKED_STATUSES.includes(existing.authorizationStatus)
+    ) {
+      return NextResponse.json({ error: PLAN_LOCKED_UPLAN_ERROR }, { status: 400 });
     }
 
     // folderId must be one of the caller's own folders
@@ -317,26 +331,24 @@ export async function DELETE(
       }
     }
 
-    // Get the actual csvResult ID from the flight plan (may be different from flightPlan.id)
-    const csvResultId = existing.csvResult;
+    // flightPlan.csvResult is a 0/1 flag; the csvresult row has the SAME id as the plan
+    const hasCsv = !!existing.csvResult;
 
-    // Delete in transaction: CSV result first (if exists), then flight plan
-    // Use the actual csvResult ID from the flightPlan record, not the flightPlan ID
-    const operations: ReturnType<typeof prisma.csvResult.delete | typeof prisma.flightPlan.delete>[] = [];
-    
-    if (csvResultId !== null) {
-      operations.push(prisma.csvResult.delete({ where: { id: csvResultId } }));
+    // Delete in transaction: CSV result first (deleteMany never fails if the row is missing)
+    const operations: ReturnType<typeof prisma.csvResult.deleteMany | typeof prisma.flightPlan.delete>[] = [];
+
+    if (hasCsv) {
+      operations.push(prisma.csvResult.deleteMany({ where: { id } }));
     }
     operations.push(prisma.flightPlan.delete({ where: { id } }));
-    
+
     const results = await prisma.$transaction(operations);
     
     // Extract deleted plan from results (last operation)
     const deletedPlan = results[results.length - 1] as { id: number; customName: string };
-    const deletedCsvResult = csvResultId !== null;
+    const deletedCsvResult = hasCsv;
 
     // Log successful deletion
-    //console.log(`[DELETE] Successfully deleted flight plan id=${id}${deletedCsvResult ? ` and csvResult id=${csvResultId}` : ''}`);
 
     return NextResponse.json({
       message: 'Flight plan deleted successfully',

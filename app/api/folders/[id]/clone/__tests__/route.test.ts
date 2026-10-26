@@ -4,7 +4,8 @@
  * It must not inherit FAS authorization (aprobado + the same externalResponseNumber would alias
  * the original in FAS callbacks and make deleting the clone cancel the original's authorization)
  * nor the activation state, while everything else (name, status, uplan, schedule, geoawareness,
- * csv, createdAt and therefore the list order) is preserved.
+ * csv, createdAt and therefore the list order) is preserved. The FAS callback rewrites `uplan.state`
+ * (ACCEPTED/DENIED), so the clone's U-Plan starts again from "SENT" (what a new plan gets).
  */
 
 process.env.JWT_SECRET = 'test-jwt-secret-for-testing-purposes-only';
@@ -55,7 +56,7 @@ const approvedActivated = {
   status: 'procesado',
   fileContent: 'qgc-plan',
   csvResult: 1,
-  uplan: '{"state":"ACCEPTED"}',
+  uplan: '{"state":"ACCEPTED","operationVolumes":[{"id":"v1"}],"flightDetails":{"a":1}}',
   scheduledAt: new Date('2026-02-01T10:00:00Z'),
   geoawarenessData: { uspace_identifier: 'u1' },
   createdAt: new Date('2026-01-05T08:00:00Z'),
@@ -71,8 +72,22 @@ const approvedActivated = {
 
 const originals = [
   { id: 21, ...approvedActivated, customName: 'First' },
-  { id: 22, ...approvedActivated, customName: 'Second', createdAt: new Date('2026-01-06T08:00:00Z'), authorizationStatus: 'denegado' },
+  {
+    id: 22,
+    ...approvedActivated,
+    customName: 'Second',
+    createdAt: new Date('2026-01-06T08:00:00Z'),
+    authorizationStatus: 'denegado',
+    uplan: '{"state":"DENIED","operationVolumes":[]}',
+  },
   { id: 23, ...approvedActivated, customName: 'No csv', csvResult: null, geoawarenessData: null, authorizationStatus: 'pendiente' },
+];
+
+// what each clone's `uplan` must be: same JSON, only `state` back to SENT
+const expectedClonedUplan = [
+  '{"state":"SENT","operationVolumes":[{"id":"v1"}],"flightDetails":{"a":1}}',
+  '{"state":"SENT","operationVolumes":[]}',
+  '{"state":"SENT","operationVolumes":[{"id":"v1"}],"flightDetails":{"a":1}}',
 ];
 
 function clone(userId: number | null = OWNER, id = '3') {
@@ -138,7 +153,7 @@ describe('POST /api/folders/[id]/clone', () => {
         status: 'procesado',
         fileContent: 'qgc-plan',
         csvResult: originals[i].csvResult,
-        uplan: '{"state":"ACCEPTED"}',
+        uplan: expectedClonedUplan[i],
         scheduledAt: originals[i].scheduledAt,
         userId: OWNER,
         folderId: 50,
@@ -146,6 +161,31 @@ describe('POST /api/folders/[id]/clone', () => {
       });
     });
     expect(created[0].geoawarenessData).toEqual({ uspace_identifier: 'u1' });
+  });
+
+  it('resets uplan.state to SENT without touching anything else in the U-Plan', async () => {
+    await clone();
+
+    const clonedUplans = mockPlanCreate.mock.calls.map(([arg]) => JSON.parse(arg.data.uplan));
+    expect(clonedUplans.map((u) => u.state)).toEqual(['SENT', 'SENT', 'SENT']);
+    expect(clonedUplans[0].operationVolumes).toEqual([{ id: 'v1' }]);
+    expect(clonedUplans[0].flightDetails).toEqual({ a: 1 });
+    // the originals are not touched
+    expect(originals[0].uplan).toContain('"state":"ACCEPTED"');
+  });
+
+  it('leaves a U-Plan without state, a non-JSON U-Plan and a missing U-Plan exactly as they are', async () => {
+    mockPlanFindMany.mockResolvedValue([
+      { id: 31, ...approvedActivated, uplan: '{"operationVolumes":[]}' },
+      { id: 32, ...approvedActivated, uplan: 'not-json' },
+      { id: 33, ...approvedActivated, uplan: null },
+    ]);
+    mockCsvFindMany.mockResolvedValue([]);
+
+    const res = await clone();
+
+    expect(res.status).toBe(200);
+    expect(mockPlanCreate.mock.calls.map(([arg]) => arg.data.uplan)).toEqual(['{"operationVolumes":[]}', 'not-json', null]);
   });
 
   it('creates the new folder with the _copy suffix, the caller as owner and the original dates', async () => {

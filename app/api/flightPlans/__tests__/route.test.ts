@@ -1,6 +1,7 @@
 /**
- * /api/flightPlans PUT + POST: clients cannot write FAS-owned authorization fields (SEC-04) and
- * cannot attach plans to another user's folder (SEC-06).
+ * /api/flightPlans PUT + POST: clients cannot write FAS/VM-owned fields (SEC-04: authorization
+ * fields, status, csvResult, machineAssignedId), cannot edit the U-Plan of an approved/pending plan,
+ * and cannot attach plans to another user's folder (SEC-06).
  *
  * Real JWT auth. The prisma fake counts folders honouring `where` (id list AND userId), so the
  * ownership check is exercised for real through lib/http.userOwnsFolders.
@@ -14,6 +15,7 @@ const mockCreateMany = jest.fn();
 const mockFindMany = jest.fn();
 const mockFindFirst = jest.fn();
 const mockFindUnique = jest.fn();
+const mockCount = jest.fn();
 const mockTransaction = jest.fn();
 const mockFolderCount = jest.fn();
 
@@ -27,6 +29,7 @@ jest.mock('@/lib/prisma', () => ({
       findMany: (...a: unknown[]) => mockFindMany(...a),
       findFirst: (...a: unknown[]) => mockFindFirst(...a),
       findUnique: (...a: unknown[]) => mockFindUnique(...a),
+      count: (...a: unknown[]) => mockCount(...a),
     },
     folder: { count: (...a: unknown[]) => mockFolderCount(...a) },
     $transaction: (...a: unknown[]) => mockTransaction(...a),
@@ -44,6 +47,17 @@ import { POST, PUT } from '../route';
 
 const A = 10;
 const B = 20;
+// Plans the lock check can see (the fake honours where.id.in, where.userId and where.authorizationStatus.in)
+const PLAN_ROWS = [
+  { id: 5, userId: 10, authorizationStatus: 'sin autorización' },
+  { id: 6, userId: 10, authorizationStatus: 'sin autorización' },
+  { id: 8, userId: 10, authorizationStatus: 'aprobado' },
+  { id: 9, userId: 10, authorizationStatus: 'pendiente' },
+  { id: 11, userId: 10, authorizationStatus: 'denegado' },
+  { id: 12, userId: 10, authorizationStatus: 'withdrawn' },
+  { id: 13, userId: 10, authorizationStatus: 'procesando autorización' },
+  { id: 20, userId: 20, authorizationStatus: 'aprobado' },
+];
 const FOLDERS = [
   { id: 1, userId: A },
   { id: 2, userId: B },
@@ -73,6 +87,12 @@ beforeEach(() => {
   mockFindFirst.mockResolvedValue({ id: 100 });
   mockFindUnique.mockResolvedValue({ id: 5 });
   mockTransaction.mockImplementation((ops: Promise<unknown>[]) => Promise.all(ops));
+  mockCount.mockImplementation(
+    async ({ where }: { where: { id: { in: number[] }; userId: number; authorizationStatus: { in: string[] } } }) =>
+      PLAN_ROWS.filter(
+        (r) => where.id.in.includes(r.id) && r.userId === where.userId && where.authorizationStatus.in.includes(r.authorizationStatus),
+      ).length,
+  );
   mockFolderCount.mockImplementation(async ({ where }: { where: { id: { in: number[] }; userId: number } }) =>
     FOLDERS.filter((f) => where.id.in.includes(f.id) && f.userId === where.userId).length,
   );
@@ -202,6 +222,146 @@ describe('PUT /api/flightPlans per-item: all-or-nothing', () => {
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ count: 2 });
+    expect(mockUpdateMany).toHaveBeenCalledTimes(2);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// SEC-04 (rest): status / csvResult / machineAssignedId, and the U-Plan freeze
+// ---------------------------------------------------------------------------------------------
+
+type IdShape = [string, (ids: number[], data: Record<string, unknown>) => Record<string, unknown>];
+const idShapes: IdShape[] = [
+  ['single {id,data}', (ids, data) => ({ id: ids[0], data })],
+  ['bulk {ids,data}', (ids, data) => ({ ids, data })],
+  ['per-item {items}', (ids, data) => ({ items: ids.map((id) => ({ id, data })) })],
+];
+
+describe.each(idShapes)('PUT /api/flightPlans %s: VM-owned fields', (_label, wrap) => {
+  it.each(['procesado', 'procesando', 'error', 'aprobado', '', null, 5])('rejects status %j', async (status) => {
+    const res = await put(wrap([5], { status }));
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toMatch(/status/);
+    expect(mockUpdateMany).not.toHaveBeenCalled();
+    expect(mockTransaction).not.toHaveBeenCalled();
+  });
+
+  it.each([1, 5, -1, '1', true, {}])('rejects csvResult %j (the 0/1 flag belongs to the VMs)', async (csvResult) => {
+    const res = await put(wrap([5], { csvResult }));
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toMatch(/csvResult/);
+    expect(mockUpdateMany).not.toHaveBeenCalled();
+  });
+
+  it.each([1, 5, 0, null, 'x'])('rejects machineAssignedId %j (the assigner owns it, not even null)', async (machineAssignedId) => {
+    const res = await put(wrap([5], { machineAssignedId }));
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toMatch(/machineAssignedId/);
+    expect(mockUpdateMany).not.toHaveBeenCalled();
+  });
+
+  it('accepts enqueue (status en cola) and the Dev UI full reset, persisting exactly what was sent', async () => {
+    expect((await put(wrap([5], { status: 'en cola' }))).status).toBe(200);
+    expect(mockUpdateMany.mock.calls[0][0].data).toEqual({ status: 'en cola' });
+
+    mockUpdateMany.mockClear();
+    const reset = {
+      status: 'sin procesar',
+      csvResult: null,
+      authorizationStatus: 'sin autorización',
+      authorizationMessage: null,
+      externalResponseNumber: null,
+    };
+    expect((await put(wrap([5], reset))).status).toBe(200);
+    expect(mockUpdateMany.mock.calls[0][0].data).toEqual(reset);
+  });
+
+  it('accepts csvResult 0 and still ignores unknown fields', async () => {
+    expect((await put(wrap([5], { csvResult: 0, customName: 'x', hacked: true }))).status).toBe(200);
+    expect(mockUpdateMany.mock.calls[0][0].data).toEqual({ csvResult: 0, customName: 'x' });
+  });
+});
+
+describe.each(idShapes)('PUT /api/flightPlans %s: the U-Plan of an approved/pending plan is frozen', (_label, wrap) => {
+  const uplan = { operationVolumes: [{ id: 'tampered' }] };
+
+  it.each([
+    ['aprobado', 8],
+    ['pendiente', 9],
+  ])("400 when editing the uplan of a '%s' plan, writing nothing", async (_status, id) => {
+    const res = await put(wrap([id], { uplan }));
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toMatch(/approved or pending/);
+    expect(mockUpdateMany).not.toHaveBeenCalled();
+    expect(mockTransaction).not.toHaveBeenCalled();
+  });
+
+  it("'procesando autorización' does not unfreeze: only the reset to 'sin autorización' does", async () => {
+    const res = await put(wrap([8], { uplan, authorizationStatus: 'procesando autorización' }));
+
+    expect(res.status).toBe(400);
+    expect(mockUpdateMany).not.toHaveBeenCalled();
+  });
+
+  it("resetting to 'sin autorización' in the same request unfreezes it and writes both", async () => {
+    const res = await put(wrap([8], { uplan, authorizationStatus: 'sin autorización' }));
+
+    expect(res.status).toBe(200);
+    expect(mockUpdateMany.mock.calls[0][0].data).toMatchObject({
+      authorizationStatus: 'sin autorización',
+      uplan: JSON.stringify(uplan),
+    });
+  });
+
+  it.each([5, 11, 12, 13])('plan %i (sin autorización / denegado / withdrawn / procesando) keeps an editable U-Plan', async (id) => {
+    expect((await put(wrap([id], { uplan }))).status).toBe(200);
+  });
+
+  it('everything but the uplan stays editable on an approved plan (rename, schedule: Alex decision, folder)', async () => {
+    for (const data of [{ customName: 'renamed' }, { scheduledAt: '2030-01-01T10:00:00.000Z' }, { folderId: 1 }]) {
+      mockUpdateMany.mockClear();
+
+      expect((await put(wrap([8], data))).status).toBe(200);
+      expect(mockUpdateMany).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it('only looks at the caller\'s own plans (no information about other users\' plans)', async () => {
+    await put(wrap([20], { uplan }));
+
+    for (const [{ where }] of mockCount.mock.calls) expect(where.userId).toBe(A);
+  });
+});
+
+describe('PUT /api/flightPlans: the freeze covers every plan of a batch', () => {
+  const uplan = { operationVolumes: [] };
+
+  it('bulk {ids,data}: one frozen plan among free ones refuses the whole batch', async () => {
+    const res = await put({ ids: [5, 6, 8], data: { uplan } });
+
+    expect(res.status).toBe(400);
+    expect(mockUpdateMany).not.toHaveBeenCalled();
+  });
+
+  it('per-item: a frozen plan anywhere refuses the whole batch; an item that resets is exempt only itself', async () => {
+    const frozen = await put({ items: [{ id: 5, data: { uplan } }, { id: 8, data: { uplan } }] });
+    expect(frozen.status).toBe(400);
+    expect(mockTransaction).not.toHaveBeenCalled();
+
+    const exemptOnlySelf = await put({
+      items: [{ id: 8, data: { uplan, authorizationStatus: 'sin autorización' } }, { id: 9, data: { uplan } }],
+    });
+    expect(exemptOnlySelf.status).toBe(400);
+    expect(mockTransaction).not.toHaveBeenCalled();
+
+    const fine = await put({
+      items: [{ id: 8, data: { uplan, authorizationStatus: 'sin autorización' } }, { id: 5, data: { uplan } }],
+    });
+    expect(fine.status).toBe(200);
     expect(mockUpdateMany).toHaveBeenCalledTimes(2);
   });
 });

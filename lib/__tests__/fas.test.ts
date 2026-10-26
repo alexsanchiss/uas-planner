@@ -6,7 +6,7 @@
  * a 30 s timeout signal whose expiry never throws out of the cancellation helper.
  */
 
-import { FAS_TIMEOUT_MS, fasFetch, getFasApiUrl, getFasBaseUrl, sendFasCancellation } from '../fas';
+import { FAS_TIMEOUT_MS, FAS_UPLAN_TIMEOUT_MS, fasFetch, getFasApiUrl, getFasBaseUrl, sendFasCancellation } from '../fas';
 
 const ORIGINAL_FAS_API_URL = process.env.FAS_API_URL;
 
@@ -62,8 +62,9 @@ describe('getFasApiUrl / getFasBaseUrl (E4 URLs)', () => {
 });
 
 describe('fasFetch', () => {
-  it('is a 30 s timeout', () => {
+  it('is a 30 s timeout for every FAS call except the U-Plan POST, which gets 120 s', () => {
     expect(FAS_TIMEOUT_MS).toBe(30_000);
+    expect(FAS_UPLAN_TIMEOUT_MS).toBe(120_000);
   });
 
   it('passes URL, method, headers and body through untouched and only adds a timeout signal', async () => {

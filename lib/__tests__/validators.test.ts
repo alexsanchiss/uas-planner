@@ -12,7 +12,6 @@ import {
   loginSchema,
   signupSchema,
   flightPlanStatusSchema,
-  authorizationStatusSchema,
   flightPlanCreateSchema,
   flightPlanUpdateDataSchema,
   flightPlanDeleteSchema,
@@ -29,6 +28,7 @@ import {
   isValidationError,
   type FlattenedErrors,
 } from '../validators';
+import * as validators from '../validators';
 
 describe('Validators', () => {
   describe('ID Schemas', () => {
@@ -177,16 +177,10 @@ describe('Validators', () => {
       });
     });
 
-    describe('authorizationStatusSchema', () => {
-      const validStatuses = ['sin autorización', 'pendiente', 'autorizado', 'rechazado'];
-
-      it.each(validStatuses)('should accept "%s" status', (status) => {
-        expect(authorizationStatusSchema.parse(status)).toBe(status);
-      });
-
-      it('should reject invalid status', () => {
-        expect(() => authorizationStatusSchema.parse('approved')).toThrow();
-      });
+    // The old enum listed 'autorizado'/'rechazado', values that never existed in the DB, and had no
+    // production user left: client-writable values live in clientWritablePlanFields only.
+    it('no longer exports the dead authorizationStatusSchema', () => {
+      expect(Object.keys(validators)).not.toContain('authorizationStatusSchema');
     });
   });
 
@@ -252,11 +246,27 @@ describe('Validators', () => {
         expect(result.customName).toBe('Updated Name');
       });
 
-      it('should accept status update', () => {
-        const result = flightPlanUpdateDataSchema.parse({
-          status: 'procesado',
-        });
-        expect(result.status).toBe('procesado');
+      // status is driven by the VMs/assigner: a client may only enqueue or reset a plan.
+      it.each(['en cola', 'sin procesar'])('should accept client status %s', (status) => {
+        expect(flightPlanUpdateDataSchema.parse({ status }).status).toBe(status);
+      });
+
+      it.each(['procesado', 'procesando', 'error', 'aprobado', ''])('should reject client status %j', (status) => {
+        expect(flightPlanUpdateDataSchema.safeParse({ status }).success).toBe(false);
+      });
+
+      // csvResult is a 0/1 flag written by the VMs; a client may only clear it (reset)
+      it.each([null, 0])('should accept csvResult %j (clearing the flag)', (csvResult) => {
+        expect(flightPlanUpdateDataSchema.parse({ csvResult }).csvResult).toBe(csvResult);
+      });
+
+      it.each([1, 5, -1, '1', true])('should reject csvResult %j', (csvResult) => {
+        expect(flightPlanUpdateDataSchema.safeParse({ csvResult }).success).toBe(false);
+      });
+
+      // machine assignment belongs to the assigner: not writable at all, not even null
+      it.each([1, 5, 0, null])('should reject machineAssignedId %j', (machineAssignedId) => {
+        expect(flightPlanUpdateDataSchema.safeParse({ machineAssignedId }).success).toBe(false);
       });
 
       // Authorization state is owned by FAS/the server: a client may only reset a plan or mark it
@@ -289,11 +299,11 @@ describe('Validators', () => {
       it('should accept multiple fields', () => {
         const result = flightPlanUpdateDataSchema.parse({
           customName: 'New Name',
-          status: 'procesando',
+          status: 'en cola',
           folderId: 3,
         });
         expect(result.customName).toBe('New Name');
-        expect(result.status).toBe('procesando');
+        expect(result.status).toBe('en cola');
         expect(result.folderId).toBe(3);
       });
     });

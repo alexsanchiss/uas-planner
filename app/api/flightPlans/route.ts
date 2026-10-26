@@ -20,7 +20,9 @@ import { withAuth, isAuthError } from '@/lib/auth-middleware';
 import {
   flightPlanDeleteSchema,
   externalUplanSchema,
-  checkUserAuthorizationFields,
+  checkClientPlanFields,
+  AUTH_LOCKED_STATUSES,
+  PLAN_LOCKED_UPLAN_ERROR,
   safeParseBody,
 } from '@/lib/validators';
 import { z } from 'zod';
@@ -404,6 +406,13 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
     return out;
   };
 
+  // True when any of the caller's plans among `ids` is frozen (approved / pending FAS)
+  const hasLockedPlan = async (ids: number[]): Promise<boolean> =>
+    ids.length > 0 &&
+    (await prisma.flightPlan.count({
+      where: { id: { in: ids }, userId, authorizationStatus: { in: AUTH_LOCKED_STATUSES } },
+    })) > 0;
+
   try {
     const bodyObj = body as Record<string, unknown>;
 
@@ -422,10 +431,18 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
 
       // Reject forbidden authorization writes before touching anything (all-or-nothing)
       for (const it of items) {
-        const authError = checkUserAuthorizationFields(it.data || {});
+        const authError = checkClientPlanFields(it.data || {});
         if (authError) {
           return NextResponse.json({ error: authError }, { status: 400 });
         }
+      }
+
+      // Frozen plans (approved/pending): no U-Plan edits unless the item resets authorization
+      const uplanItemIds = items
+        .filter((it) => it.data?.uplan !== undefined && it.data.authorizationStatus !== 'sin autorización')
+        .map((it) => Number(it.id));
+      if (await hasLockedPlan(uplanItemIds)) {
+        return NextResponse.json({ error: PLAN_LOCKED_UPLAN_ERROR }, { status: 400 });
       }
 
       if (!(await userOwnsFolders(userId, items.map((it) => it.data?.folderId as number | null | undefined)))) {
@@ -472,9 +489,14 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
         );
       }
 
-      const authError = checkUserAuthorizationFields(bodyObj.data as Record<string, unknown>);
+      const authError = checkClientPlanFields(bodyObj.data as Record<string, unknown>);
       if (authError) {
         return NextResponse.json({ error: authError }, { status: 400 });
+      }
+
+      const dataObj = bodyObj.data as Record<string, unknown>;
+      if (dataObj.uplan !== undefined && dataObj.authorizationStatus !== 'sin autorización' && await hasLockedPlan([id])) {
+        return NextResponse.json({ error: PLAN_LOCKED_UPLAN_ERROR }, { status: 400 });
       }
 
       const updateData = sanitizeData(bodyObj.data as Record<string, unknown>);
@@ -520,9 +542,14 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
         );
       }
 
-      const authError = checkUserAuthorizationFields(bodyObj.data as Record<string, unknown>);
+      const authError = checkClientPlanFields(bodyObj.data as Record<string, unknown>);
       if (authError) {
         return NextResponse.json({ error: authError }, { status: 400 });
+      }
+
+      const dataObj = bodyObj.data as Record<string, unknown>;
+      if (dataObj.uplan !== undefined && dataObj.authorizationStatus !== 'sin autorización' && await hasLockedPlan(targetIds)) {
+        return NextResponse.json({ error: PLAN_LOCKED_UPLAN_ERROR }, { status: 400 });
       }
 
       const updateData = sanitizeData(bodyObj.data as Record<string, unknown>);

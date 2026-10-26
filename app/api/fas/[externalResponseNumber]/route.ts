@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { sendAuthorizationResultEmail } from "@/lib/email";
+import { getSourceIp } from "@/lib/http";
 
 /**
  * FAS Callback Endpoint
@@ -17,11 +18,6 @@ import { sendAuthorizationResultEmail } from "@/lib/email";
  * trusted reverse proxy, Caddy), else X-Real-IP.
  */
 
-function getCallbackSourceIp(request: NextRequest): string | null {
-  const forwarded = request.headers.get("x-forwarded-for")?.split(",").pop()?.trim();
-  const ip = forwarded || request.headers.get("x-real-ip")?.trim();
-  return ip ? ip.replace(/^::ffff:/i, "") : null;
-}
 
 interface RouteParams {
   params: Promise<{ externalResponseNumber: string }>;
@@ -40,7 +36,7 @@ export async function PUT(
       .split(",")
       .map((ip) => ip.trim().replace(/^::ffff:/i, ""))
       .filter(Boolean);
-    const sourceIp = getCallbackSourceIp(request);
+    const sourceIp = getSourceIp(request.headers);
     const allowed = allowedIps.length === 0 || (sourceIp !== null && allowedIps.includes(sourceIp));
     console.info(
       `[FAS Callback] source IP: ${sourceIp ?? "unknown"} allowed: ${allowed} (allowlist ${allowedIps.length === 0 ? "off" : "on"})`
