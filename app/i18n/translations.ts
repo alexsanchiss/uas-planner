@@ -8,6 +8,7 @@
 
 import { pageEn, pageEs, type PageTranslations } from './pages'
 import { planAuthEn, planAuthEs, type PlanAuthTranslations } from './planAuthorization'
+import { planDefEn, planDefEs, type PlanDefTranslations } from './planDefinition'
 
 export type Language = 'en' | 'es'
 
@@ -15,6 +16,8 @@ export type Language = 'en' | 'es'
 export interface Translations extends PageTranslations {
   // Plan authorization screen (texts live in ./planAuthorization)
   planAuth: PlanAuthTranslations
+  // Plan definition screen (texts live in ./planDefinition)
+  planDef: PlanDefTranslations
 
   // Common
   common: {
@@ -499,6 +502,7 @@ export const translations: Record<Language, Translations> = {
   en: {
     ...pageEn,
     planAuth: planAuthEn,
+    planDef: planDefEn,
     common: {
       loading: 'Loading...',
       error: 'Error',
@@ -945,6 +949,7 @@ export const translations: Record<Language, Translations> = {
   es: {
     ...pageEs,
     planAuth: planAuthEs,
+    planDef: planDefEs,
     common: {
       loading: 'Cargando...',
       error: 'Error',

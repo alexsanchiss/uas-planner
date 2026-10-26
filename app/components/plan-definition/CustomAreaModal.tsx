@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { Modal } from "@/app/components/ui/modal";
 import { Input } from "@/app/components/ui/input";
+import { useI18n } from "@/app/i18n";
 import type { USpace } from "@/app/hooks/useUspaces";
 
 interface CustomAreaModalProps {
@@ -16,6 +17,8 @@ type Errors = Partial<Record<"id" | "name" | "latMin" | "latMax" | "lonMin" | "l
 
 /** "Define a Custom Area" dialog: labelled fields with an inline `role="alert"` error under each one. */
 export default function CustomAreaModal({ open, onClose, onCreate }: CustomAreaModalProps) {
+  const { t } = useI18n();
+  const c = t.planDef.customArea;
   const [id, setId] = useState("");
   const [name, setName] = useState("");
   const [latMin, setLatMin] = useState("");
@@ -36,14 +39,14 @@ export default function CustomAreaModal({ open, onClose, onCreate }: CustomAreaM
     const lonMinNum = parseFloat(lonMin);
     const lonMaxNum = parseFloat(lonMax);
     const next: Errors = {};
-    if (!id.trim()) next.id = "Area ID is required.";
-    if (!name.trim()) next.name = "Area name is required.";
-    if (isNaN(latMinNum)) next.latMin = "Enter a number.";
-    if (isNaN(latMaxNum)) next.latMax = "Enter a number.";
-    if (isNaN(lonMinNum)) next.lonMin = "Enter a number.";
-    if (isNaN(lonMaxNum)) next.lonMax = "Enter a number.";
-    if (!next.latMin && !next.latMax && latMinNum >= latMaxNum) next.latMax = "Max latitude must be greater than min.";
-    if (!next.lonMin && !next.lonMax && lonMinNum >= lonMaxNum) next.lonMax = "Max longitude must be greater than min.";
+    if (!id.trim()) next.id = c.errors.idRequired;
+    if (!name.trim()) next.name = c.errors.nameRequired;
+    if (isNaN(latMinNum)) next.latMin = c.errors.number;
+    if (isNaN(latMaxNum)) next.latMax = c.errors.number;
+    if (isNaN(lonMinNum)) next.lonMin = c.errors.number;
+    if (isNaN(lonMaxNum)) next.lonMax = c.errors.number;
+    if (!next.latMin && !next.latMax && latMinNum >= latMaxNum) next.latMax = c.errors.latOrder;
+    if (!next.lonMin && !next.lonMax && lonMinNum >= lonMaxNum) next.lonMax = c.errors.lonOrder;
     setErrors(next);
     if (Object.keys(next).length > 0) return;
 
@@ -64,27 +67,27 @@ export default function CustomAreaModal({ open, onClose, onCreate }: CustomAreaM
 
   return (
     // The app header sits at z-[9999], so the dialog must be above it.
-    <Modal open={open} onClose={close} title="Define Custom Area" maxWidth="md" overlayZIndex="z-[10000]">
+    <Modal open={open} onClose={close} title={c.title} maxWidth="md" overlayZIndex="z-[10000]">
       <form onSubmit={submit} noValidate className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-2">
-          <Input label="Area ID" type="text" value={id} onChange={(e) => setId(e.target.value)} error={errors.id} required />
-          <Input label="Area Name" type="text" value={name} onChange={(e) => setName(e.target.value)} error={errors.name} required />
+          <Input label={c.id} type="text" value={id} onChange={(e) => setId(e.target.value)} error={errors.id} required />
+          <Input label={c.name} type="text" value={name} onChange={(e) => setName(e.target.value)} error={errors.name} required />
         </div>
         <fieldset>
-          <legend className="mb-2 text-sm font-medium text-fg-2">Square area limits (degrees)</legend>
+          <legend className="mb-2 text-sm font-medium text-fg-2">{c.limits}</legend>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Input label="Latitude min" type="number" step="any" value={latMin} onChange={(e) => setLatMin(e.target.value)} error={errors.latMin} required />
-            <Input label="Latitude max" type="number" step="any" value={latMax} onChange={(e) => setLatMax(e.target.value)} error={errors.latMax} required />
-            <Input label="Longitude min" type="number" step="any" value={lonMin} onChange={(e) => setLonMin(e.target.value)} error={errors.lonMin} required />
-            <Input label="Longitude max" type="number" step="any" value={lonMax} onChange={(e) => setLonMax(e.target.value)} error={errors.lonMax} required />
+            <Input label={c.latMin} type="number" step="any" value={latMin} onChange={(e) => setLatMin(e.target.value)} error={errors.latMin} required />
+            <Input label={c.latMax} type="number" step="any" value={latMax} onChange={(e) => setLatMax(e.target.value)} error={errors.latMax} required />
+            <Input label={c.lonMin} type="number" step="any" value={lonMin} onChange={(e) => setLonMin(e.target.value)} error={errors.lonMin} required />
+            <Input label={c.lonMax} type="number" step="any" value={lonMax} onChange={(e) => setLonMax(e.target.value)} error={errors.lonMax} required />
           </div>
         </fieldset>
         <div className="flex justify-end gap-2 pt-2">
           <button type="button" onClick={close} className="btn border border-line-2 text-fg-2 hover:bg-hover">
-            Cancel
+            {c.cancel}
           </button>
           <button type="submit" className="btn btn-primary">
-            Create Area
+            {c.create}
           </button>
         </div>
       </form>

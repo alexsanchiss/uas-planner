@@ -7,7 +7,7 @@ import L from "leaflet";
 import { Point, ScanWaypoint } from "@/lib/scan-generator";
 import { GeozoneLayer } from "./plan-definition/GeozoneLayer";
 import { GeozoneInfoPopup } from "./plan-definition/GeozoneInfoPopup";
-import { useI18n } from "@/app/i18n";
+import { interpolate, useI18n } from "@/app/i18n";
 import { MapPin } from "lucide-react";
 import type { GeozoneData, WebSocketStatus } from "@/app/hooks/useGeoawarenessWebSocket";
 
@@ -47,7 +47,7 @@ function formatPauseDuration(seconds: number): string {
 
 // TASK-125 & TASK-129: Create custom icon with pause and fly-over indicators
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped waypoint/overlay objects from map layers
-function createWaypointIcon(wp: any, idx: number): L.DivIcon {
+function createWaypointIcon(wp: any, idx: number, overLabel: string): L.DivIcon {
   const hasPause = wp.pauseDuration && wp.pauseDuration > 0;
   const pauseText = hasPause ? formatPauseDuration(wp.pauseDuration) : "";
   const isFlyOver = wp.flyOverMode && wp.type === "cruise"; // TASK-129: Only cruise waypoints can be fly-over
@@ -125,7 +125,7 @@ function createWaypointIcon(wp: any, idx: number): L.DivIcon {
             border-radius: 4px;
             white-space: nowrap;
             box-shadow: ${MARKER_SHADOW};
-          ">⊙ OVER</div>
+          ">${overLabel}</div>
         ` : ""}
       </div>
     `,
@@ -216,7 +216,7 @@ function EditablePopupContent({ wp, idx, onWaypointChange }: {
             onChange={(e) => onWaypointChange(idx, 'flyOverMode', e.target.checked)} />
           <span className="font-bold text-fg-2">{t.planGenerator.flyOver}</span>
           <span className="text-xs" style={{ color: wp.flyOverMode ? MAP_COLORS.flyOver : MAP_COLORS.cruise }}>
-            {wp.flyOverMode ? '⊙ Over' : '∽ By'}
+            {wp.flyOverMode ? t.planDef.map.flyOverOn : t.planDef.map.flyOverOff}
           </span>
         </label>
       )}
@@ -230,13 +230,15 @@ function EditablePopupContent({ wp, idx, onWaypointChange }: {
 }
 
 function WaypointMarkers({ waypoints, onSelect, onDragEndMarker, onWaypointChange }: { waypoints: PopupWaypoint[]; onSelect: (idx: number) => void; onDragEndMarker: (idx: number, lat: number, lng: number) => void; onWaypointChange?: (idx: number, field: WaypointField, value: number | boolean) => void; }) {
+  const { t } = useI18n();
+  const types: Record<string, string> = t.planDef.waypointList.types;
   return waypoints.map((wp, idx) => (
     <Marker
       key={idx}
       position={[wp.lat, wp.lng]}
-      icon={createWaypointIcon(wp, idx)}
-      title={`Waypoint ${idx + 1} (${wp.type})`}
-      alt={`Waypoint ${idx + 1} (${wp.type})`}
+      icon={createWaypointIcon(wp, idx, t.planDef.map.over)}
+      title={interpolate(t.planDef.map.waypoint, { n: idx + 1, type: types[wp.type] ?? wp.type })}
+      alt={interpolate(t.planDef.map.waypoint, { n: idx + 1, type: types[wp.type] ?? wp.type })}
       eventHandlers={{
         click: () => onSelect(idx),
         dragend: (e) => {
@@ -270,6 +272,8 @@ function MapClickHandler({
   scanMode?: boolean;
   areaName?: string;
 }) {
+  const { t } = useI18n();
+  const pd = t.planDef;
   // Use a ref so the map click handler always sees the latest customClickHandler
   // without requiring a MapContainer remount
   const customClickHandlerRef = useRef(customClickHandler);
@@ -287,7 +291,7 @@ function MapClickHandler({
         e.latlng.lng <= bounds[1][1];
       
       // TASK-054: Use dynamic area name in error messages
-      const displayName = areaName || 'service area';
+      const displayName = areaName || pd.serviceAreaName;
       
       // TASK-215: When in SCAN mode, only use custom handler - NEVER add manual waypoints
       if (scanMode) {
@@ -296,7 +300,7 @@ function MapClickHandler({
           if (isWithinBounds) {
             handler(e.latlng.lat, e.latlng.lng);
           } else {
-            onToast(`Point must be within the ${displayName}.`);
+            onToast(interpolate(pd.toast.pointWithin, { name: displayName }));
           }
         }
         // In SCAN mode without a handler, do nothing (user needs to complete current step)
@@ -315,7 +319,7 @@ function MapClickHandler({
           flyOverMode: false,
         });
       } else {
-        onToast(`Waypoints must be within the ${displayName}.`);
+        onToast(interpolate(pd.toast.waypointWithin, { name: displayName }));
       }
     },
   });
@@ -673,18 +677,6 @@ function FlyToHandler({ position }: { position: [number, number] }) {
   return null;
 }
 
-const WS_LABEL: Record<WebSocketStatus, string> = {
-  connected: "Live",
-  connecting: "Connecting...",
-  error: "Error ↻",
-  disconnected: "Offline ↻",
-};
-const WS_TITLE: Record<WebSocketStatus, string> = {
-  connected: "Geoawareness service connected",
-  connecting: "Connecting to geoawareness service...",
-  error: "Connection error - Click to retry",
-  disconnected: "Disconnected - Click to reconnect",
-};
 const WS_TONE: Record<WebSocketStatus, { dot: string; text: string }> = {
   connected: { dot: "bg-success", text: "text-success-text" },
   connecting: { dot: "bg-warning animate-pulse motion-reduce:animate-none", text: "text-warning-text" },
@@ -695,6 +687,9 @@ const WS_TONE: Record<WebSocketStatus, { dot: string; text: string }> = {
 // TASK-089: connection status of the geoawareness stream. The state is always written out (not only a colored
 // dot); in the error/offline states it is a real button that retries.
 function WsStatusBadge({ status, onReconnect }: { status: WebSocketStatus; onReconnect?: () => void }) {
+  const { t } = useI18n();
+  const WS_LABEL = t.planDef.map.ws.label;
+  const WS_TITLE = t.planDef.map.ws.title;
   const ref = useRef<HTMLButtonElement | HTMLDivElement>(null);
   // Clicks on this overlay must not reach the map (they would add a waypoint under it)
   useEffect(() => {

@@ -7,6 +7,7 @@
 import React, { useState } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { ChevronDown, ChevronUp, GripVertical, Plus, Trash2 } from "lucide-react";
+import { interpolate, useI18n } from "@/app/i18n";
 
 export interface Waypoint {
   lat: number;
@@ -18,11 +19,7 @@ export interface Waypoint {
   flyOverMode: boolean; // TASK-126: true = fly-over (pass directly over), false = fly-by (smooth curve)
 }
 
-export const waypointTypes = [
-  { value: "takeoff", label: "Takeoff" },
-  { value: "cruise", label: "Cruise" },
-  { value: "landing", label: "Landing" },
-];
+const WAYPOINT_TYPES = ["takeoff", "cruise", "landing"] as const;
 
 interface WaypointListProps {
   waypoints: Waypoint[];
@@ -125,6 +122,8 @@ export default function WaypointList({
   onAddAt,
   center,
 }: WaypointListProps) {
+  const { t } = useI18n();
+  const wl = t.planDef.waypointList;
   const [addOpen, setAddOpen] = useState(false);
   const [addLat, setAddLat] = useState("");
   const [addLng, setAddLng] = useState("");
@@ -135,7 +134,7 @@ export default function WaypointList({
   const move = (from: number, to: number) => {
     if (to < 0 || to > last) return;
     onMove(from, to);
-    setAnnouncement(`Waypoint ${from + 1} moved to position ${to + 1} of ${waypoints.length}.`);
+    setAnnouncement(interpolate(wl.moved, { from: from + 1, to: to + 1, total: waypoints.length }));
     // The row that now holds the moved waypoint keeps keyboard focus on the same kind of button.
     const dir = to < from ? "up" : "down";
     const stillCan = dir === "up" ? to > 0 : to < last;
@@ -156,7 +155,7 @@ export default function WaypointList({
         {announcement}
       </p>
       {waypoints.length === 0 && (
-        <p className="mb-2 text-sm text-muted">Click on the map or use Add waypoint to create the first waypoint.</p>
+        <p className="mb-2 text-sm text-muted">{wl.empty}</p>
       )}
       <DragDropContext
         onDragEnd={(result: DropResult) => {
@@ -183,14 +182,14 @@ export default function WaypointList({
                         <div className="flex items-center gap-1">
                           <div
                             {...dragProvided.dragHandleProps}
-                            aria-label={`Drag to reorder waypoint ${n}`}
+                            aria-label={interpolate(wl.drag, { n })}
                             className="grid h-8 w-6 cursor-grab place-items-center rounded text-muted hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring"
                           >
                             <GripVertical className="h-4 w-4" aria-hidden="true" />
                           </div>
                           <span className="w-5 text-center font-mono text-xs text-muted">{n}</span>
                           <label htmlFor={`wp-${idx}-type`} className="sr-only">
-                            Waypoint {n} type
+                            {interpolate(wl.typeOf, { n })}
                           </label>
                           <select
                             id={`wp-${idx}-type`}
@@ -198,9 +197,9 @@ export default function WaypointList({
                             onChange={(e) => onChange(idx, "type", e.target.value)}
                             className="input select min-w-0 flex-1 px-2 py-1 text-xs"
                           >
-                            {waypointTypes.map((t) => (
-                              <option key={t.value} value={t.value}>
-                                {t.label}
+                            {WAYPOINT_TYPES.map((kind) => (
+                              <option key={kind} value={kind}>
+                                {wl.types[kind]}
                               </option>
                             ))}
                           </select>
@@ -210,8 +209,8 @@ export default function WaypointList({
                             className={iconButton}
                             onClick={() => move(idx, idx - 1)}
                             disabled={idx === 0}
-                            aria-label={`Move waypoint ${n} up`}
-                            title="Move up"
+                            aria-label={interpolate(wl.moveUpFor, { n })}
+                            title={wl.moveUp}
                           >
                             <ChevronUp className="h-4 w-4" aria-hidden="true" />
                           </button>
@@ -221,8 +220,8 @@ export default function WaypointList({
                             className={iconButton}
                             onClick={() => move(idx, idx + 1)}
                             disabled={idx === last}
-                            aria-label={`Move waypoint ${n} down`}
-                            title="Move down"
+                            aria-label={interpolate(wl.moveDownFor, { n })}
+                            title={wl.moveDown}
                           >
                             <ChevronDown className="h-4 w-4" aria-hidden="true" />
                           </button>
@@ -230,8 +229,8 @@ export default function WaypointList({
                             type="button"
                             className={`${iconButton} text-danger-text hover:text-danger-text`}
                             onClick={() => onRemove(idx)}
-                            aria-label={`Remove waypoint ${n}`}
-                            title="Remove waypoint"
+                            aria-label={interpolate(wl.removeFor, { n })}
+                            title={wl.remove}
                           >
                             <Trash2 className="h-4 w-4" aria-hidden="true" />
                           </button>
@@ -239,22 +238,22 @@ export default function WaypointList({
                         <div className="mt-2 grid grid-cols-3 gap-2">
                           <NumberField
                             id={`wp-${idx}-alt`}
-                            label="Altitude (m)"
+                            label={wl.altitude}
                             value={wp.altitude}
                             onChange={(v) => onChange(idx, "altitude", v)}
                             disabled={wp.type === "landing"}
                           />
                           <NumberField
                             id={`wp-${idx}-speed`}
-                            label="Speed (m/s)"
+                            label={wl.speed}
                             value={wp.speed}
                             onChange={(v) => onChange(idx, "speed", v)}
                           />
                           {/* TASK-122: Pause duration input */}
                           <NumberField
                             id={`wp-${idx}-pause`}
-                            label="Pause (s)"
-                            title="Hold time at waypoint (0-3600 seconds)"
+                            label={wl.pause}
+                            title={wl.pauseHint}
                             value={wp.pauseDuration}
                             max={3600}
                             onChange={(v) => onChange(idx, "pauseDuration", v)}
@@ -263,13 +262,13 @@ export default function WaypointList({
                         <div className="mt-2 grid grid-cols-2 gap-2">
                           <CoordField
                             id={`wp-${idx}-lat`}
-                            label="Latitude"
+                            label={wl.latitude}
                             value={wp.lat}
                             onCommit={(v) => onChange(idx, "lat", v)}
                           />
                           <CoordField
                             id={`wp-${idx}-lng`}
-                            label="Longitude"
+                            label={wl.longitude}
                             value={wp.lng}
                             onCommit={(v) => onChange(idx, "lng", v)}
                           />
@@ -278,7 +277,7 @@ export default function WaypointList({
                         {wp.type === "cruise" && (
                           <label
                             className="mt-2 flex cursor-pointer items-center gap-2 text-xs text-fg-2"
-                            title="Fly-by: drone smoothly curves past the waypoint. Fly-over: drone must pass directly over the waypoint (more precise but slower)."
+                            title={wl.flyOverHint}
                           >
                             <input
                               type="checkbox"
@@ -286,8 +285,8 @@ export default function WaypointList({
                               onChange={(e) => onChange(idx, "flyOverMode", e.target.checked)}
                               className="h-4 w-4 accent-[var(--color-accent)]"
                             />
-                            <span className="font-medium">Fly-over</span>
-                            <span className="text-muted">{wp.flyOverMode ? "(pass directly over)" : "(off: fly-by, smooth curve)"}</span>
+                            <span className="font-medium">{wl.flyOver}</span>
+                            <span className="text-muted">{wp.flyOverMode ? wl.flyOverOn : wl.flyOverOff}</span>
                           </label>
                         )}
                       </li>
@@ -310,7 +309,7 @@ export default function WaypointList({
             className="flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-line-2 px-3 py-2 text-sm font-medium text-fg-2 transition-colors hover:border-brand-ring hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring"
           >
             <Plus className="h-4 w-4" aria-hidden="true" />
-            Add Waypoint
+            {wl.add}
           </button>
         ) : (
           <form
@@ -320,11 +319,11 @@ export default function WaypointList({
               if (onAddAt(parseFloat(addLat), parseFloat(addLng))) setAddOpen(false);
             }}
           >
-            <div className="text-xs font-semibold text-fg-2">New Waypoint</div>
+            <div className="text-xs font-semibold text-fg-2">{wl.newWaypoint}</div>
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label htmlFor="add-wp-lat" className="mb-1 block text-xs text-muted">
-                  Latitude
+                  {wl.latitude}
                 </label>
                 <input
                   id="add-wp-lat"
@@ -338,7 +337,7 @@ export default function WaypointList({
               </div>
               <div>
                 <label htmlFor="add-wp-lng" className="mb-1 block text-xs text-muted">
-                  Longitude
+                  {wl.longitude}
                 </label>
                 <input
                   id="add-wp-lng"
@@ -352,14 +351,14 @@ export default function WaypointList({
             </div>
             <div className="flex gap-2 pt-1">
               <button type="submit" className="btn btn-primary flex-1 px-3 py-1.5 text-xs">
-                Add
+                {wl.addConfirm}
               </button>
               <button
                 type="button"
                 onClick={() => setAddOpen(false)}
                 className="btn flex-1 border border-line-2 px-3 py-1.5 text-xs text-fg-2 hover:bg-hover"
               >
-                Cancel
+                {wl.cancel}
               </button>
             </div>
           </form>

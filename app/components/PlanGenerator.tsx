@@ -41,6 +41,7 @@ L.Icon.Default.mergeOptions({
 });
 
 import { useAuth } from "../hooks/useAuth";
+import { interpolate, useI18n } from "@/app/i18n";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 
@@ -174,13 +175,14 @@ const modeButton = "flex flex-1 items-center justify-center gap-2 rounded-md px-
 
 // Opens in a new tab so the help page never costs the user their waypoints (UI-19).
 function HelpLink() {
+  const { t } = useI18n();
   return (
     <a
       href="/how-it-works#plan-definition-help"
       target="_blank"
       rel="noopener noreferrer"
-      aria-label="Help: how Plan Definition works (opens in a new tab)"
-      title="Need help with Plan Definition?"
+      aria-label={t.planDef.helpLabel}
+      title={t.planDef.helpTitle}
       className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-brand-text hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring"
     >
       <HelpCircle className="h-5 w-5" aria-hidden="true" />
@@ -200,16 +202,14 @@ export default function PlanGenerator() {
   const [planName, setPlanName] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const { t } = useI18n();
+  const pd = t.planDef;
   const toast = useToast();
   const router = useRouter();
-  // Create a wrapper for PlanMap to show toast messages
-  const showToast = useCallback((message: string) => {
-    // Determine toast type based on message content
-    if (message.includes('Selected U-space') || message.includes('has been saved') || message.includes('SCAN pattern applied')) {
-      toast.success(message);
-    } else {
-      toast.error(message);
-    }
+  // Toast wrapper shared with PlanMap (which only reports problems, hence the error default)
+  const showToast = useCallback((message: string, kind: 'success' | 'error' = 'error') => {
+    if (kind === 'success') toast.success(message);
+    else toast.error(message);
   }, [toast]);
   const { user } = useAuth();
   // TASK-181: Collapsible sidebar for tablet/mobile
@@ -326,6 +326,10 @@ export default function PlanGenerator() {
       })()
     : SERVICE_LIMITS;
     
+  // Waypoint rejected because it is outside the selected U-space (or the default service area)
+  const toastOutsideArea = () =>
+    showToast(selectedUspace ? interpolate(pd.toast.withinUspace, { name: selectedUspace.name }) : pd.toast.withinService);
+
   // TASK-043: Handler for U-space selection
   const handleUspaceSelect = (uspace: USpace) => {
     setSelectedUspace(uspace);
@@ -334,7 +338,7 @@ export default function PlanGenerator() {
       setWaypoints([]);
       setSelectedIdx(null);
     }
-    showToast(`Selected U-space: ${uspace.name}`);
+    showToast(interpolate(pd.toast.selectedUspace, { name: uspace.name }), 'success');
   };
   
   // TASK-043: Handler to change U-space (go back to selection)
@@ -355,9 +359,7 @@ export default function PlanGenerator() {
   const handleAddWaypoint = (wp: Waypoint) => {
     // TASK-043: Check within selected U-space bounds or default service limits
     if (!isWithinEffectiveBounds(wp.lat, wp.lng)) {
-      showToast(selectedUspace 
-        ? `Waypoints must be within the ${selectedUspace.name} area.`
-        : "Waypoints must be within the FAS service area.");
+      toastOutsideArea();
       return;
     }
     // Ensure pauseDuration and flyOverMode are initialized
@@ -389,11 +391,11 @@ export default function PlanGenerator() {
   // "Add waypoint" form in the sidebar: validates, adds and flies the map there. Returns false when rejected.
   const handleAddWaypointAt = (lat: number, lng: number): boolean => {
     if (isNaN(lat) || isNaN(lng)) {
-      toast.error('Please enter valid latitude and longitude values.');
+      toast.error(pd.toast.invalidCoords);
       return false;
     }
     if (!isWithinEffectiveBounds(lat, lng)) {
-      toast.error('Coordinates are outside the service area.');
+      toast.error(pd.toast.outsideArea);
       return false;
     }
     handleAddWaypoint({
@@ -431,7 +433,7 @@ export default function PlanGenerator() {
           if (value === '') return { ...wp, altitude: '' };
           const clamped = clampAltitude(Number(value));
           if (clamped !== Number(value)) {
-            showToast(`Altitude must be between ${ALT_LIMITS[0]} and ${ALT_LIMITS[1]} meters.`);
+            showToast(interpolate(pd.toast.altitudeRange, { min: ALT_LIMITS[0], max: ALT_LIMITS[1] }));
           }
           return { ...wp, altitude: clamped };
         }
@@ -440,7 +442,7 @@ export default function PlanGenerator() {
           if (value === '') return { ...wp, pauseDuration: '' };
           const pauseValue = Math.max(0, Math.min(3600, Math.floor(Number(value))));
           if (pauseValue !== Number(value)) {
-            showToast("Pause duration must be between 0 and 3600 seconds (1 hour max).");
+            showToast(pd.toast.pauseRange);
           }
           return { ...wp, pauseDuration: pauseValue };
         }
@@ -453,9 +455,7 @@ export default function PlanGenerator() {
           const newLat = field === "lat" ? Number(value) : wp.lat;
           const newLng = field === "lng" ? Number(value) : wp.lng;
           if (!isWithinEffectiveBounds(newLat, newLng)) {
-            showToast(selectedUspace 
-              ? `Waypoints must be within the ${selectedUspace.name} area.`
-              : "Waypoints must be within the FAS service area.");
+            toastOutsideArea();
             return wp; // revert
           }
           return { ...wp, [field]: Number(value) };
@@ -525,9 +525,7 @@ export default function PlanGenerator() {
   const handleMarkerDragEnd = (idx: number, lat: number, lng: number) => {
     // TASK-043: Check within selected U-space bounds
     if (!isWithinEffectiveBounds(lat, lng)) {
-      showToast(selectedUspace 
-        ? `Waypoints must be within the ${selectedUspace.name} area.`
-        : "Waypoints must be within the FAS service area.");
+      toastOutsideArea();
       return;
     }
     setWaypoints((wps) =>
@@ -566,7 +564,7 @@ export default function PlanGenerator() {
     setGeneratorMode('manual'); // Switch back to manual mode to allow editing
     setScanOverlays(null);
     handleSetScanMapClickHandler(null);
-    showToast(`SCAN pattern applied with ${newWaypoints.length} waypoints. You can now edit them.`);
+    showToast(interpolate(pd.toast.scanApplied, { n: newWaypoints.length }), 'success');
   };
 
   // Handle canceling SCAN pattern
@@ -611,39 +609,39 @@ export default function PlanGenerator() {
   // Upload plan
   const handleUploadPlan = async () => {
     if (!user) {
-      showToast("You must be logged in to upload the plan.");
+      showToast(pd.toast.loginToUpload);
       return;
     }
     if (!planName.trim()) {
-      showToast("Please enter a name for the plan.");
+      showToast(pd.toast.nameRequired);
       return;
     }
     if (waypoints.length === 0) {
-      showToast("The plan must have at least one waypoint.");
+      showToast(pd.toast.needWaypoint);
       return;
     }
     if (!waypoints.some((wp) => wp.type === "takeoff")) {
-      showToast("The plan must have at least one takeoff waypoint.");
+      showToast(pd.toast.needTakeoff);
       return;
     }
     // Only one takeoff and one landing allowed
     if (waypoints.filter((wp) => wp.type === "takeoff").length > 1) {
-      showToast("The plan cannot have more than one takeoff waypoint.");
+      showToast(pd.toast.manyTakeoffs);
       return;
     }
     if (waypoints.filter((wp) => wp.type === "landing").length > 1) {
-      showToast("The plan cannot have more than one landing waypoint.");
+      showToast(pd.toast.manyLandings);
       return;
     }
     if (waypoints.length < 2) {
-      showToast("The plan must have at least two waypoints.");
+      showToast(pd.toast.needTwo);
       return;
     }
     
     // Validate that no numeric fields are left empty
     const invalidWaypointIdx = waypoints.findIndex(wp => wp.altitude === '' || wp.speed === '' || wp.pauseDuration === '');
     if (invalidWaypointIdx !== -1) {
-      showToast(`Please fill in all empty fields (altitude, speed, pause) for waypoint ${invalidWaypointIdx + 1}.`);
+      showToast(interpolate(pd.toast.emptyFields, { n: invalidWaypointIdx + 1 }));
       return;
     }
 
@@ -685,14 +683,11 @@ export default function PlanGenerator() {
       const createdPlanId = createRes.data?.id;
       setPlanName("");
       setUploaded(true);
-      toast.success(`Plan "${planName}" saved. Redirecting to Plan Authorization...`);
+      toast.success(interpolate(pd.toast.saved, { name: planName }));
       router.push(`/plan-authorization?selectPlan=${createdPlanId}`);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped waypoint/file objects
     } catch (err: any) {
-      showToast(
-        "Error uploading the plan: " +
-          (err?.response?.data?.error || err.message)
-      );
+      showToast(interpolate(pd.toast.uploadError, { error: err?.response?.data?.error || err.message }));
     } finally {
       setLoading(false);
     }
@@ -702,7 +697,7 @@ export default function PlanGenerator() {
   if (!user) {
     return (
       <div className="flex flex-1 items-center justify-center bg-canvas p-6">
-        <div className="text-center text-2xl font-semibold text-fg">You must be logged in to access the Plan Definition.</div>
+        <div className="text-center text-2xl font-semibold text-fg">{pd.loginRequired}</div>
       </div>
     );
   }
@@ -714,15 +709,15 @@ export default function PlanGenerator() {
         <div className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
           {/* Step Indicator */}
           <div className="mb-6 flex items-center justify-between gap-4">
-            <ol className="flex items-center gap-4" aria-label="Plan Definition steps">
+            <ol className="flex items-center gap-4" aria-label={pd.steps.label}>
               <li className="flex items-center gap-2" aria-current="step">
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand text-sm font-bold text-brand-fg">1</span>
-                <span className="font-medium text-fg">Select U-space</span>
+                <span className="font-medium text-fg">{pd.steps.selectUspace}</span>
               </li>
               <li aria-hidden="true"><ChevronRight className="h-5 w-5 text-muted" /></li>
               <li className="flex items-center gap-2 text-muted">
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-subtle text-sm font-bold">2</span>
-                <span className="font-medium">Plan Waypoints</span>
+                <span className="font-medium">{pd.steps.planWaypoints}</span>
               </li>
             </ol>
             <HelpLink />
@@ -730,10 +725,9 @@ export default function PlanGenerator() {
 
           {/* Title and Description */}
           <div className="mb-6 max-w-2xl">
-            <h1 className="mb-2 text-2xl font-bold text-fg md:text-3xl">Select Flight Area</h1>
+            <h1 className="mb-2 text-2xl font-bold text-fg md:text-3xl">{pd.area.title}</h1>
             <p className="text-fg-2">
-              Choose a U-space to plan your flight. Your waypoints will be restricted to the selected area.
-              Click on a polygon on the map or pick one from the list.
+              {pd.area.intro}
             </p>
           </div>
 
@@ -742,16 +736,16 @@ export default function PlanGenerator() {
 
           {/* Skip to default service area (fallback) */}
           <div className="mt-6">
-            <p className="mb-3 text-sm text-muted">Can&apos;t find your area or want to use the default?</p>
+            <p className="mb-3 text-sm text-muted">{pd.area.fallbackPrompt}</p>
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={() => handleUspaceSelect(DEFAULT_USPACE)} className={secondaryButton}>
-                Use Default Service Area
+                {pd.area.useDefault}
               </button>
               <button type="button" onClick={() => setCustomAreaModalOpen(true)} className={secondaryButton}>
-                Define a Custom Area
+                {pd.area.custom}
               </button>
               <button type="button" onClick={() => handleUspaceSelect(GLOBAL_USPACE)} className={secondaryButton}>
-                Don&apos;t Use a Pre-Defined Area
+                {pd.area.noPredefined}
               </button>
             </div>
           </div>
@@ -783,9 +777,9 @@ export default function PlanGenerator() {
           setSelectedIdx(null);
           setSelectedUspace(null);
         }}
-        title="Change U-space?"
-        message="Changing U-space will clear your current waypoints. Continue?"
-        confirmLabel="Change U-space"
+        title={pd.changeUspace.title}
+        message={pd.changeUspace.message}
+        confirmLabel={pd.changeUspace.action}
         variant="warning"
       />
       {/* Height = viewport (dvh) minus what sits above the planner (measured, not hard-coded). */}
@@ -793,13 +787,13 @@ export default function PlanGenerator() {
         <div className="absolute inset-0 flex">
           {/* Sidebar on desktop, bottom sheet below 1024px */}
           <aside
-            aria-label="Flight plan"
+            aria-label={pd.sidebar.label}
             className={`fixed inset-x-0 bottom-0 z-30 flex flex-col rounded-t-xl border-t border-line bg-surface shadow-theme-lg lg:static lg:z-auto lg:max-h-none lg:w-[420px] lg:min-w-[320px] lg:max-w-[520px] lg:shrink-0 lg:rounded-none lg:border-r lg:border-t-0 ${
               sidebarOpen ? "max-h-[75dvh]" : ""
             }`}
           >
             <div className="flex items-center border-b border-line">
-              <h2 className="hidden flex-1 px-4 py-3 text-xl font-bold text-fg lg:block">Flight Plan</h2>
+              <h2 className="hidden flex-1 px-4 py-3 text-xl font-bold text-fg lg:block">{pd.sidebar.title}</h2>
               <h2 className="flex-1 lg:hidden">
                 <button
                   type="button"
@@ -809,9 +803,9 @@ export default function PlanGenerator() {
                   className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left text-lg font-bold text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-ring"
                 >
                   <span>
-                    Flight Plan
+                    {pd.sidebar.title}
                     <span className="ml-2 text-sm font-normal text-muted">
-                      {waypoints.length} waypoint{waypoints.length === 1 ? "" : "s"}
+                      {waypoints.length === 1 ? pd.sidebar.waypointOne : interpolate(pd.sidebar.waypointMany, { n: waypoints.length })}
                     </span>
                   </span>
                   <ChevronDown className={`h-5 w-5 text-muted transition-transform ${sidebarOpen ? "" : "rotate-180"}`} aria-hidden="true" />
@@ -831,19 +825,16 @@ export default function PlanGenerator() {
                       <div role="alert" className="rounded-md border border-warning-line bg-warning-soft p-3 text-warning-text">
                         <div className="mb-1 flex items-center gap-2 text-sm font-semibold">
                           <AlertTriangle className="h-4 w-4" aria-hidden="true" />
-                          Boundary Warning
+                          {pd.boundary.title}
                         </div>
                         <div className="text-xs">
                           {nearBoundary.length === 1 ? (
-                            <span>Waypoint {nearBoundary[0].index + 1} is {nearBoundary[0].distance}m from the {areaName} boundary.</span>
+                            <span>{interpolate(pd.boundary.one, { n: nearBoundary[0].index + 1, distance: nearBoundary[0].distance, area: areaName })}</span>
                           ) : (
                             <span>
-                              {nearBoundary.map((w, i) => (
-                                <span key={w.index}>
-                                  {i > 0 && ", "}
-                                  WP{w.index + 1} ({w.distance}m)
-                                </span>
-                              ))} are near the boundary.
+                              {interpolate(pd.boundary.many, {
+                                list: nearBoundary.map((w) => interpolate(pd.boundary.item, { n: w.index + 1, distance: w.distance })).join(", "),
+                              })}
                             </span>
                           )}
                         </div>
@@ -853,10 +844,10 @@ export default function PlanGenerator() {
                       <div role="alert" className="rounded-md border border-danger-line bg-danger-soft p-3 text-danger-text">
                         <div className="mb-1 flex items-center gap-2 text-sm font-semibold">
                           <AlertTriangle className="h-4 w-4" aria-hidden="true" />
-                          Geozones could not be loaded
+                          {pd.geozones.errorTitle}
                         </div>
                         <p className="text-xs">
-                          Restrictions for {areaName} are not shown on the map.
+                          {interpolate(pd.geozones.errorBody, { area: areaName })}
                           {geozonesError?.message ? ` (${geozonesError.message})` : ""}
                         </p>
                         <button
@@ -865,27 +856,27 @@ export default function PlanGenerator() {
                           className="mt-2 inline-flex items-center gap-1 rounded text-xs font-semibold underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring"
                         >
                           <RefreshCw className="h-3 w-3" aria-hidden="true" />
-                          Retry
+                          {pd.geozones.retry}
                         </button>
                       </div>
                     )}
                     {geozonesLoading && (
                       <p role="status" className="flex items-center gap-2 text-xs text-muted">
                         <Loader2 className="h-3 w-3 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-                        Loading geozones...
+                        {pd.geozones.loading}
                       </p>
                     )}
                     {usingFallback && (
                       <p role="status" className="rounded-md border border-info-line bg-info-soft p-3 text-xs text-info-text">
-                        Showing fallback geozone data; it may be out of date.
+                        {pd.geozones.fallback}
                       </p>
                     )}
                   </div>
                 )}
 
-                <PlannerSection title="Plan details">
+                <PlannerSection title={pd.details.title}>
                   <label htmlFor="plan-name" className="mb-1 block text-sm font-medium text-fg-2">
-                    Plan name
+                    {pd.details.name}
                   </label>
                   <input
                     id="plan-name"
@@ -893,13 +884,13 @@ export default function PlanGenerator() {
                     value={planName}
                     onChange={(e) => setPlanName(e.target.value)}
                     className="input"
-                    placeholder="e.g. Mission 1"
+                    placeholder={pd.details.namePlaceholder}
                     disabled={loading}
                   />
                 </PlannerSection>
 
-                <PlannerSection title="Mode">
-                  <div role="group" aria-label="Generation mode" className="flex gap-2">
+                <PlannerSection title={pd.mode.title}>
+                  <div role="group" aria-label={pd.mode.label} className="flex gap-2">
                     <button
                       type="button"
                       aria-pressed={generatorMode === "manual"}
@@ -911,7 +902,7 @@ export default function PlanGenerator() {
                       className={`${modeButton} ${generatorMode === "manual" ? "bg-brand text-brand-fg" : "bg-subtle text-fg-2 hover:bg-hover"}`}
                     >
                       <MousePointer2 className="h-4 w-4" aria-hidden="true" />
-                      Manual
+                      {pd.mode.manual}
                     </button>
                     <button
                       type="button"
@@ -920,7 +911,7 @@ export default function PlanGenerator() {
                       className={`${modeButton} ${generatorMode === "scan" ? "bg-[var(--color-accent-hover)] text-brand-fg" : "bg-subtle text-fg-2 hover:bg-hover"}`}
                     >
                       <Grid3X3 className="h-4 w-4" aria-hidden="true" />
-                      SCAN Pattern
+                      {pd.mode.scan}
                     </button>
                   </div>
                   {/* SCAN Pattern Generator */}
@@ -943,7 +934,7 @@ export default function PlanGenerator() {
                 </PlannerSection>
 
                 {generatorMode === "manual" && (
-                  <PlannerSection title="Waypoints" badge={<span className="rounded bg-subtle px-1.5 py-0.5 text-xs font-normal text-fg-2">{waypoints.length}</span>}>
+                  <PlannerSection title={pd.waypointsSection.title} badge={<span className="rounded bg-subtle px-1.5 py-0.5 text-xs font-normal text-fg-2">{waypoints.length}</span>}>
                     {waypoints.length > 0 && (
                       <div className="mb-2 flex justify-end">
                         <button
@@ -951,7 +942,7 @@ export default function PlanGenerator() {
                           onClick={handleClearAll}
                           className="rounded px-1 text-xs font-semibold text-danger-text hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring"
                         >
-                          Clear all waypoints
+                          {pd.waypointsSection.clearAll}
                         </button>
                       </div>
                     )}
@@ -969,7 +960,7 @@ export default function PlanGenerator() {
 
                 {/* TASK-153 & TASK-043: Service Area / U-space Bounds Panel */}
                 <PlannerSection
-                  title="Area & geozones"
+                  title={pd.areaSection.title}
                   defaultOpen={false}
                   badge={<span className="max-w-[10rem] truncate text-xs font-normal text-muted">{areaName}</span>}
                 >
@@ -984,7 +975,7 @@ export default function PlanGenerator() {
                       className="inline-flex shrink-0 items-center gap-1 rounded text-xs text-brand-text hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring"
                     >
                       <Edit2 className="h-3 w-3" aria-hidden="true" />
-                      Change U-space
+                      {pd.changeUspace.action}
                     </button>
                   </div>
 
@@ -992,7 +983,7 @@ export default function PlanGenerator() {
                   {geozonesData.length > 0 && (
                     <label className="mb-3 flex cursor-pointer items-center justify-between gap-2 border-b border-line pb-3">
                       <span className="flex items-center gap-2 text-sm text-fg-2">
-                        Show geozones
+                        {pd.geozones.show}
                         <span className="rounded bg-subtle px-1.5 py-0.5 text-xs text-muted">{geozonesData.length}</span>
                       </span>
                       <input
@@ -1005,13 +996,13 @@ export default function PlanGenerator() {
                     </label>
                   )}
                   <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
-                    <div className="flex justify-between"><dt className="text-muted">Min Lat:</dt><dd className="font-mono text-fg-2">{effectiveServiceLimits[1].toFixed(4)}°</dd></div>
-                    <div className="flex justify-between"><dt className="text-muted">Max Lat:</dt><dd className="font-mono text-fg-2">{effectiveServiceLimits[3].toFixed(4)}°</dd></div>
-                    <div className="flex justify-between"><dt className="text-muted">Min Lon:</dt><dd className="font-mono text-fg-2">{effectiveServiceLimits[0].toFixed(4)}°</dd></div>
-                    <div className="flex justify-between"><dt className="text-muted">Max Lon:</dt><dd className="font-mono text-fg-2">{effectiveServiceLimits[2].toFixed(4)}°</dd></div>
+                    <div className="flex justify-between"><dt className="text-muted">{pd.areaSection.minLat}</dt><dd className="font-mono text-fg-2">{effectiveServiceLimits[1].toFixed(4)}°</dd></div>
+                    <div className="flex justify-between"><dt className="text-muted">{pd.areaSection.maxLat}</dt><dd className="font-mono text-fg-2">{effectiveServiceLimits[3].toFixed(4)}°</dd></div>
+                    <div className="flex justify-between"><dt className="text-muted">{pd.areaSection.minLon}</dt><dd className="font-mono text-fg-2">{effectiveServiceLimits[0].toFixed(4)}°</dd></div>
+                    <div className="flex justify-between"><dt className="text-muted">{pd.areaSection.maxLon}</dt><dd className="font-mono text-fg-2">{effectiveServiceLimits[2].toFixed(4)}°</dd></div>
                   </dl>
                   <p className="mt-2 border-t border-line pt-2 text-xs text-muted">
-                    Alt: {ALT_LIMITS[0]}-{ALT_LIMITS[1]}m AGL
+                    {interpolate(pd.areaSection.altitude, { min: ALT_LIMITS[0], max: ALT_LIMITS[1] })}
                   </p>
                 </PlannerSection>
               </div>
@@ -1025,7 +1016,7 @@ export default function PlanGenerator() {
                     type="button"
                     disabled={loading}
                   >
-                    {loading ? "Uploading..." : "Upload to Plan Authorization"}
+                    {loading ? pd.upload.uploading : pd.upload.button}
                   </button>
                 </div>
               )}
