@@ -344,8 +344,8 @@ export function GeozoneLegend({ className = "" }: { className?: string }) {
   ];
 
   return (
-    <div className={`bg-[var(--surface-primary)]/95 backdrop-blur-sm rounded-md px-3 py-2 shadow-md border border-[var(--border-primary)] ${className}`}>
-      <div className="text-xs font-medium text-[var(--text-primary)] mb-1.5">
+    <div className={`bg-surface rounded-md px-3 py-2 shadow-md border border-line ${className}`}>
+      <div className="text-xs font-medium text-fg mb-1.5">
         Geozone Types
       </div>
       <div className="flex flex-col gap-1">
@@ -360,7 +360,7 @@ export function GeozoneLegend({ className = "" }: { className?: string }) {
                   borderColor: colors.color,
                 }}
               />
-              <span className="text-xs text-[var(--text-secondary)]">
+              <span className="text-xs text-fg-2">
                 {label}
               </span>
             </div>

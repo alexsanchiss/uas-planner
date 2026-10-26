@@ -208,19 +208,19 @@ function CollapsibleSection({ title, children, defaultExpanded = false, icon }: 
   }, []);
   
   return (
-    <div className="mb-2 border border-[var(--border-primary)] rounded-md overflow-hidden">
+    <div className="mb-2 border border-line rounded-md overflow-hidden">
       {/* Section header - clickable */}
       <button
         type="button"
         onClick={toggleExpanded}
-        className="w-full flex items-center justify-between px-2 py-1.5 bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] transition-colors text-left focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)] focus:ring-inset"
+        className="w-full flex items-center justify-between px-2 py-1.5 bg-canvas hover:bg-hover transition-colors text-left focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)] focus:ring-inset"
       >
         <div className="flex items-center gap-1.5">
-          {icon && <span className="text-[var(--text-secondary)]">{icon}</span>}
-          <span className="text-xs font-semibold text-[var(--text-primary)]">{title}</span>
+          {icon && <span className="text-fg-2">{icon}</span>}
+          <span className="text-xs font-semibold text-fg">{title}</span>
         </div>
         <ChevronDown 
-          className={`w-4 h-4 text-[var(--text-secondary)] transition-transform duration-200 ${
+          className={`w-4 h-4 text-fg-2 transition-transform duration-200 ${
             isExpanded ? 'rotate-180' : 'rotate-0'
           }`}
         />
@@ -232,7 +232,7 @@ function CollapsibleSection({ title, children, defaultExpanded = false, icon }: 
           isExpanded ? 'max-h-[200px] opacity-100' : 'max-h-0 opacity-0'
         }`}
       >
-        <div className="px-2 py-2 text-xs text-[var(--text-secondary)] bg-[var(--surface-primary)] max-h-[180px] overflow-y-auto">
+        <div className="px-2 py-2 text-xs text-fg-2 bg-surface max-h-[180px] overflow-y-auto">
           {children}
         </div>
       </div>
@@ -247,10 +247,10 @@ function CollapsibleSection({ title, children, defaultExpanded = false, icon }: 
 function InfoSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="mb-3">
-      <div className="text-xs font-semibold text-[var(--text-primary)] mb-1.5 border-b border-[var(--border-primary)] pb-1">
+      <div className="text-xs font-semibold text-fg mb-1.5 border-b border-line pb-1">
         {title}
       </div>
-      <div className="text-xs text-[var(--text-secondary)]">
+      <div className="text-xs text-fg-2">
         {children}
       </div>
     </div>
@@ -263,7 +263,7 @@ function InfoSection({ title, children }: { title: string; children: React.React
 function InfoRow({ label, value, valueClassName = "" }: { label: string; value: React.ReactNode; valueClassName?: string }) {
   return (
     <div className="flex justify-between items-start py-0.5">
-      <span className="text-[var(--text-secondary)] font-medium mr-2">{label}:</span>
+      <span className="text-fg-2 font-medium mr-2">{label}:</span>
       <span className={`text-right flex-1 ${valueClassName}`}>{value || "N/A"}</span>
     </div>
   );
@@ -424,10 +424,10 @@ export function GeozoneInfoPopup({ geozone, position, onClose }: GeozoneInfoPopu
           className="px-3 py-2 -mx-2 -mt-2 mb-3 rounded-t"
           style={{ backgroundColor: `${typeColor}20`, borderBottom: `2px solid ${typeColor}` }}
         >
-          <div className="font-bold text-[var(--text-primary)] text-sm">
+          <div className="font-bold text-fg text-sm">
             {extendedProps.identifier || geozone.uas_geozones_identifier}
           </div>
-          <div className="text-xs text-[var(--text-secondary)] mt-0.5 flex items-center gap-2">
+          <div className="text-xs text-fg-2 mt-0.5 flex items-center gap-2">
             <span className="truncate flex-1">{geozoneName}</span>
             <TypeBadge type={geozoneType} />
           </div>
@@ -655,7 +655,7 @@ export function GeozoneInfoPopup({ geozone, position, onClose }: GeozoneInfoPopu
                   value={
                     <a 
                       href={`tel:${extendedProps.zoneAuthority.phone.replace(/\s/g, "")}`}
-                      className="text-blue-500 hover:underline"
+                      className="text-brand-text hover:underline"
                     >
                       {extendedProps.zoneAuthority.phone}
                     </a>
@@ -668,7 +668,7 @@ export function GeozoneInfoPopup({ geozone, position, onClose }: GeozoneInfoPopu
                   value={
                     <a 
                       href={`mailto:${extendedProps.zoneAuthority.email}`}
-                      className="text-blue-500 hover:underline"
+                      className="text-brand-text hover:underline"
                     >
                       {extendedProps.zoneAuthority.email}
                     </a>
@@ -684,7 +684,7 @@ export function GeozoneInfoPopup({ geozone, position, onClose }: GeozoneInfoPopu
                       href={extendedProps.zoneAuthority.SiteURL || extendedProps.zoneAuthority.siteURL}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-blue-500 hover:underline truncate block"
+                      className="text-brand-text hover:underline truncate block"
                       title={extendedProps.zoneAuthority.SiteURL || extendedProps.zoneAuthority.siteURL}
                     >
                       Visit site →
@@ -808,17 +808,17 @@ export function GeozoneInfoCard({ geozone, onClose }: { geozone: GeozoneData; on
   const typeColor = getTypeColor(geozoneType);
   
   return (
-    <div className="bg-[var(--surface-primary)] rounded-lg shadow-lg border border-[var(--border-primary)] overflow-hidden max-w-[400px]">
+    <div className="bg-surface rounded-lg shadow-lg border border-line overflow-hidden max-w-[400px]">
       {/* Header */}
       <div 
         className="px-4 py-3 flex items-start justify-between"
         style={{ backgroundColor: `${typeColor}15`, borderBottom: `2px solid ${typeColor}` }}
       >
         <div className="flex-1 min-w-0 mr-2">
-          <div className="font-bold text-[var(--text-primary)] text-base">
+          <div className="font-bold text-fg text-base">
             {extendedProps.identifier || geozone.uas_geozones_identifier}
           </div>
-          <div className="text-sm text-[var(--text-secondary)] mt-0.5 truncate">
+          <div className="text-sm text-fg-2 mt-0.5 truncate">
             {geozoneName}
           </div>
         </div>
@@ -827,7 +827,7 @@ export function GeozoneInfoCard({ geozone, onClose }: { geozone: GeozoneData; on
           {onClose && (
             <button
               onClick={onClose}
-              className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+              className="text-fg-2 hover:text-fg transition-colors"
               aria-label="Close"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -891,7 +891,7 @@ export function GeozoneInfoCard({ geozone, onClose }: { geozone: GeozoneData; on
                   value={
                     <a 
                       href={`tel:${extendedProps.zoneAuthority.phone.replace(/\s/g, "")}`}
-                      className="text-blue-500 hover:underline"
+                      className="text-brand-text hover:underline"
                     >
                       Call
                     </a>

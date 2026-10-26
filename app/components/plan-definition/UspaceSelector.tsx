@@ -7,11 +7,12 @@
  * - Click anywhere on the map to select the smallest U-space containing that point
  * - Centers map and highlights the selected U-space
  * - Returns the selected uspace_identifier to parent component
+ * - Keyboard / screen-reader alternative: the same U-spaces as a filterable list next to the map
  */
 
 "use client";
 
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import React, { useEffect, useId, useMemo, useState, useCallback } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -22,7 +23,7 @@ import {
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useUspaces, USpace } from "@/app/hooks/useUspaces";
-import { Loader2, MapPin, RefreshCw, AlertTriangle } from "lucide-react";
+import { MapPin, RefreshCw, AlertTriangle } from "lucide-react";
 
 /**
  * Calculate the approximate area of a polygon using the Shoelace formula
@@ -64,7 +65,8 @@ function isPointInPolygon(lat: number, lng: number, boundary: { latitude: number
 }
 
 /**
- * Colors for U-space polygons
+ * Colors for U-space polygons. Leaflet path options and the legend swatches share them;
+ * map layer colors are data colors (not UI chrome), so they are not theme tokens.
  */
 const USPACE_COLORS = {
   default: {
@@ -213,8 +215,26 @@ function UspacePolygon({
   );
 }
 
+/** Skeleton with the final layout (map block + list rows) while the U-spaces load. */
+function UspaceSelectorSkeleton({ className }: { className: string }) {
+  return (
+    <div role="status" aria-live="polite" className={`grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem] ${className}`}>
+      <span className="sr-only">Loading U-spaces...</span>
+      <div className="h-[26rem] animate-pulse rounded-lg bg-subtle lg:h-[34rem]" aria-hidden="true" />
+      <div className="space-y-2" aria-hidden="true">
+        <div className="h-9 animate-pulse rounded-md bg-subtle" />
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="h-12 animate-pulse rounded-md bg-subtle" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const overlayBox = "rounded-md border border-line bg-surface px-3 py-2 shadow-theme-md";
+
 /**
- * UspaceSelector - Main component for selecting a U-space from a map
+ * UspaceSelector - Main component for selecting a U-space from a map (or from the list next to it)
  */
 export function UspaceSelector({
   onSelect,
@@ -223,42 +243,46 @@ export function UspaceSelector({
 }: UspaceSelectorProps) {
   const { uspaces, loading, error, refetch, isRefetching } = useUspaces();
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const filterId = useId();
 
   const defaultCenter: [number, number] = [39.47, -0.38];
   const defaultZoom = 6;
 
   // Sort uspaces by area (largest first) for rendering - smallest will be on top
   const sortedUspacesForRendering = useMemo(() => {
-    return [...uspaces].sort((a, b) => 
+    return [...uspaces].sort((a, b) =>
       calculatePolygonArea(b.boundary) - calculatePolygonArea(a.boundary)
     );
   }, [uspaces]);
+
+  // Alphabetical list for the keyboard alternative, narrowed by the filter box
+  const listedUspaces = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return [...uspaces]
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .filter((u) => !q || u.name.toLowerCase().includes(q) || u.id.toLowerCase().includes(q));
+  }, [uspaces, query]);
 
   const handleHover = useCallback((id: string | null) => {
     setHoveredId(id);
   }, []);
 
-  if (loading) {
-    return (
-      <div className={`flex flex-col items-center justify-center h-[400px] bg-[var(--bg-secondary)] rounded-lg ${className}`}>
-        <Loader2 className="w-8 h-8 animate-spin text-[var(--color-primary)] mb-3" />
-        <p className="text-[var(--text-secondary)] text-sm">Loading U-spaces...</p>
-      </div>
-    );
-  }
+  if (loading) return <UspaceSelectorSkeleton className={className} />;
 
   if (error) {
     return (
-      <div className={`flex flex-col items-center justify-center h-[400px] bg-[var(--bg-secondary)] rounded-lg p-6 ${className}`}>
-        <AlertTriangle className="w-10 h-10 text-yellow-500 mb-3" />
-        <p className="text-[var(--text-primary)] font-medium mb-2">Failed to load U-spaces</p>
-        <p className="text-[var(--text-tertiary)] text-sm text-center mb-4">{error.message}</p>
+      <div role="alert" className={`flex h-[26rem] flex-col items-center justify-center rounded-lg border border-danger-line bg-danger-soft p-6 ${className}`}>
+        <AlertTriangle className="mb-3 h-10 w-10 text-danger-text" aria-hidden="true" />
+        <p className="mb-2 font-medium text-fg">Failed to load U-spaces</p>
+        <p className="mb-4 text-center text-sm text-fg-2">{error.message}</p>
         <button
+          type="button"
           onClick={() => refetch()}
           disabled={isRefetching}
-          className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] text-white rounded-md hover:bg-[var(--color-primary-hover)] disabled:opacity-60 transition-colors"
+          className="btn btn-primary disabled:opacity-60"
         >
-          <RefreshCw className={`w-4 h-4 ${isRefetching ? "animate-spin" : ""}`} />
+          <RefreshCw className={`h-4 w-4 ${isRefetching ? "animate-spin" : ""}`} aria-hidden="true" />
           {isRefetching ? "Retrying..." : "Try Again"}
         </button>
       </div>
@@ -267,10 +291,10 @@ export function UspaceSelector({
 
   if (uspaces.length === 0) {
     return (
-      <div className={`flex flex-col items-center justify-center h-[400px] bg-[var(--bg-secondary)] rounded-lg p-6 ${className}`}>
-        <MapPin className="w-10 h-10 text-[var(--text-tertiary)] mb-3" />
-        <p className="text-[var(--text-primary)] font-medium mb-2">No U-spaces available</p>
-        <p className="text-[var(--text-tertiary)] text-sm text-center">
+      <div className={`flex h-[26rem] flex-col items-center justify-center rounded-lg border border-line bg-surface p-6 ${className}`}>
+        <MapPin className="mb-3 h-10 w-10 text-muted" aria-hidden="true" />
+        <p className="mb-2 font-medium text-fg">No U-spaces available</p>
+        <p className="text-center text-sm text-muted">
           There are no U-spaces configured in the geoawareness service.
         </p>
       </div>
@@ -278,82 +302,139 @@ export function UspaceSelector({
   }
 
   return (
-    <div className={`relative ${className}`}>
-      {/* Header */}
-      <div className="absolute top-3 left-3 z-[1000] bg-[var(--surface-primary)]/95 backdrop-blur-sm rounded-md px-3 py-2 shadow-md border border-[var(--border-primary)]">
-        <div className="flex items-center gap-2">
-          <MapPin className="w-4 h-4 text-[var(--color-primary)]" />
-          <span className="text-sm font-medium text-[var(--text-primary)]">
-            Click on a U-space to select it
-          </span>
-          <span className="text-xs text-[var(--text-tertiary)]">
-            ({uspaces.length} available)
-          </span>
-        </div>
-      </div>
-
-      {/* Refresh button */}
-      <button
-        onClick={() => refetch()}
-        disabled={isRefetching}
-        className="absolute top-3 right-3 z-[1000] bg-[var(--surface-primary)]/95 backdrop-blur-sm rounded-md p-2 shadow-md border border-[var(--border-primary)] hover:bg-[var(--bg-hover)] transition-colors disabled:opacity-60"
-        title="Refresh U-spaces"
-      >
-        <RefreshCw className={`w-4 h-4 text-[var(--text-secondary)] ${isRefetching ? "animate-spin" : ""}`} />
-      </button>
-
-      {/* Legend */}
-      <div className="absolute bottom-3 left-3 z-[1000] bg-[var(--surface-primary)]/95 backdrop-blur-sm rounded-md px-3 py-2 shadow-md border border-[var(--border-primary)]">
-        <div className="text-xs text-[var(--text-tertiary)] mb-1">Legend</div>
-        <div className="flex flex-col gap-1">
+    <div className={`grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem] ${className}`}>
+      <div className="relative h-[26rem] overflow-hidden rounded-lg border border-line lg:h-[34rem]">
+        {/* Header */}
+        <div className={`absolute left-3 top-3 z-[1000] ${overlayBox}`}>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-3 bg-blue-500/20 border-2 border-blue-500 rounded-sm" />
-            <span className="text-xs text-[var(--text-secondary)]">Available</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-3 bg-orange-500/25 border-2 border-orange-500 rounded-sm" />
-            <span className="text-xs text-[var(--text-secondary)]">Selected</span>
+            <MapPin className="h-4 w-4 text-brand-text" aria-hidden="true" />
+            <span className="text-sm font-medium text-fg">
+              Click on a U-space to select it
+            </span>
+            <span className="text-xs text-muted">
+              ({uspaces.length} available)
+            </span>
           </div>
         </div>
-      </div>
 
-      {/* Hovered U-space name tooltip */}
-      {hoveredId && (
-        <div className="absolute top-14 left-3 z-[1000] bg-[var(--surface-primary)]/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-md border border-[var(--border-primary)]">
-          <span className="text-sm font-medium text-[var(--text-primary)]">
-            {uspaces.find(u => u.id === hoveredId)?.name || hoveredId}
-          </span>
+        {/* Refresh button */}
+        <button
+          type="button"
+          onClick={() => refetch()}
+          disabled={isRefetching}
+          aria-label="Refresh U-spaces"
+          title="Refresh U-spaces"
+          className="absolute right-3 top-3 z-[1000] rounded-md border border-line bg-surface p-2 shadow-theme-md transition-colors hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring disabled:opacity-60"
+        >
+          <RefreshCw className={`h-4 w-4 text-fg-2 ${isRefetching ? "animate-spin" : ""}`} aria-hidden="true" />
+        </button>
+
+        {/* Legend */}
+        <div className={`absolute bottom-3 left-3 z-[1000] ${overlayBox}`}>
+          <div className="mb-1 text-xs text-muted">Legend</div>
+          <div className="flex flex-col gap-1">
+            {(["default", "selected"] as const).map((key) => (
+              <div key={key} className="flex items-center gap-2">
+                <div
+                  className="h-3 w-4 rounded-sm border-2"
+                  style={{ borderColor: USPACE_COLORS[key].color, backgroundColor: `${USPACE_COLORS[key].fillColor}40` }}
+                  aria-hidden="true"
+                />
+                <span className="text-xs text-fg-2">{key === "default" ? "Available" : "Selected"}</span>
+              </div>
+            ))}
+          </div>
         </div>
-      )}
 
-      {/* Map */}
-      <MapContainer
-        center={defaultCenter}
-        zoom={defaultZoom}
-        className="h-[400px] w-full rounded-lg"
-        style={{ height: "400px" }}
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://osm.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
+        {/* Hovered U-space name tooltip */}
+        {hoveredId && (
+          <div className={`absolute left-3 top-14 z-[1000] ${overlayBox} py-1.5`}>
+            <span className="text-sm font-medium text-fg">
+              {uspaces.find(u => u.id === hoveredId)?.name || hoveredId}
+            </span>
+          </div>
+        )}
 
-        <FitBoundsToUspaces uspaces={uspaces} selectedUspaceId={selectedUspaceId} />
-        
-        {/* Map click handler - selects smallest U-space at click point */}
-        <MapClickHandler uspaces={uspaces} onSelect={onSelect} />
-
-        {/* U-space polygons - sorted by area (largest first) so smallest render on top */}
-        {sortedUspacesForRendering.map((uspace) => (
-          <UspacePolygon
-            key={uspace.id}
-            uspace={uspace}
-            isSelected={uspace.id === selectedUspaceId}
-            hoveredId={hoveredId}
-            onHover={handleHover}
+        {/* Map */}
+        <MapContainer
+          center={defaultCenter}
+          zoom={defaultZoom}
+          className="h-full w-full"
+          style={{ height: "100%" }}
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://osm.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-        ))}
-      </MapContainer>
+
+          <FitBoundsToUspaces uspaces={uspaces} selectedUspaceId={selectedUspaceId} />
+
+          {/* Map click handler - selects smallest U-space at click point */}
+          <MapClickHandler uspaces={uspaces} onSelect={onSelect} />
+
+          {/* U-space polygons - sorted by area (largest first) so smallest render on top */}
+          {sortedUspacesForRendering.map((uspace) => (
+            <UspacePolygon
+              key={uspace.id}
+              uspace={uspace}
+              isSelected={uspace.id === selectedUspaceId}
+              hoveredId={hoveredId}
+              onHover={handleHover}
+            />
+          ))}
+        </MapContainer>
+      </div>
+
+      {/* Keyboard / screen-reader alternative to the map */}
+      <section aria-labelledby={`${filterId}-title`} className="flex max-h-72 min-h-0 flex-col rounded-lg border border-line bg-surface lg:h-[34rem] lg:max-h-none">
+        <div className="border-b border-line p-3">
+          <h2 id={`${filterId}-title`} className="mb-2 text-sm font-semibold text-fg">
+            U-spaces ({listedUspaces.length})
+          </h2>
+          <label htmlFor={filterId} className="sr-only">
+            Filter U-spaces by name or ID
+          </label>
+          <input
+            id={filterId}
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Filter by name or ID"
+            className="input text-sm"
+          />
+        </div>
+        {listedUspaces.length === 0 ? (
+          <p className="p-3 text-sm text-muted">No U-space matches your filter.</p>
+        ) : (
+          <ul className="min-h-0 flex-1 overflow-y-auto p-2">
+            {listedUspaces.map((uspace) => {
+              const selected = uspace.id === selectedUspaceId;
+              return (
+                <li key={uspace.id}>
+                  <button
+                    type="button"
+                    onClick={() => onSelect(uspace)}
+                    onMouseEnter={() => handleHover(uspace.id)}
+                    onMouseLeave={() => handleHover(null)}
+                    onFocus={() => handleHover(uspace.id)}
+                    onBlur={() => handleHover(null)}
+                    aria-current={selected ? "true" : undefined}
+                    className={`flex w-full flex-col rounded-md px-3 py-2 text-left transition-colors hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring ${
+                      selected ? "bg-info-soft" : ""
+                    }`}
+                  >
+                    <span className="text-sm font-medium text-fg">
+                      {uspace.name}
+                      {selected && <span className="ml-2 text-xs text-brand-text">(selected)</span>}
+                    </span>
+                    {uspace.id !== uspace.name && <span className="text-xs text-muted">{uspace.id}</span>}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }
