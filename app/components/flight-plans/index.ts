@@ -55,19 +55,9 @@ export {
 } from './ProcessingWorkflow'
 
 export {
-  AuthorizationPanel,
-  type AuthorizationPanelProps,
-} from './AuthorizationPanel'
-
-export {
   GeoawarenessViewer,
   type GeoawarenessViewerProps,
 } from './GeoawarenessViewer'
-
-export {
-  TrajectoryViewer,
-  type TrajectoryViewerProps,
-} from './TrajectoryViewer'
 
 export {
   DateTimePicker,
