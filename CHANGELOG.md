@@ -5,6 +5,42 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [Unreleased] - 2026-10-26 (restructure)
+
+### Before deploying (operators)
+
+- Run `npm ci` on each instance (3002, 3003, 3004). `bcrypt` 6 and `sharp` 0.35 ship new native binaries; then `npm run build` and restart.
+- Node >= 20.9 is now required (`engines`).
+- Set `NEXT_PUBLIC_GENERATE_RANDOM_UPLAN_DATA` explicitly. Random U-Plan data is on unless the value is `false`; the UI and the server now read it the same way. It is baked in at build time.
+- Optional: set `FAS_CALLBACK_ALLOWED_IPS` (comma-separated) to restrict the FAS callback. First check the logged `[FAS Callback] source IP` for a real callback; with the variable unset nothing changes. The check uses the right-most `X-Forwarded-For` entry, so all traffic must go through Caddy.
+- `.env.example` is now complete. New or newly listed variables: `MACHINE_API_KEY`, `CESIUM_ION_TOKEN`, `NEXT_PUBLIC_APP_URL`, `MAILERSEND_SENDER_EMAIL`, `MAILERSEND_SENDER_NAME`, `SUPPORT_EMAIL`, `FAS_CALLBACK_ALLOWED_IPS`, `LOG_LEVEL`.
+- In production the server now refuses to start without `JWT_SECRET`.
+- Uncommitted at the time of writing: `GET /api/machine/flightPlans` filters out plans scheduled more than 5 minutes ago. Confirm with its consumer before shipping.
+
+### Changed (users)
+
+- Plan Authorization is one screen for both modes (dev adds bulk and researcher tools). It has a folders panel, an accessible plan table with mobile cards, status chips, an upload dropzone, a schedule popover and a sync indicator. Heavy viewers load on demand.
+- Plan Definition has a keyboard-reachable U-space list, collapsible planner sections, labelled inputs, waypoint reordering and a bottom sheet on small screens. It warns before leaving with unsaved waypoints.
+- Plan Activation groups plans into Ready now, Upcoming and History, with a countdown.
+- Dark mode follows the in-app toggle instead of the OS. Colours meet WCAG AA, dialogs trap focus and close with Escape, and every delete or reset asks for confirmation.
+- English is the default language; the page language and titles follow the selected one.
+- Fixed: the Dev U-Plan save double-encoded its content, production polling never stopped, and "View CSV" and plan deletion used the `csvResult` flag as an id.
+
+### Changed (API and security)
+
+- `GET /api/flightPlans?fields=summary` and `GET /api/folders?fields=summary` return light listings. Default responses are unchanged. The UI polls every 3 s while a plan is in flight and every 15 s otherwise, and pauses on hidden tabs.
+- Ownership is enforced on `/api/csvResult` and `/api/flightPlans/[id]/geoawareness`; clients can only reset authorization fields; `folderId` must belong to the caller; folder deletes are scoped to the owner. A plan that is approved or pending can no longer have its U-Plan edited.
+- All FAS calls go through `lib/fas.ts` (30 s timeout, 120 s for the U-Plan POST).
+- Rate limits and the callback allowlist use the right-most `X-Forwarded-For`. Signup, resend and contact are rate-limited. Email content is HTML-escaped, and baseline security headers are set.
+- Cloned folders start unauthorized and unactivated.
+- No change to the FAS callback, `/api/machine/*`, outbound FAS calls, the geoawareness service, the MySQL schema or the email links.
+
+### Tooling
+
+- Dependencies: Next 15.5.28, Cesium 1.146, zod 4, ESLint 9 (flat config), `bcrypt` 6, `sharp` 0.35. Unused packages removed. `npm audit` went from 35 findings to 0. Dependabot covers npm and GitHub Actions.
+- CI is one job: prisma validate/generate, typecheck, lint, jest, build, audit. `next build` no longer lints. New `npm run typecheck`.
+- Docs rewritten: `AGENTS.md` is the single source for agents, plus `docs/ARCHITECTURE.md` and `docs/API.md`. Stale planning files and dead code were removed; the ICD sources moved to `docs/icd`.
+
 ## [2.4.0] — 2026-05-02
 
 ### Added

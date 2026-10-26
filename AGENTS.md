@@ -1,190 +1,105 @@
 # AGENTS.md
 
-This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
+Canonical instructions for any coding agent (Claude Code, Codex, Copilot) working in this repo. `CLAUDE.md` and `.github/copilot-instructions.md` only point here.
 
-> Reglas de ingeniería globales en `~/.Codex/rules/user.instructions.md` (auto-cargadas, no negociables).
-> Para tareas no triviales: escribir plan en `tasks/todo.md` → implementar → verificar → registrar lecciones en `tasks/lessons.md`.
+## What this is
+
+UPPS: web app for drone operators. Users define or upload flight plans, trajectories are computed on external VMs, the U-Plan is sent to FAS (Flight Authorization Service) for authorization, then the flight is activated.
+Next.js 15.5 App Router, React 18, TypeScript, Tailwind 3, Prisma 5 + MySQL, zod 4, JWT, Jest. Node >= 20.9 (`engines`).
+
+## Orientation first
+
+`graphify-out/` (git-ignored) holds the code graph. Run `graphify query "<question>"` before grepping raw code. After code changes run `graphify update .`. If the folder is missing: `graphify . --code-only`.
+
+## Map
+
+```
+app/layout.tsx, providers.tsx   server root layout + client shell (i18n, theme, auth, toasts)
+app/(protected)/                route group, guarded once in its layout: plan-definition, plan-authorization,
+                                plan-activation, profile, settings (URLs unchanged)
+app/error|global-error|not-found|loading.tsx   boundaries
+app/api/                        route handlers (inventory and contracts: docs/API.md)
+app/components/plan-authorization/   the ONE Plan Authorization tree; mode 'dev'|'prod'
+app/components/{plan-definition,plan-activation,flight-plans,auth,ui}/   feature components; ui/ = Base UI primitives
+app/hooks/                      useFlightPlans / useFolders (?fields=summary), usePolling, useAuth, useTheme ...
+app/i18n/                       en (default) / es dictionaries; add every user-facing string to both
+app/styles/themes.css           CSS variables behind the Tailwind semantic tokens (tailwind.config.ts)
+lib/                            auth.ts, auth-middleware.ts, api-client.ts, fas.ts, request-ip.ts, validators.ts,
+                                zod-config.ts, email.ts, cesium-loader.ts, scan-generator.ts, scrs.ts, uplan/
+prisma/schema.prisma            MySQL schema (shared with external processes, see Contracts)
+traj-assigner.js, machine-cleaner.js   standalone Node processes, outside Next.js
+Traj-runner/                    VM image/entrypoint for the trajectory runner
+docs/                           ARCHITECTURE.md, API.md, icd/ (ICD v2.4.0 .tex/.pdf, do not edit), requirements/
+tasks/                          local only (git-excluded): todo.md plan, lessons.md, audit/ reports, runs/ evidence
+```
 
 ## Commands
 
 ```bash
-npm run dev              # Dev server → http://localhost:3003 (not 3000 — README is wrong)
-npm run build            # Production build (also runs copy-cesium)
-npm run start            # Prod server → http://localhost:3003
-npm run lint             # ESLint via next lint
-npm test                 # Jest unit tests
-npm test -- --testPathPattern=<file>  # Run single test file
-npm run test:watch       # Jest watch mode
-npm run test:coverage
-npx prisma migrate dev   # Apply DB migrations (MySQL required)
-npx prisma studio        # GUI for DB inspection
-npm run copy-cesium      # Manual: copies Cesium assets to public/cesium
-node traj-assigner       # Trajectory dispatcher — runs separately from Next.js
+npm ci                                   # install (postinstall runs copy-cesium)
+npm run dev                              # http://localhost:3003 (also `start`)
+npm run typecheck                        # tsc --noEmit
+npm run lint                             # ESLint 9 flat config (eslint.config.mjs)
+npm test                                 # Jest, all tests
+npm test -- --testPathPattern=<name>     # single test file
+npm run test:watch | test:coverage
+npm run build                            # runs prebuild copy-cesium; does NOT lint
+npm run copy-cesium                      # regenerate public/cesium (generated, do not edit or commit by hand)
+npx prisma validate | generate | migrate dev | studio
+node traj-assigner                       # trajectory dispatcher, separate from Next.js
+node machine-cleaner                     # empties the machine table (run at VDS startup)
 ```
 
-## Stack
+The local `.env` `DATABASE_URL` may point to a remote DB that dev machines cannot reach: pure tests do not need it; for DB work use a local MySQL. Variables: `.env.example` is the single list.
 
-Next.js 15 App Router · React 18 · TypeScript · Tailwind CSS · MySQL + Prisma ORM · JWT auth · Zod validation · Jest · CesiumJS (3D) · Leaflet (2D)
+## Modes and flags
 
-## Critical Gotchas
+- `NEXT_PUBLIC_PRODUCTION_MODE` selects the Plan Authorization mode: `dev` = `prod` + bulk and researcher tools. Same component tree, no second copy.
+- `NEXT_PUBLIC_GENERATE_RANDOM_UPLAN_DATA`: random U-Plan placeholder data is ON unless it is `'false'` (helper: `lib/uplan/random-data.ts`, use it, do not re-read the env var).
+- `NEXT_PUBLIC_*` values are inlined at build time: changing one needs a new `next build`.
 
-### `csvResult` is a boolean flag, NOT an ID
+## Contracts that must not change
 
-```typescript
-// ❌ WRONG
-prisma.csvResult.findUnique({ where: { id: flightPlan.csvResult } })
+Other systems depend on these. Change them only with explicit owner approval and update `docs/API.md`.
 
-// ✅ CORRECT — csvResult shares the same PK as flightPlan (1:1)
-if (!plan.csvResult) return null;   // 0/null = no result exists
-prisma.csvResult.findUnique({ where: { id: plan.id } })
-```
+- FAS callback `PUT /api/fas/[externalResponseNumber]`: public, no JWT. Optional `FAS_CALLBACK_ALLOWED_IPS` allowlist uses the right-most `X-Forwarded-For` (Caddy in front).
+- `/api/machine/*` (header `x-machine-api-key`) and every outbound FAS call (`lib/fas.ts`).
+- Geoawareness service calls and the SSE relay under `/api/geoawareness/*`.
+- The MySQL schema: VMs/traj-runner, `traj-assigner.js` and `machine-cleaner.js` read and write it directly. Do not rename tables, columns or status values.
+- Email links `/verify-email?token=` and `/reset-password?token=`.
+- Browser persistence: localStorage key `authToken` and the httpOnly `refreshToken` cookie.
 
-### JWT: split storage
+Full list with shapes: `docs/API.md`.
 
-- **Access token** (15 min): `localStorage.getItem('authToken')` — sent as `Authorization: Bearer <token>`
-- **Refresh token** (7 days): httpOnly cookie — auto-sent on `POST /api/auth/refresh`
-- All protected API routes use `withAuth()` from `lib/auth-middleware.ts`
-- **FAS callback** `PUT /api/fas/[externalResponseNumber]` is public — no JWT required
+## Gotchas
 
-### Cesium postinstall
+- `flightPlan.csvResult` is a 0/1 flag, not an id. The CSV row shares the plan's primary key: fetch it with `plan.id`.
+- Auth: access JWT 7 d in localStorage `authToken`, refresh JWT 30 d in an httpOnly cookie (`lib/auth.ts`). Client calls go through `apiFetch`/`apiJson` in `lib/api-client.ts` (one refresh retry). Protected routes use `withAuth()`.
+- `?fields=summary` on `GET /api/flightPlans` and `/api/folders` returns light rows (no `fileContent`/`uplan`); detail comes from `GET /api/flightPlans/[id]`.
+- Statuses: `sin procesar` -> `en cola` -> `procesando` -> `procesado` | `error`. Authorization: `sin autorización`, `pendiente`, `aprobado`, `denegado`, `withdrawn`.
+- All FAS access goes through `lib/fas.ts` (timeout 30 s; U-Plan POST 120 s). Client IP behind the proxy: `lib/request-ip.ts`. Cesium loading: `lib/cesium-loader.ts`.
+- Styling: use semantic Tailwind tokens, never hardcoded hex. Dark variant follows the app toggle (`data-theme`), not the OS.
+- zod 4 is configured in `lib/zod-config.ts`; import schemas from `lib/validators.ts`.
+- `next build` does not lint. CI does, so run `npm run lint` yourself.
+- `instrumentation.ts` aborts startup in production without `JWT_SECRET`.
+- Production is 3 Windows instances on the VDS (ports 3002/3003/3004 behind Caddy), not Docker. `Dockerfile`/`docker-compose.yml` are not the deploy path.
+- Never commit secrets or `.env*` files.
+- One `next build`/`next dev` per checkout at a time: they share `.next`. Parallel agents stop at typecheck/lint/jest; browser smoke uses `next start -p 3013`, never the production port.
 
-`npm install` auto-runs `copy-cesium`. If `public/cesium/` is missing after install, run `npm run copy-cesium` manually.
+## Working as an agent here
 
-### `NEXT_PUBLIC_GENERATE_RANDOM_UPLAN_DATA`
+Non-trivial work: plan in `tasks/todo.md` with acceptance checks, then implement, verify, and log corrections in `tasks/lessons.md` (failure, signal, rule). Never `git stash`/`reset`/`checkout` in a tree that holds someone else's uncommitted changes. Never trigger real FAS actions (request authorization, activate, terms) while testing.
 
-Controls behavior of `POST /api/flightPlans/[id]/generate-volumes`:
-- `!== 'false'` (default): generates 4D volumes + random placeholder data for all U-Plan fields
-- `'false'`: generates only 4D volumes; user fills remaining fields manually in the form
+## Definition of done
 
-## Architecture
+Run and cite the output of: `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`. CI (`.github/workflows/ci.yml`) runs `npm ci`, `prisma validate/generate`, typecheck, lint, jest, build, `npm audit`. Dependabot: `.github/dependabot.yml`.
 
-```
-app/
-  api/
-    auth/             # login, signup, refresh, logout, verify-email, forgot/reset-password
-    flightPlans/      # CRUD + bulk ops
-      [id]/           # Single plan: GET/PUT/DELETE, /reset, /uplan, /generate-volumes, /geoawareness
-      regenerate-volumes/  # Bulk volume regeneration
-    folders/          # Folder CRUD ([id]/)
-    csvResult/        # GET (single), POST (bulk fetch), DELETE
-    fas/[externalResponseNumber]/  # FAS authorization callback (public, no JWT)
-    geoawareness/
-      uspaces/        # List U-spaces
-      stream/[uspaceId]/  # WebSocket-based geoawareness stream
-    user/             # GET current user, /profile, /drafts ([id]/)
-    cesium/token/     # Cesium ion token
-    contact/
-  components/
-    FlightPlansUploader.tsx       # Production uploader (simpler)
-    FlightPlansUploaderDev.tsx    # Dev uploader — bulk ops, all features enabled
-    PlanGenerator.tsx             # Individual plan creation via the plan-definition flow
-    flight-plans/                 # FlightPlanCard, FolderCard, StatusBadge, UplanFormModal,
-                                  # TrajectoryMapViewer, GeoawarenessViewer, Trajectory3DViewer,
-                                  # Cesium3DModal, ProcessingWorkflow, ActionButtons, etc.
-    plan-definition/              # ScanPatternGenerator(V2), UspaceSelector, GeozoneLayer
-    auth/                         # LoginForm, SignupForm, AuthProvider, ProtectedRoute, etc.
-    ui/                           # Shared primitives (button, modal, toast, badge, etc.)
-  hooks/
-    useFlightPlans.ts    # 5-second polling, CRUD, optimistic updates
-    useFolders.ts
-    useAuth.ts
-    usePolling.ts
-    useGeoawarenessWebSocket.ts
-    useVolumeRegeneration.ts
-    useUspaces.ts
-    useToast.ts, useTheme.ts
-  styles/
-    themes.css           # CSS custom properties — always use vars, never hardcoded hex
-lib/
-  auth.ts               # JWT sign/verify utilities
-  auth-middleware.ts    # withAuth() — returns userId or NextResponse 401
-  validators.ts         # Zod schemas for all API inputs
-  prisma.ts             # PrismaClient singleton
-  api-errors.ts         # Standardized error responses
-  scan-generator.ts     # SCAN pattern algorithm
-  date-utils.ts         # Date/timezone helpers
-  uplan/                # U-Plan generation library
-    tray_to_uplan.ts        # Converts trajectory CSV → U-Plan JSON (entry point)
-    generate_oriented_volumes.ts
-    generate_json.ts / generate_random_json.ts / generate_bbox.ts
-    geodesy-utils.ts, vincenty.ts
-  __tests__/            # Unit tests (auth, validators, date-utils, scan-generator, geodesy)
-prisma/schema.prisma    # DB schema (MySQL)
-types/                  # Shared TypeScript types
-traj-assigner/          # Standalone Node process — assigns trajectory jobs to VMs
-```
+Tests live in `__tests__/` next to the code, named `*.test.ts`. Jest runs in the `node` environment without jsdom: write pure tests (logic, helpers, route handlers), not component rendering.
 
-## DB Models (Key Relationships)
+## Commits
 
-```
-user          1──* flightPlan   (userId, onDelete: Cascade)
-user          1──* folder       (userId)
-user          1──* uplanDraft   (userId, onDelete: Cascade)
-folder        1──* flightPlan   (folderId)
-flightPlan    1──1 csvResult    (same PK — see Critical Gotchas)
-flightPlan    *──1 machine      (machineAssignedId)
-```
+Conventional Commits: `type(scope): summary`. Types: feat, fix, refactor, test, docs, chore, build, ci. Scopes: `api`, `ui`, `auth`, `db`, `flight-plans`, `scan`, `uplan`, `deps`, `ci`. Do not commit unless asked.
 
-`uplanDraft` stores serialized U-Plan form state as JSON (`draftData`). Load/save via `GET|POST /api/user/drafts` and `GET|PUT|DELETE /api/user/drafts/[id]`.
+## Deploy
 
-## Flight Plan Processing Pipeline
-
-```
-Upload → "sin procesar"
-  └→ Schedule (set scheduledAt)
-      └→ Queue → "en cola"
-          └→ traj-assigner picks up → "procesando" → VM runs traj-runner
-              └→ VM callback creates csvResult → "procesado", csvResult=1
-                  └→ generate-volumes → U-Plan JSON written to flightPlan.uplan
-                      └→ POST /uplan → FAS API → authorizationStatus: "aprobado"/"denegado"
-                          └→ FAS callback PUT /api/fas/[externalResponseNumber]
-```
-
-## API Patterns
-
-### Unified bulk operations (flightPlans + csvResult)
-
-```typescript
-// Individual vs bulk detection is automatic based on body shape:
-POST /api/flightPlans           // { customName, ... }  → single
-POST /api/flightPlans           // { items: [...] }     → bulk (up to 500/call)
-
-PUT  /api/flightPlans           // { id, data }         → single
-PUT  /api/flightPlans           // { ids, data }        → bulk uniform
-PUT  /api/flightPlans           // { items: [{id,data}] } → bulk per-item
-
-DELETE /api/flightPlans         // { id }               → single
-DELETE /api/flightPlans         // { ids }              → bulk (chunked in 200-item DB transactions)
-
-POST /api/csvResult             // { ids: [...] }       → bulk fetch (up to 5000 IDs)
-```
-
-### Flight plan status values
-
-```typescript
-type FlightPlanStatus    = 'sin procesar' | 'en cola' | 'procesando' | 'procesado' | 'error'
-type AuthorizationStatus = 'sin autorización' | 'pendiente' | 'aprobado' | 'denegado' | 'withdrawn'
-```
-
-## Environment Variables
-
-```env
-DATABASE_URL=mysql://root:password@localhost:3306/uas_planner   # required
-JWT_SECRET=...                                                   # required
-FAS_API_URL=...                                                  # optional — FAS submission target
-NEXT_PUBLIC_PRODUCTION_MODE=...                                  # optional — controls UI mode
-NEXT_PUBLIC_GENERATE_RANDOM_UPLAN_DATA=...                       # optional — see gotcha above
-```
-
-## Themes
-
-CSS custom properties in `app/styles/themes.css`. Always use `--bg-primary`, `--text-primary`, `--brand-primary`, etc. — never hardcoded hex values in components.
-
-## Tests
-
-Unit tests in `lib/__tests__/`. Run a single file: `npm test -- --testPathPattern=scan-generator`.
-
-## Commit Convention
-
-Conventional Commits: `feat(scope): description`
-Scopes: `api`, `ui`, `auth`, `db`, `flight-plans`, `scan`, `uplan`
+Operator notes (per-instance `npm ci`, env, Caddy) are in `docs/ARCHITECTURE.md` and the latest `CHANGELOG.md` entry. Secrets live in each instance's `.env`, never in the repo.
