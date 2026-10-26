@@ -1,10 +1,7 @@
 "use client";
 
 import React, { ReactNode } from 'react';
-import { AuthContext, useAuth, useAuthState } from '../../hooks/useAuth';
-import type { AuthState } from '../../hooks/useAuth';
-
-type AuthContextType = AuthState;
+import { AuthContext, useAuthState } from '../../hooks/useAuth';
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -12,7 +9,7 @@ interface AuthProviderProps {
 
 /**
  * AuthProvider owns the single auth state (useAuthState) and shares it through
- * context; every component reads it with useAuth()/useAuthContext().
+ * context; every component reads it with useAuth().
  */
 export function AuthProvider({ children }: AuthProviderProps) {
   const auth = useAuthState();
@@ -23,8 +20,3 @@ export function AuthProvider({ children }: AuthProviderProps) {
     </AuthContext.Provider>
   );
 }
-
-/** Same as useAuth(); throws if used outside AuthProvider. */
-export const useAuthContext = useAuth;
-
-export type { AuthContextType };

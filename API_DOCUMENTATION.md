@@ -129,6 +129,8 @@ Authorization: Bearer <token>
 ]
 ```
 
+**Light listing (opt-in):** `GET /api/flightPlans?fields=summary` returns the same rows without `fileContent`, `uplan` and `activationMessage`, plus the booleans `hasFileContent` and `hasUplan`. Use `GET /api/flightPlans/{id}` for the full row. Without the parameter the response is unchanged. `GET /api/folders?fields=summary` likewise returns each folder with `flightPlans: [{ "id": n }]` only.
+
 #### **POST /api/flightPlans** - Create Flight Plan(s)
 ```typescript
 // Individual creation

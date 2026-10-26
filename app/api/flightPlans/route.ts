@@ -139,10 +139,41 @@ function generateInitialUplan(fileContent: string): object | null {
 }
 
 /**
+ * Columns of the opt-in `?fields=summary` listing: every column EXCEPT the heavy ones
+ * (fileContent MediumText, uplan LongText, activationMessage LongText), which the detail
+ * endpoint GET /api/flightPlans/[id] still returns. authorizationMessage stays because lists
+ * read it (SCRS alternatives, "FAS procesando...", ACCEPTED_ALTERNATIVE, denial errors).
+ * ponytail: explicit select (Prisma 5.22 `omit` is still a preview feature); add new light columns here.
+ */
+const SUMMARY_SELECT = {
+  id: true,
+  customName: true,
+  status: true,
+  csvResult: true,
+  createdAt: true,
+  userId: true,
+  machineAssignedId: true,
+  folderId: true,
+  authorizationStatus: true,
+  authorizationMessage: true,
+  scheduledAt: true,
+  externalResponseNumber: true,
+  geoawarenessData: true,
+  activationStatus: true,
+  activatedAt: true,
+  termsAcceptedAt: true,
+  lastActivationAttempt: true,
+  folder: true,
+} satisfies Prisma.flightPlanSelect;
+
+/**
  * GET /api/flightPlans
  * List all flight plans for the authenticated user
- * 
- * Query params: none required (userId from token)
+ *
+ * Query params: none required (userId from token).
+ *   fields=summary (opt-in): rows without fileContent/uplan/activationMessage, plus the
+ *   booleans hasFileContent / hasUplan so lists can gate buttons without the heavy text.
+ *   Any other value (or none) returns the full rows exactly as before.
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const auth = await withAuth(request);
@@ -153,6 +184,20 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const { userId } = auth;
 
   try {
+    if (request.nextUrl.searchParams.get('fields') === 'summary') {
+      // IS NOT NULL is answered from the row header: the heavy text is never read.
+      const [rows, withFile, withUplan] = await Promise.all([
+        prisma.flightPlan.findMany({ where: { userId }, select: SUMMARY_SELECT, orderBy: { id: 'desc' } }),
+        prisma.flightPlan.findMany({ where: { userId, fileContent: { not: null } }, select: { id: true } }),
+        prisma.flightPlan.findMany({ where: { userId, uplan: { not: null } }, select: { id: true } }),
+      ]);
+      const fileIds = new Set(withFile.map((p) => p.id));
+      const uplanIds = new Set(withUplan.map((p) => p.id));
+      return NextResponse.json(
+        rows.map((p) => ({ ...p, hasFileContent: fileIds.has(p.id), hasUplan: uplanIds.has(p.id) }))
+      );
+    }
+
     const flightPlans = await prisma.flightPlan.findMany({
       where: { userId },
       include: {
