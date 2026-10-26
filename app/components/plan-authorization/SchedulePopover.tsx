@@ -2,24 +2,24 @@
 
 import { useId, useState } from 'react'
 import { Popover } from '@base-ui/react/popover'
-import { CalendarClock, Loader2, Lock, Shuffle } from 'lucide-react'
+import { CalendarClock, Loader2, Lock } from 'lucide-react'
 import { interpolate, useI18n } from '@/app/i18n'
 import { formatDateTime, fromLocalInput, toLocalInput, type PlanRow } from './lib'
 
-const POPUP =
+export const POPUP =
   'w-[min(22rem,calc(100vw-2rem))] rounded-lg border border-line bg-surface-elevated p-4 text-fg shadow-theme-md outline-none'
-const INPUT =
+export const INPUT =
   'w-full rounded-md border border-input bg-input px-3 py-2 text-sm text-fg focus:outline-none focus:ring-2 focus:ring-brand-ring disabled:cursor-not-allowed disabled:opacity-60'
 const BTN =
   'inline-flex min-h-9 items-center justify-center gap-1.5 rounded-md px-3 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50'
-const BTN_PRIMARY = `${BTN} bg-brand text-brand-fg hover:bg-brand-hover`
-const BTN_SECONDARY = `${BTN} border border-line-2 bg-surface text-fg hover:bg-hover`
+export const BTN_PRIMARY = `${BTN} bg-brand text-brand-fg hover:bg-brand-hover`
+export const BTN_SECONDARY = `${BTN} border border-line-2 bg-surface text-fg hover:bg-hover`
 
 function nowLocal(): string {
   return toLocalInput(new Date().toISOString())
 }
 
-function TimezoneHint() {
+export function TimezoneHint() {
   const { t } = useI18n()
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
   return <p className="mt-1 text-xs text-muted">{interpolate(t.planAuth.schedule.timezone, { tz })}</p>
@@ -162,109 +162,6 @@ export function PlanSchedulePopover({ plan, locked, variant, onSchedule, onPastE
                 if (await onSchedule(iso)) setOpen(false)
               }}
             />
-          </Popover.Popup>
-        </Popover.Positioner>
-      </Popover.Portal>
-    </Popover.Root>
-  )
-}
-
-interface FolderProps {
-  folderName: string
-  min: string | null
-  max: string | null
-  planCount: number
-  /** Saves the window (null = clear). */
-  onSaveWindow: (min: string | null, max: string | null) => Promise<void>
-  /** Ask to randomize every plan of the folder inside the saved window. */
-  onRandomize: () => void
-}
-
-/** Dev: per-folder min / max window and "Randomize times". */
-export function FolderSchedulePopover({ folderName, min, max, planCount, onSaveWindow, onRandomize }: FolderProps) {
-  const { t } = useI18n()
-  const pa = t.planAuth.schedule
-  const [open, setOpen] = useState(false)
-  const minId = useId()
-  const maxId = useId()
-  const [minDraft, setMinDraft] = useState(toLocalInput(min))
-  const [maxDraft, setMaxDraft] = useState(toLocalInput(max))
-  const [saving, setSaving] = useState(false)
-
-  const invalid = !!minDraft && !!maxDraft && new Date(minDraft) >= new Date(maxDraft)
-  const saved = !!min && !!max && new Date(min) < new Date(max)
-
-  return (
-    <Popover.Root
-      open={open}
-      onOpenChange={(next) => {
-        setOpen(next)
-        if (next) {
-          setMinDraft(toLocalInput(min))
-          setMaxDraft(toLocalInput(max))
-        }
-      }}
-    >
-      <Popover.Trigger className={BTN_SECONDARY}>
-        <CalendarClock className="h-4 w-4" aria-hidden="true" />
-        {pa.folderTrigger}
-      </Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Positioner className="z-40" sideOffset={4} align="end">
-          <Popover.Popup className={POPUP}>
-            <Popover.Title className="text-sm font-semibold">{interpolate(pa.folderTitle, { name: folderName })}</Popover.Title>
-            <Popover.Description className="mb-3 mt-1 text-xs text-fg-2">{pa.folderHint}</Popover.Description>
-            <div className="space-y-3">
-              <div>
-                <label htmlFor={minId} className="mb-1 block text-sm font-medium text-fg-2">
-                  {pa.min}
-                </label>
-                <input id={minId} type="datetime-local" value={minDraft} onChange={(e) => setMinDraft(e.target.value)} className={INPUT} />
-              </div>
-              <div>
-                <label htmlFor={maxId} className="mb-1 block text-sm font-medium text-fg-2">
-                  {pa.max}
-                </label>
-                <input id={maxId} type="datetime-local" value={maxDraft} onChange={(e) => setMaxDraft(e.target.value)} className={INPUT} />
-              </div>
-              <TimezoneHint />
-              {invalid && (
-                <p role="alert" className="text-xs text-danger-text">
-                  {pa.windowInvalid}
-                </p>
-              )}
-            </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <button
-                type="button"
-                className={BTN_PRIMARY}
-                disabled={saving || invalid}
-                onClick={async () => {
-                  setSaving(true)
-                  try {
-                    await onSaveWindow(fromLocalInput(minDraft) || null, fromLocalInput(maxDraft) || null)
-                  } finally {
-                    setSaving(false)
-                  }
-                }}
-              >
-                {saving && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
-                {pa.saveWindow}
-              </button>
-              <button
-                type="button"
-                className={BTN_SECONDARY}
-                disabled={!saved || planCount === 0 || saving}
-                title={!saved ? pa.randomizeNeedsWindow : undefined}
-                onClick={() => {
-                  setOpen(false)
-                  onRandomize()
-                }}
-              >
-                <Shuffle className="h-4 w-4" aria-hidden="true" />
-                {pa.randomize}
-              </button>
-            </div>
           </Popover.Popup>
         </Popover.Positioner>
       </Popover.Portal>

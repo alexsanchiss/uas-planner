@@ -10,7 +10,6 @@ import { useCallback, useRef, useState } from 'react'
 import { ApiError } from '@/lib/api-client'
 import { parseScrsAlternative } from '@/lib/scrs'
 import { shouldGenerateRandomUplan } from '@/lib/uplan/random-data'
-import { isUplanComplete } from '@/lib/validators/uplan-validator'
 import { interpolate, useI18n } from '@/app/i18n'
 import type { UseFlightPlansReturn } from '@/app/hooks/useFlightPlans'
 import type { useToast } from '@/app/hooks/useToast'
@@ -373,6 +372,7 @@ export function usePlanActions({ plans, fp, toast, confirm, busy }: Deps) {
           }
           if (!shouldGenerateRandomUplan()) {
             if (!uplan) return toast.error(pa.toast.uplanMissing)
+            const { isUplanComplete } = await import('@/lib/validators/uplan-validator') // zod schemas: loaded when a plan is submitted
             const check = isUplanComplete(uplan)
             if (!check.isComplete) {
               const list = check.missingFields.slice(0, 3).join(', ')

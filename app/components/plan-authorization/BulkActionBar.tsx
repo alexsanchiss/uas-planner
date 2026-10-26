@@ -4,10 +4,10 @@ import { AlertCircle, Eye, FileJson, Loader2, Play, RotateCcw, Route, Send, Shie
 import { interpolate, useI18n } from '@/app/i18n'
 import { ActionMenu, type MenuEntry } from './ActionMenu'
 import { authPhase, hasScrsAlternative, planPhase } from './lib'
-import type { GroupActions } from './useGroupActions'
+import { useBulkActions, type BulkDeps } from './useBulkActions'
 
 interface Props {
-  g: GroupActions
+  deps: BulkDeps
   onClear: () => void
 }
 
@@ -18,11 +18,12 @@ const BTN =
  * Dev: sticky bar for the ticked plans (bottom-anchored on phones). The count is a polite live region;
  * primary actions are inline, downloads and the destructive / rare ones live in two menus.
  */
-export function BulkActionBar({ g, onClear }: Props) {
+export function BulkActionBar({ deps, onClear }: Props) {
   const { t } = useI18n()
   const pa = t.planAuth.bulk
-  const list = g.selectedPlans
-  const busy = g.working !== null
+  const g = useBulkActions(deps)
+  const list = deps.group.selectedPlans
+  const busy = deps.group.working !== null
   const eligibleAuth = list.some((p) => planPhase(p) === 'done' && authPhase(p) === 'none')
   const hasProcessed = list.some((p) => planPhase(p) === 'done' && p.csvResult)
   const hasApproved = list.some((p) => authPhase(p) === 'approved' && p.hasUplan)

@@ -1,12 +1,10 @@
 /**
- * Browser file helpers: zip download (JSZip + file-saver, loaded on demand), text download,
- * zip/plan expansion for uploads and trajectory CSV parsing. The heavy libraries are imported
+ * Browser file helpers: zip download (JSZip + file-saver, loaded on demand), text download
+ * and trajectory CSV parsing (the Dev upload helpers are in uploadPlans.ts). The heavy libraries are imported
  * inside the functions so they stay out of the page's first chunk.
  */
 
 export const ZIP_MAX_FILES = 1000
-/** Plans per POST /api/flightPlans when uploading (payload size guard, same as the old Dev). */
-export const UPLOAD_BATCH = 50
 
 // ---- Download -------------------------------------------------------------------------
 
@@ -58,39 +56,6 @@ export async function mapLimit<T, R>(items: T[], limit: number, worker: (item: T
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, lane))
   return out
 }
-
-// ---- Upload ---------------------------------------------------------------------------
-
-export interface VirtualFile {
-  name: string
-  getText: () => Promise<string>
-}
-
-/** Plain files stay as they are; every entry of a .zip becomes a file (non-text entries are not filtered, a broken zip is skipped). */
-export async function expandFiles(files: File[]): Promise<VirtualFile[]> {
-  const out: VirtualFile[] = []
-  for (const f of files) {
-    const isZip = f.name.toLowerCase().endsWith('.zip') || f.type === 'application/zip'
-    if (!isZip) {
-      out.push({ name: f.name, getText: () => f.text() })
-      continue
-    }
-    try {
-      const { default: JSZip } = await import('jszip')
-      const zip = await JSZip.loadAsync(await f.arrayBuffer())
-      for (const entry of Object.values(zip.files)) {
-        if (entry.dir) continue
-        out.push({ name: entry.name.split('/').pop() || entry.name, getText: () => entry.async('text') })
-      }
-    } catch (e) {
-      console.error('Failed to parse zip:', f.name, e)
-    }
-  }
-  return out
-}
-
-/** Name of the plan created from a file: the file name without its extension. */
-export const planNameFromFile = (fileName: string) => fileName.replace(/\.[^/.]+$/, '')
 
 // ---- Trajectory CSV -------------------------------------------------------------------
 

@@ -28,7 +28,6 @@ import {
   matchesSelectKey,
   PAGE_SIZE,
   planPhase,
-  SELECT_KEYS,
   type Mode,
   type PlanRow,
   type SelectKey,
@@ -37,9 +36,7 @@ import {
 import { PlanCard } from './PlanCard'
 import { PlanTable, type SortKey, type SortState } from './PlanTable'
 import type { RowCtx } from './rowActions'
-import { FolderSchedulePopover } from './SchedulePopover'
 import { LoadError, PlanAuthSkeleton, StateMessage } from './States'
-import { StatusChips } from './StatusChips'
 import { SyncIndicator, SyncPausedBanner } from './SyncIndicator'
 import { UploadDropzone } from './UploadDropzone'
 import { useBusy } from './useBusy'
@@ -48,9 +45,18 @@ import { useGroupActions } from './useGroupActions'
 import { usePlanActions } from './usePlanActions'
 import { ViewerHost } from './ViewerHost'
 
-// Loaded on demand: the detail panel opens on click, the bulk bar only exists in Dev
+// Loaded on demand: the detail panel opens on click; everything below it only renders in Dev, so the production
+// bundle never fetches it (and `loading` keeps the row heights stable while the chunk arrives).
 const PlanDetail = dynamic(() => import('./PlanDetail').then((m) => m.PlanDetail), { ssr: false })
 const BulkActionBar = dynamic(() => import('./BulkActionBar').then((m) => m.BulkActionBar), { ssr: false })
+const StatusChips = dynamic(() => import('./StatusChips').then((m) => m.StatusChips), {
+  ssr: false,
+  loading: () => <div className="h-10" aria-hidden="true" />,
+})
+const DevFolderTools = dynamic(() => import('./DevFolderTools').then((m) => m.DevFolderTools), {
+  ssr: false,
+  loading: () => <div className="h-9" aria-hidden="true" />,
+})
 
 function sortPlans(list: PlanRow[], sort: SortState | null): PlanRow[] {
   if (!sort) return list
@@ -306,37 +312,15 @@ export function PlanAuthorization({ mode }: { mode: Mode }) {
                     </span>
                   </h2>
                   {dev && viewFolder && (
-                    <div className="flex flex-wrap items-center gap-2">
-                      <label htmlFor="pa-select-status" className="sr-only">
-                        {pa.dev.selectByStatus}
-                      </label>
-                      <select
-                        id="pa-select-status"
-                        value=""
-                        onChange={(e) => selectBy(e.target.value as SelectKey)}
-                        className="min-h-9 rounded-md border border-input bg-input px-3 text-sm text-fg focus:outline-none focus:ring-2 focus:ring-brand-ring"
-                      >
-                        <option value="" disabled>
-                          {pa.dev.selectByStatus}
-                        </option>
-                        {SELECT_KEYS.map((k) => (
-                          <option key={k} value={k}>
-                            {pa.dev.select[k]}
-                          </option>
-                        ))}
-                      </select>
-                      <button type="button" className={SECONDARY} onClick={deselectFolder} disabled={!viewPlans.some((p) => selectedSet.has(p.id))}>
-                        {pa.dev.deselect}
-                      </button>
-                      <FolderSchedulePopover
-                        folderName={viewFolder.name}
-                        min={viewFolder.minScheduledAt}
-                        max={viewFolder.maxScheduledAt}
-                        planCount={viewPlans.length}
-                        onSaveWindow={(min, max) => group.saveFolderWindow(viewFolder, min, max)}
-                        onRandomize={() => group.randomizeFolder(viewFolder)}
-                      />
-                    </div>
+                    <DevFolderTools
+                      folder={viewFolder}
+                      planCount={viewPlans.length}
+                      canDeselect={viewPlans.some((p) => selectedSet.has(p.id))}
+                      onSelectBy={selectBy}
+                      onDeselect={deselectFolder}
+                      onSaveWindow={(min, max) => group.saveFolderWindow(viewFolder, min, max)}
+                      onRandomize={() => group.randomizeFolder(viewFolder)}
+                    />
                   )}
                 </div>
 
@@ -396,7 +380,9 @@ export function PlanAuthorization({ mode }: { mode: Mode }) {
               </>
             )}
 
-            {dev && selectedIds.length > 0 && <BulkActionBar g={group} onClear={() => setSelectedIds([])} />}
+            {dev && selectedIds.length > 0 && (
+              <BulkActionBar deps={{ fp, toast, confirm, setViewer: actions.setViewer, group }} onClear={() => setSelectedIds([])} />
+            )}
           </div>
         </div>
       )}
