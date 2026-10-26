@@ -3,12 +3,22 @@ import crypto from 'crypto'
 import prisma from '@/lib/prisma'
 import { resendVerificationSchema } from '@/lib/validators'
 import { sendVerificationEmail } from '@/lib/email'
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 
 function generateVerificationCode(): string {
   return String(crypto.randomInt(100000, 999999))
 }
 
 export async function POST(request: Request) {
+  const ip = getClientIp(request);
+  const { allowed, resetIn } = checkRateLimit(`resend-verification:${ip}`, 3, 60 * 60 * 1000);
+  if (!allowed) {
+    return NextResponse.json(
+      { error: 'Too many verification requests. Please try again later.' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(resetIn / 1000)) } }
+    );
+  }
+
   try {
     const body = await request.json()
     const result = resendVerificationSchema.safeParse(body)

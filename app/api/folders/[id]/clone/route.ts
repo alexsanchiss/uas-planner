@@ -81,15 +81,12 @@ export async function POST(
           uplan: plan.uplan,
           scheduledAt: plan.scheduledAt,
           csvResult: plan.csvResult,
-          authorizationStatus: plan.authorizationStatus,
-          authorizationMessage: plan.authorizationMessage,
-          externalResponseNumber: plan.externalResponseNumber,
+          // A clone is a new plan: it must not inherit FAS authorization (nor its
+          // externalResponseNumber, which would alias the original in FAS callbacks
+          // and cancellations) or the activation state derived from it.
+          authorizationStatus: 'sin autorización',
+          authorizationMessage: null,
           geoawarenessData: plan.geoawarenessData ?? Prisma.DbNull,
-          activationStatus: plan.activationStatus,
-          activatedAt: plan.activatedAt,
-          activationMessage: plan.activationMessage,
-          termsAcceptedAt: plan.termsAcceptedAt,
-          lastActivationAttempt: plan.lastActivationAttempt,
           createdAt: plan.createdAt,
         },
       });

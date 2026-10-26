@@ -5,6 +5,16 @@ const SENDER_EMAIL = process.env.MAILERSEND_SENDER_EMAIL || 'UPPS@sna-upv.com';
 const SENDER_NAME = process.env.MAILERSEND_SENDER_NAME || 'UPPS';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001';
 
+/** Escape user-controlled text before interpolating it into email HTML. */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function getMailerSendClient(): MailerSend | null {
   const apiKey = process.env.MAILERSEND_API_KEY;
   if (!apiKey || apiKey === 'your_mailersend_api_key_here') {
@@ -292,7 +302,7 @@ export async function sendAuthorizationResultEmail(
                 Dear valued customer,
               </p>
               <p style="margin: 0 0 25px; font-size: 16px; line-height: 1.6; color: #333;">
-                Your flight plan <strong>${planName}</strong> has been processed by our UAS Planning and Authorization System.
+                Your flight plan <strong>${escapeHtml(planName)}</strong> has been processed by our UAS Planning and Authorization System.
               </p>
               
               <!-- Status Badge -->
@@ -424,8 +434,8 @@ export async function sendContactTicketEmail(
             <p style="margin:0;font-size:24px;font-weight:bold;color:#1e3a8a;text-align:center;">${ticketNumber}</p>
           </div>
           <div style="background-color:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:20px;margin:25px 0;">
-            <p style="margin:0 0 8px;font-size:14px;color:#333;"><strong>Subject:</strong> ${subject}</p>
-            <p style="margin:0;font-size:14px;color:#333;"><strong>Category:</strong> ${category}</p>
+            <p style="margin:0 0 8px;font-size:14px;color:#333;"><strong>Subject:</strong> ${escapeHtml(subject)}</p>
+            <p style="margin:0;font-size:14px;color:#333;"><strong>Category:</strong> ${escapeHtml(category)}</p>
           </div>
           <p style="margin:25px 0 0;font-size:14px;line-height:1.6;color:#666;">We will review your request and get back to you as soon as possible. Please keep your ticket number for reference.</p>
         </td></tr>
@@ -500,13 +510,13 @@ export async function sendContactNotificationEmail(
             <p style="margin:0;font-size:20px;font-weight:bold;color:#1e3a8a;text-align:center;">${ticketNumber}</p>
           </div>
           <div style="background-color:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:20px;margin:0 0 25px;">
-            <p style="margin:0 0 8px;font-size:14px;color:#333;"><strong>From:</strong> ${userEmail}</p>
-            <p style="margin:0 0 8px;font-size:14px;color:#333;"><strong>Subject:</strong> ${subject}</p>
-            <p style="margin:0;font-size:14px;color:#333;"><strong>Category:</strong> ${category}</p>
+            <p style="margin:0 0 8px;font-size:14px;color:#333;"><strong>From:</strong> ${escapeHtml(userEmail)}</p>
+            <p style="margin:0 0 8px;font-size:14px;color:#333;"><strong>Subject:</strong> ${escapeHtml(subject)}</p>
+            <p style="margin:0;font-size:14px;color:#333;"><strong>Category:</strong> ${escapeHtml(category)}</p>
           </div>
           <div style="background-color:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:20px;">
             <p style="margin:0 0 10px;font-size:14px;color:#666;font-weight:bold;">Description:</p>
-            <div style="font-size:14px;color:#333;line-height:1.6;white-space:pre-wrap;word-wrap:break-word;">${description}</div>
+            <div style="font-size:14px;color:#333;line-height:1.6;white-space:pre-wrap;word-wrap:break-word;">${escapeHtml(description)}</div>
           </div>
         </td></tr>
       </table>
@@ -570,7 +580,7 @@ export async function sendPlanDeletionEmail(
                 Dear valued customer,
               </p>
               <p style="margin: 0 0 25px; font-size: 16px; line-height: 1.6; color: #333;">
-                This is to inform you that the authorization for your flight plan <strong>${planName}</strong> has been <strong>cancelled</strong> because the flight plan was deleted from the UPPS Platform.
+                This is to inform you that the authorization for your flight plan <strong>${escapeHtml(planName)}</strong> has been <strong>cancelled</strong> because the flight plan was deleted from the UPPS Platform.
               </p>
 
               <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 20px; margin: 25px 0;">
@@ -578,7 +588,7 @@ export async function sendPlanDeletionEmail(
                   <strong>Cancellation Details:</strong>
                 </p>
                 <p style="margin: 0 0 5px; font-size: 14px; color: #92400e;">
-                  <strong>Plan:</strong> ${planName}
+                  <strong>Plan:</strong> ${escapeHtml(planName)}
                 </p>
                 <p style="margin: 0 0 5px; font-size: 14px; color: #92400e;">
                   <strong>Reason:</strong> Flight plan deleted by user

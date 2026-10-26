@@ -27,6 +27,7 @@ import {
   safeParseBody,
   ValidationError,
   isValidationError,
+  type FlattenedErrors,
 } from '../validators';
 
 describe('Validators', () => {
@@ -258,11 +259,27 @@ describe('Validators', () => {
         expect(result.status).toBe('procesado');
       });
 
-      it('should accept authorization status update', () => {
-        const result = flightPlanUpdateDataSchema.parse({
-          authorizationStatus: 'autorizado',
+      // Authorization state is owned by FAS/the server: a client may only reset a plan or mark it
+      // as being processed, never self-approve (see USER_WRITABLE_AUTHORIZATION_STATUSES).
+      it.each(['sin autorización', 'procesando autorización'])('should accept client authorization status %s', (status) => {
+        const result = flightPlanUpdateDataSchema.parse({ authorizationStatus: status });
+        expect(result.authorizationStatus).toBe(status);
+      });
+
+      it.each(['autorizado', 'rechazado', 'pendiente', 'aprobado', 'denegado'])(
+        'should reject client-supplied authorization status %s',
+        (status) => {
+          expect(flightPlanUpdateDataSchema.safeParse({ authorizationStatus: status }).success).toBe(false);
+        },
+      );
+
+      it('should only allow authorizationMessage and externalResponseNumber to be reset to null', () => {
+        expect(flightPlanUpdateDataSchema.parse({ authorizationMessage: null, externalResponseNumber: null })).toEqual({
+          authorizationMessage: null,
+          externalResponseNumber: null,
         });
-        expect(result.authorizationStatus).toBe('autorizado');
+        expect(flightPlanUpdateDataSchema.safeParse({ authorizationMessage: 'ACCEPTED_ALTERNATIVE' }).success).toBe(false);
+        expect(flightPlanUpdateDataSchema.safeParse({ externalResponseNumber: 'EXT-001' }).success).toBe(false);
       });
 
       it('should reject empty object', () => {
@@ -355,7 +372,8 @@ describe('Validators', () => {
       });
 
       it('should reject missing folderId', () => {
-        const { folderId, ...rest } = validInput;
+        const { folderId: _folderId, ...rest } = validInput;
+        void _folderId;
         expect(() => externalUplanSchema.parse(rest)).toThrow();
       });
 
@@ -578,7 +596,7 @@ describe('Validators', () => {
 
         const json = error.toJSON();
         expect(json.error).toBe('Validation failed');
-        expect((json.details as any).fieldErrors.email).toContain('Invalid email');
+        expect((json.details as FlattenedErrors<{ email: string }>).fieldErrors.email).toContain('Invalid email');
       });
     });
 

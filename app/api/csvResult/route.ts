@@ -4,6 +4,18 @@ import { idSchema, csvResultBulkFetchSchema, csvResultDeleteSchema } from '@/lib
 import prisma from '@/lib/prisma';
 
 /**
+ * Ownership: csvResult.id == flightPlan.id, so a CSV belongs to the caller only if
+ * a flight plan with that id has userId == caller. Returns the owned subset of ids.
+ */
+async function ownedPlanIds(userId: number, ids: number[]): Promise<number[]> {
+  const plans = await prisma.flightPlan.findMany({
+    where: { id: { in: ids }, userId },
+    select: { id: true },
+  });
+  return plans.map((p) => p.id);
+}
+
+/**
  * GET /api/csvResult?id=123
  * 
  * Fetch a single CSV result by ID.
@@ -15,6 +27,7 @@ export async function GET(request: NextRequest) {
     return auth;
   }
 
+  const { userId } = auth;
   const { searchParams } = new URL(request.url);
   const idParam = searchParams.get('id');
 
@@ -34,9 +47,10 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const csvResult = await prisma.csvResult.findUnique({
-      where: { id: idResult.data },
-    });
+    const [ownedId] = await ownedPlanIds(userId, [idResult.data]);
+    const csvResult = ownedId === undefined
+      ? null
+      : await prisma.csvResult.findUnique({ where: { id: ownedId } });
 
     if (!csvResult) {
       return NextResponse.json(
@@ -68,6 +82,8 @@ export async function POST(request: NextRequest) {
     return auth;
   }
 
+  const { userId } = auth;
+
   let body: unknown;
   try {
     body = await request.json();
@@ -89,17 +105,15 @@ export async function POST(request: NextRequest) {
   const { ids } = parseResult.data;
 
   try {
-    // PARALLEL FETCH: Get plan metadata and CSV content simultaneously
-    const [plans, csvs] = await Promise.all([
-      prisma.flightPlan.findMany({
-        where: { id: { in: ids } },
-        select: { id: true, customName: true },
-      }),
-      prisma.csvResult.findMany({
-        where: { id: { in: ids } },
-        select: { id: true, csvResult: true },
-      }),
-    ]);
+    // Only the caller's plans (ownership), then their CSV content
+    const plans = await prisma.flightPlan.findMany({
+      where: { id: { in: ids }, userId },
+      select: { id: true, customName: true },
+    });
+    const csvs = await prisma.csvResult.findMany({
+      where: { id: { in: plans.map((p) => p.id) } },
+      select: { id: true, csvResult: true },
+    });
 
     // MERGE DATA: Combine plan names with CSV content
     const nameById = new Map<number, string>(plans.map((p) => [p.id, p.customName]));
@@ -134,6 +148,8 @@ export async function DELETE(request: NextRequest) {
     return auth;
   }
 
+  const { userId } = auth;
+
   let body: unknown;
   try {
     body = await request.json();
@@ -157,8 +173,12 @@ export async function DELETE(request: NextRequest) {
   try {
     if (id !== undefined) {
       // INDIVIDUAL CSV DELETION: Remove single CSV result
+      const [ownedId] = await ownedPlanIds(userId, [id]);
+      if (ownedId === undefined) {
+        return NextResponse.json({ error: 'CSV no encontrado' }, { status: 404 });
+      }
       await prisma.csvResult.delete({
-        where: { id },
+        where: { id: ownedId },
       });
       return new NextResponse(null, { status: 204 });
     }
@@ -166,7 +186,7 @@ export async function DELETE(request: NextRequest) {
     if (ids && ids.length > 0) {
       // BULK CSV DELETION: Remove multiple CSV results
       const result = await prisma.csvResult.deleteMany({
-        where: { id: { in: ids } },
+        where: { id: { in: await ownedPlanIds(userId, ids) } },
       });
       return NextResponse.json({ deletedCount: result.count });
     }

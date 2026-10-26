@@ -284,9 +284,10 @@ describe('GET /api/flightPlans/[id]/terms', () => {
 
       await GET(makeRequest(), makeParams());
 
+      // Every FAS request goes through fasFetch, which adds a timeout signal (lib/fas.ts).
       expect(mockFetch).toHaveBeenCalledWith(
         'http://fas-test.local/terms/EXT-001',
-        { method: 'GET' }
+        { method: 'GET', signal: expect.any(AbortSignal) }
       );
     });
   });

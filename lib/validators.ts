@@ -118,6 +118,28 @@ export const authorizationStatusSchema = z.enum([
 ]);
 export type AuthorizationStatus = z.infer<typeof authorizationStatusSchema>;
 
+/**
+ * Authorization state is owned by FAS / the server (aprobado, denegado, withdrawn,
+ * pendiente, externalResponseNumber, FAS message). Clients may only reset a plan or
+ * mark it as being processed; any other write is rejected so users cannot self-approve.
+ */
+export const USER_WRITABLE_AUTHORIZATION_STATUSES = ['sin autorización', 'procesando autorización'] as const;
+export const userWritableAuthorizationStatusSchema = z.enum(USER_WRITABLE_AUTHORIZATION_STATUSES);
+
+/**
+ * Check the authorization fields of a client-supplied plan update (raw, pre-sanitize).
+ * Returns an error message, or null when the fields are acceptable.
+ */
+export function checkUserAuthorizationFields(data: Record<string, unknown>): string | null {
+  const { authorizationStatus: status, authorizationMessage: message, externalResponseNumber: ext } = data;
+  if (status !== undefined && !userWritableAuthorizationStatusSchema.safeParse(status).success) {
+    return `Invalid authorizationStatus. Allowed: ${USER_WRITABLE_AUTHORIZATION_STATUSES.join(', ')}`;
+  }
+  if (message !== undefined && message !== null) return 'authorizationMessage can only be reset to null';
+  if (ext !== undefined && ext !== null) return 'externalResponseNumber can only be reset to null';
+  return null;
+}
+
 /** Create a single flight plan */
 export const flightPlanCreateSchema = z.object({
   customName: z.string().min(1, 'Name is required').max(255),
@@ -141,8 +163,9 @@ export const flightPlanUpdateDataSchema = z.object({
   customName: z.string().min(1).max(255).optional(),
   status: flightPlanStatusSchema.optional(),
   fileContent: z.string().min(1).optional(),
-  authorizationStatus: authorizationStatusSchema.optional(),
-  authorizationMessage: z.unknown().nullable().optional(),
+  authorizationStatus: userWritableAuthorizationStatusSchema.optional(),
+  authorizationMessage: z.null().optional(),
+  externalResponseNumber: z.null().optional(),
   uplan: z.unknown().nullable().optional(),
   scheduledAt: optionalDateSchema,
   csvResult: z.number().int().positive().nullable().optional(),

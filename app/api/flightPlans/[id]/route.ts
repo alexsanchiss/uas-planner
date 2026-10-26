@@ -19,49 +19,8 @@ import { flightPlanUpdateDataSchema, safeParseBody } from '@/lib/validators';
 import { sendPlanDeletionEmail } from '@/lib/email';
 import { logger } from '@/lib/logger';
 import type { Prisma } from '@prisma/client';
-
-/**
- * FAS API URL - defaults to production server if not configured.
- * The base URL (without /uplan path) is used for cancellation requests.
- */
-const FAS_API_URL = process.env.FAS_API_URL || 'http://158.42.167.56:8000/uplan';
-
-/**
- * Derive the FAS base URL by removing the /uplan path suffix.
- * e.g. "http://158.42.167.56:8000/uplan" → "http://158.42.167.56:8000"
- */
-function getFasBaseUrl(): string {
-  try {
-    const url = new URL(FAS_API_URL);
-    return `${url.protocol}//${url.host}`;
-  } catch {
-    // Fallback: strip trailing path segments
-    return FAS_API_URL.replace(/\/uplan\/?$/, '');
-  }
-}
-
-/**
- * Send a cancellation request to the FAS for an approved flight plan.
- * This is fire-and-forget: failures are logged but do not block deletion.
- */
-async function sendFasCancellation(externalResponseNumber: string): Promise<void> {
-  const baseUrl = getFasBaseUrl();
-  const cancelUrl = `${baseUrl}/uplan_cancelation/${encodeURIComponent(externalResponseNumber)}`;
-  
-  try {
-    const response = await fetch(cancelUrl, { method: 'DELETE' });
-    if (!response.ok) {
-      console.warn(
-        `[FAS Cancellation] Non-OK response for ${externalResponseNumber}: ${response.status} ${response.statusText}`
-      );
-    }
-  } catch (error) {
-    console.warn(
-      `[FAS Cancellation] Failed to cancel ${externalResponseNumber}:`,
-      error instanceof Error ? error.message : error
-    );
-  }
-}
+import { sendFasCancellation } from '@/lib/fas';
+import { parseId, userOwnsFolders } from '@/lib/http';
 
 /**
  * Params type for dynamic route
@@ -70,14 +29,6 @@ interface RouteParams {
   params: Promise<{
     id: string;
   }>;
-}
-
-/**
- * Parse and validate the flight plan ID from route params
- */
-function parseId(idParam: string): number | null {
-  const id = parseInt(idParam, 10);
-  return Number.isFinite(id) && id > 0 ? id : null;
 }
 
 /**
@@ -253,6 +204,11 @@ export async function PUT(
         { error: 'Access denied' },
         { status: 403 }
       );
+    }
+
+    // folderId must be one of the caller's own folders
+    if (!(await userOwnsFolders(userId, [result.data.folderId]))) {
+      return NextResponse.json({ error: 'Folder not found' }, { status: 404 });
     }
 
     // Sanitize and prepare update data for Prisma

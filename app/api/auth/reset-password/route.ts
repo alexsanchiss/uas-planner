@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import crypto from 'crypto'
 import prisma from '@/lib/prisma'
 import { resetPasswordSchema } from '@/lib/validators'
-import { hashPassword } from '@/lib/auth'
+import { hashPassword, getJwtSecret } from '@/lib/auth'
 
 export async function POST(request: Request) {
   try {
@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     }
 
     const { token, newPassword } = result.data
-    const hashedToken = crypto.createHmac('sha256', process.env.JWT_SECRET || '').update(token).digest('hex')
+    const hashedToken = crypto.createHmac('sha256', getJwtSecret()).update(token).digest('hex')
 
     const user = await prisma.user.findFirst({
       where: {

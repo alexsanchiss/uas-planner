@@ -4,12 +4,22 @@ import prisma from '@/lib/prisma'
 import { hashPassword } from '@/lib/auth'
 import { sendVerificationEmail } from '@/lib/email'
 import { signupSchema, isValidationError } from '@/lib/validators'
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 
 function generateVerificationCode(): string {
   return String(crypto.randomInt(100000, 999999))
 }
 
 export async function POST(request: Request) {
+  const ip = getClientIp(request);
+  const { allowed, resetIn } = checkRateLimit(`signup:${ip}`, 5, 60 * 60 * 1000);
+  if (!allowed) {
+    return NextResponse.json(
+      { error: 'Too many sign-up attempts. Please try again later.' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(resetIn / 1000)) } }
+    );
+  }
+
   try {
     const body = await request.json()
     

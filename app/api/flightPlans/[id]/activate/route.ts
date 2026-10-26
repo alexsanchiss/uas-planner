@@ -23,35 +23,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { withAuth, isAuthError } from '@/lib/auth-middleware';
-
-/**
- * FAS API base URL derived from the FAS_API_URL env var.
- * The env var typically ends in /uplan; we strip that suffix to get the host root.
- */
-const FAS_API_URL = process.env.FAS_API_URL || 'http://158.42.167.56:8000/uplan';
-
-function getFasBaseUrl(): string {
-  try {
-    const url = new URL(FAS_API_URL);
-    return `${url.protocol}//${url.host}`;
-  } catch {
-    return FAS_API_URL.replace(/\/uplan\/?$/, '');
-  }
-}
+import { getFasBaseUrl } from '@/lib/fas';
+import { parseId } from '@/lib/http';
 
 /**
  * Params type for dynamic route
  */
 interface RouteParams {
   params: Promise<{ id: string }>;
-}
-
-/**
- * Parse and validate the flight plan ID from route params.
- */
-function parseId(idParam: string): number | null {
-  const id = parseInt(idParam, 10);
-  return Number.isFinite(id) && id > 0 ? id : null;
 }
 
 /**

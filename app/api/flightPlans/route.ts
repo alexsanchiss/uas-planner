@@ -20,57 +20,22 @@ import { withAuth, isAuthError } from '@/lib/auth-middleware';
 import {
   flightPlanDeleteSchema,
   externalUplanSchema,
+  checkUserAuthorizationFields,
   safeParseBody,
 } from '@/lib/validators';
 import { z } from 'zod';
 import { sendPlanDeletionEmail } from '@/lib/email';
 import logger from '@/lib/logger';
-
-/**
- * FAS API URL - defaults to production server if not configured.
- * The base URL (without /uplan path) is used for cancellation requests.
- */
-const FAS_API_URL = process.env.FAS_API_URL || 'http://158.42.167.56:8000/uplan';
-
-/**
- * Derive the FAS base URL by removing the /uplan path suffix.
- */
-function getFasBaseUrl(): string {
-  try {
-    const url = new URL(FAS_API_URL);
-    return `${url.protocol}//${url.host}`;
-  } catch {
-    return FAS_API_URL.replace(/\/uplan\/?$/, '');
-  }
-}
-
-/**
- * Send a cancellation request to the FAS for an approved flight plan.
- * Fire-and-forget: failures are logged but do not block deletion.
- */
-async function sendFasCancellation(externalResponseNumber: string): Promise<void> {
-  const baseUrl = getFasBaseUrl();
-  const cancelUrl = `${baseUrl}/uplan_cancelation/${encodeURIComponent(externalResponseNumber)}`;
-
-  try {
-    const response = await fetch(cancelUrl, { method: 'DELETE' });
-    if (!response.ok) {
-      console.warn(
-        `[FAS Cancellation] Non-OK response for ${externalResponseNumber}: ${response.status} ${response.statusText}`
-      );
-    }
-  } catch (error) {
-    console.warn(
-      `[FAS Cancellation] Failed to cancel ${externalResponseNumber}:`,
-      error instanceof Error ? error.message : error
-    );
-  }
-}
+import { userOwnsFolders } from '@/lib/http';
+import { sendFasCancellation } from '@/lib/fas';
 
 // Constants for bulk operation limits
 const MAX_BULK_IDS = 100000;
 const MAX_BULK_ITEMS = 2000;
 const CHUNK_SIZE = 200;
+
+/** 404 for a folderId that does not exist or is not the caller's (no ownership oracle). */
+const folderNotFound = () => NextResponse.json({ error: 'Folder not found' }, { status: 404 });
 
 /**
  * Extract waypoints from QGC plan fileContent and return as GeoJSON Points.
@@ -273,6 +238,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
       const { uplan, folderId, customName } = extResult.data;
 
+      if (!(await userOwnsFolders(userId, [folderId]))) return folderNotFound();
+
       // Extract scheduledAt from first volume's timeBegin
       const rawTimeBegin = uplan.operationVolumes[0]?.timeBegin ?? null;
       const scheduledAt = rawTimeBegin
@@ -322,6 +289,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         );
       }
 
+      if (!(await userOwnsFolders(userId, result.data.items.map((it) => it.folderId)))) {
+        return folderNotFound();
+      }
+
       const data = result.data.items.map(toRecord);
       await prisma.flightPlan.createMany({ data });
 
@@ -359,6 +330,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         { status: 400 }
       );
     }
+
+    if (!(await userOwnsFolders(userId, [result.data.folderId]))) return folderNotFound();
 
     const record = toRecord(result.data);
     await prisma.flightPlan.createMany({ data: [record] });
@@ -417,6 +390,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
     if (typeof d.fileContent === 'string') out.fileContent = d.fileContent;
     if (typeof d.authorizationStatus === 'string') out.authorizationStatus = d.authorizationStatus;
     if (d.authorizationMessage !== undefined) out.authorizationMessage = d.authorizationMessage;
+    if (d.externalResponseNumber === null) out.externalResponseNumber = null;
     if (d.uplan !== undefined) {
       // Convert uplan to JSON string for database storage
       out.uplan = d.uplan !== null && d.uplan !== undefined ? JSON.stringify(d.uplan) : null;
@@ -444,6 +418,18 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
           { error: 'No valid items provided' },
           { status: 400 }
         );
+      }
+
+      // Reject forbidden authorization writes before touching anything (all-or-nothing)
+      for (const it of items) {
+        const authError = checkUserAuthorizationFields(it.data || {});
+        if (authError) {
+          return NextResponse.json({ error: authError }, { status: 400 });
+        }
+      }
+
+      if (!(await userOwnsFolders(userId, items.map((it) => it.data?.folderId as number | null | undefined)))) {
+        return folderNotFound();
       }
 
       // Process in chunks to avoid transaction timeouts
@@ -486,12 +472,21 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
         );
       }
 
+      const authError = checkUserAuthorizationFields(bodyObj.data as Record<string, unknown>);
+      if (authError) {
+        return NextResponse.json({ error: authError }, { status: 400 });
+      }
+
       const updateData = sanitizeData(bodyObj.data as Record<string, unknown>);
       if (Object.keys(updateData).length === 0) {
         return NextResponse.json(
           { error: 'No supported fields in data' },
           { status: 400 }
         );
+      }
+
+      if (!(await userOwnsFolders(userId, [updateData.folderId as number | null | undefined]))) {
+        return folderNotFound();
       }
 
       // Ensure user can only update their own plans
@@ -525,12 +520,21 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
         );
       }
 
+      const authError = checkUserAuthorizationFields(bodyObj.data as Record<string, unknown>);
+      if (authError) {
+        return NextResponse.json({ error: authError }, { status: 400 });
+      }
+
       const updateData = sanitizeData(bodyObj.data as Record<string, unknown>);
       if (Object.keys(updateData).length === 0) {
         return NextResponse.json(
           { error: 'No supported fields in data' },
           { status: 400 }
         );
+      }
+
+      if (!(await userOwnsFolders(userId, [updateData.folderId as number | null | undefined]))) {
+        return folderNotFound();
       }
 
       // Ensure user can only update their own plans

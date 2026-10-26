@@ -10,7 +10,18 @@ import { sendAuthorizationResultEmail } from "@/lib/email";
  * 
  * NOTE: This endpoint does NOT require JWT authentication as it is called
  * by an external service, not by authenticated users.
+ *
+ * Optional IP allowlist: set FAS_CALLBACK_ALLOWED_IPS (comma-separated) to only
+ * accept callbacks from those source IPs. Unset/empty = open (legacy behaviour).
+ * The source IP is the right-most X-Forwarded-For entry (the one appended by the
+ * trusted reverse proxy, Caddy), else X-Real-IP.
  */
+
+function getCallbackSourceIp(request: NextRequest): string | null {
+  const forwarded = request.headers.get("x-forwarded-for")?.split(",").pop()?.trim();
+  const ip = forwarded || request.headers.get("x-real-ip")?.trim();
+  return ip ? ip.replace(/^::ffff:/i, "") : null;
+}
 
 interface RouteParams {
   params: Promise<{ externalResponseNumber: string }>;
@@ -25,6 +36,19 @@ export async function PUT(
   { params }: RouteParams
 ): Promise<NextResponse> {
   try {
+    const allowedIps = (process.env.FAS_CALLBACK_ALLOWED_IPS ?? "")
+      .split(",")
+      .map((ip) => ip.trim().replace(/^::ffff:/i, ""))
+      .filter(Boolean);
+    const sourceIp = getCallbackSourceIp(request);
+    const allowed = allowedIps.length === 0 || (sourceIp !== null && allowedIps.includes(sourceIp));
+    console.info(
+      `[FAS Callback] source IP: ${sourceIp ?? "unknown"} allowed: ${allowed} (allowlist ${allowedIps.length === 0 ? "off" : "on"})`
+    );
+    if (!allowed) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const { externalResponseNumber } = await params;
 
     let body: Record<string, unknown>;
