@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- Cesium loaded dynamically, no static types */
 'use client'
 
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'

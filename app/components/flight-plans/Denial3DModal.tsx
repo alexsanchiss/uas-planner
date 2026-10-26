@@ -71,7 +71,9 @@ function loadCesiumScript(): Promise<any> {
     const script = document.createElement('script')
     script.src = '/cesium/Cesium.js'
     script.onload = () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Cesium loaded dynamically, no static types
       if ((window as any).Cesium) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Cesium loaded dynamically, no static types
         resolve((window as any).Cesium)
       } else {
         reject(new Error('Cesium failed to load'))
@@ -154,6 +156,7 @@ function feetToMeters(ft: number): number {
 
 const Denial3DModal: React.FC<Denial3DModalProps> = ({ isOpen, onClose, uplan, authorizationMessage, geoawarenessData }) => {
   const containerRef = useRef<HTMLDivElement>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Cesium loaded dynamically, no static types
   const viewerRef = useRef<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -253,6 +256,7 @@ const Denial3DModal: React.FC<Denial3DModalProps> = ({ isOpen, onClose, uplan, a
 
         // 3. Configure Cesium
         Cesium.Ion.defaultAccessToken = token
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Cesium loaded dynamically, no static types
         ;(window as any).CESIUM_BASE_URL = '/cesium'
 
         // 4. Create viewer
@@ -309,6 +313,7 @@ const Denial3DModal: React.FC<Denial3DModalProps> = ({ isOpen, onClose, uplan, a
           return
         }
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Cesium loaded dynamically, no static types
         const allPositions: any[] = []
 
         // 6. Add operation volumes
@@ -413,6 +418,7 @@ const Denial3DModal: React.FC<Denial3DModalProps> = ({ isOpen, onClose, uplan, a
 
         // 8. Camera - fly to all entities
         if (allPositions.length > 0) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Cesium loaded dynamically, no static types
           const cartesians = allPositions.map((c: any) =>
             Cesium.Cartesian3.fromRadians(c.longitude, c.latitude, c.height || 0)
           )
@@ -425,6 +431,7 @@ const Denial3DModal: React.FC<Denial3DModalProps> = ({ isOpen, onClose, uplan, a
         }
 
         setLoading(false)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Cesium loaded dynamically, no static types
       } catch (err: any) {
         if (!destroyed) {
           setError(err.message || 'Failed to initialize 3D viewer')

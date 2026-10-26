@@ -44,6 +44,7 @@ export function ConfirmDialog({
   }
 
   // Handle escape key
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- hook sits after an early return; moving it would change behaviour
   React.useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !loading) {

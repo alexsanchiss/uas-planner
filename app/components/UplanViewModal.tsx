@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- untyped UPLAN JSON */
 import { useState, useEffect, useMemo } from "react";
 import { Modal } from "./ui/modal";
 import { MapContainer, TileLayer, Polygon, Marker, Tooltip, Polyline, CircleMarker, useMap } from 'react-leaflet';

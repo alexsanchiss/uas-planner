@@ -129,6 +129,7 @@ export async function POST(
       );
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped external UPLAN JSON
     let uplan: any;
 
     if (isExternalUplan) {

@@ -48,6 +48,8 @@ if (process.env.NODE_ENV === 'development') {
 // =============================================================================
 const nextConfig = {
   // NO SECURITY HEADERS - Allow all connections for Cesium to work
+  // Lint runs as its own CI step (npm run lint)
+  eslint: { ignoreDuringBuilds: true },
 };
 
 export default nextConfig;

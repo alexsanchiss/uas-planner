@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- builds untyped UPLAN JSON */
 import Papa from "papaparse";
 import { generateOrientedBBox, Waypoint, DEFAULT_UPLAN_CONFIG, UplanConfig } from "./generate_oriented_volumes";
 import { generateRandomJSON } from "./generate_random_json";

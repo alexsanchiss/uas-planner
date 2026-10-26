@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- untyped UPLAN/CSV JSON */
 // app/components/FlightPlansUploaderDev.tsx
 //
 // FLIGHT PLANS UPLOADER DEV COMPONENT - Unified API Integration

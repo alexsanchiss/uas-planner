@@ -52,6 +52,7 @@ function LoginContent() {
         });
         // After signup, redirect to verification page
         router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- axios-like error shape not typed
       } catch (err: any) {
         // Handle validation errors from API
         if (err.response?.data?.error) {

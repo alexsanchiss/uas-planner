@@ -286,6 +286,7 @@ export function FlightPlansUploader() {
   // Task 11: Cesium 3D viewer state
   const [cesium3DModal, setCesium3DModal] = useState<{
     open: boolean
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped UPLAN JSON
     uplanData: any
   }>({ open: false, uplanData: null })
   // Task 17: 3D Denial viewer state
@@ -1204,6 +1205,7 @@ export function FlightPlansUploader() {
 
       const freshPlan = await response.json()
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped UPLAN JSON
       let uplanData: any = freshPlan.uplan
       if (typeof uplanData === 'string') {
         try { uplanData = JSON.parse(uplanData) } catch { uplanData = null }
@@ -1270,6 +1272,7 @@ export function FlightPlansUploader() {
       if (!response.ok) throw new Error('Failed to fetch plan data')
       const freshPlan = await response.json()
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped UPLAN JSON
       let uplanData: any = freshPlan.uplan
       if (typeof uplanData === 'string') {
         try { uplanData = JSON.parse(uplanData) } catch { uplanData = null }
@@ -2374,6 +2377,7 @@ export function FlightPlansUploader() {
         <AuthorizationResultModal
           isOpen={authResultModal.open}
           onClose={() => setAuthResultModal({ open: false, planId: null, uplanData: null, status: '', reason: null, geoawarenessData: null, planName: '' })}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped UPLAN JSON
           uplanData={authResultModal.uplanData as any}
           status={authResultModal.status}
           reason={authResultModal.reason}
@@ -2401,6 +2405,7 @@ export function FlightPlansUploader() {
           onClose={() => setGeoawareness3DModal({ open: false, planId: '', uspaceId: null, uplanData: null })}
           planId={geoawareness3DModal.planId}
           uspaceId={geoawareness3DModal.uspaceId}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped UPLAN JSON
           uplanData={geoawareness3DModal.uplanData as any}
         />
       )}

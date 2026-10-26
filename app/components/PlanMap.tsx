@@ -28,6 +28,7 @@ function formatPauseDuration(seconds: number): string {
 }
 
 // TASK-125 & TASK-129: Create custom icon with pause and fly-over indicators
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped waypoint/overlay objects from map layers
 function createWaypointIcon(wp: any, idx: number): L.DivIcon {
   const hasPause = wp.pauseDuration && wp.pauseDuration > 0;
   const pauseText = hasPause ? formatPauseDuration(wp.pauseDuration) : "";
@@ -263,6 +264,7 @@ function MapClickHandler({
   scanMode,
   areaName
 }: { 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped waypoint/overlay objects from map layers
   onAddWaypoint: (wp: any) => void; 
   onToast: (msg: string) => void; 
   bounds: [[number, number], [number, number]];
@@ -413,6 +415,7 @@ function ScanPopupContent({ title, subtitle, lat, lng, onCommit }: {
 }
 
 // SCAN Pattern Overlays Component
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped waypoint/overlay objects from map layers
 function ScanOverlays({ scanOverlays, onDragEnd }: { scanOverlays: any; onDragEnd?: (type: 'takeoff' | 'landing' | 'vertex', index: number, lat: number, lng: number) => void }) {
   const { t } = useI18n();
   if (!scanOverlays) return null;
@@ -658,8 +661,10 @@ interface PlanMapProps {
   center: [number, number];
   bounds: [[number, number], [number, number]];
   polylinePositions: [number, number][];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped waypoint/overlay objects from map layers
   handleAddWaypoint: (wp: any) => void;
   setToast: (msg: string) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped waypoint/overlay objects from map layers
   waypoints: any[];
   setSelectedIdx: (idx: number) => void;
   handleMarkerDragEnd: (idx: number, lat: number, lng: number) => void;

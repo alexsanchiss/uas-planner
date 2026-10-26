@@ -366,6 +366,7 @@ export default function PlanGenerator() {
   const handleWaypointChange = (
     idx: number,
     field: keyof Waypoint,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped waypoint/file objects
     value: any
   ) => {
     setWaypoints((wps) =>
@@ -586,6 +587,7 @@ export default function PlanGenerator() {
       let folderId: number | null = null;
       const foldersRes = await axios.get(`/api/folders`, { headers });
       const planGenFolder = foldersRes.data.find(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped waypoint/file objects
         (f: any) => f.name === "Plan Definition"
       );
       if (planGenFolder) {
@@ -617,6 +619,7 @@ export default function PlanGenerator() {
       setPlanName("");
       toast.success(`Plan "${planName}" saved. Redirecting to Plan Authorization...`);
       router.push(`/plan-authorization?selectPlan=${createdPlanId}`);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped waypoint/file objects
     } catch (err: any) {
       showToast(
         "Error uploading the plan: " +
@@ -867,7 +870,7 @@ export default function PlanGenerator() {
               }}
               className="m-2 px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-hover)] transition-colors text-sm font-medium"
             >
-              Don't Use a Pre-Defined Area
+              Don&apos;t Use a Pre-Defined Area
             </button>
           </div>
         </div>

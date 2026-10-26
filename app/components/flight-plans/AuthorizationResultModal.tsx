@@ -343,6 +343,7 @@ function Cesium3DView({ volumes, isApproved, conflictingIndices, geozones, allGe
         if (destroyed) return
 
         Cesium.Ion.defaultAccessToken = token
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Cesium loaded dynamically, no static types
         ;(window as any).CESIUM_BASE_URL = '/cesium'
 
         const viewer = new Cesium.Viewer(containerRef.current!, {
@@ -436,6 +437,7 @@ function Cesium3DView({ volumes, isApproved, conflictingIndices, geozones, allGe
               : allConflicting
           }
 
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Cesium loaded dynamically, no static types
           let material, outlineColor: any
           if (isApproved) {
             material = Cesium.Color.fromCssColorString('rgba(34, 197, 94, 0.45)')

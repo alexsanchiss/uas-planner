@@ -92,6 +92,7 @@ function extractWaypointsFromQGC(fileContent: string): Array<{ type: 'Point'; co
     
     const items = qgcPlan.mission.items;
     // Filter to only waypoint commands: 22 (takeoff), 16 (waypoint), 21 (landing)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped QGC plan JSON from uploaded file
     const waypointItems = items.filter((item: any) => 
       [22, 16, 21].includes(item.command) && 
       item.params && 

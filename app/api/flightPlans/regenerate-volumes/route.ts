@@ -35,6 +35,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const plansNeedingRegeneration = plans.filter(plan => {
       // Check if uplan exists and has operationVolumes
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped JSON column parsed from string or object
       let uplanObj: any = plan.uplan
       
       if (typeof uplanObj === 'string') {
