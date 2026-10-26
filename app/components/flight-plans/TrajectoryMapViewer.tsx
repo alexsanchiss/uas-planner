@@ -1,7 +1,8 @@
 'use client'
 
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useId, useMemo } from 'react'
 import dynamic from 'next/dynamic'
+import { useDialogA11y } from '@/app/hooks/useDialogA11y'
 import 'leaflet/dist/leaflet.css'
 
 // Dynamically import Leaflet components to avoid SSR issues
@@ -253,6 +254,8 @@ export function TrajectoryMapViewer({ planId, planName, onClose, className = '' 
   const [csvContent, setCsvContent] = useState<string>('')
   const [showLabels, setShowLabels] = useState(true)
   const [selectedPoint, setSelectedPoint] = useState<TrajectoryPoint | null>(null)
+  const dialogRef = useDialogA11y<HTMLDivElement>(true, onClose) // mounted only while open
+  const titleId = useId()
 
   // Fetch trajectory data
   useEffect(() => {
@@ -371,11 +374,11 @@ export function TrajectoryMapViewer({ planId, planName, onClose, className = '' 
 
   return (
     <div className={`fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 ${className}`}>
-      <div className="bg-[var(--bg-primary)] rounded-2xl shadow-2xl w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} className="bg-[var(--bg-primary)] rounded-2xl shadow-2xl w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden outline-none">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border-primary)]">
           <div>
-            <h2 className="text-xl font-bold text-[var(--text-primary)]">
+            <h2 id={titleId} className="text-xl font-bold text-[var(--text-primary)]">
               Trajectory: {planName || 'Unnamed'}
             </h2>
             {trajectory.length > 0 && (

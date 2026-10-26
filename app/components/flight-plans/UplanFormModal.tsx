@@ -16,7 +16,8 @@
  * @implements TASK-012 through TASK-022
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useId, useRef } from 'react';
+import { useDialogA11y } from '@/app/hooks/useDialogA11y';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Checkbox } from '../ui/checkbox';
@@ -737,6 +738,9 @@ export default function UplanFormModal({
   const gcsLocation = existingUplanObj.gcsLocation as { coordinates?: number[] } | undefined;
   const operationVolumes = existingUplanObj.operationVolumes as unknown[] | undefined;
 
+  const dialogRef = useDialogA11y<HTMLDivElement>(open, onClose);
+  const titleId = useId();
+
   if (!open) return null;
 
   return (
@@ -749,7 +753,7 @@ export default function UplanFormModal({
           .uplan-modal-outer { margin-top: 20px !important; margin-bottom: 0 !important; }
         }
       `}</style>
-      <div className="bg-gray-900 rounded-lg shadow-lg w-full max-w-3xl max-h-[85vh] overflow-hidden relative flex flex-col uplan-modal-outer">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} className="bg-gray-900 rounded-lg shadow-lg w-full max-w-3xl max-h-[85vh] overflow-hidden relative flex flex-col uplan-modal-outer outline-none">
         {/* Header */}
         <div
           className="px-6 py-4 border-b border-gray-700 flex items-center justify-between"
@@ -760,7 +764,7 @@ export default function UplanFormModal({
             zIndex: 2,
           }}
         >
-          <h2 className="text-xl font-bold text-white">
+          <h2 id={titleId} className="text-xl font-bold text-white">
             Review U-Plan: {planName}
           </h2>
           <button
@@ -866,7 +870,7 @@ export default function UplanFormModal({
                       onChange={(e) => setNewDraftName(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') handleSaveNewDraft();
-                        if (e.key === 'Escape') { setShowSaveDraftInput(false); setNewDraftName(''); }
+                        if (e.key === 'Escape') { e.stopPropagation(); setShowSaveDraftInput(false); setNewDraftName(''); } // cancels the draft name only, not the dialog
                       }}
                       placeholder="Draft name..."
                       className="py-1 text-sm w-40"

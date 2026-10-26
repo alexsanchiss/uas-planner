@@ -1,7 +1,8 @@
 'use client'
 
 import { loadCesium } from '@/lib/cesium-loader'
-import React, { useState, useMemo, useEffect, useRef } from 'react'
+import React, { useState, useMemo, useEffect, useId, useRef } from 'react'
+import { useDialogA11y } from '@/app/hooks/useDialogA11y'
 import dynamic from 'next/dynamic'
 import { useGeoawarenessWebSocket, type GeozoneData } from '@/app/hooks/useGeoawarenessWebSocket'
 import { parseScrsAlternative, hasFailedScrsAlternative } from '@/lib/scrs'
@@ -901,13 +902,8 @@ const AuthorizationResultModal: React.FC<AuthorizationResultModalProps> = ({
     }
   }, [parsedDetails])
 
-  // Escape key handler
-  useEffect(() => {
-    if (!isOpen) return
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [isOpen, onClose])
+  const dialogRef = useDialogA11y<HTMLDivElement>(isOpen, onClose)
+  const titleId = useId()
 
   // Reset tab when modal opens — default to 3D view; bump mapKey to force
   // Leaflet to initialize on a fresh DOM node (avoids "already initialized").
@@ -932,7 +928,7 @@ const AuthorizationResultModal: React.FC<AuthorizationResultModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="mt-20 bg-[var(--surface-primary)] dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} className="mt-20 bg-[var(--surface-primary)] dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden outline-none">
         {/* Header */}
         <div className={`px-6 py-4 border-b flex items-center justify-between ${
           isApproved
@@ -950,7 +946,7 @@ const AuthorizationResultModal: React.FC<AuthorizationResultModalProps> = ({
               </svg>
             )}
             <div>
-              <h2 className={`text-lg font-semibold ${
+              <h2 id={titleId} className={`text-lg font-semibold ${
                 isApproved ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'
               }`}>
                 {planName}
