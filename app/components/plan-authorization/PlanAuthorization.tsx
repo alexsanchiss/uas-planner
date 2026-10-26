@@ -18,6 +18,7 @@ import { ConfirmDialog } from '@/app/components/ui/confirm-dialog'
 import { useAuth } from '@/app/hooks/useAuth'
 import { useFlightPlans } from '@/app/hooks/useFlightPlans'
 import { useFolders } from '@/app/hooks/useFolders'
+import { useMediaQuery } from '@/app/hooks/useMediaQuery'
 import { useToast } from '@/app/hooks/useToast'
 import { useVolumeRegeneration } from '@/app/hooks/useVolumeRegeneration'
 import { FolderPanel, type FolderPanelHandle, type FolderStatusCounts, type FolderView } from './FolderPanel'
@@ -72,8 +73,9 @@ export function PlanAuthorization({ mode }: { mode: Mode }) {
   const pa = t.planAuth
   const toast = useToast()
   const dev = mode === 'dev'
+  const wide = useMediaQuery('(min-width: 1024px)') // table from lg (Tailwind), cards below; only one is mounted
 
-  const fp = useFlightPlans({ summary: true })
+  const fp =useFlightPlans({ summary: true })
   const fo = useFolders({ summary: true })
   // Auto-regenerate missing operation volumes every 30 s (P-61)
   useVolumeRegeneration(!!user)
@@ -354,7 +356,7 @@ export function PlanAuthorization({ mode }: { mode: Mode }) {
                   </StateMessage>
                 ) : (
                   <>
-                    <div className="hidden lg:block">
+                    {wide ? (
                       <PlanTable
                         plans={pagePlans}
                         ctx={ctx}
@@ -367,14 +369,15 @@ export function PlanAuthorization({ mode }: { mode: Mode }) {
                         onTogglePage={togglePage}
                         onFocusPlan={focusPlan}
                       />
-                    </div>
-                    <ul className="space-y-3 lg:hidden">
-                      {pagePlans.map((plan) => (
-                        <li key={plan.id}>
-                          <PlanCard plan={plan} ctx={ctx} focused={focusedId === plan.id} selected={selectedSet.has(plan.id)} selectable={dev} onToggleSelect={toggleSelect} onFocusPlan={focusPlan} />
-                        </li>
-                      ))}
-                    </ul>
+                    ) : (
+                      <ul className="space-y-3">
+                        {pagePlans.map((plan) => (
+                          <li key={plan.id}>
+                            <PlanCard plan={plan} ctx={ctx} focused={focusedId === plan.id} selected={selectedSet.has(plan.id)} selectable={dev} onToggleSelect={toggleSelect} onFocusPlan={focusPlan} />
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                     {totalPages > 1 && (
                       <nav aria-label={pa.table.pagination} className="flex items-center justify-between gap-3">
                         <button type="button" className={SECONDARY} disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>
