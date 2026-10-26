@@ -7,11 +7,15 @@
  */
 
 import { pageEn, pageEs, type PageTranslations } from './pages'
+import { planAuthEn, planAuthEs, type PlanAuthTranslations } from './planAuthorization'
 
 export type Language = 'en' | 'es'
 
 // Shell, boundaries, titles, Plan Activation, auth pages and account pages live in ./pages.
 export interface Translations extends PageTranslations {
+  // Plan authorization screen (texts live in ./planAuthorization)
+  planAuth: PlanAuthTranslations
+
   // Common
   common: {
     loading: string
@@ -494,6 +498,7 @@ export interface Translations extends PageTranslations {
 export const translations: Record<Language, Translations> = {
   en: {
     ...pageEn,
+    planAuth: planAuthEn,
     common: {
       loading: 'Loading...',
       error: 'Error',
@@ -939,6 +944,7 @@ export const translations: Record<Language, Translations> = {
 
   es: {
     ...pageEs,
+    planAuth: planAuthEs,
     common: {
       loading: 'Cargando...',
       error: 'Error',
