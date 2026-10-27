@@ -82,75 +82,37 @@ export function primaryView(plan: PlanRow, { a, busy, pa }: RowCtx): PrimaryView
   }
 }
 
-/** The "More" menu of a plan: views, edit, downloads, move, reset, delete. Disabled entries carry their reason. */
+/**
+ * The "More" menu of a plan: views, edit, downloads, move, reset, delete.
+ * Only what applies to the plan's current state is listed (nothing greyed out):
+ * before processing a plan has waypoints only; trajectory, U-plan and geoawareness views
+ * appear once processing produced them.
+ */
 export function planMenuEntries(plan: PlanRow, ctx: RowCtx, startRename: () => void): MenuEntry[] {
   const { a, busy, mode, folders, pa } = ctx
   const l = pa.actions
-  const r = pa.actions.reasons
   const phase = planPhase(plan)
   const auth = authPhase(plan)
   const processed = phase === 'done'
   const hasTrajectory = processed && !!plan.csvResult
+  const hasGeneratedUplan = hasTrajectory && plan.hasUplan
   const viewing = busy.is('viewer', plan.id)
   const downloading = busy.is('download', plan.id)
-  const hasData = plan.hasFileContent || plan.hasUplan
   const decided = auth === 'approved' || auth === 'denied' || auth === 'withdrawn'
-  const editable = auth === 'none'
+  // Dev edits the U-plan any time before authorization (as the old Dev did); prod only once it was generated.
+  const canEditUplan = auth === 'none' && (mode === 'dev' || hasGeneratedUplan)
 
+  const views: (MenuEntry | false)[] = [
+    plan.hasFileContent && { id: 'waypoints', label: l.viewWaypoints, icon: MapPinned, loading: viewing, onSelect: () => a.openWaypoints(plan) },
+    hasTrajectory && { id: 'trajectory2d', label: l.viewTrajectory2d, icon: MapIcon, onSelect: () => a.openTrajectory2d(plan) },
+    hasTrajectory && { id: 'trajectory3d', label: l.viewTrajectory3d, icon: Route, onSelect: () => a.openTrajectory3d(plan) },
+    hasGeneratedUplan && { id: 'uplan3d', label: l.viewUplan3d, icon: Box, loading: viewing, onSelect: () => a.openUplan3d(plan) },
+    hasGeneratedUplan && { id: 'uplan2d', label: l.viewUplan2d, icon: Layers, loading: viewing, onSelect: () => a.openUplan2d(plan) },
+    !!uspaceOf(plan.geoawarenessData) && { id: 'geo3d', label: l.viewGeo3d, icon: Globe, loading: viewing, onSelect: () => a.openGeo3d(plan) },
+  ]
   const entries: MenuEntry[] = [
     { id: 'rename', label: l.rename, icon: Pencil, onSelect: startRename },
-    {
-      id: 'waypoints',
-      label: l.viewWaypoints,
-      icon: MapPinned,
-      disabled: !plan.hasFileContent,
-      reason: r.noPlanFile,
-      loading: viewing,
-      onSelect: () => a.openWaypoints(plan),
-    },
-    {
-      id: 'trajectory2d',
-      label: l.viewTrajectory2d,
-      icon: MapIcon,
-      disabled: !hasTrajectory,
-      reason: processed ? r.noTrajectory : r.processFirst,
-      onSelect: () => a.openTrajectory2d(plan),
-    },
-    {
-      id: 'trajectory3d',
-      label: l.viewTrajectory3d,
-      icon: Route,
-      disabled: !hasTrajectory,
-      reason: processed ? r.noTrajectory : r.processFirst,
-      onSelect: () => a.openTrajectory3d(plan),
-    },
-    {
-      id: 'uplan3d',
-      label: l.viewUplan3d,
-      icon: Box,
-      disabled: !hasData,
-      reason: r.noUplan,
-      loading: viewing,
-      onSelect: () => a.openUplan3d(plan),
-    },
-    {
-      id: 'uplan2d',
-      label: l.viewUplan2d,
-      icon: Layers,
-      disabled: !plan.hasUplan,
-      reason: r.noUplan,
-      loading: viewing,
-      onSelect: () => a.openUplan2d(plan),
-    },
-    {
-      id: 'geo3d',
-      label: l.viewGeo3d,
-      icon: Globe,
-      disabled: !uspaceOf(plan.geoawarenessData),
-      reason: r.noGeoawareness,
-      loading: viewing,
-      onSelect: () => a.openGeo3d(plan),
-    },
+    ...views.filter((e): e is MenuEntry => !!e),
   ]
 
   if (decided) {
@@ -160,39 +122,12 @@ export function planMenuEntries(plan: PlanRow, ctx: RowCtx, startRename: () => v
     entries.push({ id: 'scrs', label: l.viewAlternative, icon: Route, loading: viewing, onSelect: () => a.openScrs(plan) })
   }
 
-  entries.push(
-    {
-      id: 'editUplan',
-      label: l.editUplan,
-      icon: FileJson,
-      separatorBefore: true,
-      // Dev edits the U-plan any time before authorization (as the old Dev did); prod only once processed.
-      disabled: (mode === 'prod' && !processed) || !editable,
-      reason: editable ? r.processFirst : auth === 'pending' ? r.fasProcessing : r.alreadyDecided,
-      loading: viewing,
-      onSelect: () => a.openUplanForm(plan),
-    },
-    {
-      id: 'downloadUplan',
-      label: l.downloadUplan,
-      icon: Download,
-      disabled: !plan.csvResult,
-      reason: r.noTrajectory,
-      loading: downloading,
-      onSelect: () => a.downloadUplanJson(plan),
-    }
-  )
-  if (mode === 'dev') {
-    entries.push({
-      id: 'downloadCsv',
-      label: l.downloadCsv,
-      icon: Table2,
-      disabled: !hasTrajectory,
-      reason: processed ? r.noTrajectory : r.processFirst,
-      loading: downloading,
-      onSelect: () => a.downloadCsv(plan),
-    })
-  }
+  const fileEntries: (MenuEntry | false)[] = [
+    canEditUplan && { id: 'editUplan', label: l.editUplan, icon: FileJson, loading: viewing, onSelect: () => a.openUplanForm(plan) },
+    hasTrajectory && { id: 'downloadUplan', label: l.downloadUplan, icon: Download, loading: downloading, onSelect: () => a.downloadUplanJson(plan) },
+    mode === 'dev' && hasTrajectory && { id: 'downloadCsv', label: l.downloadCsv, icon: Table2, loading: downloading, onSelect: () => a.downloadCsv(plan) },
+  ]
+  fileEntries.filter((e): e is MenuEntry => !!e).forEach((e, i) => entries.push(i === 0 ? { ...e, separatorBefore: true } : e))
 
   const targets: MenuEntry[] = folders
     .filter((f) => f.id !== plan.folderId)
@@ -200,17 +135,9 @@ export function planMenuEntries(plan: PlanRow, ctx: RowCtx, startRename: () => v
   if (plan.folderId !== null) targets.push({ id: 'move-none', label: l.noFolder, separatorBefore: targets.length > 0, onSelect: () => a.move(plan, null) })
   if (targets.length > 0) entries.push({ id: 'move', label: l.moveTo, icon: FolderInput, children: targets, separatorBefore: true })
 
-  entries.push(
-    {
-      id: 'reset',
-      label: l.reset,
-      icon: RotateCcw,
-      separatorBefore: targets.length === 0,
-      disabled: phase === 'idle',
-      reason: r.nothingToReset,
-      onSelect: () => a.reset(plan),
-    },
-    { id: 'delete', label: l.delete, icon: Trash2, tone: 'danger', onSelect: () => a.remove(plan) }
-  )
+  if (phase !== 'idle') {
+    entries.push({ id: 'reset', label: l.reset, icon: RotateCcw, separatorBefore: targets.length === 0, onSelect: () => a.reset(plan) })
+  }
+  entries.push({ id: 'delete', label: l.delete, icon: Trash2, tone: 'danger', separatorBefore: targets.length === 0 && phase === 'idle', onSelect: () => a.remove(plan) })
   return entries
 }
