@@ -68,7 +68,7 @@ export function ProdPlanAuthorization() {
   const selectedId = selectedPlan?.id ?? null
   const pushed = useRef(false) // this visit pushed the plan screen on the history (phones)
   const handledParam = useRef(false)
-  const lastOpened = useRef<number | null>(null)
+  const prevParam = useRef<string | null>(param)
   const clearing = useRef<string | null>(null) // stale ?selectPlan being cleared (one history operation)
 
   const go = useCallback(
@@ -121,15 +121,18 @@ export function ProdPlanAuthorization() {
     if (first) go(first.id, 'replace')
   }, [loaded, wide, selectedId, folders, plans, go])
 
-  // Phones: back on the list, focus returns to the row that was open
+  // Phones: once the URL is back on the list (back button / gesture, or the open plan was deleted), focus the row that
+  // was open, or the list heading when that plan is gone. Keyed on the URL so it runs after the navigation.
   useEffect(() => {
-    if (selectedId === null && lastOpened.current !== null && !wide) {
-      // the row that was open, or the list heading when that plan is gone
-      const row = document.querySelector<HTMLElement>(`[data-plan-row="${lastOpened.current}"]`) ?? document.querySelector<HTMLElement>('[data-plan-list-heading]')
-      row?.focus()
-    }
-    lastOpened.current = selectedId
-  }, [selectedId, wide])
+    const was = prevParam.current
+    prevParam.current = param
+    if (!was || param || wide) return
+    const raf = requestAnimationFrame(() => {
+      const target = document.querySelector<HTMLElement>(`[data-plan-row="${was}"]`) ?? document.querySelector<HTMLElement>('[data-plan-list-heading]')
+      target?.focus()
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [param, wide])
 
   const retry = () => {
     fp.resetErrors()

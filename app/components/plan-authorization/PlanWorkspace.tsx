@@ -72,6 +72,14 @@ export function PlanWorkspace({ plan, ctx, focusOnOpen, onBack }: Props) {
   const timeStep = kind === 'step' && step === 2
   const processStep = kind === 'step' && step === 3
   const savingTime = ctx.busy.is('schedule', plan.id)
+  const hasBar = !!primary
+
+  // Phones: the action bar is fixed; the page reserves its height (rule in globals.css) while it is mounted
+  useEffect(() => {
+    if (!hasBar) return
+    document.body.setAttribute('data-action-bar', '')
+    return () => document.body.removeAttribute('data-action-bar')
+  }, [hasBar])
 
   const copy =
     kind === 'noFile'
@@ -93,7 +101,7 @@ export function PlanWorkspace({ plan, ctx, focusOnOpen, onBack }: Props) {
   const actionClass = 'w-full lg:w-auto'
 
   return (
-    <div className={`flex flex-col gap-4 ${primary ? 'pb-24 lg:pb-0' : ''}`}>
+    <div className="flex flex-col gap-4">
       <header className="flex flex-col gap-1">
         <button
           type="button"
