@@ -1,6 +1,7 @@
 /** Text of "where is this plan" for the production list rows and the workspace progress (pure, no React). */
 
-import { interpolate, type Translations } from '@/app/i18n'
+import { interpolate } from '@/app/i18n/interpolate'
+import type { Translations } from '@/app/i18n/translations'
 import { formatShortDateTime, planProgress, WORKFLOW_STEPS, type PlanProgress, type PlanRow } from './lib'
 
 type Workspace = Translations['planAuth']['workspace']

@@ -38,7 +38,7 @@ export function SyncIndicator({ lastSyncedAt, isSyncing, failed, onRefresh }: In
         disabled={isSyncing}
         aria-label={pa.refresh}
         title={pa.refresh}
-        className="inline-flex h-9 w-9 items-center justify-center rounded-md text-fg-2 hover:bg-hover hover:text-fg disabled:opacity-50"
+        className="inline-flex h-11 w-11 items-center justify-center rounded-md text-fg-2 hover:bg-hover hover:text-fg disabled:opacity-50 lg:h-9 lg:w-9"
       >
         <RefreshCw className="h-4 w-4" aria-hidden="true" />
       </button>

@@ -16,7 +16,7 @@ interface Props {
   onClose: () => void
 }
 
-const ICON_BTN = 'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-fg-2 hover:bg-hover hover:text-fg disabled:opacity-50'
+const ICON_BTN = 'inline-flex h-11 w-11 shrink-0 lg:h-9 lg:w-9 items-center justify-center rounded-md text-fg-2 hover:bg-hover hover:text-fg disabled:opacity-50'
 
 /** Inline rename (plan and folder names): Enter saves, Escape cancels, the error is announced under the input. */
 export function InlineNameForm({ initial, label, validate, onSubmit, onClose }: Props) {

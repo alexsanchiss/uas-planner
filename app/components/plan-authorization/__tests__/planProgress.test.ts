@@ -3,12 +3,6 @@
  * list-row / progress text of planStatusText. Pure: no React, no network.
  */
 
-// planStatus imports `interpolate` from the React barrel '@/app/i18n' (I18nContext.tsx cannot load in the node env),
-// so it is mocked here with the same one-line implementation.
-jest.mock('@/app/i18n', () => ({
-  interpolate: (template: string, vars: Record<string, string | number>) => template.replace(/{(\w+)}/g, (_: string, key: string) => String(vars[key] ?? `{${key}}`)),
-}))
-
 import { getTranslation } from '@/app/i18n/translations'
 import { completedSteps, currentStep, needsAction, planProgress, primaryActionId, WORKFLOW_STEPS, type PlanRow } from '../lib'
 import { planStatusText } from '../planStatus'
@@ -42,6 +36,7 @@ const CASES: { name: string; plan: PlanRow; kind: string; step: number; needsAct
   { name: 'queued', plan: plan({ status: 'en cola', scheduledAt: WHEN }), kind: 'processing', step: 3, needsAction: false, line: 'Step 3 of 5 · Processing…', short: 'Processing…' },
   { name: 'processing', plan: plan({ status: 'procesando', scheduledAt: WHEN }), kind: 'processing', step: 3, needsAction: false, line: 'Step 3 of 5 · Processing…', short: 'Processing…' },
   { name: 'processed', plan: plan(processed), kind: 'step', step: 4, needsAction: true, line: 'Step 4 of 5 · Review', short: 'Review' },
+  { name: 'processed without a time (imported U-plan)', plan: plan({ ...processed, scheduledAt: null, hasFileContent: false, csvResult: 0 }), kind: 'step', step: 4, needsAction: true, line: 'Step 4 of 5 \u00b7 Review', short: 'Review' },
   { name: 'pending at FAS', plan: plan({ ...processed, authorizationStatus: 'pendiente' }), kind: 'authorizing', step: 5, needsAction: false, line: 'Step 5 of 5 · Awaiting FAS', short: 'Awaiting FAS' },
   { name: 'Dev bulk marker counts as pending', plan: plan({ ...processed, authorizationStatus: 'procesando autorización' as never }), kind: 'authorizing', step: 5, needsAction: false, line: 'Step 5 of 5 · Awaiting FAS', short: 'Awaiting FAS' },
   { name: 'approved (no time shown when unscheduled)', plan: plan({ ...processed, scheduledAt: null, authorizationStatus: 'aprobado' }), kind: 'approved', step: 5, needsAction: false, line: 'Approved', short: 'Approved' },
@@ -95,9 +90,10 @@ describe('the stepper and the progress text agree on the current step', () => {
   // currentStep: 'select'(1) 'datetime'(2) 'process'(3) 'geoawareness'(4) 'authorize'(5)
   const NUM: Record<string, number> = { select: 1, datetime: 2, process: 3, geoawareness: 4, authorize: 5 }
 
-  it('for every state with a time set, the highlighted step is the "Step N of 5" of the row', () => {
+  it('for every state, the highlighted step of the stepper is the "Step N of 5" of the row (one source: currentStep)', () => {
     for (const c of CASES) {
-      if (!c.plan.scheduledAt || ['approved', 'denied', 'withdrawn', 'error'].includes(c.kind)) continue // error: the stepper marks the failed step itself
+      // decided: whole guide done; error: the stepper marks the failed step; noFile: no stepper position
+      if (['approved', 'denied', 'withdrawn', 'error', 'noFile'].includes(c.kind)) continue
       expect({ name: c.name, step: NUM[currentStep(c.plan)] }).toEqual({ name: c.name, step: c.step })
     }
   })
@@ -106,10 +102,26 @@ describe('the stepper and the progress text agree on the current step', () => {
     for (const a of ['aprobado', 'denegado', 'withdrawn']) expect(completedSteps(plan({ ...processed, authorizationStatus: a as never }))).toEqual(WORKFLOW_STEPS)
   })
 
-  // Pins today's behaviour for a processed plan that has no scheduledAt (e.g. an imported U-plan): the stepper
-  // highlights "Time" (step 2) while the row says "Step 4 of 5". Reported to the owner as a finding.
-  it('KNOWN GAP: a processed plan without scheduledAt is step 4 in the row but "Time" (2) in the stepper', () => {
-    const p = plan({ status: 'procesado', csvResult: 1, hasUplan: true, scheduledAt: null })
-    expect({ row: planProgress(p).step, stepper: NUM[currentStep(p)] }).toEqual({ row: 4, stepper: 2 })
+  it('a processed plan without scheduledAt (imported U-plan) is step 4 "Review" in the row, the bar and the stepper', () => {
+    const p = plan({ status: 'procesado', csvResult: 0, hasUplan: true, hasFileContent: false, scheduledAt: null })
+    expect({ row: planProgress(p).step, stepper: NUM[currentStep(p)] }).toEqual({ row: 4, stepper: 4 })
+    expect(completedSteps(p)).not.toContain('datetime') // the time was never set, but the stepper no longer sits on it
+  })
+
+  it('an unprocessed plan with a file and no time is "Time"; with a time, "Process"', () => {
+    expect(NUM[currentStep(plan())]).toBe(2)
+    expect(NUM[currentStep(plan({ scheduledAt: WHEN }))]).toBe(3)
+  })
+
+  it('processing without a time (should not happen) stays on "Process", never back on "Time"', () => {
+    expect(NUM[currentStep(plan({ status: 'procesando' }))]).toBe(3)
+  })
+})
+
+describe('planStatus and interpolate load without the React i18n barrel', () => {
+  it('interpolate fills {vars} and keeps unknown ones', async () => {
+    const { interpolate } = await import('@/app/i18n/interpolate')
+    expect(interpolate('Step {n} of 5 \u00b7 {label}', { n: 2, label: 'Time' })).toBe('Step 2 of 5 \u00b7 Time')
+    expect(interpolate('{a} {b}', { a: 1 })).toBe('1 {b}')
   })
 })

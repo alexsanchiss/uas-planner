@@ -33,7 +33,7 @@ import { usePlanActions } from './usePlanActions'
 import { ViewerHost } from './ViewerHost'
 
 const SECONDARY =
-  'inline-flex min-h-9 items-center gap-1.5 rounded-md border border-line-2 bg-surface px-3 text-sm font-medium text-fg hover:bg-hover'
+  'inline-flex min-h-11 items-center gap-1.5 rounded-md border border-line-2 bg-surface px-3 text-sm font-medium text-fg hover:bg-hover lg:min-h-9'
 const NONE_SELECTED: number[] = []
 
 export function ProdPlanAuthorization() {
@@ -69,6 +69,7 @@ export function ProdPlanAuthorization() {
   const pushed = useRef(false) // this visit pushed the plan screen on the history (phones)
   const handledParam = useRef(false)
   const lastOpened = useRef<number | null>(null)
+  const clearing = useRef<string | null>(null) // stale ?selectPlan being cleared (one history operation)
 
   const go = useCallback(
     (id: number | null, how: 'push' | 'replace') => {
@@ -100,10 +101,17 @@ export function ProdPlanAuthorization() {
     if (selectedPlan) toast.success(interpolate(pa.toast.importedFromDefinition, { name: selectedPlan.customName }))
   }, [loaded, plans.length, selectedPlan, toast, pa])
 
-  // A plan that no longer exists (deleted, stale link) clears the selection
+  // A plan that no longer exists (deleted, stale link) clears the selection. If this visit pushed the plan screen,
+  // going back removes that entry (history [list]); otherwise the entry is replaced.
   useEffect(() => {
-    if (loaded && param && !selectedPlan) go(null, 'replace')
-  }, [loaded, param, selectedPlan, go])
+    if (!param) clearing.current = null
+    if (!loaded || !param || selectedPlan || clearing.current === param) return
+    clearing.current = param
+    if (pushed.current) {
+      pushed.current = false
+      router.back()
+    } else go(null, 'replace')
+  }, [loaded, param, selectedPlan, go, router])
 
   // Desktop: never an empty workspace; the first plan that needs action, else the first plan (visual list order)
   useEffect(() => {
@@ -116,7 +124,8 @@ export function ProdPlanAuthorization() {
   // Phones: back on the list, focus returns to the row that was open
   useEffect(() => {
     if (selectedId === null && lastOpened.current !== null && !wide) {
-      const row = document.querySelector<HTMLElement>(`[data-plan-row="${lastOpened.current}"]`)
+      // the row that was open, or the list heading when that plan is gone
+      const row = document.querySelector<HTMLElement>(`[data-plan-row="${lastOpened.current}"]`) ?? document.querySelector<HTMLElement>('[data-plan-list-heading]')
       row?.focus()
     }
     lastOpened.current = selectedId

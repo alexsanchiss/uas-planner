@@ -198,12 +198,16 @@ export function isScheduleLocked(p: PlanRow): boolean {
 /** Current step of the 5-step guide (old getCurrentStep). */
 export function currentStep(p: PlanRow | null): WorkflowStep {
   if (!p) return 'select'
-  if (!p.scheduledAt) return 'datetime'
   const phase = planPhase(p)
-  if (phase === 'idle' || phase === 'queued' || phase === 'processing') return 'process'
-  if (phase === 'done' && authPhase(p) === 'none') return 'geoawareness'
-  if (authPhase(p) === 'pending') return 'authorize'
-  return 'select'
+  // Where the plan is, whatever its scheduledAt (an imported U-plan is processed without one): the stepper, the
+  // list rows and the mobile progress bar all read this (planProgress below maps it to 1..5).
+  if (phase === 'queued' || phase === 'processing') return 'process'
+  if (phase === 'done') {
+    const a = authPhase(p)
+    return a === 'none' ? 'geoawareness' : a === 'pending' ? 'authorize' : 'select'
+  }
+  if (!p.scheduledAt) return 'datetime'
+  return phase === 'idle' ? 'process' : 'select'
 }
 
 /** Completed steps of the 5-step guide (old getCompletedSteps). */

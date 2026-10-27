@@ -113,7 +113,7 @@ export function PlanList({ folders, plans, selectedId, onSelect, onCreateFolder,
   return (
     <section aria-labelledby={headId} className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2">
-        <h2 id={headId} className="text-lg font-semibold text-fg">
+        <h2 id={headId} data-plan-list-heading tabIndex={-1} className="text-lg font-semibold text-fg outline-none">
           {w.yourPlans}
         </h2>
         <button type="button" aria-expanded={newOpen} onClick={() => setNewOpen((o) => !o)} className={SECONDARY}>
@@ -218,7 +218,7 @@ export function PlanList({ folders, plans, selectedId, onSelect, onCreateFolder,
                       {head}
                     </button>
                   )}
-                  {folder && <ActionMenu label={interpolate(pa.folders.menuFor, { name: folder.name })} entries={entries} className="h-11 w-11 lg:h-9 lg:w-9" />}
+                  {folder && <ActionMenu label={interpolate(pa.folders.menuFor, { name: folder.name })} entries={entries} touch />}
                 </div>
               )}
 

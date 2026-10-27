@@ -59,7 +59,7 @@ export function NewFolderForm({ existing, onCreate, inputRef }: Props) {
           disabled={creating}
           aria-label={pa.create}
           title={pa.create}
-          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-brand text-brand-fg hover:bg-brand-hover disabled:opacity-50"
+          className="inline-flex h-11 w-11 shrink-0 lg:h-10 lg:w-10 items-center justify-center rounded-md bg-brand text-brand-fg hover:bg-brand-hover disabled:opacity-50"
         >
           {creating ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Plus className="h-4 w-4" aria-hidden="true" />}
         </button>

@@ -295,45 +295,79 @@ describe('primaryView (the one action of the step)', () => {
     for (const s of ['scheduled', 'processedNoUspace', 'approved', 'error'] as StateName[]) expect(typeof primaryView(STATES[s], ctx('prod'))?.run).toBe('function')
   })
 
-  it('the primary result action is also a tile: documented duplicate (decided plans offer "View result" twice)', () => {
+  it('planViewEntries still lists the result tile; PlanWorkspace hides it when the primary action is viewResult (checked in the browser smoke)', () => {
     const tile = ids(planViewEntries(STATES.approved, ctx('prod'))).includes('result')
     expect({ primary: primary('approved'), tile }).toEqual({ primary: 'viewResult', tile: true })
   })
 })
 
 /**
- * KNOWN BUGS found by the R5 review. `it.failing` keeps the suite green while the source is wrong and starts
- * FAILING as soon as it is fixed: then turn each into a plain `it`.
+ * Regressions found by the R5 review (all fixed): geoawareness / U-plan / download gates. Each test fails if its
+ * fix is reverted.
  */
-describe('KNOWN BUGS (it.failing: flip to it when fixed)', () => {
+describe('R5 regressions', () => {
   // Plan Definition stores geoawarenessData { uspace_identifier } when the pilot picks a U-space (PlanGenerator, TASK-045),
-  // so a freshly created plan, or one that was reset, is unprocessed but "has U-space data": geo3d is not gated by processing.
+  // so a new plan, or a reset one, is unprocessed but "has U-space data": geo3d must wait for processing (phase done).
   const unprocessedUspace = plan({ geoawarenessData: USPACE })
   const resetUspace = plan({ geoawarenessData: USPACE, scheduledAt: WHEN })
 
-  it.failing('prod: a new plan created with a U-space offers only its waypoints (no "View geoawareness 3D")', () => {
+  it('prod: a new plan created with a U-space offers only its waypoints (no "View geoawareness 3D")', () => {
     expect(ids(planViewEntries(unprocessedUspace, ctx('prod')))).toEqual(['waypoints'])
   })
-  it.failing('prod: a reset plan that keeps its U-space offers only its waypoints', () => {
+  it('prod: a reset plan that keeps its U-space offers only its waypoints', () => {
     expect(ids(planViewEntries(resetUspace, ctx('prod')))).toEqual(['waypoints'])
   })
-  it.failing('Dev: an unprocessed plan with U-space data lists no geoawareness view', () => {
+  it('Dev: an unprocessed plan with U-space data lists no geoawareness view', () => {
     expect(ids(planViewEntries(unprocessedUspace, ctx('dev')))).not.toContain('geo3d')
   })
+  it('geoawareness waits for phase done, not for a trajectory: queued, processing and failed plans with U-space data have none', () => {
+    for (const status of ['en cola', 'procesando', 'error'] as const)
+      for (const mode of ['prod', 'dev'] as const) {
+        const got = ids(planViewEntries(plan({ status, scheduledAt: WHEN, geoawarenessData: USPACE, csvResult: 1, hasUplan: true }), ctx(mode))).includes('geo3d')
+        expect({ status, mode, got }).toEqual({ status, mode, got: false })
+      }
+  })
+  it('a processed plan with U-space data and no trajectory (imported) does offer geoawareness (the gate is the phase)', () => {
+    const p = plan({ status: 'procesado', hasFileContent: false, hasUplan: true, csvResult: 0, geoawarenessData: USPACE })
+    expect(ids(planViewEntries(p, ctx('prod')))).toContain('geo3d')
+  })
 
-  // POST /api/flightPlans {type:'external_uplan'} creates status 'procesado', fileContent null, csvResult 0, uplan set.
-  // hasGeneratedUplan requires hasTrajectory (csvResult), so an imported U-plan can no longer be viewed or edited
-  // (the pre-da6abc3 menu enabled uplan 2D/3D by hasUplan and edit by "processed").
+  // POST /api/flightPlans {type:'external_uplan'} creates status 'procesado', fileContent null, csvResult 0, uplan set:
+  // U-plan views / edit / download must not depend on csvResult (trajectory and CSV still do).
   const imported = plan({ status: 'procesado', hasFileContent: false, hasUplan: true, csvResult: 0, scheduledAt: WHEN })
 
-  it.failing('prod: an imported external U-plan can be viewed (2D / 3D) and reviewed/edited before requesting authorization', () => {
-    expect(ids(planViewEntries(imported, ctx('prod')))).toEqual(['uplan3d', 'uplan2d', 'editUplan'])
+  it('prod: an imported external U-plan offers U-plan 3D / 2D, review/edit and download (no trajectory, no waypoints)', () => {
+    expect(ids(planViewEntries(imported, ctx('prod')))).toEqual(['uplan3d', 'uplan2d', 'editUplan', 'downloadUplan'])
   })
-  it.failing('Dev: an imported external U-plan keeps its U-plan 2D / 3D views', () => {
-    expect(ids(planViewEntries(imported, ctx('dev')))).toEqual(expect.arrayContaining(['uplan3d', 'uplan2d', 'editUplan']))
+  it('Dev: an imported external U-plan keeps U-plan 2D / 3D, edit and download, but no trajectory or CSV', () => {
+    expect(ids(planViewEntries(imported, ctx('dev')))).toEqual(['uplan3d', 'uplan2d', 'editUplan', 'downloadUplan'])
   })
-  it('imported external U-plan today: no tiles at all (pins the current behaviour behind the failing tests above)', () => {
-    expect(ids(planViewEntries(imported, ctx('prod')))).toEqual([])
+  it('imported plan: edit disappears once FAS has it; views, result and download stay', () => {
+    const pending = plan({ ...imported, authorizationStatus: 'pendiente' })
+    const approved = plan({ ...imported, authorizationStatus: 'aprobado' })
+    expect(ids(planViewEntries(pending, ctx('prod')))).toEqual(['uplan3d', 'uplan2d', 'downloadUplan'])
+    expect(ids(planViewEntries(approved, ctx('prod')))).toEqual(['uplan3d', 'uplan2d', 'result', 'downloadUplan'])
+  })
+  it('the U-plan gate needs a processed plan: an unprocessed / queued / failed plan with a stored U-plan (even with csvResult set) has no U-plan, download or trajectory entries', () => {
+    for (const mode of ['prod', 'dev'] as const)
+      for (const status of ['sin procesar', 'en cola', 'procesando', 'error'] as const) {
+        const got = ids(planViewEntries(plan({ status, hasUplan: true, csvResult: 1, scheduledAt: WHEN }), ctx(mode)))
+        for (const id of ['uplan3d', 'uplan2d', 'downloadUplan', 'trajectory2d', 'trajectory3d']) expect({ mode, status, id, listed: got.includes(id) }).toEqual({ mode, status, id, listed: false })
+      }
+  })
+  it('download of the U-plan needs a trajectory or a stored U-plan: processed with neither has no file entries', () => {
+    const none = plan({ status: 'procesado', csvResult: 0, hasUplan: false, scheduledAt: WHEN })
+    expect(ids(planViewEntries(none, ctx('prod')))).toEqual(['waypoints'])
+    const traj = plan({ status: 'procesado', csvResult: 1, hasUplan: false, scheduledAt: WHEN })
+    expect(ids(planViewEntries(traj, ctx('prod')))).toContain('downloadUplan')
+  })
+  it('trajectory views and the CSV still depend on csvResult (an imported plan has none)', () => {
+    for (const mode of ['prod', 'dev'] as const) {
+      const got = ids(planViewEntries(imported, ctx(mode)))
+      for (const id of ['trajectory2d', 'trajectory3d', 'downloadCsv']) expect({ mode, id, listed: got.includes(id) }).toEqual({ mode, id, listed: false })
+    }
+  })
+  it('imported plan: the primary action is still "request authorization"', () => {
     expect(primaryView(imported, ctx('prod'))?.id).toBe('requestAuth')
   })
 })

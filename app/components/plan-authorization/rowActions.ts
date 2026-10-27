@@ -90,16 +90,18 @@ function facts(plan: PlanRow, ctx: RowCtx) {
   const phase = planPhase(plan)
   const auth = authPhase(plan)
   const hasTrajectory = phase === 'done' && !!plan.csvResult
+  // The U-plan gates do not depend on a trajectory: an imported external U-plan is `procesado` with csvResult 0.
+  const hasStoredUplan = phase === 'done' && plan.hasUplan
   return {
     phase,
     auth,
     hasTrajectory,
-    hasGeneratedUplan: hasTrajectory && plan.hasUplan,
+    hasStoredUplan,
     viewing: busy.is('viewer', plan.id),
     downloading: busy.is('download', plan.id),
     decided: auth === 'approved' || auth === 'denied' || auth === 'withdrawn',
     // Dev edits the U-plan any time before authorization (as the old Dev did); prod only once it was generated.
-    canEditUplan: auth === 'none' && (mode === 'dev' || (hasTrajectory && plan.hasUplan)),
+    canEditUplan: auth === 'none' && (mode === 'dev' || hasStoredUplan),
   }
 }
 
@@ -112,15 +114,15 @@ function facts(plan: PlanRow, ctx: RowCtx) {
 export function planViewEntries(plan: PlanRow, ctx: RowCtx): MenuEntry[] {
   const { a, mode, pa } = ctx
   const l = pa.actions
-  const { auth, hasTrajectory, hasGeneratedUplan, viewing, downloading, decided, canEditUplan } = facts(plan, ctx)
+  const { auth, phase, hasTrajectory, hasStoredUplan, viewing, downloading, decided, canEditUplan } = facts(plan, ctx)
 
   const views: (MenuEntry | false)[] = [
     plan.hasFileContent && { id: 'waypoints', label: l.viewWaypoints, icon: MapPinned, loading: viewing, onSelect: () => a.openWaypoints(plan) },
     hasTrajectory && { id: 'trajectory2d', label: l.viewTrajectory2d, icon: MapIcon, onSelect: () => a.openTrajectory2d(plan) },
     hasTrajectory && { id: 'trajectory3d', label: l.viewTrajectory3d, icon: Route, onSelect: () => a.openTrajectory3d(plan) },
-    hasGeneratedUplan && { id: 'uplan3d', label: l.viewUplan3d, icon: Box, loading: viewing, onSelect: () => a.openUplan3d(plan) },
-    hasGeneratedUplan && { id: 'uplan2d', label: l.viewUplan2d, icon: Layers, loading: viewing, onSelect: () => a.openUplan2d(plan) },
-    !!uspaceOf(plan.geoawarenessData) && { id: 'geo3d', label: l.viewGeo3d, icon: Globe, loading: viewing, onSelect: () => a.openGeo3d(plan) },
+    hasStoredUplan && { id: 'uplan3d', label: l.viewUplan3d, icon: Box, loading: viewing, onSelect: () => a.openUplan3d(plan) },
+    hasStoredUplan && { id: 'uplan2d', label: l.viewUplan2d, icon: Layers, loading: viewing, onSelect: () => a.openUplan2d(plan) },
+    phase === 'done' && !!uspaceOf(plan.geoawarenessData) && { id: 'geo3d', label: l.viewGeo3d, icon: Globe, loading: viewing, onSelect: () => a.openGeo3d(plan) },
   ]
   const entries: MenuEntry[] = views.filter((e): e is MenuEntry => !!e)
 
@@ -133,7 +135,7 @@ export function planViewEntries(plan: PlanRow, ctx: RowCtx): MenuEntry[] {
 
   const fileEntries: (MenuEntry | false)[] = [
     canEditUplan && { id: 'editUplan', label: l.editUplan, icon: FileJson, loading: viewing, onSelect: () => a.openUplanForm(plan) },
-    hasTrajectory && { id: 'downloadUplan', label: l.downloadUplan, icon: Download, loading: downloading, onSelect: () => a.downloadUplanJson(plan) },
+    (hasTrajectory || hasStoredUplan) && { id: 'downloadUplan', label: l.downloadUplan, icon: Download, loading: downloading, onSelect: () => a.downloadUplanJson(plan) },
     mode === 'dev' && hasTrajectory && { id: 'downloadCsv', label: l.downloadCsv, icon: Table2, loading: downloading, onSelect: () => a.downloadCsv(plan) },
   ]
   fileEntries.filter((e): e is MenuEntry => !!e).forEach((e, i) => entries.push(i === 0 ? { ...e, separatorBefore: true } : e))

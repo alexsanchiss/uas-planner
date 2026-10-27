@@ -10,12 +10,9 @@ import { authPhase, formatDateTime, formatShortDateTime, isScheduleLocked, messa
 import { planStatusText } from './planStatus'
 import { PrimaryAction } from './PrimaryAction'
 import { planManageEntries, planViewEntries, primaryView, type RowCtx } from './rowActions'
-import { BTN_PRIMARY, ScheduleField } from './SchedulePopover'
+import { ScheduleField } from './SchedulePopover'
 import { AuthStatusBadge, PlanStatusBadge } from './StatusBadge'
 import { WorkflowStepper } from './WorkflowStepper'
-
-/** Order of the view tiles (the menu order of rowActions is kept for Dev). */
-const TILE_ORDER = ['waypoints', 'trajectory2d', 'trajectory3d', 'uplan2d', 'uplan3d', 'geo3d', 'editUplan', 'downloadUplan', 'result', 'scrs']
 
 const FILL: Record<ProgressKind, string> = {
   noFile: 'bg-brand',
@@ -67,9 +64,8 @@ export function PlanWorkspace({ plan, ctx, focusOnOpen, onBack }: Props) {
   const primary = primaryView(plan, ctx)
   const auth = authPhase(plan)
   const manage = planManageEntries(plan, ctx, () => setRenaming(true))
-  const tiles = planViewEntries(plan, ctx)
-    .filter((e) => TILE_ORDER.includes(e.id))
-    .sort((a, b) => TILE_ORDER.indexOf(a.id) - TILE_ORDER.indexOf(b.id))
+  // The primary action already opens the result: no second tile for it
+  const tiles = planViewEntries(plan, ctx).filter((e) => !(e.id === 'result' && primary?.id === 'viewResult'))
   const scheduledShort = formatShortDateTime(plan.scheduledAt, language)
   const messageForAlt = messageText(plan.authorizationMessage)
   const noAlternative = auth === 'denied' && !!messageForAlt && hasFailedScrsAlternative(messageForAlt)
@@ -94,10 +90,10 @@ export function PlanWorkspace({ plan, ctx, focusOnOpen, onBack }: Props) {
               ? { title: w.titles.error, body: pa.workflow.prompts.error }
               : { title: w.titles[kind], body: pa.workflow.prompts.decided }
 
-  const actionClass = 'min-h-11 w-full lg:min-h-10 lg:w-auto'
+  const actionClass = 'w-full lg:w-auto'
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className={`flex flex-col gap-4 ${primary ? 'pb-24 lg:pb-0' : ''}`}>
       <header className="flex flex-col gap-1">
         <button
           type="button"
@@ -136,7 +132,7 @@ export function PlanWorkspace({ plan, ctx, focusOnOpen, onBack }: Props) {
               )}
             </div>
           </div>
-          <ActionMenu label={interpolate(w.manageFor, { name: plan.customName })} entries={manage} className="h-11 w-11 lg:h-9 lg:w-9" />
+          <ActionMenu label={interpolate(w.manageFor, { name: plan.customName })} entries={manage} touch />
         </div>
       </header>
 
@@ -163,7 +159,7 @@ export function PlanWorkspace({ plan, ctx, focusOnOpen, onBack }: Props) {
 
       <section
         aria-labelledby={stepId}
-        className="lg:order-1 lg:rounded-t-lg lg:border lg:border-b-0 lg:border-line lg:bg-surface lg:px-5 lg:pb-3 lg:pt-5"
+        className="lg:rounded-t-lg lg:border lg:border-b-0 lg:border-line lg:bg-surface lg:px-5 lg:pb-3 lg:pt-5"
       >
         <h3 id={stepId} className="text-base font-semibold text-fg">
           {copy.title}
@@ -230,8 +226,25 @@ export function PlanWorkspace({ plan, ctx, focusOnOpen, onBack }: Props) {
         )}
       </section>
 
+      {primary && (
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 sm:px-6 lg:static lg:-mt-4 lg:rounded-b-lg lg:border lg:border-t-0 lg:px-5 lg:pb-5 lg:pt-1">
+          {primary.id === 'schedule' ? (
+            <button
+              type="submit"
+              form={timeFormId}
+              disabled={savingTime || locked}
+              className={`inline-flex min-h-11 items-center justify-center gap-1.5 whitespace-nowrap rounded-md bg-brand px-3 text-sm font-medium text-brand-fg hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-50 lg:min-h-10 ${actionClass}`}
+            >
+              {savingTime ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <CalendarClock className="h-4 w-4" aria-hidden="true" />}
+              {w.saveTime}
+            </button>
+          ) : (
+            <PrimaryAction plan={plan} ctx={ctx} touch className={actionClass} />
+          )}
+        </div>
+      )}
       {tiles.length > 0 && (
-        <section aria-labelledby={viewsId} className="lg:order-3">
+        <section aria-labelledby={viewsId}>
           <h3 id={viewsId} className="mb-2 text-sm font-semibold text-fg">
             {w.views}
           </h3>
@@ -259,19 +272,6 @@ export function PlanWorkspace({ plan, ctx, focusOnOpen, onBack }: Props) {
             })}
           </ul>
         </section>
-      )}
-
-      {primary && (
-        <div className="sticky bottom-0 z-20 -mx-4 border-t border-line bg-surface px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 sm:-mx-6 sm:px-6 lg:static lg:order-2 lg:mx-0 lg:-mt-4 lg:rounded-b-lg lg:border lg:border-t-0 lg:px-5 lg:pb-5 lg:pt-1">
-          {primary.id === 'schedule' ? (
-            <button type="submit" form={timeFormId} disabled={savingTime || locked} className={`${BTN_PRIMARY} ${actionClass}`}>
-              {savingTime ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <CalendarClock className="h-4 w-4" aria-hidden="true" />}
-              {w.saveTime}
-            </button>
-          ) : (
-            <PrimaryAction plan={plan} ctx={ctx} className={actionClass} />
-          )}
-        </div>
       )}
     </div>
   )
