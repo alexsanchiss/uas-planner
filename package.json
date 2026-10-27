@@ -31,7 +31,7 @@
     "dotenv": "^16.6.1",
     "embla-carousel-react": "^8.6.0",
     "file-saver": "^2.0.5",
-    "framer-motion": "^12.43.0",
+    "framer-motion": "^14.6.0",
     "geodesy": "^2.4.0",
     "jsonwebtoken": "^9.0.3",
     "jszip": "^3.10.2",
