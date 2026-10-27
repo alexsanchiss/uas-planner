@@ -69,8 +69,8 @@ export function ConfirmDialog({
       }}
     >
       <AlertDialog.Portal>
-        <AlertDialog.Backdrop className="fixed inset-0 z-50 bg-overlay transition-opacity duration-150 data-[starting-style]:opacity-0 data-[ending-style]:opacity-0" />
-        <AlertDialog.Viewport className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <AlertDialog.Backdrop className="fixed inset-0 z-[10000] bg-overlay transition-opacity duration-150 data-[starting-style]:opacity-0 data-[ending-style]:opacity-0" />
+        <AlertDialog.Viewport className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
           <AlertDialog.Popup
             initialFocus={cancelRef}
             className="w-full max-w-md overflow-hidden rounded-lg border border-line bg-surface text-fg shadow-theme-lg transition duration-150 data-[starting-style]:scale-95 data-[starting-style]:opacity-0 data-[ending-style]:scale-95 data-[ending-style]:opacity-0"

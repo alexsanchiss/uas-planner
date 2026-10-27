@@ -1,6 +1,21 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- Cesium loaded dynamically, no static types */
 
+import { apiJson } from './api-client'
+
 let pending: Promise<any> | null = null
+let tokenPending: Promise<string> | null = null
+
+/**
+ * Cesium Ion access token (GET /api/cesium/token), fetched once per page session through apiJson (one refresh retry on a
+ * 401). A failed request is not cached.
+ */
+export function getCesiumToken(): Promise<string> {
+  const p = (tokenPending ??= apiJson<{ token: string }>('/api/cesium/token').then((r) => r.token))
+  p.catch(() => {
+    if (tokenPending === p) tokenPending = null
+  })
+  return p
+}
 
 /**
  * Load Cesium from the pre-built UMD bundle in /public/cesium (client only).

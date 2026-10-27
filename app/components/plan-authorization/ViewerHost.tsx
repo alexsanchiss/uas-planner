@@ -1,44 +1,23 @@
 'use client'
 
-import { useState, type ComponentProps } from 'react'
+import { useState } from 'react'
 import dynamic from 'next/dynamic'
 import { interpolate, useI18n } from '@/app/i18n'
 import { Modal } from '@/app/components/ui/modal'
 import { getAuthToken } from '@/lib/api-client'
+import type { Preset } from '@/app/components/plan-viewer/viewerStyle'
+import type { ViewerDetail } from '@/app/components/plan-viewer/PlanViewer'
 import type { TrajectoryRow } from './files'
-import type { UplanData, Waypoint } from './lib'
+import type { AuthPhase, PlanPhase, UplanData } from './lib'
 
-// Heavy viewers (Leaflet / Cesium / three) load on demand and never during SSR.
-const WaypointMapModal = dynamic(() => import('@/app/components/flight-plans/WaypointMapModal'), { ssr: false })
-const TrajectoryMapViewer = dynamic(() => import('@/app/components/flight-plans/TrajectoryMapViewer'), { ssr: false })
-const Trajectory3DViewer = dynamic(() => import('@/app/components/flight-plans/Trajectory3DViewer'), { ssr: false })
-const Cesium3DModal = dynamic(() => import('@/app/components/flight-plans/Cesium3DModal'), { ssr: false })
-const Geoawareness3DModal = dynamic(() => import('@/app/components/flight-plans/Geoawareness3DModal'), { ssr: false })
-const AuthorizationResultModal = dynamic(() => import('@/app/components/flight-plans/AuthorizationResultModal'), { ssr: false })
-const AlternativeTrajectoryModal = dynamic(() => import('@/app/components/flight-plans/AlternativeTrajectoryModal'), { ssr: false })
+// Heavy viewers (Leaflet / Cesium) load on demand and never during SSR.
+const PlanViewer = dynamic(() => import('@/app/components/plan-viewer/PlanViewer'), { ssr: false })
 const UplanFormModal = dynamic(() => import('@/app/components/flight-plans/UplanFormModal'), { ssr: false })
-const UplanViewModal = dynamic(() => import('@/app/components/UplanViewModal'), { ssr: false })
 const MapModal = dynamic(() => import('@/app/components/MapModal'), { ssr: false })
 const BulkUplanViewModal = dynamic(() => import('@/app/components/BulkUplanViewModal'), { ssr: false })
 
-type Wp = { lat: number; lon: number; alt?: number }
-
 export type ViewerState =
-  | { kind: 'waypoints'; planName: string; waypoints: Waypoint[] }
-  | { kind: 'trajectory2d'; planId: number; planName: string }
-  | { kind: 'trajectory3d'; planId: number; planName: string }
-  | { kind: 'uplan3d'; uplanData: UplanData }
-  | { kind: 'uplan2d'; name: string; uplan: UplanData | null; fileContent: string | null }
-  | { kind: 'geo3d'; planId: number; uspaceId: string; uplanData: UplanData | null }
-  | {
-      kind: 'result'
-      planId: number
-      planName: string
-      status: 'aprobado' | 'denegado' | 'withdrawn'
-      reason: string | null
-      uplanData: UplanData | null
-      geoawarenessData: unknown
-    }
+  | { kind: 'planViewer'; preset: Preset; planId: number; planName: string; plan: PlanPhase; auth: AuthPhase; detail: ViewerDetail }
   | {
       kind: 'uplanForm'
       planId: number
@@ -53,13 +32,6 @@ export type ViewerState =
   | { kind: 'multiTrajectory'; title: string; trajectories: TrajectoryRow[][]; names: string[] }
   | { kind: 'bulkUplans'; uplans: UplanData[]; names: string[] }
   | { kind: 'bulkErrors'; errors: { name: string; message: unknown }[] }
-
-/** SCRS proposal compared with the current route (opens on top of the result modal). */
-export interface ScrsState {
-  planId: number
-  current: Wp[]
-  alternative: Wp[]
-}
 
 function MultiTrajectory({ title, trajectories, names, onClose }: { title: string; trajectories: TrajectoryRow[][]; names: string[]; onClose: () => void }) {
   const [idxs, setIdxs] = useState<number[]>(() => trajectories.map(() => 0))
@@ -92,11 +64,9 @@ function BulkErrors({ errors, onClose }: { errors: { name: string; message: unkn
 interface Props {
   viewer: ViewerState | null
   onClose: () => void
-  scrs: ScrsState | null
-  onCloseScrs: () => void
+  /** "Accept alternative" of the plan viewer is running. */
   acceptingScrs: boolean
-  onAcceptScrs: () => void
-  onOpenScrs: (current: Wp[], alternative: Wp[]) => void
+  onAcceptScrs: (planId: number) => void
   /** UplanFormModal saved a draft / the U-plan. */
   onFormSaved: () => void
   /** "Save & request authorization" inside the U-plan form. */
@@ -104,31 +74,21 @@ interface Props {
 }
 
 /** Mounts the viewer that is open (conditionally, so every open starts from a fresh state). */
-export function ViewerHost({ viewer, onClose, scrs, onCloseScrs, acceptingScrs, onAcceptScrs, onOpenScrs, onFormSaved, onFormRequestAuth }: Props) {
-  const { t } = useI18n()
-  const pa = t.planAuth.viewers
-
+export function ViewerHost({ viewer, onClose, acceptingScrs, onAcceptScrs, onFormSaved, onFormRequestAuth }: Props) {
   return (
     <>
-      {viewer?.kind === 'waypoints' && <WaypointMapModal open onClose={onClose} title={pa.waypointsTitle} planName={viewer.planName} waypoints={viewer.waypoints} />}
-      {viewer?.kind === 'trajectory2d' && <TrajectoryMapViewer key={viewer.planId} planId={String(viewer.planId)} planName={viewer.planName} onClose={onClose} />}
-      {viewer?.kind === 'trajectory3d' && <Trajectory3DViewer isOpen onClose={onClose} planId={String(viewer.planId)} planName={viewer.planName} />}
-      {viewer?.kind === 'uplan3d' && <Cesium3DModal isOpen onClose={onClose} uplanData={viewer.uplanData as ComponentProps<typeof Cesium3DModal>['uplanData']} />}
-      {viewer?.kind === 'uplan2d' && <UplanViewModal open onClose={onClose} uplan={viewer.uplan} name={viewer.name} fileContent={viewer.fileContent} />}
-      {viewer?.kind === 'geo3d' && (
-        <Geoawareness3DModal isOpen onClose={onClose} planId={String(viewer.planId)} uspaceId={viewer.uspaceId} uplanData={viewer.uplanData as ComponentProps<typeof Geoawareness3DModal>['uplanData']} />
-      )}
-      {viewer?.kind === 'result' && (
-        <AuthorizationResultModal
-          isOpen
-          onClose={onClose}
-          uplanData={viewer.uplanData as ComponentProps<typeof AuthorizationResultModal>['uplanData']}
-          status={viewer.status}
-          reason={viewer.reason}
-          geoawarenessData={viewer.geoawarenessData}
+      {viewer?.kind === 'planViewer' && (
+        <PlanViewer
+          key={`${viewer.planId}-${viewer.preset}`}
+          preset={viewer.preset}
+          planId={viewer.planId}
           planName={viewer.planName}
-          planId={String(viewer.planId)}
-          onViewScrsAlternative={onOpenScrs}
+          plan={viewer.plan}
+          auth={viewer.auth}
+          detail={viewer.detail}
+          onClose={onClose}
+          accepting={acceptingScrs}
+          onAcceptScrs={() => onAcceptScrs(viewer.planId)}
         />
       )}
       {viewer?.kind === 'uplanForm' && (
@@ -151,18 +111,6 @@ export function ViewerHost({ viewer, onClose, scrs, onCloseScrs, acceptingScrs, 
       {viewer?.kind === 'multiTrajectory' && <MultiTrajectory title={viewer.title} trajectories={viewer.trajectories} names={viewer.names} onClose={onClose} />}
       {viewer?.kind === 'bulkUplans' && <BulkUplanViewModal open onClose={onClose} uplans={viewer.uplans} names={viewer.names} />}
       {viewer?.kind === 'bulkErrors' && <BulkErrors errors={viewer.errors} onClose={onClose} />}
-
-      {scrs && (
-        <AlternativeTrajectoryModal
-          open
-          onClose={onCloseScrs}
-          currentWaypoints={scrs.current}
-          alternativeWaypoints={scrs.alternative}
-          onAccept={onAcceptScrs}
-          onReject={onCloseScrs}
-          isProcessing={acceptingScrs}
-        />
-      )}
     </>
   )
 }

@@ -5,7 +5,10 @@
  *   >= lg: two panes (sticky plan list | workspace of the selected plan).
  *   <  lg: two screens in the same route (list | workspace); the selection lives in the URL (?selectPlan=<id>)
  *          and is pushed to the history, so the browser / OS back gesture returns to the list.
- * Same hooks, actions, confirmations and viewers as Dev (see DevPlanAuthorization); PARITY.md has the capability list.
+ * Same actions, confirmations and viewers as Dev (see DevPlanAuthorization); PARITY.md has the capability list.
+ * Scale: the list never loads every plan. Folders come with their plan counts (useFolders `counts`), a folder loads
+ * its first 25 plans when it is expanded, the name search runs on the server and the selected plan is fetched by id
+ * (useFolderPlans). Polling refreshes only what is on screen.
  */
 
 import { useCallback, useEffect, useMemo, useRef } from 'react'
@@ -15,7 +18,8 @@ import { CircleHelp, Inbox } from 'lucide-react'
 import { interpolate, useI18n } from '@/app/i18n'
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog'
 import { useAuth } from '@/app/hooks/useAuth'
-import { useFlightPlans } from '@/app/hooks/useFlightPlans'
+import { POLL_IDLE_MS } from '@/app/hooks/useFlightPlans'
+import { folderKey, NO_FOLDER_KEY, SEARCH_KEY, useFolderPlans } from '@/app/hooks/useFolderPlans'
 import { useFolders } from '@/app/hooks/useFolders'
 import { useMediaQuery } from '@/app/hooks/useMediaQuery'
 import { useToast } from '@/app/hooks/useToast'
@@ -46,26 +50,37 @@ export function ProdPlanAuthorization() {
   const params = useSearchParams()
   const wide = useMediaQuery('(min-width: 1024px)')
 
-  const fp = useFlightPlans({ summary: true })
-  const fo = useFolders({ summary: true })
+  const param = params.get('selectPlan')
+  const paramId = param && /^\d+$/.test(param) ? Number(param) : null
+
+  // Folder counts at the slow rate; the plans of the groups on screen + the selected plan (3 s while one is in progress)
+  const fo = useFolders({ counts: true, pollingInterval: POLL_IDLE_MS, pollingEnabled: true })
+  const pg = useFolderPlans({ selectedId: paramId, onCountsStale: fo.refresh })
+  const fp = pg.fp
+  const { open: openGroup } = pg
+  const pgRef = useRef(pg) // latest pages for the effects below, without re-running them on every render
+  pgRef.current = pg
   useVolumeRegeneration(!!user) // regenerates missing operation volumes every 30 s (P-61)
 
-  const plans = fp.flightPlans
+  const plans = fp.flightPlans // loaded rows only
   const folders = fo.folders
   const busy = useBusy()
   const confirm = useConfirm()
   const actions = usePlanActions({ plans, fp, toast, confirm, busy })
-  const group = useGroupActions({ mode: 'prod', plans, fp, fo, toast, confirm, selected: NONE_SELECTED, setViewer: actions.setViewer })
+  const group = useGroupActions({ mode: 'prod', plans, fp, fo, toast, confirm, selected: NONE_SELECTED, setViewer: actions.setViewer, approvedIdsOf: pg.approvedIdsOf })
 
   const loaded = !fp.loading && !fo.loading
-  const noData = plans.length === 0 && folders.length === 0
+  const noData = folders.length === 0 && fo.noFolderCount === 0
   const loadFailed = (!!fp.error || !!fo.error) && noData
 
   // ---- Selection lives in the URL ----------------------------------------------------
 
-  const param = params.get('selectPlan')
-  const selectedPlan = useMemo(() => (param ? plans.find((p) => String(p.id) === param) ?? null : null), [param, plans])
+  const selectedPlan = useMemo(() => (paramId === null ? null : plans.find((p) => p.id === paramId) ?? null), [paramId, plans])
   const selectedId = selectedPlan?.id ?? null
+  // The URL names a plan that is not there (deleted, stale link): known once it was seen, or the server said so
+  const seen = useRef<string | null>(null)
+  if (selectedPlan) seen.current = param
+  const settled = !param || paramId === null || !!selectedPlan || pg.selectedMissing || seen.current === param
   const pushed = useRef(false) // this visit pushed the plan screen on the history (phones)
   const handledParam = useRef(false)
   const prevParam = useRef<string | null>(param)
@@ -105,21 +120,32 @@ export function ProdPlanAuthorization() {
   // going back removes that entry (history [list]); otherwise the entry is replaced.
   useEffect(() => {
     if (!param) clearing.current = null
-    if (!loaded || !param || selectedPlan || clearing.current === param) return
+    if (!loaded || !param || !settled || selectedPlan || clearing.current === param) return
     clearing.current = param
     if (pushed.current) {
       pushed.current = false
       router.back()
     } else go(null, 'replace')
-  }, [loaded, param, selectedPlan, go, router])
+  }, [loaded, param, settled, selectedPlan, go, router])
 
-  // Desktop: never an empty workspace; the first plan that needs action, else the first plan (visual list order)
+  // Desktop: open the first group that has plans (nothing else is loaded until a folder is expanded)
+  const autoOpened = useRef(false)
   useEffect(() => {
-    if (!loaded || !wide || selectedId !== null) return
-    const ordered = [...folders.flatMap((f) => plans.filter((p) => p.folderId === f.id)), ...plans.filter((p) => p.folderId === null)]
+    if (autoOpened.current || fo.loading || !wide || param) return
+    autoOpened.current = true
+    const first = folders.find((f) => f.planCount > 0)
+    if (first) openGroup(String(first.id))
+    else if (fo.noFolderCount > 0) openGroup(NO_FOLDER_KEY)
+  }, [fo.loading, wide, param, folders, fo.noFolderCount, openGroup])
+
+  // Desktop: never an empty workspace; the first loaded plan that needs action, else the first loaded plan (visual list order)
+  useEffect(() => {
+    if (!loaded || !wide || param) return
+    const { search, rowsOf } = pgRef.current
+    const ordered = search ? rowsOf(SEARCH_KEY) : [...folders.flatMap((f) => rowsOf(folderKey(f.id))), ...rowsOf(NO_FOLDER_KEY)]
     const first = ordered.find(needsAction) ?? ordered[0]
     if (first) go(first.id, 'replace')
-  }, [loaded, wide, selectedId, folders, plans, go])
+  }, [loaded, wide, param, folders, plans, go])
 
   // Phones: once the URL is back on the list (back button / gesture, or the open plan was deleted), focus the row that
   // was open, or the list heading when that plan is gone. Keyed on the URL so it runs after the navigation.
@@ -136,6 +162,7 @@ export function ProdPlanAuthorization() {
 
   const retry = () => {
     fp.resetErrors()
+    fo.startPolling()
     void fp.refresh()
     void fo.refresh()
   }
@@ -184,8 +211,10 @@ export function ProdPlanAuthorization() {
           <div className={`${workspaceScreen ? 'hidden lg:block' : ''} lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:overflow-y-auto lg:pr-1`}>
             <PlanList
               folders={folders}
-              plans={plans}
+              noFolderCount={fo.noFolderCount}
+              list={pg}
               selectedId={selectedId}
+              selectedKey={selectedPlan ? folderKey(selectedPlan.folderId) : null}
               onSelect={select}
               onCreateFolder={group.createFolder}
               onRenameFolder={group.renameFolder}
@@ -202,7 +231,7 @@ export function ProdPlanAuthorization() {
           <div className={`min-w-0 ${workspaceScreen ? '' : 'hidden lg:block'}`}>
             {selectedPlan ? (
               <PlanWorkspace key={selectedPlan.id} plan={selectedPlan} ctx={ctx} focusOnOpen={!wide} onBack={back} />
-            ) : plans.length === 0 ? (
+            ) : noData ? (
               noPlans
             ) : (
               <p className="text-sm text-fg-2">{pa.workspace.selectPrompt}</p>
@@ -226,11 +255,8 @@ export function ProdPlanAuthorization() {
       <ViewerHost
         viewer={actions.viewer}
         onClose={actions.closeViewer}
-        scrs={actions.scrs}
-        onCloseScrs={actions.closeScrs}
         acceptingScrs={actions.acceptingScrs}
-        onAcceptScrs={() => void actions.acceptScrs()}
-        onOpenScrs={actions.openScrsFromResult}
+        onAcceptScrs={(id) => void actions.acceptScrs(id)}
         onFormSaved={() => void fp.refresh()}
         onFormRequestAuth={actions.requestAuthById}
       />

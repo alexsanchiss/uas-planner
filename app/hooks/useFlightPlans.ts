@@ -128,6 +128,11 @@ interface UseFlightPlansOptions {
   pollingEnabled?: boolean
   /** Fetch the light listing (?fields=summary): rows are FlightPlanSummary (default: false) */
   summary?: boolean
+  /**
+   * Replaces the "load every plan" request (useFolderPlans: only the pages on screen). Needs `summary: true`.
+   * Every refresh (poll, after a mutation) calls it, so the list is whatever it returns.
+   */
+  fetcher?: () => Promise<FlightPlanSummary[]>
 }
 
 export interface UseFlightPlansReturn<TPlan = FlightPlan> {
@@ -280,6 +285,7 @@ export function useFlightPlans(
     pollingInterval,
     pollingEnabled = true,
     summary = false,
+    fetcher,
   } = options
 
   // Local state for optimistic updates
@@ -304,7 +310,7 @@ export function useFlightPlans(
     isPaused,
     pauseSync,
     resumeSync,
-  } = usePolling<(FlightPlan | FlightPlanSummary)[]>(() => fetchFlightPlans(summary), {
+  } = usePolling<(FlightPlan | FlightPlanSummary)[]>(fetcher ?? (() => fetchFlightPlans(summary)), {
     // Adaptive unless the caller fixed it: fast while a visible plan is in a transient state
     interval:
       pollingInterval ??

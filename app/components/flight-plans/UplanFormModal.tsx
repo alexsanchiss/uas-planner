@@ -744,7 +744,7 @@ export default function UplanFormModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black bg-opacity-60">
       <style>{`
         @media (min-width: 640px) {
           .uplan-modal-outer { margin-top: 120px !important; margin-bottom: 0 !important; }

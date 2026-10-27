@@ -211,6 +211,22 @@ export const flightPlanQuerySchema = z.object({
 });
 export type FlightPlanQueryInput = z.infer<typeof flightPlanQuerySchema>;
 
+/**
+ * Opt-in paging of GET /api/flightPlans (`fields=summary&limit=..`): one page of the light rows, newest first.
+ * folderId: a folder id, or 'none' for the plans without folder; omitted = every plan of the user.
+ * q: case-insensitive "name contains". An empty q (after trim) means no filter.
+ * authorizationStatus: exact filter (the client asks for the 'aprobado' ids of a folder before deleting it).
+ */
+export const flightPlanPageQuerySchema = z.object({
+  fields: z.literal('summary'),
+  limit: z.coerce.number().int().min(1).max(100),
+  offset: z.coerce.number().int().min(0).max(10_000_000).default(0),
+  folderId: z.union([z.literal('none'), idSchema]).optional(),
+  q: z.string().trim().max(100).optional(),
+  authorizationStatus: z.enum(['sin autorización', 'pendiente', 'aprobado', 'denegado', 'withdrawn']).optional(),
+});
+export type FlightPlanPageQueryInput = z.infer<typeof flightPlanPageQuerySchema>;
+
 // ============================================================================
 // External UPLAN Import Schema
 // ============================================================================

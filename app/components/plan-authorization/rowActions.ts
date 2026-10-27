@@ -7,16 +7,12 @@
 
 import {
   CalendarClock,
-  Box,
   Download,
   FileJson,
   FolderInput,
-  Globe,
   Hourglass,
   Layers,
   Loader2,
-  Map as MapIcon,
-  MapPinned,
   Pencil,
   Play,
   RotateCcw,
@@ -28,14 +24,12 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import type { Translations } from '@/app/i18n'
-import type { FolderSummary } from '@/app/hooks/useFolders'
+import type { FolderRef } from '@/app/hooks/useFolders'
 import type { MenuEntry } from './ActionMenu'
 import {
   authPhase,
-  hasScrsAlternative,
   planPhase,
   primaryActionId,
-  uspaceOf,
   type Mode,
   type PlanRow,
   type PrimaryId,
@@ -47,7 +41,7 @@ export interface RowCtx {
   mode: Mode
   a: PlanActions
   busy: Busy
-  folders: FolderSummary[]
+  folders: FolderRef[]
   pa: Translations['planAuth']
 }
 
@@ -80,7 +74,7 @@ export function primaryView(plan: PlanRow, { a, busy, pa }: RowCtx): PrimaryView
     case 'awaitingFas':
       return { id, label: l.awaitingFas, icon: Hourglass, disabled: true, loading: true, tone: 'neutral' }
     case 'viewResult':
-      return { id, label: l.viewResult, icon: ShieldCheck, run: () => a.openResult(plan), loading: busy.is('viewer', plan.id), tone: 'success' }
+      return { id, label: l.viewResult, icon: ShieldCheck, run: () => a.openViewer(plan, 'result'), loading: busy.is('viewer', plan.id), tone: 'success' }
   }
 }
 
@@ -106,31 +100,24 @@ function facts(plan: PlanRow, ctx: RowCtx) {
 }
 
 /**
- * The views and files of a plan (waypoints, trajectory, U-plan, geoawareness, review / edit, downloads, result,
- * SCRS alternative). Only what applies to the plan's current state is listed (nothing greyed out): before
- * processing a plan has waypoints only; trajectory, U-plan and geoawareness appear once processing produced them.
- * Menu order; `separatorBefore` only matters to menus.
+ * The views and files of a plan. Three viewer entries, all opening the ONE plan viewer with a preset: Route (waypoints +
+ * trajectory; before processing only the waypoints), U-plan (volumes; geozones are a layer inside) and, once FAS decided,
+ * Result (volumes + verdict + SCRS alternative). Review / edit and the downloads follow. Only what applies to the plan's
+ * current state is listed (nothing greyed out). Menu order; `separatorBefore` only matters to menus.
  */
 export function planViewEntries(plan: PlanRow, ctx: RowCtx): MenuEntry[] {
   const { a, mode, pa } = ctx
   const l = pa.actions
-  const { auth, phase, hasTrajectory, hasStoredUplan, viewing, downloading, decided, canEditUplan } = facts(plan, ctx)
+  const { hasTrajectory, hasStoredUplan, viewing, downloading, decided, canEditUplan } = facts(plan, ctx)
 
   const views: (MenuEntry | false)[] = [
-    plan.hasFileContent && { id: 'waypoints', label: l.viewWaypoints, icon: MapPinned, loading: viewing, onSelect: () => a.openWaypoints(plan) },
-    hasTrajectory && { id: 'trajectory2d', label: l.viewTrajectory2d, icon: MapIcon, onSelect: () => a.openTrajectory2d(plan) },
-    hasTrajectory && { id: 'trajectory3d', label: l.viewTrajectory3d, icon: Route, onSelect: () => a.openTrajectory3d(plan) },
-    hasStoredUplan && { id: 'uplan3d', label: l.viewUplan3d, icon: Box, loading: viewing, onSelect: () => a.openUplan3d(plan) },
-    hasStoredUplan && { id: 'uplan2d', label: l.viewUplan2d, icon: Layers, loading: viewing, onSelect: () => a.openUplan2d(plan) },
-    phase === 'done' && !!uspaceOf(plan.geoawarenessData) && { id: 'geo3d', label: l.viewGeo3d, icon: Globe, loading: viewing, onSelect: () => a.openGeo3d(plan) },
+    (plan.hasFileContent || hasTrajectory) && { id: 'route', label: l.viewRoute, icon: Route, loading: viewing, onSelect: () => a.openViewer(plan, 'route') },
+    hasStoredUplan && { id: 'uplan', label: l.viewUplan, icon: Layers, loading: viewing, onSelect: () => a.openViewer(plan, 'uplan') },
   ]
   const entries: MenuEntry[] = views.filter((e): e is MenuEntry => !!e)
 
   if (decided) {
-    entries.push({ id: 'result', label: l.viewResult, icon: ShieldCheck, loading: viewing, separatorBefore: true, onSelect: () => a.openResult(plan) })
-  }
-  if (auth === 'denied' && hasScrsAlternative(plan)) {
-    entries.push({ id: 'scrs', label: l.viewAlternative, icon: Route, loading: viewing, onSelect: () => a.openScrs(plan) })
+    entries.push({ id: 'result', label: l.viewResult, icon: ShieldCheck, loading: viewing, separatorBefore: true, onSelect: () => a.openViewer(plan, 'result') })
   }
 
   const fileEntries: (MenuEntry | false)[] = [
