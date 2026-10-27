@@ -3,10 +3,9 @@
 import { useId, useRef, useState, type DragEvent } from 'react'
 import { FileJson, Upload } from 'lucide-react'
 import { interpolate, useI18n } from '@/app/i18n'
-import { PLAN_DRAG_TYPE, type Mode } from './lib'
+import { PLAN_DRAG_TYPE } from './lib'
 
 interface Props {
-  mode: Mode
   folderName: string
   disabled?: boolean
   /** Files dropped or chosen (plans, .zip, U-plan .json): the container decides what each one is. */
@@ -16,8 +15,8 @@ interface Props {
 const btn =
   'inline-flex min-h-9 items-center gap-1.5 rounded-md border border-line-2 bg-surface px-3 text-sm font-medium text-fg hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50'
 
-/** Drag & drop + file pickers for the selected folder (plans and zips in Dev, external U-plan .json in both). */
-export function UploadDropzone({ mode, folderName, disabled, onFiles }: Props) {
+/** Dev: drag & drop + file pickers for the selected folder (plan files, zips and external U-plan .json). */
+export function UploadDropzone({ folderName, disabled, onFiles }: Props) {
   const { t } = useI18n()
   const pa = t.planAuth.upload
   const [over, setOver] = useState(false)
@@ -58,18 +57,14 @@ export function UploadDropzone({ mode, folderName, disabled, onFiles }: Props) {
     >
       <p id={hintId} className="flex items-center gap-2 text-sm text-fg-2">
         <Upload className="h-4 w-4 shrink-0" aria-hidden="true" />
-        {disabled ? pa.selectFolder : interpolate(mode === 'dev' ? pa.hintDev : pa.hintProd, { folder: folderName })}
+        {disabled ? pa.selectFolder : interpolate(pa.hintDev, { folder: folderName })}
       </p>
       <div className="flex flex-wrap gap-2">
-        {mode === 'dev' && (
-          <>
-            <input ref={plansInput} type="file" multiple className="sr-only" tabIndex={-1} aria-label={pa.plansInput} onChange={pick} />
-            <button type="button" className={btn} disabled={disabled} onClick={() => plansInput.current?.click()}>
-              <Upload className="h-4 w-4" aria-hidden="true" />
-              {pa.uploadPlans}
-            </button>
-          </>
-        )}
+        <input ref={plansInput} type="file" multiple className="sr-only" tabIndex={-1} aria-label={pa.plansInput} onChange={pick} />
+        <button type="button" className={btn} disabled={disabled} onClick={() => plansInput.current?.click()}>
+          <Upload className="h-4 w-4" aria-hidden="true" />
+          {pa.uploadPlans}
+        </button>
         <input ref={uplanInput} type="file" accept=".json,application/json" className="sr-only" tabIndex={-1} aria-label={pa.uplanInput} onChange={pick} />
         <button type="button" className={btn} disabled={disabled} onClick={() => uplanInput.current?.click()}>
           <FileJson className="h-4 w-4" aria-hidden="true" />

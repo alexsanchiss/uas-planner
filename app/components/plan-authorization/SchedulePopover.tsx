@@ -32,10 +32,15 @@ interface FieldProps {
   /** Saves the new UTC ISO instant (null = clear). */
   onSave: (iso: string | null) => Promise<boolean | void> | boolean | void
   onPastError?: (message: string) => void
+  /**
+   * Render a <form id={formId}> without its own buttons: the caller places a `type="submit" form={formId}`
+   * button elsewhere (the production workspace keeps it in the action bar).
+   */
+  formId?: string
 }
 
 /** datetime-local input with explicit Save / Clear (no autosave while typing). Past instants are rejected. */
-export function ScheduleField({ value, label, disabled, onSave, onPastError }: FieldProps) {
+export function ScheduleField({ value, label, disabled, onSave, onPastError, formId }: FieldProps) {
   const { t } = useI18n()
   const pa = t.planAuth.schedule
   const id = useId()
@@ -67,8 +72,8 @@ export function ScheduleField({ value, label, disabled, onSave, onPastError }: F
     void run(iso)
   }
 
-  return (
-    <div>
+  const fields = (
+    <>
       <label htmlFor={id} className="mb-1 block text-sm font-medium text-fg-2">
         {label}
       </label>
@@ -84,7 +89,7 @@ export function ScheduleField({ value, label, disabled, onSave, onPastError }: F
           setDraft(e.target.value)
           setError('')
         }}
-        className={INPUT}
+        className={`${INPUT} min-h-11 sm:min-h-0`}
       />
       <TimezoneHint />
       {error && (
@@ -92,6 +97,26 @@ export function ScheduleField({ value, label, disabled, onSave, onPastError }: F
           {error}
         </p>
       )}
+    </>
+  )
+
+  if (formId) {
+    return (
+      <form
+        id={formId}
+        onSubmit={(e) => {
+          e.preventDefault()
+          if (!disabled && !saving) save()
+        }}
+      >
+        {fields}
+      </form>
+    )
+  }
+
+  return (
+    <div>
+      {fields}
       <div className="mt-3 flex gap-2">
         <button type="button" className={BTN_PRIMARY} disabled={disabled || saving || !draft} onClick={save}>
           {saving && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}

@@ -1,9 +1,10 @@
 /**
  * Pure helpers of the plan-authorization tree: status mapping, filters, the workflow state
  * machine (moved here from flight-plans/ProcessingWorkflow so the tree owns it), JSON parsing
- * and the .plan waypoint extraction. No React, no network.
+ * and the .plan waypoint extraction. No React runtime, no network.
  */
 
+import type { DragEvent } from 'react'
 import type { FlightPlanSummary } from '@/app/hooks/useFlightPlans'
 import { parseScrsAlternative } from '@/lib/scrs'
 
@@ -17,6 +18,14 @@ export interface PlanDragData {
   planId: number
   planName: string
   sourceFolderId: number | null
+}
+
+/** HTML5 drag payload of a plan (dropped on a folder, or on "plans without folder"). */
+export function startPlanDrag(e: DragEvent, plan: Pick<PlanRow, 'id' | 'customName' | 'folderId'>) {
+  const data: PlanDragData = { planId: plan.id, planName: plan.customName, sourceFolderId: plan.folderId }
+  e.dataTransfer.setData(PLAN_DRAG_TYPE, JSON.stringify(data))
+  e.dataTransfer.setData('text/plain', plan.customName)
+  e.dataTransfer.effectAllowed = 'move'
 }
 
 /** Client-side page size of the plan list (old Dev value). */
@@ -232,6 +241,40 @@ export function primaryActionId(p: PlanRow): PrimaryId | null {
   }
 }
 
+/** The user can act on this plan now (set a time, process, request authorization, reset). */
+export function needsAction(p: PlanRow): boolean {
+  const id = primaryActionId(p)
+  return id === 'schedule' || id === 'process' || id === 'requestAuth' || id === 'reset'
+}
+
+export type ProgressKind = 'noFile' | 'step' | 'processing' | 'authorizing' | 'approved' | 'denied' | 'withdrawn' | 'error'
+export interface PlanProgress {
+  kind: ProgressKind
+  /** Position in the 5-step guide (1..5). */
+  step: 1 | 2 | 3 | 4 | 5
+}
+
+/** Where the plan is in the guide, for the list rows and the mobile progress bar (production workspace). */
+export function planProgress(p: PlanRow): PlanProgress {
+  switch (getWorkflowState(p)) {
+    case 'unprocessed':
+      if (!p.hasFileContent) return { kind: 'noFile', step: 1 }
+      return { kind: 'step', step: currentStep(p) === 'datetime' ? 2 : 3 }
+    case 'processing':
+      return { kind: 'processing', step: 3 }
+    case 'processed':
+      return { kind: 'step', step: 4 }
+    case 'authorizing':
+      return { kind: 'authorizing', step: 5 }
+    case 'authorized':
+      return { kind: 'approved', step: 5 }
+    case 'denied':
+      return { kind: authPhase(p) === 'withdrawn' ? 'withdrawn' : 'denied', step: 5 }
+    case 'error':
+      return { kind: 'error', step: 3 }
+  }
+}
+
 // ---- JSON / waypoints ----------------------------------------------------------------
 
 /** Parse a value that may be an object or a (possibly double-encoded) JSON string. */
@@ -316,6 +359,19 @@ export function formatDateTime(iso: string | null | undefined, language: string)
   return new Intl.DateTimeFormat(language === 'es' ? 'es-ES' : 'en-GB', {
     dateStyle: 'medium',
     timeStyle: 'short',
+  }).format(d)
+}
+
+/** "28 Oct, 10:00": compact date and time for list rows and badges. */
+export function formatShortDateTime(iso: string | null | undefined, language: string): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return ''
+  return new Intl.DateTimeFormat(language === 'es' ? 'es-ES' : 'en-GB', {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
   }).format(d)
 }
 

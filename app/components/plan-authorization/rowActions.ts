@@ -1,6 +1,8 @@
 /**
- * What a plan row offers: the ONE contextual primary action (next step of the workflow) and the
- * "More" menu. Shared by the desktop row, the mobile card and the detail panel so they can never disagree.
+ * What a plan offers: the ONE contextual primary action (next step of the workflow), the VIEW / FILE entries
+ * (planViewEntries: tiles of the production workspace, menu items in Dev) and the MANAGEMENT entries
+ * (planManageEntries: rename, move, reset, delete). Dev's table / card menu is both lists (planMenuEntries),
+ * so every surface reads the same rules and can never disagree.
  */
 
 import {
@@ -82,25 +84,35 @@ export function primaryView(plan: PlanRow, { a, busy, pa }: RowCtx): PrimaryView
   }
 }
 
-/**
- * The "More" menu of a plan: views, edit, downloads, move, reset, delete.
- * Only what applies to the plan's current state is listed (nothing greyed out):
- * before processing a plan has waypoints only; trajectory, U-plan and geoawareness views
- * appear once processing produced them.
- */
-export function planMenuEntries(plan: PlanRow, ctx: RowCtx, startRename: () => void): MenuEntry[] {
-  const { a, busy, mode, folders, pa } = ctx
-  const l = pa.actions
+/** What state-dependent facts the entries share. */
+function facts(plan: PlanRow, ctx: RowCtx) {
+  const { busy, mode } = ctx
   const phase = planPhase(plan)
   const auth = authPhase(plan)
-  const processed = phase === 'done'
-  const hasTrajectory = processed && !!plan.csvResult
-  const hasGeneratedUplan = hasTrajectory && plan.hasUplan
-  const viewing = busy.is('viewer', plan.id)
-  const downloading = busy.is('download', plan.id)
-  const decided = auth === 'approved' || auth === 'denied' || auth === 'withdrawn'
-  // Dev edits the U-plan any time before authorization (as the old Dev did); prod only once it was generated.
-  const canEditUplan = auth === 'none' && (mode === 'dev' || hasGeneratedUplan)
+  const hasTrajectory = phase === 'done' && !!plan.csvResult
+  return {
+    phase,
+    auth,
+    hasTrajectory,
+    hasGeneratedUplan: hasTrajectory && plan.hasUplan,
+    viewing: busy.is('viewer', plan.id),
+    downloading: busy.is('download', plan.id),
+    decided: auth === 'approved' || auth === 'denied' || auth === 'withdrawn',
+    // Dev edits the U-plan any time before authorization (as the old Dev did); prod only once it was generated.
+    canEditUplan: auth === 'none' && (mode === 'dev' || (hasTrajectory && plan.hasUplan)),
+  }
+}
+
+/**
+ * The views and files of a plan (waypoints, trajectory, U-plan, geoawareness, review / edit, downloads, result,
+ * SCRS alternative). Only what applies to the plan's current state is listed (nothing greyed out): before
+ * processing a plan has waypoints only; trajectory, U-plan and geoawareness appear once processing produced them.
+ * Menu order; `separatorBefore` only matters to menus.
+ */
+export function planViewEntries(plan: PlanRow, ctx: RowCtx): MenuEntry[] {
+  const { a, mode, pa } = ctx
+  const l = pa.actions
+  const { auth, hasTrajectory, hasGeneratedUplan, viewing, downloading, decided, canEditUplan } = facts(plan, ctx)
 
   const views: (MenuEntry | false)[] = [
     plan.hasFileContent && { id: 'waypoints', label: l.viewWaypoints, icon: MapPinned, loading: viewing, onSelect: () => a.openWaypoints(plan) },
@@ -110,10 +122,7 @@ export function planMenuEntries(plan: PlanRow, ctx: RowCtx, startRename: () => v
     hasGeneratedUplan && { id: 'uplan2d', label: l.viewUplan2d, icon: Layers, loading: viewing, onSelect: () => a.openUplan2d(plan) },
     !!uspaceOf(plan.geoawarenessData) && { id: 'geo3d', label: l.viewGeo3d, icon: Globe, loading: viewing, onSelect: () => a.openGeo3d(plan) },
   ]
-  const entries: MenuEntry[] = [
-    { id: 'rename', label: l.rename, icon: Pencil, onSelect: startRename },
-    ...views.filter((e): e is MenuEntry => !!e),
-  ]
+  const entries: MenuEntry[] = views.filter((e): e is MenuEntry => !!e)
 
   if (decided) {
     entries.push({ id: 'result', label: l.viewResult, icon: ShieldCheck, loading: viewing, separatorBefore: true, onSelect: () => a.openResult(plan) })
@@ -128,6 +137,19 @@ export function planMenuEntries(plan: PlanRow, ctx: RowCtx, startRename: () => v
     mode === 'dev' && hasTrajectory && { id: 'downloadCsv', label: l.downloadCsv, icon: Table2, loading: downloading, onSelect: () => a.downloadCsv(plan) },
   ]
   fileEntries.filter((e): e is MenuEntry => !!e).forEach((e, i) => entries.push(i === 0 ? { ...e, separatorBefore: true } : e))
+  return entries
+}
+
+function renameEntry({ pa }: RowCtx, startRename: () => void): MenuEntry {
+  return { id: 'rename', label: pa.actions.rename, icon: Pencil, onSelect: startRename }
+}
+
+/** Move, reset (once the plan left "unprocessed") and delete. */
+function manageTail(plan: PlanRow, ctx: RowCtx): MenuEntry[] {
+  const { a, folders, pa } = ctx
+  const l = pa.actions
+  const { phase } = facts(plan, ctx)
+  const entries: MenuEntry[] = []
 
   const targets: MenuEntry[] = folders
     .filter((f) => f.id !== plan.folderId)
@@ -140,4 +162,14 @@ export function planMenuEntries(plan: PlanRow, ctx: RowCtx, startRename: () => v
   }
   entries.push({ id: 'delete', label: l.delete, icon: Trash2, tone: 'danger', separatorBefore: targets.length === 0 && phase === 'idle', onSelect: () => a.remove(plan) })
   return entries
+}
+
+/** Management only (production "..." menu): rename, move to folder, reset when it applies, delete. */
+export function planManageEntries(plan: PlanRow, ctx: RowCtx, startRename: () => void): MenuEntry[] {
+  return [renameEntry(ctx, startRename), ...manageTail(plan, ctx)]
+}
+
+/** Dev's "More" menu (table row and card): rename, every view / file, then move, reset, delete. */
+export function planMenuEntries(plan: PlanRow, ctx: RowCtx, startRename: () => void): MenuEntry[] {
+  return [renameEntry(ctx, startRename), ...planViewEntries(plan, ctx), ...manageTail(plan, ctx)]
 }
