@@ -44,7 +44,7 @@ describe('GET machine flight plan by external response number', () => {
     expect(findFirst).toHaveBeenCalledTimes(1);
   });
 
-  it.each([
+  it.each<Record<string, string>>([
     {},
     { 'x-machine-api-key': 'wrong-key' },
     { 'x-api-key': key },

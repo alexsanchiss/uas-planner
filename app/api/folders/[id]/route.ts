@@ -246,7 +246,7 @@ export async function DELETE(
     // Get all flight plans associated with this folder
 
     const folderPlans = await prisma.flightPlan.findMany({
-      where: { folderId },
+      where: { folderId, userId },
       select: { id: true },
     });
 
@@ -261,7 +261,14 @@ export async function DELETE(
 
     // Delete all flight plans in the folder
     await prisma.flightPlan.deleteMany({
+      where: { folderId, userId },
+    });
+
+    // Legacy data (SEC-06): plans of other users may still point at this folder. The owner's plans are
+    // already gone, so whatever remains is detached (not deleted) or the FK would block the delete.
+    await prisma.flightPlan.updateMany({
       where: { folderId },
+      data: { folderId: null },
     });
 
     // Delete the folder

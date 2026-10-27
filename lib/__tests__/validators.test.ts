@@ -12,7 +12,6 @@ import {
   loginSchema,
   signupSchema,
   flightPlanStatusSchema,
-  authorizationStatusSchema,
   flightPlanCreateSchema,
   flightPlanUpdateDataSchema,
   flightPlanDeleteSchema,
@@ -27,7 +26,9 @@ import {
   safeParseBody,
   ValidationError,
   isValidationError,
+  type FlattenedErrors,
 } from '../validators';
+import * as validators from '../validators';
 
 describe('Validators', () => {
   describe('ID Schemas', () => {
@@ -176,16 +177,10 @@ describe('Validators', () => {
       });
     });
 
-    describe('authorizationStatusSchema', () => {
-      const validStatuses = ['sin autorización', 'pendiente', 'autorizado', 'rechazado'];
-
-      it.each(validStatuses)('should accept "%s" status', (status) => {
-        expect(authorizationStatusSchema.parse(status)).toBe(status);
-      });
-
-      it('should reject invalid status', () => {
-        expect(() => authorizationStatusSchema.parse('approved')).toThrow();
-      });
+    // The old enum listed 'autorizado'/'rechazado', values that never existed in the DB, and had no
+    // production user left: client-writable values live in clientWritablePlanFields only.
+    it('no longer exports the dead authorizationStatusSchema', () => {
+      expect(Object.keys(validators)).not.toContain('authorizationStatusSchema');
     });
   });
 
@@ -251,18 +246,50 @@ describe('Validators', () => {
         expect(result.customName).toBe('Updated Name');
       });
 
-      it('should accept status update', () => {
-        const result = flightPlanUpdateDataSchema.parse({
-          status: 'procesado',
-        });
-        expect(result.status).toBe('procesado');
+      // status is driven by the VMs/assigner: a client may only enqueue or reset a plan.
+      it.each(['en cola', 'sin procesar'])('should accept client status %s', (status) => {
+        expect(flightPlanUpdateDataSchema.parse({ status }).status).toBe(status);
       });
 
-      it('should accept authorization status update', () => {
-        const result = flightPlanUpdateDataSchema.parse({
-          authorizationStatus: 'autorizado',
+      it.each(['procesado', 'procesando', 'error', 'aprobado', ''])('should reject client status %j', (status) => {
+        expect(flightPlanUpdateDataSchema.safeParse({ status }).success).toBe(false);
+      });
+
+      // csvResult is a 0/1 flag written by the VMs; a client may only clear it (reset)
+      it.each([null, 0])('should accept csvResult %j (clearing the flag)', (csvResult) => {
+        expect(flightPlanUpdateDataSchema.parse({ csvResult }).csvResult).toBe(csvResult);
+      });
+
+      it.each([1, 5, -1, '1', true])('should reject csvResult %j', (csvResult) => {
+        expect(flightPlanUpdateDataSchema.safeParse({ csvResult }).success).toBe(false);
+      });
+
+      // machine assignment belongs to the assigner: not writable at all, not even null
+      it.each([1, 5, 0, null])('should reject machineAssignedId %j', (machineAssignedId) => {
+        expect(flightPlanUpdateDataSchema.safeParse({ machineAssignedId }).success).toBe(false);
+      });
+
+      // Authorization state is owned by FAS/the server: a client may only reset a plan or mark it
+      // as being processed, never self-approve (see USER_WRITABLE_AUTHORIZATION_STATUSES).
+      it.each(['sin autorización', 'procesando autorización'])('should accept client authorization status %s', (status) => {
+        const result = flightPlanUpdateDataSchema.parse({ authorizationStatus: status });
+        expect(result.authorizationStatus).toBe(status);
+      });
+
+      it.each(['autorizado', 'rechazado', 'pendiente', 'aprobado', 'denegado'])(
+        'should reject client-supplied authorization status %s',
+        (status) => {
+          expect(flightPlanUpdateDataSchema.safeParse({ authorizationStatus: status }).success).toBe(false);
+        },
+      );
+
+      it('should only allow authorizationMessage and externalResponseNumber to be reset to null', () => {
+        expect(flightPlanUpdateDataSchema.parse({ authorizationMessage: null, externalResponseNumber: null })).toEqual({
+          authorizationMessage: null,
+          externalResponseNumber: null,
         });
-        expect(result.authorizationStatus).toBe('autorizado');
+        expect(flightPlanUpdateDataSchema.safeParse({ authorizationMessage: 'ACCEPTED_ALTERNATIVE' }).success).toBe(false);
+        expect(flightPlanUpdateDataSchema.safeParse({ externalResponseNumber: 'EXT-001' }).success).toBe(false);
       });
 
       it('should reject empty object', () => {
@@ -272,11 +299,11 @@ describe('Validators', () => {
       it('should accept multiple fields', () => {
         const result = flightPlanUpdateDataSchema.parse({
           customName: 'New Name',
-          status: 'procesando',
+          status: 'en cola',
           folderId: 3,
         });
         expect(result.customName).toBe('New Name');
-        expect(result.status).toBe('procesando');
+        expect(result.status).toBe('en cola');
         expect(result.folderId).toBe(3);
       });
     });
@@ -355,7 +382,8 @@ describe('Validators', () => {
       });
 
       it('should reject missing folderId', () => {
-        const { folderId, ...rest } = validInput;
+        const { folderId: _folderId, ...rest } = validInput;
+        void _folderId;
         expect(() => externalUplanSchema.parse(rest)).toThrow();
       });
 
@@ -578,7 +606,7 @@ describe('Validators', () => {
 
         const json = error.toJSON();
         expect(json.error).toBe('Validation failed');
-        expect((json.details as any).fieldErrors.email).toContain('Invalid email');
+        expect((json.details as FlattenedErrors<{ email: string }>).fieldErrors.email).toContain('Invalid email');
       });
     });
 

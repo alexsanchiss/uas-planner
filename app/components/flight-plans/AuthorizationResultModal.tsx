@@ -1,6 +1,8 @@
 'use client'
 
-import React, { useState, useMemo, useEffect, useRef } from 'react'
+import { loadCesium } from '@/lib/cesium-loader'
+import React, { useState, useMemo, useEffect, useId, useRef } from 'react'
+import { useDialogA11y } from '@/app/hooks/useDialogA11y'
 import dynamic from 'next/dynamic'
 import { useGeoawarenessWebSocket, type GeozoneData } from '@/app/hooks/useGeoawarenessWebSocket'
 import { parseScrsAlternative, hasFailedScrsAlternative } from '@/lib/scrs'
@@ -249,38 +251,6 @@ function extractGeozoneAltsFromWs(gz: GeozoneData): { lower: number; upper: numb
   return { lower, upper }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function loadCesiumScript(): Promise<any> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if ((window as any).Cesium) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return Promise.resolve((window as any).Cesium)
-  }
-
-  return new Promise((resolve, reject) => {
-    if (!document.querySelector('link[href="/cesium/Widgets/widgets.css"]')) {
-      const link = document.createElement('link')
-      link.rel = 'stylesheet'
-      link.href = '/cesium/Widgets/widgets.css'
-      document.head.appendChild(link)
-    }
-
-    const script = document.createElement('script')
-    script.src = '/cesium/Cesium.js'
-    script.onload = () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if ((window as any).Cesium) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        resolve((window as any).Cesium)
-      } else {
-        reject(new Error('Cesium failed to load'))
-      }
-    }
-    script.onerror = () => reject(new Error('Failed to load Cesium script'))
-    document.head.appendChild(script)
-  })
-}
-
 // Stable empty-set constants — reused as fallback props so that component
 // renders for approved plans never pass a freshly-allocated `new Set()` to
 // Cesium3DView's effect dependency array, which would retrigger a full viewer
@@ -339,11 +309,8 @@ function Cesium3DView({ volumes, isApproved, conflictingIndices, geozones, allGe
         const { token } = await tokenRes.json()
         if (destroyed) return
 
-        const Cesium = await loadCesiumScript()
+        const Cesium = await loadCesium(token)
         if (destroyed) return
-
-        Cesium.Ion.defaultAccessToken = token
-        ;(window as any).CESIUM_BASE_URL = '/cesium'
 
         const viewer = new Cesium.Viewer(containerRef.current!, {
           terrain: Cesium.Terrain.fromWorldTerrain(),
@@ -436,6 +403,7 @@ function Cesium3DView({ volumes, isApproved, conflictingIndices, geozones, allGe
               : allConflicting
           }
 
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Cesium loaded dynamically, no static types
           let material, outlineColor: any
           if (isApproved) {
             material = Cesium.Color.fromCssColorString('rgba(34, 197, 94, 0.45)')
@@ -934,13 +902,8 @@ const AuthorizationResultModal: React.FC<AuthorizationResultModalProps> = ({
     }
   }, [parsedDetails])
 
-  // Escape key handler
-  useEffect(() => {
-    if (!isOpen) return
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [isOpen, onClose])
+  const dialogRef = useDialogA11y<HTMLDivElement>(isOpen, onClose)
+  const titleId = useId()
 
   // Reset tab when modal opens — default to 3D view; bump mapKey to force
   // Leaflet to initialize on a fresh DOM node (avoids "already initialized").
@@ -965,7 +928,7 @@ const AuthorizationResultModal: React.FC<AuthorizationResultModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="mt-20 bg-[var(--surface-primary)] dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} className="mt-20 bg-[var(--surface-primary)] dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden outline-none">
         {/* Header */}
         <div className={`px-6 py-4 border-b flex items-center justify-between ${
           isApproved
@@ -983,7 +946,7 @@ const AuthorizationResultModal: React.FC<AuthorizationResultModalProps> = ({
               </svg>
             )}
             <div>
-              <h2 className={`text-lg font-semibold ${
+              <h2 id={titleId} className={`text-lg font-semibold ${
                 isApproved ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'
               }`}>
                 {planName}

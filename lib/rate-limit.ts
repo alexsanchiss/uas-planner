@@ -1,3 +1,5 @@
+import { getSourceIp } from '@/lib/request-ip';
+
 // Simple in-memory rate limiter
 // For production, use Redis-based solution
 
@@ -33,9 +35,5 @@ export function checkRateLimit(
 
 // Helper to get IP from request
 export function getClientIp(request: Request): string {
-  return (
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    request.headers.get('x-real-ip') ||
-    'unknown'
-  );
+  return getSourceIp(request.headers) ?? 'unknown';
 }

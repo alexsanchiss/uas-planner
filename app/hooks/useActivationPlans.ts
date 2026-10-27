@@ -11,15 +11,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-
-// Auth token key — same constant used throughout the project
-const AUTH_TOKEN_KEY = 'authToken'
-
-/** Get the JWT access token from localStorage (SSR-safe) */
-function getAuthToken(): string | null {
-  if (typeof window === 'undefined') return null
-  return localStorage.getItem(AUTH_TOKEN_KEY)
-}
+import { apiFetch, getAuthToken } from '@/lib/api-client'
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -89,9 +81,7 @@ export function useActivationPlans(): UseActivationPlansReturn {
     }
 
     try {
-      const res = await fetch('/api/flightPlans/active', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      const res = await apiFetch('/api/flightPlans/active')
 
       if (!mountedRef.current) return
 
@@ -180,12 +170,8 @@ export function useActivationPlans(): UseActivationPlansReturn {
       }
 
       try {
-        const res = await fetch(`/api/flightPlans/${planId}/activate`, {
+        const res = await apiFetch(`/api/flightPlans/${planId}/activate`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
           body: JSON.stringify({ termsAccepted }),
         })
 

@@ -10,13 +10,18 @@
  * - Enable/disable control
  * - Automatic cleanup on unmount
  * - Error handling with retry logic
+ * - Pauses while the tab is hidden and refreshes immediately when it becomes visible again
+ * - Manual pauseSync/resumeSync plus lastSyncedAt / isSyncing / syncError for sync indicators
  */
 
 import { useEffect, useRef, useCallback, useState } from 'react'
 
-interface UsePollingOptions {
-  /** Polling interval in milliseconds (default: 5000) */
-  interval?: number
+interface UsePollingOptions<T> {
+  /**
+   * Polling interval in milliseconds (default: 5000). A function receives the latest data
+   * and returns the interval, so callers can poll faster while something is in progress.
+   */
+  interval?: number | ((data: T | null) => number)
   /** Whether polling is enabled (default: true) */
   enabled?: boolean
   /** Whether to fetch immediately on mount (default: true) */
@@ -44,6 +49,18 @@ interface UsePollingReturn<T> {
   isRefreshing: boolean
   /** Number of consecutive errors */
   errorCount: number
+  /** When the last fetch succeeded (null until the first one) */
+  lastSyncedAt: Date | null
+  /** Whether any fetch (initial, background or manual) is in flight */
+  isSyncing: boolean
+  /** Error of the last fetch (cleared by the next success); same value as `error` */
+  syncError: Error | null
+  /** Whether sync was paused with pauseSync() (tab visibility pauses are automatic and not reported here) */
+  isPaused: boolean
+  /** Pause automatic refreshes until resumeSync() */
+  pauseSync: () => void
+  /** Resume automatic refreshes and refresh right away */
+  resumeSync: () => void
   /** Start polling */
   startPolling: () => void
   /** Stop polling */
@@ -69,7 +86,7 @@ interface UsePollingReturn<T> {
  */
 export function usePolling<T>(
   fetchFn: () => Promise<T>,
-  options: UsePollingOptions = {}
+  options: UsePollingOptions<T> = {}
 ): UsePollingReturn<T> {
   const {
     interval = 5000,
@@ -86,6 +103,10 @@ export function usePolling<T>(
   const [isPolling, setIsPolling] = useState(enabled)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [errorCount, setErrorCount] = useState(0)
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null)
+  const [isSyncing, setIsSyncing] = useState(false)
+  const [paused, setPaused] = useState(false)
+  const [hidden, setHidden] = useState(false)
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const mountedRef = useRef(true)
@@ -106,8 +127,9 @@ export function usePolling<T>(
     if (fetchingRef.current) return
     
     fetchingRef.current = true
-    if (isBackgroundRefresh && mountedRef.current) {
-      setIsRefreshing(true)
+    if (mountedRef.current) {
+      setIsSyncing(true)
+      if (isBackgroundRefresh) setIsRefreshing(true)
     }
     
     try {
@@ -118,6 +140,7 @@ export function usePolling<T>(
         setData(result)
         setError(null)
         setErrorCount(0) // Reset error count on success
+        setLastSyncedAt(new Date())
       }
     } catch (err) {
       if (mountedRef.current) {
@@ -139,6 +162,7 @@ export function usePolling<T>(
       if (mountedRef.current) {
         setLoading(false)
         setIsRefreshing(false)
+        setIsSyncing(false)
       }
     }
   }, [maxRetries])
@@ -177,6 +201,30 @@ export function usePolling<T>(
     setIsPolling(true)
   }, [])
 
+  /** Pause / resume automatic refreshes (resume refreshes immediately) */
+  const pauseSync = useCallback(() => setPaused(true), [])
+  const resumeSync = useCallback(() => {
+    setPaused(false)
+    executeFetch(true)
+  }, [executeFetch])
+
+  // Refs so the visibility listener (registered once) sees the current polling state
+  const canPollRef = useRef(false)
+  const resolvedInterval = typeof interval === 'function' ? interval(data) : interval
+  canPollRef.current = isPolling && !paused && resolvedInterval > 0
+
+  // Pause while the tab is hidden; refresh immediately when it is visible again
+  useEffect(() => {
+    const onVisibility = () => {
+      const isHidden = document.visibilityState === 'hidden'
+      setHidden(isHidden)
+      if (!isHidden && canPollRef.current) executeFetch(true)
+    }
+    setHidden(document.visibilityState === 'hidden') // initial state
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => document.removeEventListener('visibilitychange', onVisibility)
+  }, [executeFetch])
+
   // Initial fetch on mount
   useEffect(() => {
     mountedRef.current = true
@@ -196,11 +244,11 @@ export function usePolling<T>(
   // Setup and cleanup polling interval
   useEffect(() => {
     // Setup polling interval with exponential backoff on errors
-    if (isPolling && interval > 0) {
+    if (isPolling && !paused && !hidden && resolvedInterval > 0) {
       // Calculate interval with backoff based on error count
       const effectiveInterval = errorCount > 0 
-        ? Math.min(interval * Math.pow(2, errorCount), 30000) // Max 30s
-        : interval
+        ? Math.min(resolvedInterval * Math.pow(2, errorCount), 30000) // Max 30s
+        : resolvedInterval
       
       intervalRef.current = setInterval(() => {
         executeFetch(true) // Background refresh
@@ -214,7 +262,7 @@ export function usePolling<T>(
         intervalRef.current = null
       }
     }
-  }, [isPolling, interval, errorCount])
+  }, [isPolling, paused, hidden, resolvedInterval, errorCount])
 
   // Handle enabled option changes
   useEffect(() => {
@@ -233,6 +281,12 @@ export function usePolling<T>(
     isPolling,
     isRefreshing,
     errorCount,
+    lastSyncedAt,
+    isSyncing,
+    syncError: error,
+    isPaused: paused,
+    pauseSync,
+    resumeSync,
     startPolling,
     stopPolling,
     resetErrors,

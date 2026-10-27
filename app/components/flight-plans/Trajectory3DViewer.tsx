@@ -1,6 +1,8 @@
 'use client'
 
-import React, { useEffect, useRef, useState, useMemo } from 'react'
+import { loadCesium } from '@/lib/cesium-loader'
+import React, { useEffect, useId, useRef, useState, useMemo } from 'react'
+import { useDialogA11y } from '@/app/hooks/useDialogA11y'
 
 interface Trajectory3DViewerProps {
   isOpen: boolean
@@ -19,33 +21,6 @@ interface TrajectoryPoint {
 const SPEED_OPTIONS = [1, 2, 5, 10] as const
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/** Load Cesium from the pre-built UMD bundle via script tag */
-function loadCesiumScript(): Promise<any> {
-  if ((window as any).Cesium) {
-    return Promise.resolve((window as any).Cesium)
-  }
-
-  return new Promise((resolve, reject) => {
-    if (!document.querySelector('link[href="/cesium/Widgets/widgets.css"]')) {
-      const link = document.createElement('link')
-      link.rel = 'stylesheet'
-      link.href = '/cesium/Widgets/widgets.css'
-      document.head.appendChild(link)
-    }
-
-    const script = document.createElement('script')
-    script.src = '/cesium/Cesium.js'
-    script.onload = () => {
-      if ((window as any).Cesium) {
-        resolve((window as any).Cesium)
-      } else {
-        reject(new Error('Cesium failed to load'))
-      }
-    }
-    script.onerror = () => reject(new Error('Failed to load Cesium script'))
-    document.head.appendChild(script)
-  })
-}
 
 /** Parse CSV content to trajectory points. Times normalised to start at 0. */
 function parseCSVToTrajectory(csvContent: string): TrajectoryPoint[] {
@@ -285,13 +260,10 @@ const Trajectory3DViewer: React.FC<Trajectory3DViewerProps> = ({
         setPoints(parsedPoints)
 
         // 3. Load Cesium
-        const Cesium = await loadCesiumScript()
+        const Cesium = await loadCesium(token)
         cesiumRef.current = Cesium
         if (destroyed) return
 
-        // 4. Configure Cesium
-        Cesium.Ion.defaultAccessToken = token
-        ;(window as any).CESIUM_BASE_URL = '/cesium'
 
         // 5. Create viewer
         const viewer = new Cesium.Viewer(containerRef.current!, {
@@ -468,24 +440,17 @@ const Trajectory3DViewer: React.FC<Trajectory3DViewerProps> = ({
     }
   }, [isOpen, planId])
 
-  // Escape key to close
-  useEffect(() => {
-    if (!isOpen) return
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [isOpen, onClose])
+  const dialogRef = useDialogA11y<HTMLDivElement>(isOpen, onClose)
+  const titleId = useId()
 
   if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-gray-900 rounded-xl shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden relative">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} className="bg-gray-900 rounded-xl shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden relative outline-none">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
-          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+          <h2 id={titleId} className="text-lg font-semibold text-white flex items-center gap-2">
             <svg
               className="w-5 h-5 text-blue-400"
               fill="none"

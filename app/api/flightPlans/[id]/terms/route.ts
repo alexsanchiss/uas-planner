@@ -19,24 +19,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { withAuth, isAuthError } from '@/lib/auth-middleware';
-
-/**
- * FAS API URL - defaults to production server if not configured.
- * The /uplan suffix is stripped to obtain the base URL.
- */
-const FAS_API_URL = process.env.FAS_API_URL || 'http://158.42.167.56:8000/uplan';
-
-/**
- * Derive the FAS base URL by removing the /uplan path suffix.
- */
-function getFasBaseUrl(): string {
-  try {
-    const url = new URL(FAS_API_URL);
-    return `${url.protocol}//${url.host}`;
-  } catch {
-    return FAS_API_URL.replace(/\/uplan\/?$/, '');
-  }
-}
+import { getFasBaseUrl, fasFetch } from '@/lib/fas';
+import { parseId } from '@/lib/http';
 
 /**
  * Params type for dynamic route
@@ -45,14 +29,6 @@ interface RouteParams {
   params: Promise<{
     id: string;
   }>;
-}
-
-/**
- * Parse and validate the flight plan ID from route params
- */
-function parseId(idParam: string): number | null {
-  const id = parseInt(idParam, 10);
-  return Number.isFinite(id) && id > 0 ? id : null;
 }
 
 /**
@@ -131,7 +107,7 @@ export async function GET(
 
     let fasResponse: Response;
     try {
-      fasResponse = await fetch(termsUrl, { method: 'GET' });
+      fasResponse = await fasFetch(termsUrl, { method: 'GET' });
     } catch (networkError) {
       const message =
         networkError instanceof Error ? networkError.message : String(networkError);

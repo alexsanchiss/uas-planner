@@ -30,6 +30,10 @@ interface HistoricalFlightPlanListProps {
 
 const PAGE_SIZE = 10
 
+const pagerButton =
+  'rounded-md border border-line bg-surface-2 px-3 py-1.5 text-sm font-medium text-fg transition-colors hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring disabled:cursor-not-allowed disabled:opacity-40'
+
+/** The section heading is the collapsible's toggle on the page, so this list renders no heading of its own. */
 export function HistoricalFlightPlanList({ className = '' }: HistoricalFlightPlanListProps) {
   const { t } = useI18n()
 
@@ -40,6 +44,15 @@ export function HistoricalFlightPlanList({ className = '' }: HistoricalFlightPla
   const [error, setError] = useState<string | null>(null)
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+
+  const activationLabels: Record<string, string> = {
+    activable: t.activation.statusActivable,
+    activando: t.activation.statusActivating,
+    autorizado_despegue: t.activation.statusTakeoffCleared,
+    denegado_activacion: t.activation.statusDenied,
+    ventana_pasada: t.activation.statusWindowPassed,
+    'no activable': t.activation.statusNotActivable,
+  }
 
   const fetchHistory = useCallback(async (page: number) => {
     setLoading(true)
@@ -79,68 +92,65 @@ export function HistoricalFlightPlanList({ className = '' }: HistoricalFlightPla
   }
 
   return (
-    <section className={`flex flex-col gap-4 ${className}`}>
-      <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-        {t.planActivation.historicalSection}
-      </h2>
-
+    <div className={`flex flex-col gap-4 ${className}`}>
       {loading && (
-        <div className="flex items-center justify-center py-10">
-          <div
-            className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent"
-            style={{ color: 'var(--brand-primary)' }}
-            aria-label={t.common.loading}
-          />
+        <div role="status" className="space-y-2 py-2" aria-label={t.common.loading}>
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-10 animate-pulse rounded-md bg-subtle motion-reduce:animate-none" />
+          ))}
+          <span className="sr-only">{t.common.loading}</span>
         </div>
       )}
 
       {!loading && error && (
-        <p className="text-sm" style={{ color: 'var(--text-error, #ef4444)' }}>
-          {error}
-        </p>
+        <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-danger-text">
+          <span>{error}</span>
+          <button type="button" onClick={() => fetchHistory(currentPage)} className={pagerButton}>
+            {t.common.retry}
+          </button>
+        </div>
       )}
 
       {!loading && !error && plans.length === 0 && (
-        <p className="py-6 text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
-          {t.planActivation.noHistory}
-        </p>
+        <p className="py-6 text-center text-sm text-fg-2">{t.planActivation.noHistory}</p>
       )}
 
       {!loading && !error && plans.length > 0 && (
         <>
-          <div className="overflow-x-auto rounded-lg border" style={{ borderColor: 'var(--border-primary)' }}>
+          <div
+            role="region"
+            aria-label={t.activation.historyRegion}
+            tabIndex={0}
+            className="overflow-x-auto rounded-lg border border-line focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring"
+          >
             <table className="w-full text-sm">
+              <caption className="sr-only">{t.planActivation.historicalSection}</caption>
               <thead>
-                <tr style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}>
-                  <th className="px-4 py-3 text-left font-medium">{t.flightPlans.flightPlan}</th>
-                  <th className="px-4 py-3 text-left font-medium">{t.flightPlans.scheduledFor}</th>
-                  <th className="px-4 py-3 text-left font-medium">{t.flightPlans.authorize}</th>
-                  <th className="px-4 py-3 text-left font-medium">Activation</th>
-                  <th className="px-4 py-3 text-left font-medium">Activated at</th>
+                <tr className="bg-surface-2 text-fg-2">
+                  <th scope="col" className="px-4 py-3 text-left font-medium">{t.flightPlans.flightPlan}</th>
+                  <th scope="col" className="px-4 py-3 text-left font-medium">{t.flightPlans.scheduledFor}</th>
+                  <th scope="col" className="px-4 py-3 text-left font-medium">{t.flightPlans.authorize}</th>
+                  <th scope="col" className="px-4 py-3 text-left font-medium">{t.activation.colActivation}</th>
+                  <th scope="col" className="px-4 py-3 text-left font-medium">{t.activation.colActivatedAt}</th>
                 </tr>
               </thead>
               <tbody>
-                {plans.map((plan, idx) => (
-                  <tr
-                    key={plan.id}
-                    style={{
-                      backgroundColor: idx % 2 === 0 ? 'var(--bg-primary)' : 'var(--bg-secondary)',
-                      color: 'var(--text-primary)',
-                      borderTop: '1px solid var(--border-primary)',
-                    }}
-                  >
-                    <td className="px-4 py-3 font-medium">{plan.customName}</td>
-                    <td className="px-4 py-3 whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>
+                {plans.map((plan) => (
+                  <tr key={plan.id} className="border-t border-line bg-canvas text-fg odd:bg-surface-2">
+                    <th scope="row" className="px-4 py-3 text-left font-medium">{plan.customName}</th>
+                    <td className="whitespace-nowrap px-4 py-3 text-fg-2">
                       {formatDateForDisplay(plan.scheduledAt)}
                     </td>
                     <td className="px-4 py-3">
                       <AuthorizationStatusBadge status={plan.authorizationStatus} />
                     </td>
-                    <td className="px-4 py-3" style={{ color: 'var(--text-secondary)' }}>
-                      {plan.activationStatus ?? '—'}
+                    <td className="px-4 py-3 text-fg-2">
+                      {plan.activationStatus
+                        ? (activationLabels[plan.activationStatus] ?? plan.activationStatus)
+                        : '-'}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>
-                      {plan.activatedAt ? formatDateForDisplay(plan.activatedAt) : '—'}
+                    <td className="whitespace-nowrap px-4 py-3 text-fg-2">
+                      {plan.activatedAt ? formatDateForDisplay(plan.activatedAt) : '-'}
                     </td>
                   </tr>
                 ))}
@@ -150,38 +160,20 @@ export function HistoricalFlightPlanList({ className = '' }: HistoricalFlightPla
 
           {/* Pagination */}
           <div className="flex items-center justify-between">
-            <button
-              onClick={handlePrevious}
-              disabled={currentPage <= 1}
-              className="rounded px-3 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40"
-              style={{
-                backgroundColor: 'var(--bg-secondary)',
-                color: 'var(--text-primary)',
-                border: '1px solid var(--border-primary)',
-              }}
-            >
+            <button type="button" onClick={handlePrevious} disabled={currentPage <= 1} className={pagerButton}>
               {t.planActivation.previousPage}
             </button>
 
-            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+            <span className="text-sm text-fg-2" aria-live="polite">
               {interpolate(t.planActivation.pageOf, { current: currentPage, total: totalPages })}
             </span>
 
-            <button
-              onClick={handleNext}
-              disabled={currentPage >= totalPages}
-              className="rounded px-3 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40"
-              style={{
-                backgroundColor: 'var(--bg-secondary)',
-                color: 'var(--text-primary)',
-                border: '1px solid var(--border-primary)',
-              }}
-            >
+            <button type="button" onClick={handleNext} disabled={currentPage >= totalPages} className={pagerButton}>
               {t.planActivation.nextPage}
             </button>
           </div>
         </>
       )}
-    </section>
+    </div>
   )
 }

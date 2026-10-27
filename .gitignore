@@ -40,7 +40,17 @@ next-env.d.ts
 /qgc
 
 log.csv
-.github
 
 # Cesium static assets (copied from node_modules by postinstall)
 /public/cesium
+# Claude Code local state
+.claude/worktrees/
+.claude/settings.local.json
+
+# LaTeX build products
+*.aux
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+docs/icd/*.log
+docs/icd/*.out

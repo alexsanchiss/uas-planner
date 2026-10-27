@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import axios from 'axios'
+import { AUTH_TOKEN_KEY, refreshAccessToken } from '@/lib/api-client'
 
 interface User {
   id: number
@@ -10,7 +11,6 @@ interface User {
   phone?: string | null
 }
 
-const AUTH_TOKEN_KEY = 'authToken'
 const SENSITIVE_STORAGE_KEYS = [AUTH_TOKEN_KEY]
 
 function decodeTokenPayload(token: string): { exp?: number; userId?: number } | null {
@@ -36,34 +36,10 @@ function clearSensitiveData(): void {
   })
 }
 
-export function useAuth() {
+/** Auth state + actions. Only AuthProvider calls this; everything else uses `useAuth()`. */
+export function useAuthState() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
-  const refreshingRef = useRef(false)
-
-  const refreshAccessToken = useCallback(async (): Promise<string | null> => {
-    if (refreshingRef.current) {
-      return null
-    }
-
-    refreshingRef.current = true
-    try {
-      const response = await axios.post('/api/auth/refresh', {}, {
-        withCredentials: true,
-      })
-      const { token } = response.data
-      if (token) {
-        localStorage.setItem(AUTH_TOKEN_KEY, token)
-        return token
-      }
-      return null
-    } catch (error) {
-      console.error('Token refresh failed:', error)
-      return null
-    } finally {
-      refreshingRef.current = false
-    }
-  }, [])
 
   const fetchUser = useCallback(async () => {
     let token = localStorage.getItem(AUTH_TOKEN_KEY)
@@ -127,7 +103,7 @@ export function useAuth() {
     } finally {
       setLoading(false)
     }
-  }, [refreshAccessToken])
+  }, [])
 
   useEffect(() => {
     fetchUser()
@@ -203,4 +179,17 @@ export function useAuth() {
   }
 
   return { user, loading, login, logout, refreshAccessToken }
+}
+
+export type AuthState = ReturnType<typeof useAuthState>
+
+export const AuthContext = createContext<AuthState | undefined>(undefined)
+
+/** Shared auth state from the single AuthProvider (one /api/user fetch, one set of listeners). */
+export function useAuth(): AuthState {
+  const ctx = useContext(AuthContext)
+  if (ctx === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider')
+  }
+  return ctx
 }

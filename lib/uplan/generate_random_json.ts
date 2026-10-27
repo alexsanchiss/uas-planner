@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- builds untyped UPLAN JSON */
 import { BBox, Waypoint } from "./generate_bbox";
 import { OrientedBBox } from "./generate_oriented_volumes";
 

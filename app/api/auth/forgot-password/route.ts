@@ -4,6 +4,7 @@ import prisma from '@/lib/prisma'
 import { forgotPasswordSchema } from '@/lib/validators'
 import { sendPasswordResetEmail } from '@/lib/email'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
+import { getJwtSecret } from '@/lib/auth'
 
 export async function POST(request: Request) {
   const ip = getClientIp(request);
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
 
     if (user) {
       const rawToken = crypto.randomBytes(32).toString('hex')
-      const hashedToken = crypto.createHmac('sha256', process.env.JWT_SECRET || '').update(rawToken).digest('hex')
+      const hashedToken = crypto.createHmac('sha256', getJwtSecret()).update(rawToken).digest('hex')
       const expiry = new Date(Date.now() + 60 * 60 * 1000) // 1 hour
 
       await prisma.user.update({

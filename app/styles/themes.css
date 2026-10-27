@@ -10,7 +10,10 @@
 /* ============================================
    DARK THEME (Default)
    ============================================ */
-:root {
+/* `[data-theme="dark"]` on an element re-scopes the dark tokens there, for always-dark stages
+   (landing/launch over the shader) that must stay dark while the app theme is light. */
+:root,
+[data-theme="dark"] {
   /* Native controls follow the active app theme instead of the OS setting. */
   color-scheme: dark;
 
@@ -24,13 +27,14 @@
   /* Surface colors (cards, modals, panels) */
   --surface-primary: #1f2937;   /* gray-800 */
   --surface-secondary: #374151; /* gray-700 */
+  --surface-tertiary: var(--bg-tertiary); /* was referenced but undefined (UI-10) */
   --surface-elevated: #1f2937;  /* gray-800 */
 
   /* Text colors */
   --text-primary: #f9fafb;    /* gray-50 */
   --text-secondary: #e5e7eb;  /* gray-200 */
-  --text-tertiary: #9ca3af;   /* gray-400 */
-  --text-muted: #6b7280;      /* gray-500 */
+  --text-tertiary: #a6acb7;   /* gray-400, +L for AA on surface-secondary */
+  --text-muted: var(--text-tertiary); /* collapsed into tertiary: AA (was gray-500, 3.04:1) */
 
   /* Border colors */
   --border-primary: #374151;  /* gray-700 */
@@ -45,6 +49,7 @@
   --color-primary-hover: #2563eb;   /* blue-600 */
   --color-primary-active: #1d4ed8;  /* blue-700 */
   --color-primary-light: rgba(59, 130, 246, 0.1);
+  --color-primary-text: #6099f8;    /* blue-500 +L: primary as text/link on dark surfaces (AA) */
   
   /* Secondary - Supporting actions */
   --color-secondary: #6b7280;       /* gray-500 */
@@ -91,14 +96,14 @@
   --status-error-hover: #dc2626;    /* red-600 */
   --status-error-bg: rgba(239, 68, 68, 0.1);
   --status-error-border: rgba(239, 68, 68, 0.3);
-  --status-error-text: #ef4444;
+  --status-error-text: #f26a6a;     /* red-500 +L for AA */
   
   /* Info - Informational, neutral (blue) */
   --status-info: #3b82f6;           /* blue-500 */
   --status-info-hover: #2563eb;     /* blue-600 */
   --status-info-bg: rgba(59, 130, 246, 0.1);
   --status-info-border: rgba(59, 130, 246, 0.3);
-  --status-info-text: #3b82f6;
+  --status-info-text: #6099f8;      /* blue-500 +L for AA */
 
   /* ============================================
      TASK-188: Processing State Colors
@@ -113,7 +118,7 @@
   --processing-active: #3b82f6;     /* blue-500 */
   --processing-active-bg: rgba(59, 130, 246, 0.1);
   --processing-active-border: rgba(59, 130, 246, 0.3);
-  --processing-active-text: #3b82f6;
+  --processing-active-text: #6099f8;
   
   /* Completed - Successfully processed (green) */
   --processing-completed: #22c55e;  /* green-500 */
@@ -125,7 +130,7 @@
   --processing-error: #ef4444;      /* red-500 */
   --processing-error-bg: rgba(239, 68, 68, 0.1);
   --processing-error-border: rgba(239, 68, 68, 0.3);
-  --processing-error-text: #ef4444;
+  --processing-error-text: #f26a6a;
   
   /* Unprocessed/Idle (gray) */
   --processing-idle: #6b7280;       /* gray-500 */
@@ -157,7 +162,7 @@
   --auth-denied: #ef4444;           /* red-500 */
   --auth-denied-bg: rgba(239, 68, 68, 0.1);
   --auth-denied-border: rgba(239, 68, 68, 0.3);
-  --auth-denied-text: #ef4444;
+  --auth-denied-text: #f26a6a;
   
   /* Withdrawn - Outside FAS service area (orange) */
   --auth-withdrawn: #f97316;        /* orange-500 */
@@ -175,9 +180,9 @@
      TASK-191: Button Colors
      ============================================ */
   /* Primary Button */
-  --btn-primary-bg: var(--color-primary);
-  --btn-primary-bg-hover: var(--color-primary-hover);
-  --btn-primary-bg-active: var(--color-primary-active);
+  --btn-primary-bg: #2563eb;        /* blue-600: white text 5.17:1 (was blue-500, 3.68:1) */
+  --btn-primary-bg-hover: #1d4ed8;  /* blue-700 */
+  --btn-primary-bg-active: #1e40af; /* blue-800 */
   --btn-primary-text: #ffffff;
   --btn-primary-ring: var(--color-primary);
   --btn-primary-disabled-bg: #60a5fa; /* blue-400 */
@@ -191,26 +196,26 @@
   --btn-secondary-disabled-bg: #9ca3af; /* gray-400 */
   
   /* Danger Button */
-  --btn-danger-bg: var(--status-error);
-  --btn-danger-bg-hover: var(--status-error-hover);
-  --btn-danger-bg-active: #b91c1c;  /* red-700 */
+  --btn-danger-bg: #dc2626;         /* red-600: white text 4.83:1 (was red-500, 3.76:1) */
+  --btn-danger-bg-hover: #b91c1c;   /* red-700 */
+  --btn-danger-bg-active: #991b1b;  /* red-800 */
   --btn-danger-text: #ffffff;
   --btn-danger-ring: var(--status-error);
   --btn-danger-disabled-bg: #f87171; /* red-400 */
   
   /* Success Button */
-  --btn-success-bg: var(--status-success);
-  --btn-success-bg-hover: var(--status-success-hover);
-  --btn-success-bg-active: #15803d; /* green-700 */
+  --btn-success-bg: #15803d;        /* green-700: white text 5.02:1 (was green-500, 2.28:1) */
+  --btn-success-bg-hover: #166534;  /* green-800 */
+  --btn-success-bg-active: #14532d; /* green-900 */
   --btn-success-text: #ffffff;
   --btn-success-ring: var(--status-success);
   --btn-success-disabled-bg: #4ade80; /* green-400 */
   
   /* Warning Button */
-  --btn-warning-bg: var(--status-warning);
-  --btn-warning-bg-hover: var(--status-warning-hover);
-  --btn-warning-bg-active: #b45309; /* amber-700 */
-  --btn-warning-text: #ffffff;
+  --btn-warning-bg: #f59e0b;        /* amber-500: dark text 8.26:1 (white was 2.15:1) */
+  --btn-warning-bg-hover: #fbbf24;  /* amber-400 */
+  --btn-warning-bg-active: #d97706; /* amber-600 */
+  --btn-warning-text: #111827;
   --btn-warning-ring: var(--status-warning);
   --btn-warning-disabled-bg: #fbbf24; /* amber-400 */
 
@@ -229,7 +234,7 @@
   --input-focus: var(--color-primary);
   --input-ring: var(--color-primary);
   --input-text: var(--text-primary);
-  --input-placeholder: #9ca3af;     /* gray-400 */
+  --input-placeholder: var(--text-tertiary); /* AA on input-bg */
   --input-label: var(--text-secondary);
   --input-help: var(--text-muted);
   --input-error: var(--status-error);
@@ -272,13 +277,14 @@
   /* Surface colors (cards, modals, panels) */
   --surface-primary: #ffffff;   /* white */
   --surface-secondary: #f9fafb; /* gray-50 */
+  --surface-tertiary: var(--bg-tertiary); /* was referenced but undefined (UI-10) */
   --surface-elevated: #ffffff;  /* white */
 
   /* Text colors */
   --text-primary: #111827;    /* gray-900 */
   --text-secondary: #374151;  /* gray-700 */
-  --text-tertiary: #6b7280;   /* gray-500 */
-  --text-muted: #9ca3af;      /* gray-400 */
+  --text-tertiary: #69707d;   /* gray-500 -L: AA on bg-tertiary */
+  --text-muted: var(--text-tertiary); /* collapsed into tertiary: AA (was gray-400, 2.43:1) */
 
   /* Border colors */
   --border-primary: #e5e7eb;  /* gray-200 */
@@ -293,6 +299,7 @@
   --color-primary-hover: #1d4ed8;   /* blue-700 */
   --color-primary-active: #1e40af;  /* blue-800 */
   --color-primary-light: rgba(37, 99, 235, 0.1);
+  --color-primary-text: #2361eb;    /* blue-600 -L: AA on bg-tertiary too */
   
   /* Secondary - Supporting actions */
   --color-secondary: #4b5563;       /* gray-600 */
@@ -325,7 +332,7 @@
   --status-success-hover: #15803d;  /* green-700 */
   --status-success-bg: rgba(22, 163, 74, 0.1);
   --status-success-border: rgba(22, 163, 74, 0.3);
-  --status-success-text: #15803d;   /* green-700 for better contrast */
+  --status-success-text: #157e3c;   /* green-700 -L: AA on tinted bg */
   
   /* Warning - Caution states (amber) */
   --status-warning: #d97706;        /* amber-600 */
@@ -355,7 +362,7 @@
   --processing-queued: #ca8a04;     /* yellow-600 */
   --processing-queued-bg: rgba(202, 138, 4, 0.1);
   --processing-queued-border: rgba(202, 138, 4, 0.3);
-  --processing-queued-text: #a16207;/* yellow-700 */
+  --processing-queued-text: #9f6107;/* yellow-700 -L */
   
   /* Processing - Currently processing (blue) */
   --processing-active: #2563eb;     /* blue-600 */
@@ -367,7 +374,7 @@
   --processing-completed: #16a34a;  /* green-600 */
   --processing-completed-bg: rgba(22, 163, 74, 0.1);
   --processing-completed-border: rgba(22, 163, 74, 0.3);
-  --processing-completed-text: #15803d; /* green-700 */
+  --processing-completed-text: #157e3c; /* green-700 -L */
   
   /* Error - Processing failed (red) */
   --processing-error: #dc2626;      /* red-600 */
@@ -399,7 +406,7 @@
   --auth-approved: #16a34a;         /* green-600 */
   --auth-approved-bg: rgba(22, 163, 74, 0.1);
   --auth-approved-border: rgba(22, 163, 74, 0.3);
-  --auth-approved-text: #15803d;    /* green-700 */
+  --auth-approved-text: #157e3c;    /* green-700 -L */
   
   /* Denied - Authorization refused (red) */
   --auth-denied: #dc2626;           /* red-600 */
@@ -447,18 +454,18 @@
   --btn-danger-disabled-bg: #fca5a5; /* red-300 */
   
   /* Success Button */
-  --btn-success-bg: var(--status-success);
-  --btn-success-bg-hover: var(--status-success-hover);
-  --btn-success-bg-active: #166534; /* green-800 */
+  --btn-success-bg: #15803d;        /* green-700: white text 5.02:1 (was green-600, 3.30:1) */
+  --btn-success-bg-hover: #166534;  /* green-800 */
+  --btn-success-bg-active: #14532d; /* green-900 */
   --btn-success-text: #ffffff;
   --btn-success-ring: var(--status-success);
   --btn-success-disabled-bg: #86efac; /* green-300 */
   
   /* Warning Button */
-  --btn-warning-bg: var(--status-warning);
-  --btn-warning-bg-hover: var(--status-warning-hover);
-  --btn-warning-bg-active: #92400e; /* amber-800 */
-  --btn-warning-text: #ffffff;
+  --btn-warning-bg: #f59e0b;        /* amber-500: dark text 8.26:1 (white was 3.19:1) */
+  --btn-warning-bg-hover: #fbbf24;  /* amber-400 */
+  --btn-warning-bg-active: #d97706; /* amber-600 */
+  --btn-warning-text: #111827;
   --btn-warning-ring: var(--status-warning);
   --btn-warning-disabled-bg: #fcd34d; /* amber-300 */
 
@@ -477,7 +484,7 @@
   --input-focus: var(--color-primary);
   --input-ring: var(--color-primary);
   --input-text: var(--text-primary);
-  --input-placeholder: #9ca3af;     /* gray-400 */
+  --input-placeholder: var(--text-tertiary); /* AA on input-bg */
   --input-label: var(--text-secondary);
   --input-help: var(--text-muted);
   --input-error: var(--status-error);

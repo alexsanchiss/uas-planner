@@ -13,8 +13,23 @@ const WP1: QgcWaypoint = { lat: 39.42, lng: -0.38, alt: 50, speed: 10, pauseDura
 const WP2: QgcWaypoint = { lat: 39.43, lng: -0.37, alt: 50, speed: 10, pauseDuration: 5, flyOverMode: true }
 const WP3: QgcWaypoint = { lat: 39.44, lng: -0.36, alt: 0,  speed: 5,  pauseDuration: 0, flyOverMode: false }
 
+interface QgcItemJson {
+  command: number
+  frame: number
+  Altitude: number
+  params: number[]
+  [key: string]: unknown
+}
+
+interface QgcPlanJson {
+  mission: { items: QgcItemJson[]; plannedHomePosition: number[]; [key: string]: unknown }
+  geoFence: { circles: unknown[]; polygons: unknown[]; version: number }
+  rallyPoints: { points: unknown[]; version: number }
+  [key: string]: unknown
+}
+
 function asPlan(wps: QgcWaypoint[], opts?: { homeAltitude?: number }) {
-  return buildQgcPlan(wps, opts) as Record<string, any>
+  return buildQgcPlan(wps, opts) as QgcPlanJson
 }
 
 // ---------------------------------------------------------------------------
@@ -77,25 +92,25 @@ describe('buildQgcPlan', () => {
   describe('last waypoint — LAND command', () => {
     it('last mission item has command 21 (LAND)', () => {
       const { mission } = asPlan([WP1, WP2, WP3])
-      const lastItem = mission.items[mission.items.length - 1] as Record<string, any>
+      const lastItem = mission.items[mission.items.length - 1] as QgcItemJson
       expect(lastItem.command).toBe(21)
     })
 
     it('last mission item Altitude is 0', () => {
       const { mission } = asPlan([WP1, WP2, WP3])
-      const lastItem = mission.items[mission.items.length - 1] as Record<string, any>
+      const lastItem = mission.items[mission.items.length - 1] as QgcItemJson
       expect(lastItem.Altitude).toBe(0)
     })
 
     it('last mission item params[6] (altitude param) is 0', () => {
       const { mission } = asPlan([WP1, WP2, WP3])
-      const lastItem = mission.items[mission.items.length - 1] as Record<string, any>
+      const lastItem = mission.items[mission.items.length - 1] as QgcItemJson
       expect(lastItem.params[6]).toBe(0)
     })
 
     it('last mission item frame is 3 (MAV_FRAME_GLOBAL_RELATIVE_ALT)', () => {
       const { mission } = asPlan([WP1, WP2, WP3])
-      const lastItem = mission.items[mission.items.length - 1] as Record<string, any>
+      const lastItem = mission.items[mission.items.length - 1] as QgcItemJson
       expect(lastItem.frame).toBe(3)
     })
   })
@@ -158,7 +173,7 @@ describe('buildQgcPlan', () => {
   describe('cruise item — fly-over mode', () => {
     it('cruise item has acceptRadius 0.1 when flyOverMode is true', () => {
       const { mission } = asPlan([WP1, WP2, WP3])
-      const cruiseItem = mission.items[2] as Record<string, any>
+      const cruiseItem = mission.items[2] as QgcItemJson
       expect(cruiseItem.command).toBe(16)
       expect(cruiseItem.params[1]).toBe(0.1)
     })
@@ -166,7 +181,7 @@ describe('buildQgcPlan', () => {
     it('cruise item has acceptRadius 0 when flyOverMode is false', () => {
       const mid: QgcWaypoint = { lat: 39.43, lng: -0.37, alt: 50, flyOverMode: false }
       const { mission } = asPlan([WP1, mid, WP3])
-      const cruiseItem = mission.items[2] as Record<string, any>
+      const cruiseItem = mission.items[2] as QgcItemJson
       expect(cruiseItem.params[1]).toBe(0)
     })
   })

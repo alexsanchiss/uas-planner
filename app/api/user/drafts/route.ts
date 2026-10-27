@@ -6,7 +6,7 @@ import type { Prisma } from '@prisma/client'
 
 const createDraftSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255),
-  draftData: z.record(z.unknown()),
+  draftData: z.record(z.string(), z.unknown()),
 })
 
 /**

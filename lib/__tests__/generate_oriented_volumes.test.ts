@@ -359,7 +359,7 @@ describe("generate_oriented_volumes", () => {
     it("should normalize longitude to [-180, 180)", () => {
       const result = generateOrientedBBox(1000000, sampleWaypoints);
       Object.values(result.bbox).forEach((corners) => {
-        corners.forEach(([_lat, lon]) => {
+        corners.forEach(([, lon]) => {
           expect(lon).toBeGreaterThanOrEqual(-180);
           expect(lon).toBeLessThan(180);
         });

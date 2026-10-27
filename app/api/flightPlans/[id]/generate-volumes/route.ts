@@ -16,11 +16,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { withAuth, isAuthError } from '@/lib/auth-middleware';
 import { trayToUplan } from '@/lib/uplan/tray_to_uplan';
-
-/**
- * Environment variable to control random data generation
- */
-const GENERATE_RANDOM_UPLAN_DATA = process.env.NEXT_PUBLIC_GENERATE_RANDOM_UPLAN_DATA !== 'false';
+import { shouldGenerateRandomUplan } from '@/lib/uplan/random-data';
+import { parseId } from '@/lib/http';
 
 /**
  * Params type for dynamic route (Next.js 15 App Router)
@@ -29,14 +26,6 @@ interface RouteParams {
   params: Promise<{
     id: string;
   }>;
-}
-
-/**
- * Parse and validate the flight plan ID from route params
- */
-function parseId(idParam: string): number | null {
-  const id = parseInt(idParam, 10);
-  return Number.isFinite(id) && id > 0 ? id : null;
 }
 
 /**
@@ -171,7 +160,7 @@ export async function POST(
     return NextResponse.json({
       success: true,
       volumesGenerated,
-      randomDataGenerated: GENERATE_RANDOM_UPLAN_DATA,
+      randomDataGenerated: shouldGenerateRandomUplan(),
       uplan: newUplan,
     });
   } catch (error) {

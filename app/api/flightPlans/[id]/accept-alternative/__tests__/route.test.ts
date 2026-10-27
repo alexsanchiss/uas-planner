@@ -37,6 +37,7 @@ jest.mock('@/lib/auth-middleware', () => ({
 
 // Import after mocks are registered
 import { POST } from '../route';
+import { FlightDetailsSchema } from '@/lib/validators/uplan-validator';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -191,7 +192,7 @@ describe('POST /api/flightPlans/[id]/accept-alternative', () => {
           category: 'OPENA1',
           specialOperation: 'FIREFIGHTING',
           privateFlight: false,
-          waypoints: [{ time: 0, lat: 39.5, lon: -0.4, h: 100 }],
+          waypoints: [{ type: 'Point', coordinates: [-0.4, 39.5, 100] }],
         },
         uas: { registrationNumber: 'REG1' },
         contactDetails: { firstName: 'John' },
@@ -252,8 +253,13 @@ describe('POST /api/flightPlans/[id]/accept-alternative', () => {
     // uplan must have updated waypoints and cleared operationVolumes
     expect(typeof updateCall.data.uplan).toBe('string');
     const uplan = JSON.parse(updateCall.data.uplan);
-    expect(uplan.flightDetails.waypoints).toBeDefined();
-    expect(uplan.flightDetails.waypoints.length).toBeGreaterThan(0);
+    // Waypoints are GeoJSON Points: { type: 'Point', coordinates: [lon, lat, alt] } (FlightDetailsSchema contract)
+    expect(uplan.flightDetails.waypoints).toEqual([
+      { type: 'Point', coordinates: [-0.36, 39.48, 100] },
+      { type: 'Point', coordinates: [-0.355, 39.478, 100] },
+      { type: 'Point', coordinates: [-0.35, 39.476, 100] },
+      { type: 'Point', coordinates: [-0.35, 39.476, 0] }, // landing, same lon/lat as the last route point
+    ]);
     expect(uplan.operationVolumes).toEqual([]);
 
     // Preserved fields from original uplan
@@ -262,8 +268,13 @@ describe('POST /api/flightPlans/[id]/accept-alternative', () => {
     expect(uplan.uas.registrationNumber).toBe('REG1');
     expect(uplan.dataOwnerIdentifier).toEqual({ sac: 'AAA', sic: 'BBB' });
 
-    // Landing waypoint at altitude 0 must be present
+    // Landing waypoint at altitude 0 must be present (altitude is the 3rd GeoJSON coordinate)
     const landingWp = uplan.flightDetails.waypoints[uplan.flightDetails.waypoints.length - 1];
-    expect(landingWp.h).toBe(0);
+    expect(landingWp.type).toBe('Point');
+    expect(landingWp.coordinates[2]).toBe(0);
+
+    // The waypoints written by the route must be accepted by the uplan schema (zod 4) used by the UI
+    const parsed = FlightDetailsSchema.safeParse(uplan.flightDetails);
+    expect(parsed.success).toBe(true);
   });
 });

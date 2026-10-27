@@ -20,57 +20,24 @@ import { withAuth, isAuthError } from '@/lib/auth-middleware';
 import {
   flightPlanDeleteSchema,
   externalUplanSchema,
+  checkClientPlanFields,
+  AUTH_LOCKED_STATUSES,
+  PLAN_LOCKED_UPLAN_ERROR,
   safeParseBody,
 } from '@/lib/validators';
 import { z } from 'zod';
 import { sendPlanDeletionEmail } from '@/lib/email';
 import logger from '@/lib/logger';
-
-/**
- * FAS API URL - defaults to production server if not configured.
- * The base URL (without /uplan path) is used for cancellation requests.
- */
-const FAS_API_URL = process.env.FAS_API_URL || 'http://158.42.167.56:8000/uplan';
-
-/**
- * Derive the FAS base URL by removing the /uplan path suffix.
- */
-function getFasBaseUrl(): string {
-  try {
-    const url = new URL(FAS_API_URL);
-    return `${url.protocol}//${url.host}`;
-  } catch {
-    return FAS_API_URL.replace(/\/uplan\/?$/, '');
-  }
-}
-
-/**
- * Send a cancellation request to the FAS for an approved flight plan.
- * Fire-and-forget: failures are logged but do not block deletion.
- */
-async function sendFasCancellation(externalResponseNumber: string): Promise<void> {
-  const baseUrl = getFasBaseUrl();
-  const cancelUrl = `${baseUrl}/uplan_cancelation/${encodeURIComponent(externalResponseNumber)}`;
-
-  try {
-    const response = await fetch(cancelUrl, { method: 'DELETE' });
-    if (!response.ok) {
-      console.warn(
-        `[FAS Cancellation] Non-OK response for ${externalResponseNumber}: ${response.status} ${response.statusText}`
-      );
-    }
-  } catch (error) {
-    console.warn(
-      `[FAS Cancellation] Failed to cancel ${externalResponseNumber}:`,
-      error instanceof Error ? error.message : error
-    );
-  }
-}
+import { userOwnsFolders } from '@/lib/http';
+import { sendFasCancellation } from '@/lib/fas';
 
 // Constants for bulk operation limits
 const MAX_BULK_IDS = 100000;
 const MAX_BULK_ITEMS = 2000;
 const CHUNK_SIZE = 200;
+
+/** 404 for a folderId that does not exist or is not the caller's (no ownership oracle). */
+const folderNotFound = () => NextResponse.json({ error: 'Folder not found' }, { status: 404 });
 
 /**
  * Extract waypoints from QGC plan fileContent and return as GeoJSON Points.
@@ -92,6 +59,7 @@ function extractWaypointsFromQGC(fileContent: string): Array<{ type: 'Point'; co
     
     const items = qgcPlan.mission.items;
     // Filter to only waypoint commands: 22 (takeoff), 16 (waypoint), 21 (landing)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped QGC plan JSON from uploaded file
     const waypointItems = items.filter((item: any) => 
       [22, 16, 21].includes(item.command) && 
       item.params && 
@@ -171,10 +139,41 @@ function generateInitialUplan(fileContent: string): object | null {
 }
 
 /**
+ * Columns of the opt-in `?fields=summary` listing: every column EXCEPT the heavy ones
+ * (fileContent MediumText, uplan LongText, activationMessage LongText), which the detail
+ * endpoint GET /api/flightPlans/[id] still returns. authorizationMessage stays because lists
+ * read it (SCRS alternatives, "FAS procesando...", ACCEPTED_ALTERNATIVE, denial errors).
+ * ponytail: explicit select (Prisma 5.22 `omit` is still a preview feature); add new light columns here.
+ */
+const SUMMARY_SELECT = {
+  id: true,
+  customName: true,
+  status: true,
+  csvResult: true,
+  createdAt: true,
+  userId: true,
+  machineAssignedId: true,
+  folderId: true,
+  authorizationStatus: true,
+  authorizationMessage: true,
+  scheduledAt: true,
+  externalResponseNumber: true,
+  geoawarenessData: true,
+  activationStatus: true,
+  activatedAt: true,
+  termsAcceptedAt: true,
+  lastActivationAttempt: true,
+  folder: true,
+} satisfies Prisma.flightPlanSelect;
+
+/**
  * GET /api/flightPlans
  * List all flight plans for the authenticated user
- * 
- * Query params: none required (userId from token)
+ *
+ * Query params: none required (userId from token).
+ *   fields=summary (opt-in): rows without fileContent/uplan/activationMessage, plus the
+ *   booleans hasFileContent / hasUplan so lists can gate buttons without the heavy text.
+ *   Any other value (or none) returns the full rows exactly as before.
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const auth = await withAuth(request);
@@ -185,6 +184,20 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const { userId } = auth;
 
   try {
+    if (request.nextUrl.searchParams.get('fields') === 'summary') {
+      // IS NOT NULL is answered from the row header: the heavy text is never read.
+      const [rows, withFile, withUplan] = await Promise.all([
+        prisma.flightPlan.findMany({ where: { userId }, select: SUMMARY_SELECT, orderBy: { id: 'desc' } }),
+        prisma.flightPlan.findMany({ where: { userId, fileContent: { not: null } }, select: { id: true } }),
+        prisma.flightPlan.findMany({ where: { userId, uplan: { not: null } }, select: { id: true } }),
+      ]);
+      const fileIds = new Set(withFile.map((p) => p.id));
+      const uplanIds = new Set(withUplan.map((p) => p.id));
+      return NextResponse.json(
+        rows.map((p) => ({ ...p, hasFileContent: fileIds.has(p.id), hasUplan: uplanIds.has(p.id) }))
+      );
+    }
+
     const flightPlans = await prisma.flightPlan.findMany({
       where: { userId },
       include: {
@@ -272,6 +285,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
       const { uplan, folderId, customName } = extResult.data;
 
+      if (!(await userOwnsFolders(userId, [folderId]))) return folderNotFound();
+
       // Extract scheduledAt from first volume's timeBegin
       const rawTimeBegin = uplan.operationVolumes[0]?.timeBegin ?? null;
       const scheduledAt = rawTimeBegin
@@ -321,6 +336,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         );
       }
 
+      if (!(await userOwnsFolders(userId, result.data.items.map((it) => it.folderId)))) {
+        return folderNotFound();
+      }
+
       const data = result.data.items.map(toRecord);
       await prisma.flightPlan.createMany({ data });
 
@@ -358,6 +377,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         { status: 400 }
       );
     }
+
+    if (!(await userOwnsFolders(userId, [result.data.folderId]))) return folderNotFound();
 
     const record = toRecord(result.data);
     await prisma.flightPlan.createMany({ data: [record] });
@@ -416,6 +437,7 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
     if (typeof d.fileContent === 'string') out.fileContent = d.fileContent;
     if (typeof d.authorizationStatus === 'string') out.authorizationStatus = d.authorizationStatus;
     if (d.authorizationMessage !== undefined) out.authorizationMessage = d.authorizationMessage;
+    if (d.externalResponseNumber === null) out.externalResponseNumber = null;
     if (d.uplan !== undefined) {
       // Convert uplan to JSON string for database storage
       out.uplan = d.uplan !== null && d.uplan !== undefined ? JSON.stringify(d.uplan) : null;
@@ -428,6 +450,13 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
     if (d.geoawarenessData !== undefined) out.geoawarenessData = d.geoawarenessData;
     return out;
   };
+
+  // True when any of the caller's plans among `ids` is frozen (approved / pending FAS)
+  const hasLockedPlan = async (ids: number[]): Promise<boolean> =>
+    ids.length > 0 &&
+    (await prisma.flightPlan.count({
+      where: { id: { in: ids }, userId, authorizationStatus: { in: AUTH_LOCKED_STATUSES } },
+    })) > 0;
 
   try {
     const bodyObj = body as Record<string, unknown>;
@@ -443,6 +472,26 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
           { error: 'No valid items provided' },
           { status: 400 }
         );
+      }
+
+      // Reject forbidden authorization writes before touching anything (all-or-nothing)
+      for (const it of items) {
+        const authError = checkClientPlanFields(it.data || {});
+        if (authError) {
+          return NextResponse.json({ error: authError }, { status: 400 });
+        }
+      }
+
+      // Frozen plans (approved/pending): no U-Plan edits unless the item resets authorization
+      const uplanItemIds = items
+        .filter((it) => it.data?.uplan !== undefined && it.data.authorizationStatus !== 'sin autorización')
+        .map((it) => Number(it.id));
+      if (await hasLockedPlan(uplanItemIds)) {
+        return NextResponse.json({ error: PLAN_LOCKED_UPLAN_ERROR }, { status: 400 });
+      }
+
+      if (!(await userOwnsFolders(userId, items.map((it) => it.data?.folderId as number | null | undefined)))) {
+        return folderNotFound();
       }
 
       // Process in chunks to avoid transaction timeouts
@@ -485,12 +534,26 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
         );
       }
 
+      const authError = checkClientPlanFields(bodyObj.data as Record<string, unknown>);
+      if (authError) {
+        return NextResponse.json({ error: authError }, { status: 400 });
+      }
+
+      const dataObj = bodyObj.data as Record<string, unknown>;
+      if (dataObj.uplan !== undefined && dataObj.authorizationStatus !== 'sin autorización' && await hasLockedPlan([id])) {
+        return NextResponse.json({ error: PLAN_LOCKED_UPLAN_ERROR }, { status: 400 });
+      }
+
       const updateData = sanitizeData(bodyObj.data as Record<string, unknown>);
       if (Object.keys(updateData).length === 0) {
         return NextResponse.json(
           { error: 'No supported fields in data' },
           { status: 400 }
         );
+      }
+
+      if (!(await userOwnsFolders(userId, [updateData.folderId as number | null | undefined]))) {
+        return folderNotFound();
       }
 
       // Ensure user can only update their own plans
@@ -524,12 +587,26 @@ export async function PUT(request: NextRequest): Promise<NextResponse> {
         );
       }
 
+      const authError = checkClientPlanFields(bodyObj.data as Record<string, unknown>);
+      if (authError) {
+        return NextResponse.json({ error: authError }, { status: 400 });
+      }
+
+      const dataObj = bodyObj.data as Record<string, unknown>;
+      if (dataObj.uplan !== undefined && dataObj.authorizationStatus !== 'sin autorización' && await hasLockedPlan(targetIds)) {
+        return NextResponse.json({ error: PLAN_LOCKED_UPLAN_ERROR }, { status: 400 });
+      }
+
       const updateData = sanitizeData(bodyObj.data as Record<string, unknown>);
       if (Object.keys(updateData).length === 0) {
         return NextResponse.json(
           { error: 'No supported fields in data' },
           { status: 400 }
         );
+      }
+
+      if (!(await userOwnsFolders(userId, [updateData.folderId as number | null | undefined]))) {
+        return folderNotFound();
       }
 
       // Ensure user can only update their own plans

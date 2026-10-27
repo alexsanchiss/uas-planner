@@ -8,6 +8,25 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
+/**
+ * The FAS callback rewrites `uplan.state` (ACCEPTED/DENIED...). generate_json keeps an
+ * existing state when it rebuilds the U-Plan, so a clone must start again from "SENT",
+ * the value a brand-new plan gets.
+ */
+function resetUplanState(uplan: string | null): string | null {
+  if (!uplan) return uplan;
+  try {
+    const parsed = JSON.parse(uplan);
+    if (parsed && typeof parsed === 'object' && 'state' in parsed) {
+      parsed.state = 'SENT';
+      return JSON.stringify(parsed);
+    }
+  } catch {
+    // not JSON: keep as is
+  }
+  return uplan;
+}
+
 export async function POST(
   request: NextRequest,
   { params }: RouteParams
@@ -78,18 +97,15 @@ export async function POST(
           fileContent: plan.fileContent,
           userId: userId,
           folderId: newFolder.id,
-          uplan: plan.uplan,
+          uplan: resetUplanState(plan.uplan),
           scheduledAt: plan.scheduledAt,
           csvResult: plan.csvResult,
-          authorizationStatus: plan.authorizationStatus,
-          authorizationMessage: plan.authorizationMessage,
-          externalResponseNumber: plan.externalResponseNumber,
+          // A clone is a new plan: it must not inherit FAS authorization (nor its
+          // externalResponseNumber, which would alias the original in FAS callbacks
+          // and cancellations) or the activation state derived from it.
+          authorizationStatus: 'sin autorización',
+          authorizationMessage: null,
           geoawarenessData: plan.geoawarenessData ?? Prisma.DbNull,
-          activationStatus: plan.activationStatus,
-          activatedAt: plan.activatedAt,
-          activationMessage: plan.activationMessage,
-          termsAcceptedAt: plan.termsAcceptedAt,
-          lastActivationAttempt: plan.lastActivationAttempt,
           createdAt: plan.createdAt,
         },
       });

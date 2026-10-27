@@ -618,3 +618,38 @@ body {
 .splash-glow-btn {
   animation: glow 2.5s ease-in-out infinite;
 }
+
+/* ============================================
+   F6 accessibility foundations
+   ============================================ */
+
+/* Visible keyboard focus on every interactive element, in the brand colour.
+   !important so it also wins over the many `focus:outline-none` utilities (UI-27);
+   :focus-visible keeps it off for mouse clicks on buttons. */
+:focus-visible {
+  outline: 2px solid var(--color-primary) !important;
+  outline-offset: 2px !important;
+}
+
+/* Respect the OS "reduce motion" setting: no CSS animations or transitions,
+   including the theme-switch cross-fade (themes.css, specificity matched below). */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after,
+  html.theme-transition,
+  html.theme-transition *,
+  html.theme-transition *::before,
+  html.theme-transition *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0s !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+  }
+}

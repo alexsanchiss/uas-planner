@@ -1,16 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
+import { withAuth, isAuthError } from '@/lib/auth-middleware'
 
 /**
  * POST /api/flightPlans/[id]/geoawareness
  * 
  * Validates flight plan has U-Space data and returns uspaceIdentifier for WebSocket connection.
- * WebSocket URL: ws://{IP}/ws/gas/{uspaceIdentifier}
+ * Requires authentication and ownership of the plan. The internal service address is
+ * deliberately NOT returned (the client connects through /api/geoawareness/stream).
  */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await withAuth(request)
+  if (isAuthError(auth)) {
+    return auth
+  }
+
   try {
     const { id } = await params;
     const planId = parseInt(id, 10)
@@ -21,11 +28,15 @@ export async function POST(
 
     const plan = await prisma.flightPlan.findUnique({
       where: { id: planId },
-      select: { id: true, customName: true, uplan: true, geoawarenessData: true },
+      select: { id: true, userId: true, customName: true, uplan: true, geoawarenessData: true },
     });
 
     if (!plan) {
       return NextResponse.json({ error: 'Flight plan not found' }, { status: 404 });
+    }
+
+    if (plan.userId !== auth.userId) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     if (!plan.uplan) {
@@ -51,12 +62,9 @@ export async function POST(
       return NextResponse.json({ error: 'No U-Space identifier in flight plan.' }, { status: 400 });
     }
 
-    const wsUrl = `ws://${process.env.GEOAWARENESS_SERVICE_IP}/ws/gas/${uspaceIdentifier}`;
-
     return NextResponse.json({
       success: true,
       uspaceIdentifier,
-      wsUrl,
     });
 
   } catch (error) {
@@ -69,11 +77,17 @@ export async function POST(
  * GET /api/flightPlans/[id]/geoawareness
  * 
  * Returns the stored geoawareness response for a flight plan.
+ * Requires authentication and ownership of the plan.
  */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await withAuth(request)
+  if (isAuthError(auth)) {
+    return auth
+  }
+
   try {
     const { id } = await params;
     const planId = parseInt(id, 10)
@@ -84,11 +98,15 @@ export async function GET(
 
     const plan = await prisma.flightPlan.findUnique({
       where: { id: planId },
-      select: { id: true, customName: true, geoawarenessData: true },
+      select: { id: true, userId: true, customName: true, geoawarenessData: true },
     })
 
     if (!plan) {
       return NextResponse.json({ error: 'Flight plan not found' }, { status: 404 })
+    }
+
+    if (plan.userId !== auth.userId) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
     }
 
     if (!plan.geoawarenessData) {

@@ -1,25 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { withMachineAuth, isMachineAuthError } from '@/lib/machine-auth-middleware';
-
-const FAS_API_URL = process.env.FAS_API_URL || 'http://158.42.167.56:8000/uplan';
-
-function getFasBaseUrl(): string {
-  try {
-    const url = new URL(FAS_API_URL);
-    return `${url.protocol}//${url.host}`;
-  } catch {
-    return FAS_API_URL.replace(/\/uplan\/?$/, '');
-  }
-}
+import { getFasBaseUrl } from '@/lib/fas';
+import { parseId } from '@/lib/http';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
-}
-
-function parseId(idParam: string): number | null {
-  const id = parseInt(idParam, 10);
-  return Number.isFinite(id) && id > 0 ? id : null;
 }
 
 export async function POST(

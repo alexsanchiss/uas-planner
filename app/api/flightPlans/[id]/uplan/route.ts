@@ -35,11 +35,8 @@ import { withAuth, isAuthError } from '@/lib/auth-middleware';
 import { trayToUplan } from '@/lib/uplan/tray_to_uplan';
 import { sendAuthorizationResultEmail } from '@/lib/email';
 import axios from 'axios';
-
-/**
- * FAS API URL - defaults to production server if not configured
- */
-const FAS_API_URL = process.env.FAS_API_URL || 'http://158.42.167.56:8000/uplan';
+import { parseId } from '@/lib/http';
+import { getFasApiUrl, FAS_UPLAN_TIMEOUT_MS } from '@/lib/fas';
 
 /**
  * Params type for dynamic route
@@ -48,14 +45,6 @@ interface RouteParams {
   params: Promise<{
     id: string;
   }>;
-}
-
-/**
- * Parse and validate the flight plan ID from route params
- */
-function parseId(idParam: string): number | null {
-  const id = parseInt(idParam, 10);
-  return Number.isFinite(id) && id > 0 ? id : null;
 }
 
 /**
@@ -129,6 +118,7 @@ export async function POST(
       );
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- untyped external UPLAN JSON
     let uplan: any;
 
     if (isExternalUplan) {
@@ -223,9 +213,9 @@ export async function POST(
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
         const response = await axios.post(
-          FAS_API_URL,
+          getFasApiUrl(),
           uplan,
-          { headers: { 'Content-Type': 'application/json' } }
+          { headers: { 'Content-Type': 'application/json' }, timeout: FAS_UPLAN_TIMEOUT_MS }
         );
 
         externalResponseNumber =

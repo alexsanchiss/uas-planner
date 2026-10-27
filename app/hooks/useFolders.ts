@@ -5,19 +5,21 @@
  * 
  * Features:
  * - Fetches /api/folders for authenticated user
- * - CRUD operations (create, update, delete)
+ * - CRUD operations (create, update, delete) plus clone and process-folder
+ * - `summary: true` -> GET /api/folders?fields=summary: folder.flightPlans is only [{ id }]
+ *   (the full plan rows come from useFlightPlans)
  * - Uses useAuth for authentication token
  * - Type-safe API responses
  * - Optimistic updates for immediate UI feedback
  */
 
 import { useState, useCallback, useMemo } from 'react'
-import axios from 'axios'
+import { apiJson, getAuthToken } from '@/lib/api-client'
 import { usePolling } from './usePolling'
 import type { FlightPlan } from './useFlightPlans'
 
-// Auth token key (same as useAuth)
-const AUTH_TOKEN_KEY = 'authToken'
+/** Folder row of ?fields=summary: plans reduced to their ids. */
+export type FolderSummary = Omit<Folder, 'flightPlans'> & { flightPlans: { id: number }[] }
 
 /**
  * Folder data structure
@@ -56,11 +58,13 @@ interface UseFoldersOptions {
   pollingInterval?: number
   /** Whether polling is enabled (default: false) */
   pollingEnabled?: boolean
+  /** Fetch ?fields=summary: rows are FolderSummary (default: false) */
+  summary?: boolean
 }
 
-interface UseFoldersReturn {
+export interface UseFoldersReturn<TFolder = Folder> {
   /** Array of folders */
-  folders: Folder[]
+  folders: TFolder[]
   /** Loading state for initial fetch */
   loading: boolean
   /** Error from the last fetch attempt */
@@ -77,46 +81,38 @@ interface UseFoldersReturn {
   createFolder: (data: FolderCreateData) => Promise<Folder | null>
   /** Update a folder (with optimistic update) */
   updateFolder: (id: number, data: FolderUpdateData) => Promise<Folder | null>
-  /** Delete a folder (with optimistic update) */
-  deleteFolder: (id: number) => Promise<boolean>
+  /**
+   * Delete a folder (with optimistic update). DELETE /api/folders/[id]. With `planIds` (Dev recipe)
+   * the plans are deleted first with DELETE /api/flightPlans { ids } (that route cancels approved
+   * plans at FAS). The caller refreshes useFlightPlans afterwards.
+   */
+  deleteFolder: (id: number, planIds?: number[]) => Promise<boolean>
+  /** POST /api/folders/[id]/clone: copies the folder and its plans. Returns null on failure. */
+  cloneFolder: (id: number) => Promise<{ folder: Folder; flightPlans: FlightPlan[] } | null>
+  /**
+   * PUT /api/flightPlans { ids, data: { status: 'en cola' } } for the folder's plans
+   * (`planIds`, or the ids the loaded folder carries). Returns the updated count, null on failure.
+   * The caller refreshes useFlightPlans afterwards.
+   */
+  processFolder: (id: number, planIds?: number[]) => Promise<{ count: number } | null>
   /** Get a folder by ID */
-  getFolder: (id: number) => Folder | undefined
+  getFolder: (id: number) => TFolder | undefined
   /** Optimistically update a folder in local state */
-  optimisticUpdate: (id: number, data: Partial<Folder>) => void
+  optimisticUpdate(id: number, data: Partial<TFolder>): void
   /** Optimistically remove a folder from local state */
   optimisticRemove: (id: number) => void
 }
 
 /**
- * Get the auth token from localStorage
- */
-function getAuthToken(): string | null {
-  if (typeof window === 'undefined') return null
-  return localStorage.getItem(AUTH_TOKEN_KEY)
-}
-
-/**
- * Create axios headers with auth token
- */
-function getAuthHeaders() {
-  const token = getAuthToken()
-  return token ? { Authorization: `Bearer ${token}` } : {}
-}
-
-/**
  * Fetch all folders from the API
  */
-async function fetchFolders(): Promise<Folder[]> {
+async function fetchFolders(summary: boolean): Promise<(Folder | FolderSummary)[]> {
   const token = getAuthToken()
   if (!token) {
     throw new Error('Not authenticated')
   }
 
-  const response = await axios.get<Folder[]>('/api/folders', {
-    headers: getAuthHeaders(),
-  })
-
-  return response.data
+  return apiJson<(Folder | FolderSummary)[]>(summary ? '/api/folders?fields=summary' : '/api/folders')
 }
 
 /**
@@ -139,10 +135,13 @@ async function fetchFolders(): Promise<Folder[]> {
  * await deleteFolder(folderId)
  * ```
  */
-export function useFolders(options: UseFoldersOptions = {}): UseFoldersReturn {
+export function useFolders(options: UseFoldersOptions & { summary: true }): UseFoldersReturn<FolderSummary>
+export function useFolders(options?: UseFoldersOptions): UseFoldersReturn<Folder>
+export function useFolders(options: UseFoldersOptions = {}): UseFoldersReturn<Folder | FolderSummary> {
   const {
     pollingInterval = 0,
     pollingEnabled = false,
+    summary = false,
   } = options
 
   // Local state for optimistic updates
@@ -158,7 +157,7 @@ export function useFolders(options: UseFoldersOptions = {}): UseFoldersReturn {
     isPolling,
     startPolling,
     stopPolling,
-  } = usePolling<Folder[]>(fetchFolders, {
+  } = usePolling<(Folder | FolderSummary)[]>(() => fetchFolders(summary), {
     interval: pollingInterval,
     enabled: pollingEnabled,
   })
@@ -178,11 +177,11 @@ export function useFolders(options: UseFoldersOptions = {}): UseFoldersReturn {
   /**
    * Optimistically update a folder in local state
    */
-  const optimisticUpdate = useCallback((id: number, data: Partial<Folder>) => {
+  const optimisticUpdate = useCallback((id: number, data: Partial<Folder | FolderSummary>) => {
     setOptimisticState(prev => {
       const next = new Map(prev)
       const existing = next.get(id) || {}
-      next.set(id, { ...existing, ...data })
+      next.set(id, { ...existing, ...data } as Partial<Folder>)
       return next
     })
   }, [])
@@ -219,12 +218,10 @@ export function useFolders(options: UseFoldersOptions = {}): UseFoldersReturn {
    */
   const createFolder = useCallback(async (data: FolderCreateData): Promise<Folder | null> => {
     try {
-      const response = await axios.post<Folder>('/api/folders', data, {
-        headers: getAuthHeaders(),
-      })
+      const created = await apiJson<Folder>('/api/folders', { method: 'POST', body: data })
       // Refresh to get the new folder in the list
       await refresh()
-      return response.data
+      return created
     } catch (err) {
       console.error('Error creating folder:', err)
       return null
@@ -242,16 +239,14 @@ export function useFolders(options: UseFoldersOptions = {}): UseFoldersReturn {
     optimisticUpdate(id, data as Partial<Folder>)
 
     try {
-      const response = await axios.put<Folder>(`/api/folders/${id}`, data, {
-        headers: getAuthHeaders(),
-      })
+      const updated = await apiJson<Folder>(`/api/folders/${id}`, { method: 'PUT', body: data })
 
       // Clear optimistic state after successful update
       clearOptimistic(id)
       // Refresh to sync with server
       await refresh()
 
-      return response.data
+      return updated
     } catch (err) {
       console.error('Error updating folder:', err)
       // Revert optimistic update on error
@@ -264,14 +259,15 @@ export function useFolders(options: UseFoldersOptions = {}): UseFoldersReturn {
   /**
    * Delete a folder with optimistic update
    */
-  const deleteFolder = useCallback(async (id: number): Promise<boolean> => {
+  const deleteFolder = useCallback(async (id: number, planIds?: number[]): Promise<boolean> => {
     // Apply optimistic removal immediately
     optimisticRemove(id)
 
     try {
-      await axios.delete(`/api/folders/${id}`, {
-        headers: getAuthHeaders(),
-      })
+      if (planIds && planIds.length > 0) {
+        await apiJson('/api/flightPlans', { method: 'DELETE', body: { ids: planIds } })
+      }
+      await apiJson(`/api/folders/${id}`, { method: 'DELETE' })
 
       // Clear optimistic state after successful delete
       clearOptimistic(id)
@@ -289,9 +285,43 @@ export function useFolders(options: UseFoldersOptions = {}): UseFoldersReturn {
   }, [optimisticRemove, clearOptimistic, refresh])
 
   /**
+   * Clone a folder with its plans
+   */
+  const cloneFolder = useCallback(async (id: number) => {
+    try {
+      const cloned = await apiJson<{ folder: Folder; flightPlans: FlightPlan[] }>(
+        `/api/folders/${id}/clone`,
+        { method: 'POST' }
+      )
+      await refresh()
+      return cloned
+    } catch (err) {
+      console.error('Error cloning folder:', err)
+      return null
+    }
+  }, [refresh])
+
+  /**
+   * Queue every plan of a folder for processing (one bulk PUT)
+   */
+  const processFolder = useCallback(async (id: number, planIds?: number[]) => {
+    const ids = planIds ?? serverData?.find(f => f.id === id)?.flightPlans.map(p => p.id) ?? []
+    if (ids.length === 0) return { count: 0 }
+    try {
+      return await apiJson<{ count: number }>('/api/flightPlans', {
+        method: 'PUT',
+        body: { ids, data: { status: 'en cola' } },
+      })
+    } catch (err) {
+      console.error('Error processing folder:', err)
+      return null
+    }
+  }, [serverData])
+
+  /**
    * Get a folder by ID
    */
-  const getFolder = useCallback((id: number): Folder | undefined => {
+  const getFolder = useCallback((id: number): Folder | FolderSummary | undefined => {
     return folders.find(folder => folder.id === id)
   }, [folders])
 
@@ -306,6 +336,8 @@ export function useFolders(options: UseFoldersOptions = {}): UseFoldersReturn {
     createFolder,
     updateFolder,
     deleteFolder,
+    cloneFolder,
+    processFolder,
     getFolder,
     optimisticUpdate,
     optimisticRemove,

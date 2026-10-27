@@ -21,7 +21,9 @@ import { z } from 'zod';
  * GET /api/folders
  * List all folders for the authenticated user
  * 
- * Query params: none required (userId from token)
+ * Query params: none required (userId from token).
+ *   fields=summary (opt-in): each folder carries only `flightPlans: [{ id }]` instead of the
+ *   full plan rows (which include fileContent / uplan). Default response is unchanged.
  * 
  * Response: Array of folders with their flight plans
  */
@@ -37,7 +39,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const folders = await prisma.folder.findMany({
       where: { userId },
       include: {
-        flightPlans: true,
+        flightPlans: request.nextUrl.searchParams.get('fields') === 'summary' ? { select: { id: true } } : true,
       },
       orderBy: { id: 'desc' },
     });

@@ -136,6 +136,7 @@ function EditableCoord({
   serviceBounds?: [number, number, number, number];
 }) {
   const { t } = useI18n();
+  const uid = React.useId();
   const [localLat, setLocalLat] = React.useState(lat.toFixed(6));
   const [localLng, setLocalLng] = React.useState(lng.toFixed(6));
   const [error, setError] = React.useState<string | null>(null);
@@ -173,29 +174,31 @@ function EditableCoord({
   return (
     <div className="mt-1 space-y-1">
       <div className="flex items-center gap-1">
-        <label className="text-[10px] text-[var(--text-muted)] w-6">Lat</label>
+        <label htmlFor={`${uid}-lat`} className="text-[10px] text-muted w-6">Lat</label>
         <input
+          id={`${uid}-lat`}
           type="number"
           step="0.000001"
           value={localLat}
           onChange={(e) => setLocalLat(e.target.value)}
           onBlur={() => commit(localLat, localLng)}
           onKeyDown={(e) => { if (e.key === "Enter") commit(localLat, localLng); }}
-          className="flex-1 px-1.5 py-0.5 bg-[var(--input-bg)] border border-[var(--input-border)] rounded text-[var(--text-primary)] text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 w-24"
+          className="flex-1 px-1.5 py-0.5 bg-input border border-input rounded text-fg text-xs focus:outline-none focus:ring-1 focus:ring-brand-ring w-24"
         />
-        <label className="text-[10px] text-[var(--text-muted)] w-6">Lng</label>
+        <label htmlFor={`${uid}-lng`} className="text-[10px] text-muted w-6">Lng</label>
         <input
+          id={`${uid}-lng`}
           type="number"
           step="0.000001"
           value={localLng}
           onChange={(e) => setLocalLng(e.target.value)}
           onBlur={() => commit(localLat, localLng)}
           onKeyDown={(e) => { if (e.key === "Enter") commit(localLat, localLng); }}
-          className="flex-1 px-1.5 py-0.5 bg-[var(--input-bg)] border border-[var(--input-border)] rounded text-[var(--text-primary)] text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 w-24"
+          className="flex-1 px-1.5 py-0.5 bg-input border border-input rounded text-fg text-xs focus:outline-none focus:ring-1 focus:ring-brand-ring w-24"
         />
       </div>
       {error && (
-        <p className="text-[10px] text-red-400">{error}</p>
+        <p role="alert" className="text-[11px] text-danger-text">{error}</p>
       )}
     </div>
   );
@@ -474,6 +477,31 @@ export default function ScanPatternGeneratorV2({
     return () => { onDragHandlers(null); };
   }, [onDragHandlers, handleExternalTakeoffUpdate, handleExternalLandingUpdate, handleVertexUpdate]);
 
+  const handleAddVertex = () => {
+    const lat = parseFloat(addVertexLat);
+    const lng = parseFloat(addVertexLng);
+    if (isNaN(lat) || isNaN(lng)) {
+      setAddVertexError(t.planGenerator.invalidNumber);
+      return;
+    }
+    if (lat < -90 || lat > 90) {
+      setAddVertexError(t.planGenerator.latRange);
+      return;
+    }
+    if (lng < -180 || lng > 180) {
+      setAddVertexError(t.planGenerator.lngRange);
+      return;
+    }
+    if (!isWithinBounds(lat, lng, serviceBounds)) {
+      setAddVertexError(t.planGenerator.outsideServiceArea);
+      return;
+    }
+    setPolygonVertices(prev => [...prev, { lat, lng }]);
+    onFlyTo?.(lat, lng);
+    setAddVertexFormOpen(false);
+    setAddVertexError(null);
+  };
+
   const handleClearPolygon = useCallback(() => {
     setPolygonVertices([]);
     setPolygonClosed(false);
@@ -523,24 +551,25 @@ export default function ScanPatternGeneratorV2({
   // ---- Render ----
 
   return (
-    <div className="bg-[var(--surface-primary)] border border-[var(--border-primary)] rounded-lg shadow-xl">
+    <div className="bg-surface border border-line rounded-lg shadow-xl">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border-primary)]">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-line">
         <div className="flex items-center gap-2">
-          <Grid3X3 className="w-5 h-5 text-purple-500 dark:text-purple-400" />
-          <h3 className="text-lg font-semibold text-[var(--text-primary)]">{t.planGenerator.scanPatternGenerator}</h3>
+          <Grid3X3 className="w-5 h-5 text-[var(--color-accent)]" />
+          <h3 className="text-lg font-semibold text-fg">{t.planGenerator.scanPatternGenerator}</h3>
         </div>
         <button
           onClick={onCancel}
-          className="p-1 rounded hover:bg-[var(--bg-hover)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors"
-          title="Close"
+          className="p-1 rounded hover:bg-hover text-muted hover:text-fg transition-colors"
+          title={t.common.close}
+          aria-label={t.common.close}
         >
-          <X className="w-5 h-5" />
+          <X className="w-5 h-5" aria-hidden="true" />
         </button>
       </div>
 
       {/* Step Indicator */}
-      <div className="px-4 py-3 border-b border-[var(--border-primary)] bg-[var(--bg-secondary)]">
+      <div className="px-4 py-3 border-b border-line bg-canvas">
         <div className="flex items-center justify-between">
           {[1, 2, 3, 4].map((step) => {
             const status = getStepStatus(step as ScanStep);
@@ -552,21 +581,22 @@ export default function ScanPatternGeneratorV2({
               <React.Fragment key={step}>
                 <button
                   onClick={() => goToStep(step as ScanStep)}
+                  aria-current={status === 'current' ? 'step' : undefined}
                   className={`flex flex-col items-center gap-1 px-2 py-1 rounded transition-colors ${
                     status === 'current' 
-                      ? 'text-purple-400' 
+                      ? 'text-fg font-semibold' 
                       : status === 'completed'
-                      ? 'text-green-400 cursor-pointer hover:text-green-300'
-                      : 'text-[var(--text-muted)] cursor-not-allowed'
+                      ? 'text-success-text cursor-pointer hover:underline'
+                      : 'text-muted cursor-not-allowed'
                   }`}
                   disabled={status === 'pending'}
                 >
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${
                     status === 'current' 
-                      ? 'border-purple-400 bg-purple-900/30' 
+                      ? 'border-[var(--color-accent)] bg-[var(--color-accent-light)]' 
                       : status === 'completed'
-                      ? 'border-green-400 bg-green-900/30'
-                      : 'border-[var(--border-secondary)] bg-[var(--bg-secondary)]'
+                      ? 'border-success bg-success-soft'
+                      : 'border-line-2 bg-canvas'
                   }`}>
                     {status === 'completed' ? (
                       <Check className="w-4 h-4" />
@@ -579,8 +609,8 @@ export default function ScanPatternGeneratorV2({
                 {step < 4 && (
                   <ChevronRight className={`w-4 h-4 ${
                     getStepStatus((step + 1) as ScanStep) !== 'pending' 
-                      ? 'text-green-400' 
-                      : 'text-[var(--border-secondary)]'
+                      ? 'text-success-text' 
+                      : 'text-line-2'
                   }`} />
                 )}
               </React.Fragment>
@@ -589,32 +619,33 @@ export default function ScanPatternGeneratorV2({
         </div>
       </div>
 
-      <div className="p-4 space-y-4 max-h-[calc(100vh-400px)] overflow-y-auto">
+      <div className="p-4 space-y-4">
         
         {/* Step 1: Takeoff Point */}
         {currentStep === 1 && (
           <div className="space-y-3">
-            <div className="flex items-center gap-2 text-purple-400">
-              <Target className="w-5 h-5" />
+            <div className="flex items-center gap-2 text-fg">
+              <Target className="w-5 h-5 text-[var(--color-accent)]" aria-hidden="true" />
               <span className="font-medium">{t.planGenerator.step1Takeoff}</span>
             </div>
             
-            <div className="bg-purple-900/20 border border-purple-700/50 rounded-lg p-3">
-              <p className="text-sm text-purple-200">
-                👆 {t.planGenerator.clickMapTakeoff}
+            <div className="bg-[var(--color-accent-light)] border border-line rounded-lg p-3">
+              <p className="text-sm text-fg-2">
+                {t.planGenerator.clickMapTakeoff}
               </p>
             </div>
             
             {takeoffPoint && (
-              <div className="bg-green-900/30 border border-green-700 rounded-lg p-3">
+              <div className="bg-success-soft border border-success-line rounded-lg p-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-green-300">
+                  <div className="flex items-center gap-2 text-success-text">
                     <CheckCircle2 className="w-4 h-4" />
                     <span className="text-sm">{t.planGenerator.takeoffPointSet}</span>
                   </div>
                   <button
                     onClick={() => setTakeoffPoint(null)}
-                    className="text-red-400 hover:text-red-300 p-1"
+                    aria-label={`${t.planGenerator.clear}: ${t.planGenerator.takeoffPointLabel}`}
+                    className="text-danger-text hover:opacity-80 p-1"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -631,7 +662,7 @@ export default function ScanPatternGeneratorV2({
             {takeoffPoint && (
               <button
                 onClick={() => setCurrentStep(2)}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-[var(--color-accent-hover)] text-brand-fg rounded-lg hover:bg-[var(--color-accent-active)] transition-colors"
               >
                 {t.planGenerator.continueToDraw}
                 <ChevronRight className="w-4 h-4" />
@@ -643,29 +674,29 @@ export default function ScanPatternGeneratorV2({
         {/* Step 2: Draw Polygon */}
         {currentStep === 2 && (
           <div className="space-y-3">
-            <div className="flex items-center gap-2 text-purple-400">
-              <Pencil className="w-5 h-5" />
+            <div className="flex items-center gap-2 text-fg">
+              <Pencil className="w-5 h-5 text-[var(--color-accent)]" aria-hidden="true" />
               <span className="font-medium">{t.planGenerator.step2Polygon}</span>
             </div>
             
             {!polygonClosed ? (
-              <div className="bg-purple-900/20 border border-purple-700/50 rounded-lg p-3 space-y-2">
-                <p className="text-sm text-purple-200">
-                  👆 {t.planGenerator.clickMapVertices}
+              <div className="bg-[var(--color-accent-light)] border border-line rounded-lg p-3 space-y-2">
+                <p className="text-sm text-fg-2">
+                  {t.planGenerator.clickMapVertices}
                 </p>
-                <p className="text-xs text-[var(--text-muted)]">
+                <p className="text-xs text-muted">
                   • {t.planGenerator.addAtLeast3}<br />
                   • {t.planGenerator.clickNearFirst}<br />
                   • {t.planGenerator.useCloseButton}
                 </p>
               </div>
             ) : (
-              <div className="bg-green-900/30 border border-green-700 rounded-lg p-3">
-                <div className="flex items-center gap-2 text-green-300">
+              <div className="bg-success-soft border border-success-line rounded-lg p-3">
+                <div className="flex items-center gap-2 text-success-text">
                   <CheckCircle2 className="w-4 h-4" />
                   <span className="text-sm">{t.planGenerator.polygonClosedMsg} ({polygonVertices.length} {t.planGenerator.vertices.toLowerCase()})</span>
                 </div>
-                <div className="text-xs text-[var(--text-muted)] mt-1">
+                <div className="text-xs text-muted mt-1">
                   {t.planGenerator.area}: {formatArea(areaValue)}
                 </div>
               </div>
@@ -675,31 +706,32 @@ export default function ScanPatternGeneratorV2({
             {polygonVertices.length > 0 && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium text-[var(--text-secondary)]">
+                  <span className="text-sm font-medium text-fg-2">
                     {t.planGenerator.vertices} ({polygonVertices.length})
-                  </label>
+                  </span>
                   <button
                     onClick={handleClearPolygon}
-                    className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
+                    className="text-xs text-danger-text hover:opacity-80 flex items-center gap-1"
                   >
                     <Trash2 className="w-3 h-3" />
                     {t.planGenerator.clear}
                   </button>
                 </div>
-                <div className="max-h-24 overflow-y-auto space-y-1 bg-[var(--bg-secondary)] rounded p-2">
+                <div className="max-h-24 overflow-y-auto space-y-1 bg-canvas rounded p-2">
                   {polygonVertices.map((v, idx) => (
                     <div
                       key={idx}
-                      className="px-2 py-1.5 rounded hover:bg-[var(--bg-hover)]"
+                      className="px-2 py-1.5 rounded hover:bg-hover"
                     >
                       <div className="flex items-center justify-between">
-                        <span className="text-[var(--text-muted)] font-mono text-xs">{idx + 1}</span>
+                        <span className="text-muted font-mono text-xs">{idx + 1}</span>
                         <button
                           onClick={() => handleDeleteVertex(idx)}
-                          className="p-1 rounded hover:bg-red-900/50 text-[var(--text-muted)] hover:text-red-400 transition-colors"
+                          className="p-1 rounded hover:bg-danger-soft text-muted hover:text-danger-text transition-colors"
                           title={t.planGenerator.deleteVertex}
+                          aria-label={`${t.planGenerator.deleteVertex} ${idx + 1}`}
                         >
-                          <Trash2 className="w-3 h-3" />
+                          <Trash2 className="w-3 h-3" aria-hidden="true" />
                         </button>
                       </div>
                       <EditableCoord
@@ -735,7 +767,7 @@ export default function ScanPatternGeneratorV2({
                   setAddVertexError(null);
                   setAddVertexFormOpen(true);
                 }}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-lg hover:bg-[var(--bg-hover)] transition-colors border border-dashed border-[var(--border-secondary)]"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-subtle text-fg-2 rounded-lg hover:bg-hover transition-colors border border-dashed border-line-2"
               >
                 <Plus className="w-4 h-4" />
                 {t.planGenerator.addVertex}
@@ -744,63 +776,44 @@ export default function ScanPatternGeneratorV2({
             
             {/* Add Vertex Form */}
             {!polygonClosed && addVertexFormOpen && (
-              <div className="p-3 rounded border border-[var(--border-primary)] bg-[var(--bg-secondary)] space-y-2">
-                <div className="text-xs font-semibold text-[var(--text-secondary)] mb-1">{t.planGenerator.addVertex}</div>
+              <form
+                className="p-3 rounded border border-line bg-canvas space-y-2"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleAddVertex();
+                }}
+              >
+                <div className="text-xs font-semibold text-fg-2 mb-1">{t.planGenerator.addVertex}</div>
                 <div className="flex items-center gap-2">
-                  <label className="text-xs text-[var(--text-tertiary)]">Lat:</label>
+                  <label htmlFor="scan-add-vertex-lat" className="text-xs text-muted w-8">Lat</label>
                   <input
+                    id="scan-add-vertex-lat"
                     type="text"
+                    inputMode="decimal"
                     value={addVertexLat}
                     onChange={(e) => setAddVertexLat(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); (document.getElementById('add-vertex-confirm-btn') as HTMLButtonElement)?.click(); } }}
-                    className="flex-1 px-1.5 py-0.5 bg-[var(--input-bg)] border border-[var(--input-border)] rounded text-[var(--text-primary)] text-xs focus:outline-none focus:ring-1 focus:ring-purple-500"
-                    placeholder="Latitude"
+                    className="flex-1 px-1.5 py-0.5 bg-input border border-input rounded text-fg text-xs focus:outline-none focus:ring-1 focus:ring-brand-ring"
                     autoFocus
                   />
                 </div>
                 <div className="flex items-center gap-2">
-                  <label className="text-xs text-[var(--text-tertiary)]">Lng:</label>
+                  <label htmlFor="scan-add-vertex-lng" className="text-xs text-muted w-8">Lng</label>
                   <input
+                    id="scan-add-vertex-lng"
                     type="text"
+                    inputMode="decimal"
                     value={addVertexLng}
                     onChange={(e) => setAddVertexLng(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); (document.getElementById('add-vertex-confirm-btn') as HTMLButtonElement)?.click(); } }}
-                    className="flex-1 px-1.5 py-0.5 bg-[var(--input-bg)] border border-[var(--input-border)] rounded text-[var(--text-primary)] text-xs focus:outline-none focus:ring-1 focus:ring-purple-500"
-                    placeholder="Longitude"
+                    className="flex-1 px-1.5 py-0.5 bg-input border border-input rounded text-fg text-xs focus:outline-none focus:ring-1 focus:ring-brand-ring"
                   />
                 </div>
                 {addVertexError && (
-                  <p className="text-[10px] text-red-400">{addVertexError}</p>
+                  <p role="alert" className="text-[11px] text-danger-text">{addVertexError}</p>
                 )}
                 <div className="flex gap-2 mt-2">
                   <button
-                    id="add-vertex-confirm-btn"
-                    type="button"
-                    onClick={() => {
-                      const lat = parseFloat(addVertexLat);
-                      const lng = parseFloat(addVertexLng);
-                      if (isNaN(lat) || isNaN(lng)) {
-                        setAddVertexError(t.planGenerator.invalidNumber);
-                        return;
-                      }
-                      if (lat < -90 || lat > 90) {
-                        setAddVertexError(t.planGenerator.latRange);
-                        return;
-                      }
-                      if (lng < -180 || lng > 180) {
-                        setAddVertexError(t.planGenerator.lngRange);
-                        return;
-                      }
-                      if (!isWithinBounds(lat, lng, serviceBounds)) {
-                        setAddVertexError(t.planGenerator.outsideServiceArea);
-                        return;
-                      }
-                      setPolygonVertices(prev => [...prev, { lat, lng }]);
-                      onFlyTo?.(lat, lng);
-                      setAddVertexFormOpen(false);
-                      setAddVertexError(null);
-                    }}
-                    className="flex-1 px-3 py-1.5 rounded text-xs font-medium bg-[var(--color-primary)] text-white hover:bg-blue-800 transition-colors"
+                    type="submit"
+                    className="flex-1 px-3 py-1.5 rounded text-xs font-medium bg-brand text-brand-fg hover:bg-brand-hover transition-colors"
                   >
                     Add
                   </button>
@@ -810,19 +823,19 @@ export default function ScanPatternGeneratorV2({
                       setAddVertexFormOpen(false);
                       setAddVertexError(null);
                     }}
-                    className="flex-1 px-3 py-1.5 rounded text-xs font-medium bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors"
+                    className="flex-1 px-3 py-1.5 rounded text-xs font-medium bg-subtle text-fg-2 hover:bg-hover transition-colors"
                   >
                     Cancel
                   </button>
                 </div>
-              </div>
+              </form>
             )}
 
             {/* Close Polygon Button */}
             {!polygonClosed && polygonVertices.length >= 3 && (
               <button
                 onClick={handleClosePolygon}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-success text-success-fg rounded-lg hover:bg-success-hover transition-colors"
               >
                 <CheckCircle2 className="w-4 h-4" />
                 {t.planGenerator.closePolygon} ({polygonVertices.length} {t.planGenerator.vertices.toLowerCase()})
@@ -835,13 +848,13 @@ export default function ScanPatternGeneratorV2({
                   onClick={() => {
                     setPolygonClosed(false);
                   }}
-                  className="flex-1 px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-lg hover:bg-[var(--bg-hover)] transition-colors text-sm"
+                  className="flex-1 px-4 py-2 bg-subtle text-fg-2 rounded-lg hover:bg-hover transition-colors text-sm"
                 >
                   {t.planGenerator.editPolygon}
                 </button>
                 <button
                   onClick={() => setCurrentStep(3)}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-[var(--color-accent-hover)] text-brand-fg rounded-lg hover:bg-[var(--color-accent-active)] transition-colors"
                 >
                   {t.planGenerator.continueText}
                   <ChevronRight className="w-4 h-4" />
@@ -854,30 +867,31 @@ export default function ScanPatternGeneratorV2({
         {/* Step 3: Landing Point */}
         {currentStep === 3 && (
           <div className="space-y-3">
-            <div className="flex items-center gap-2 text-purple-400">
-              <Flag className="w-5 h-5" />
+            <div className="flex items-center gap-2 text-fg">
+              <Flag className="w-5 h-5 text-[var(--color-accent)]" aria-hidden="true" />
               <span className="font-medium">{t.planGenerator.step3Landing}</span>
             </div>
             
-            <div className="bg-purple-900/20 border border-purple-700/50 rounded-lg p-3 space-y-2">
-              <p className="text-sm text-purple-200">
-                👆 {t.planGenerator.clickMapLanding}
+            <div className="bg-[var(--color-accent-light)] border border-line rounded-lg p-3 space-y-2">
+              <p className="text-sm text-fg-2">
+                {t.planGenerator.clickMapLanding}
               </p>
-              <p className="text-xs text-[var(--text-muted)]">
+              <p className="text-xs text-muted">
                 {t.planGenerator.landingDescription}
               </p>
             </div>
             
             {landingPoint && (
-              <div className="bg-green-900/30 border border-green-700 rounded-lg p-3">
+              <div className="bg-success-soft border border-success-line rounded-lg p-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-green-300">
+                  <div className="flex items-center gap-2 text-success-text">
                     <CheckCircle2 className="w-4 h-4" />
                     <span className="text-sm">{t.planGenerator.landingPointSet}</span>
                   </div>
                   <button
                     onClick={() => setLandingPoint(null)}
-                    className="text-red-400 hover:text-red-300 p-1"
+                    aria-label={`${t.planGenerator.clear}: ${t.planGenerator.landingPointLabel}`}
+                    className="text-danger-text hover:opacity-80 p-1"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -896,8 +910,8 @@ export default function ScanPatternGeneratorV2({
                 onClick={() => setCurrentStep(4)}
                 className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors ${
                   landingPoint 
-                    ? 'bg-purple-600 text-white hover:bg-purple-700'
-                    : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
+                    ? 'bg-[var(--color-accent-hover)] text-brand-fg hover:bg-[var(--color-accent-active)]'
+                    : 'bg-subtle text-fg-2 hover:bg-hover'
                 }`}
               >
                 {landingPoint ? t.planGenerator.continueToParameters : t.planGenerator.skipUseLastWaypoint}
@@ -910,7 +924,7 @@ export default function ScanPatternGeneratorV2({
         {/* Step 4: Parameters & Preview */}
         {currentStep === 4 && (
           <div className="space-y-4">
-            <div className="flex items-center gap-2 text-purple-400">
+            <div className="flex items-center gap-2 text-fg">
               <Grid3X3 className="w-5 h-5" />
               <span className="font-medium">{t.planGenerator.step4Parameters}</span>
             </div>
@@ -919,28 +933,29 @@ export default function ScanPatternGeneratorV2({
             <div className="space-y-3">
               {/* Altitude */}
               <div className="space-y-1">
-                <label className="block text-sm font-medium text-[var(--text-secondary)]">
+                <label htmlFor="scan-altitude" className="block text-sm font-medium text-fg-2">
                   {t.planGenerator.flightAltitude}
-                  <span className="text-xs text-[var(--text-muted)] ml-2">(0-200m)</span>
+                  <span className="text-xs text-muted ml-2">(0-200m)</span>
                 </label>
                 <div className="flex items-center gap-2">
                   <input
                     type="number"
                     min={0}
                     max={200}
+                    id="scan-altitude"
                     value={altitude}
                     onChange={(e) => setAltitude(Math.max(0, Math.min(200, Number(e.target.value))))}
-                    className="flex-1 px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="flex-1 px-3 py-2 bg-input border border-input rounded text-fg text-sm focus:outline-none focus:ring-2 focus:ring-brand-ring"
                   />
-                  <span className="text-xs text-[var(--text-muted)] w-8">m</span>
+                  <span className="text-xs text-muted w-8">m</span>
                 </div>
               </div>
 
               {/* Spacing */}
               <div className="space-y-1">
-                <label className="block text-sm font-medium text-[var(--text-secondary)]">
+                <label htmlFor="scan-spacing" className="block text-sm font-medium text-fg-2">
                   {t.planGenerator.lineSpacing}
-                  <span className="text-xs text-[var(--text-muted)] ml-2">({t.planGenerator.distanceBetweenLines})</span>
+                  <span className="text-xs text-muted ml-2">({t.planGenerator.distanceBetweenLines})</span>
                 </label>
                 <div className="flex items-center gap-2">
                   <input
@@ -948,29 +963,31 @@ export default function ScanPatternGeneratorV2({
                     min={1}
                     max={500}
                     step={1}
+                    id="scan-spacing"
                     value={spacing}
                     onChange={(e) => setSpacing(Math.max(1, Math.min(500, Number(e.target.value))))}
-                    className="flex-1 px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="flex-1 px-3 py-2 bg-input border border-input rounded text-fg text-sm focus:outline-none focus:ring-2 focus:ring-brand-ring"
                   />
-                  <span className="text-xs text-[var(--text-muted)] w-8">m</span>
+                  <span className="text-xs text-muted w-8">m</span>
                 </div>
               </div>
 
               {/* Angle */}
               <div className="space-y-1">
-                <label className="block text-sm font-medium text-[var(--text-secondary)]">
+                <label htmlFor="scan-angle" className="block text-sm font-medium text-fg-2">
                   {t.planGenerator.scanAngleLabel}
-                  <span className="text-xs text-[var(--text-muted)] ml-2">(0° = North)</span>
+                  <span className="text-xs text-muted ml-2">(0° = North)</span>
                 </label>
                 <div className="flex items-center gap-2">
                   <input
+                    id="scan-angle"
                     type="range"
                     min={0}
                     max={360}
                     step={5}
                     value={angle}
                     onChange={(e) => setAngle(Number(e.target.value))}
-                    className="flex-1 h-2 bg-[var(--bg-tertiary)] rounded-lg appearance-none cursor-pointer accent-purple-500"
+                    className="flex-1 h-2 bg-subtle rounded-lg appearance-none cursor-pointer accent-[var(--color-accent)]"
                   />
                   <input
                     type="number"
@@ -978,25 +995,26 @@ export default function ScanPatternGeneratorV2({
                     max={360}
                     value={angle}
                     onChange={(e) => setAngle(normalizeAngle(Number(e.target.value)))}
-                    className="w-16 px-2 py-1 bg-[var(--input-bg)] border border-[var(--input-border)] rounded text-[var(--text-primary)] text-sm text-center focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    aria-label={t.planGenerator.scanAngleLabel}
+                    className="w-16 px-2 py-1 bg-input border border-input rounded text-fg text-sm text-center focus:outline-none focus:ring-2 focus:ring-brand-ring"
                   />
-                  <span className="text-xs text-[var(--text-muted)] w-4">°</span>
+                  <span className="text-xs text-muted w-4">°</span>
                 </div>
                 
                 {/* Compass indicator */}
                 <div className="flex items-center justify-center mt-2">
-                  <div className="relative w-14 h-14 border-2 border-[var(--border-secondary)] rounded-full">
-                    <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[9px] text-[var(--text-muted)]">N</span>
-                    <span className="absolute top-1/2 -right-2.5 -translate-y-1/2 text-[9px] text-[var(--text-muted)]">E</span>
-                    <span className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 text-[9px] text-[var(--text-muted)]">S</span>
-                    <span className="absolute top-1/2 -left-2.5 -translate-y-1/2 text-[9px] text-[var(--text-muted)]">W</span>
+                  <div className="relative w-14 h-14 border-2 border-line-2 rounded-full">
+                    <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[9px] text-muted">N</span>
+                    <span className="absolute top-1/2 -right-2.5 -translate-y-1/2 text-[9px] text-muted">E</span>
+                    <span className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 text-[9px] text-muted">S</span>
+                    <span className="absolute top-1/2 -left-2.5 -translate-y-1/2 text-[9px] text-muted">W</span>
                     <div
-                      className="absolute top-1/2 left-1/2 w-0.5 h-5 bg-purple-500 origin-bottom"
+                      className="absolute top-1/2 left-1/2 w-0.5 h-5 bg-[var(--color-accent)] origin-bottom"
                       style={{ transform: `translate(-50%, -100%) rotate(${angle}deg)` }}
                     >
-                      <div className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-purple-500 rotate-45" />
+                      <div className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-[var(--color-accent)] rotate-45" />
                     </div>
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-[var(--text-muted)] rounded-full" />
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-line-2 rounded-full" />
                   </div>
                 </div>
               </div>
@@ -1004,18 +1022,19 @@ export default function ScanPatternGeneratorV2({
               {/* Advanced Options */}
               <button
                 onClick={() => setShowAdvanced(!showAdvanced)}
-                className="flex items-center gap-1 text-sm text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
+                aria-expanded={showAdvanced}
+                className="flex items-center gap-1 text-sm text-muted hover:text-fg-2 transition-colors"
               >
-                {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                {showAdvanced ? <ChevronUp className="w-4 h-4" aria-hidden="true" /> : <ChevronDown className="w-4 h-4" aria-hidden="true" />}
                 {t.planGenerator.advancedOptions}
               </button>
 
               {showAdvanced && (
-                <div className="space-y-3 pl-2 border-l-2 border-[var(--border-primary)]">
+                <div className="space-y-3 pl-2 border-l-2 border-line">
                   <div className="space-y-1">
-                    <label className="block text-sm font-medium text-[var(--text-secondary)]">
+                    <label htmlFor="scan-speed" className="block text-sm font-medium text-fg-2">
                       Speed
-                      <span className="text-xs text-[var(--text-muted)] ml-2">(m/s)</span>
+                      <span className="text-xs text-muted ml-2">(m/s)</span>
                     </label>
                     <div className="flex items-center gap-2">
                       <input
@@ -1023,11 +1042,12 @@ export default function ScanPatternGeneratorV2({
                         min={1}
                         max={30}
                         step={0.5}
+                        id="scan-speed"
                         value={speed}
                         onChange={(e) => setSpeed(Math.max(1, Math.min(30, Number(e.target.value))))}
-                        className="flex-1 px-3 py-2 bg-[var(--input-bg)] border border-[var(--input-border)] rounded text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        className="flex-1 px-3 py-2 bg-input border border-input rounded text-fg text-sm focus:outline-none focus:ring-2 focus:ring-brand-ring"
                       />
-                      <span className="text-xs text-[var(--text-muted)] w-8">m/s</span>
+                      <span className="text-xs text-muted w-8">m/s</span>
                     </div>
                   </div>
                 </div>
@@ -1036,12 +1056,12 @@ export default function ScanPatternGeneratorV2({
 
             {/* Validation Messages */}
             {validation && validation.errors.length > 0 && (
-              <div className="bg-red-900/30 border border-red-700 rounded p-3">
-                <div className="flex items-center gap-2 text-red-400 text-sm font-medium mb-1">
+              <div role="alert" className="bg-danger-soft border border-danger-line rounded p-3">
+                <div className="flex items-center gap-2 text-danger-text text-sm font-medium mb-1">
                   <AlertCircle className="w-4 h-4" />
                   {t.planGenerator.errorsLabel}
                 </div>
-                <ul className="text-xs text-red-300 space-y-1 list-disc list-inside">
+                <ul className="text-xs text-danger-text space-y-1 list-disc list-inside">
                   {validation.errors.map((err, idx) => (
                     <li key={idx}>{err}</li>
                   ))}
@@ -1050,12 +1070,12 @@ export default function ScanPatternGeneratorV2({
             )}
             
             {validation && validation.warnings.length > 0 && (
-              <div className="bg-yellow-900/30 border border-yellow-700 rounded p-3">
-                <div className="flex items-center gap-2 text-yellow-400 text-sm font-medium mb-1">
+              <div role="status" className="bg-warning-soft border border-warning-line rounded p-3">
+                <div className="flex items-center gap-2 text-warning-text text-sm font-medium mb-1">
                   <AlertCircle className="w-4 h-4" />
                   {t.planGenerator.warningsLabel}
                 </div>
-                <ul className="text-xs text-yellow-300 space-y-1 list-disc list-inside">
+                <ul className="text-xs text-warning-text space-y-1 list-disc list-inside">
                   {validation.warnings.map((warn, idx) => (
                     <li key={idx}>{warn}</li>
                   ))}
@@ -1065,31 +1085,31 @@ export default function ScanPatternGeneratorV2({
 
             {/* Statistics Preview */}
             {statistics && (
-              <div className="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded p-3 space-y-2">
-                <div className="flex items-center gap-2 text-sm font-medium text-green-400">
+              <div className="bg-canvas border border-line rounded p-3 space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium text-success-text">
                   <CheckCircle2 className="w-4 h-4" />
                   {t.planGenerator.patternGenerated}
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div className="flex justify-between">
-                    <span className="text-[var(--text-muted)]">{t.planGenerator.waypoints}:</span>
-                    <span className="text-[var(--text-primary)] font-medium">{statistics.waypointCount}</span>
+                    <span className="text-muted">{t.planGenerator.waypoints}:</span>
+                    <span className="text-fg font-medium">{statistics.waypointCount}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-[var(--text-muted)]">{t.planGenerator.scanLines}:</span>
-                    <span className="text-[var(--text-primary)] font-medium">{statistics.scanLineCount}</span>
+                    <span className="text-muted">{t.planGenerator.scanLines}:</span>
+                    <span className="text-fg font-medium">{statistics.scanLineCount}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-[var(--text-muted)]">{t.planGenerator.distanceLabel}:</span>
-                    <span className="text-[var(--text-primary)] font-medium">{formatDistance(statistics.totalDistance)}</span>
+                    <span className="text-muted">{t.planGenerator.distanceLabel}:</span>
+                    <span className="text-fg font-medium">{formatDistance(statistics.totalDistance)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-[var(--text-muted)]">{t.planGenerator.estTime}:</span>
-                    <span className="text-[var(--text-primary)] font-medium">{formatTime(statistics.estimatedFlightTime)}</span>
+                    <span className="text-muted">{t.planGenerator.estTime}:</span>
+                    <span className="text-fg font-medium">{formatTime(statistics.estimatedFlightTime)}</span>
                   </div>
                   <div className="flex justify-between col-span-2">
-                    <span className="text-[var(--text-muted)]">{t.planGenerator.coverageAreaLabel}:</span>
-                    <span className="text-[var(--text-primary)] font-medium">{formatArea(statistics.coverageArea)}</span>
+                    <span className="text-muted">{t.planGenerator.coverageAreaLabel}:</span>
+                    <span className="text-fg font-medium">{formatArea(statistics.coverageArea)}</span>
                   </div>
                 </div>
               </div>
@@ -1099,10 +1119,10 @@ export default function ScanPatternGeneratorV2({
       </div>
 
       {/* Footer Actions */}
-      <div className="flex items-center justify-between gap-2 px-4 py-3 border-t border-[var(--border-primary)] bg-[var(--bg-secondary)]">
+      <div className="flex items-center justify-between gap-2 px-4 py-3 border-t border-line bg-canvas">
         <button
           onClick={handleClearAll}
-          className="flex items-center gap-2 px-3 py-2 rounded text-sm font-medium bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors"
+          className="flex items-center gap-2 px-3 py-2 rounded text-sm font-medium bg-subtle text-fg-2 hover:bg-hover transition-colors"
         >
           <RotateCcw className="w-4 h-4" />
           {t.planGenerator.startOver}
@@ -1111,14 +1131,14 @@ export default function ScanPatternGeneratorV2({
         <div className="flex gap-2">
           <button
             onClick={onCancel}
-            className="px-4 py-2 rounded text-sm font-medium bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors"
+            className="px-4 py-2 rounded text-sm font-medium bg-subtle text-fg-2 hover:bg-hover transition-colors"
           >
             {t.common.cancel}
           </button>
           <button
             onClick={handleApply}
             disabled={!canApply}
-            className="flex items-center gap-2 px-4 py-2 rounded text-sm font-medium bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center gap-2 px-4 py-2 rounded text-sm font-medium bg-[var(--color-accent-hover)] text-brand-fg hover:bg-[var(--color-accent-active)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <Play className="w-4 h-4" />
             {t.planGenerator.applyPattern}

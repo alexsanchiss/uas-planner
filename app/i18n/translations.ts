@@ -6,9 +6,19 @@
  * Supported languages: English (en), Spanish (es)
  */
 
+import { pageEn, pageEs, type PageTranslations } from './pages'
+import { planAuthEn, planAuthEs, type PlanAuthTranslations } from './planAuthorization'
+import { planDefEn, planDefEs, type PlanDefTranslations } from './planDefinition'
+
 export type Language = 'en' | 'es'
 
-export interface Translations {
+// Shell, boundaries, titles, Plan Activation, auth pages and account pages live in ./pages.
+export interface Translations extends PageTranslations {
+  // Plan authorization screen (texts live in ./planAuthorization)
+  planAuth: PlanAuthTranslations
+  // Plan definition screen (texts live in ./planDefinition)
+  planDef: PlanDefTranslations
+
   // Common
   common: {
     loading: string
@@ -490,6 +500,9 @@ export interface Translations {
 
 export const translations: Record<Language, Translations> = {
   en: {
+    ...pageEn,
+    planAuth: planAuthEn,
+    planDef: planDefEn,
     common: {
       loading: 'Loading...',
       error: 'Error',
@@ -934,6 +947,9 @@ export const translations: Record<Language, Translations> = {
   },
 
   es: {
+    ...pageEs,
+    planAuth: planAuthEs,
+    planDef: planDefEs,
     common: {
       loading: 'Cargando...',
       error: 'Error',

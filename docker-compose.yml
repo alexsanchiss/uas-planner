@@ -4,7 +4,7 @@ services:
   app:
     build: .
     ports:
-      - "3000:3000"  # Maps port 3000 for Next.js
+      - "3003:3003"  # Next.js listens on 3003 (package.json "start")
     command: /bin/sh -c "git pull origin master && npm start"
     security_opt:
       - no-new-privileges:true
@@ -16,7 +16,7 @@ services:
 
   traj-assigner:
     build: .
-    command: /bin/sh -c "git pull origin master && node traj-assigner.ts"
+    command: /bin/sh -c "git pull origin master && node traj-assigner.js"
     depends_on:
       - app
     security_opt:

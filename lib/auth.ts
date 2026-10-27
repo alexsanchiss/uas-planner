@@ -3,8 +3,8 @@
  * 
  * This module provides JWT-based authentication utilities including:
  * - Password hashing with bcrypt
- * - Access token generation and verification (15 minute expiry)
- * - Refresh token generation and verification (7 day expiry)
+ * - Access token generation and verification (7 day expiry)
+ * - Refresh token generation and verification (30 day expiry)
  * - Token decoding and expiration checking
  * 
  * Security Requirements:
@@ -30,12 +30,13 @@ export const REFRESH_TOKEN_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000
 /**
  * Retrieves the JWT secret from environment variables.
  * Throws a fatal error if not set - this is a security requirement.
+ * Evaluated lazily (at first sign/verify/HMAC), never at module load, so builds
+ * without env still compile.
  * 
  * @returns The JWT secret string
  * @throws Error if JWT_SECRET is not set
- * @internal
  */
-function getJwtSecret(): string {
+export function getJwtSecret(): string {
   const secret = process.env.JWT_SECRET
   if (!secret) {
     throw new Error(
@@ -57,9 +58,6 @@ function getRefreshSecret(): string {
   const jwtSecret = getJwtSecret()
   return `refresh_${jwtSecret}`
 }
-
-const JWT_SECRET: string = getJwtSecret()
-const REFRESH_SECRET: string = getRefreshSecret()
 
 /**
  * Hashes a plain text password using bcrypt with salt rounds of 10.
@@ -97,7 +95,7 @@ export async function comparePasswords(password: string, hashedPassword: string)
 }
 
 /**
- * Generates a short-lived JWT access token (15 minutes).
+ * Generates a JWT access token (7 days).
  * The token contains the user ID and token type ('access').
  * 
  * @param userId - The user's database ID
@@ -110,11 +108,11 @@ export async function comparePasswords(password: string, hashedPassword: string)
  * ```
  */
 export function generateToken(userId: number): string {
-  return sign({ userId, type: 'access' }, JWT_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRY })
+  return sign({ userId, type: 'access' }, getJwtSecret(), { expiresIn: ACCESS_TOKEN_EXPIRY })
 }
 
 /**
- * Generates a long-lived JWT refresh token (7 days).
+ * Generates a long-lived JWT refresh token (30 days).
  * The token contains the user ID and token type ('refresh').
  * Should be stored in an httpOnly cookie for security.
  * 
@@ -129,7 +127,7 @@ export function generateToken(userId: number): string {
  * ```
  */
 export function generateRefreshToken(userId: number): string {
-  return sign({ userId, type: 'refresh' }, REFRESH_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRY })
+  return sign({ userId, type: 'refresh' }, getRefreshSecret(), { expiresIn: REFRESH_TOKEN_EXPIRY })
 }
 
 /**
@@ -149,8 +147,9 @@ export function generateRefreshToken(userId: number): string {
  * ```
  */
 export function verifyToken(token: string): { userId: number } | null {
+  const secret = getJwtSecret() // outside try: a missing secret must throw, not read as "invalid token"
   try {
-    const decoded = verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as JwtPayload & { userId: number; type?: string }
+    const decoded = verify(token, secret, { algorithms: ['HS256'] }) as JwtPayload & { userId: number; type?: string }
     // Ensure it's an access token (or legacy token without type)
     if (decoded.type && decoded.type !== 'access') {
       return null
@@ -178,8 +177,9 @@ export function verifyToken(token: string): { userId: number } | null {
  * ```
  */
 export function verifyRefreshToken(token: string): { userId: number } | null {
+  const secret = getRefreshSecret()
   try {
-    const decoded = verify(token, REFRESH_SECRET, { algorithms: ['HS256'] }) as JwtPayload & { userId: number; type: string }
+    const decoded = verify(token, secret, { algorithms: ['HS256'] }) as JwtPayload & { userId: number; type: string }
     if (decoded.type !== 'refresh') {
       return null
     }
@@ -205,8 +205,9 @@ export function verifyRefreshToken(token: string): { userId: number } | null {
  * ```
  */
 export function decodeToken(token: string): JwtPayload | null {
+  const secret = getJwtSecret()
   try {
-    const decoded = verify(token, JWT_SECRET, { algorithms: ['HS256'], ignoreExpiration: true }) as JwtPayload
+    const decoded = verify(token, secret, { algorithms: ['HS256'], ignoreExpiration: true }) as JwtPayload
     return decoded
   } catch {
     return null

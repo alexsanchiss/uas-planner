@@ -9,6 +9,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
+import { apiFetch } from '@/lib/api-client'
 
 interface RegenerationStatus {
   lastCheck: Date | null
@@ -60,15 +61,10 @@ export function useVolumeRegeneration(enabled: boolean = true) {
           return
         }
 
-        const headers = {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-
         // Call the regeneration endpoint
-        const response = await fetch('/api/flightPlans/regenerate-volumes', {
+        const response = await apiFetch('/api/flightPlans/regenerate-volumes', {
           method: 'POST',
-          headers
+          headers: { 'Content-Type': 'application/json' }
         })
 
         if (!response.ok) {

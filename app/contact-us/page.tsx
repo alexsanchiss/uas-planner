@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import { useI18n } from '../i18n/I18nContext';
@@ -60,22 +61,22 @@ export default function ContactUsPage() {
   };
 
   return (
-    <main className="max-w-2xl mx-auto py-12 px-4">
-      <h1 className="text-3xl font-bold mb-4 text-[var(--color-primary)]">
+    <div className="max-w-2xl mx-auto py-12 px-4">
+      <h1 className="text-3xl font-bold mb-4 text-brand-text">
         {t.contactPage.title}
       </h1>
-      <p className="mb-6 text-[var(--text-secondary)]">
+      <p className="mb-6 text-fg-2">
         {t.contactPage.subtitle}{' '}
         <a
           href="mailto:UPPS@sna-upv.com"
-          className="text-[var(--color-primary)] hover:underline"
+          className="text-brand-text hover:underline"
         >
           UPPS@sna-upv.com
         </a>
       </p>
 
       {ticketNumber && (
-        <div className="mb-6 p-4 rounded-lg border border-green-500/30 bg-green-500/10 text-green-400">
+        <div className="mb-6 p-4 rounded-lg border border-success-line bg-success-soft text-success-text">
           <p className="font-semibold">{t.contactPage.ticketSuccess}</p>
           <p className="text-sm mt-1">
             {t.contactPage.ticketNumber}{' '}
@@ -92,30 +93,30 @@ export default function ContactUsPage() {
       )}
 
       {authLoading ? (
-        <p className="text-[var(--text-secondary)]">{t.common.loading}</p>
+        <p className="text-fg-2">{t.common.loading}</p>
       ) : !user ? (
-        <div className="p-6 rounded-lg border border-[var(--border-primary)] bg-[var(--surface-primary)] text-center">
-          <p className="text-[var(--text-secondary)] mb-4">
+        <div className="p-6 rounded-lg border border-line bg-surface text-center">
+          <p className="text-fg-2 mb-4">
             {t.contactPage.loginRequired}
           </p>
-          <a
+          <Link
             href="/login"
-            className="inline-block px-6 py-2 rounded-lg bg-[var(--color-primary)] text-white font-semibold hover:opacity-90 transition-opacity"
+            className="inline-block px-6 py-2 rounded-lg bg-brand text-brand-fg font-semibold hover:bg-brand-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring"
           >
             {t.auth.login}
-          </a>
+          </Link>
         </div>
       ) : !ticketNumber ? (
         <form
           onSubmit={handleSubmit}
-          className="space-y-5 p-6 rounded-lg border border-[var(--border-primary)] bg-[var(--surface-primary)]"
+          className="space-y-5 p-6 rounded-lg border border-line bg-surface"
         >
           <div>
             <label
               htmlFor="subject"
-              className="block text-sm font-medium text-[var(--text-primary)] mb-1"
+              className="block text-sm font-medium text-fg mb-1"
             >
-              {t.contactPage.subject} <span className="text-red-400">*</span>
+              {t.contactPage.subject} <span className="text-danger-text" aria-hidden="true">*</span>
             </label>
             <input
               id="subject"
@@ -124,7 +125,7 @@ export default function ContactUsPage() {
               onChange={(e) => setSubject(e.target.value)}
               required
               maxLength={200}
-              className="w-full px-3 py-2 rounded-lg border border-[var(--border-primary)] bg-[var(--surface-secondary)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+              className="w-full px-3 py-2 rounded-lg border border-line bg-input text-fg focus:outline-none focus:ring-2 focus:ring-brand-ring"
               placeholder={t.contactPage.subjectPlaceholder}
             />
           </div>
@@ -132,15 +133,15 @@ export default function ContactUsPage() {
           <div>
             <label
               htmlFor="category"
-              className="block text-sm font-medium text-[var(--text-primary)] mb-1"
+              className="block text-sm font-medium text-fg mb-1"
             >
-              {t.contactPage.category} <span className="text-red-400">*</span>
+              {t.contactPage.category} <span className="text-danger-text" aria-hidden="true">*</span>
             </label>
             <select
               id="category"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-[var(--border-primary)] bg-[var(--surface-secondary)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+              className="w-full px-3 py-2 rounded-lg border border-line bg-input text-fg focus:outline-none focus:ring-2 focus:ring-brand-ring"
             >
               {CATEGORIES.map((cat) => (
                 <option key={cat} value={cat}>
@@ -153,9 +154,9 @@ export default function ContactUsPage() {
           <div>
             <label
               htmlFor="description"
-              className="block text-sm font-medium text-[var(--text-primary)] mb-1"
+              className="block text-sm font-medium text-fg mb-1"
             >
-              {t.contactPage.description} <span className="text-red-400">*</span>
+              {t.contactPage.description} <span className="text-danger-text" aria-hidden="true">*</span>
             </label>
             <textarea
               id="description"
@@ -165,10 +166,10 @@ export default function ContactUsPage() {
               minLength={10}
               maxLength={5000}
               rows={6}
-              className="w-full px-3 py-2 rounded-lg border border-[var(--border-primary)] bg-[var(--surface-secondary)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] resize-vertical"
+              className="w-full px-3 py-2 rounded-lg border border-line bg-input text-fg focus:outline-none focus:ring-2 focus:ring-brand-ring resize-vertical"
               placeholder={t.contactPage.descriptionPlaceholder}
             />
-            <p className="text-xs text-[var(--text-secondary)] mt-1">
+            <p className="text-xs text-fg-2 mt-1">
               {description.length}/5000 characters
             </p>
           </div>
@@ -176,16 +177,16 @@ export default function ContactUsPage() {
           <button
             type="submit"
             disabled={submitting || !subject.trim() || description.length < 10}
-            className="w-full py-2.5 rounded-lg bg-[var(--color-primary)] text-white font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-2.5 rounded-lg bg-brand text-brand-fg font-semibold hover:bg-brand-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? t.contactPage.submitting : t.contactPage.submit}
           </button>
         </form>
       ) : null}
 
-      <p className="mt-8 text-sm text-[var(--text-secondary)]">
+      <p className="mt-8 text-sm text-fg-2">
         {t.contactPage.demoNote}
       </p>
-    </main>
+    </div>
   );
 }

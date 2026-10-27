@@ -5,6 +5,7 @@ import { withAuth, isAuthError } from '@/lib/auth-middleware';
 import { sendContactTicketEmail, sendContactNotificationEmail } from '@/lib/email';
 import { logger } from '@/lib/logger';
 import prisma from '@/lib/prisma';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 const CATEGORIES = [
   'Bug Report',
@@ -16,7 +17,7 @@ const CATEGORIES = [
 
 const contactSchema = z.object({
   subject: z.string().min(1, 'Subject is required').max(200, 'Subject too long'),
-  category: z.enum(CATEGORIES, { errorMap: () => ({ message: 'Invalid category' }) }),
+  category: z.enum(CATEGORIES, { error: 'Invalid category' }),
   description: z.string().min(10, 'Description must be at least 10 characters').max(5000, 'Description too long'),
 });
 
@@ -43,6 +44,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Validation failed', message: firstFieldError || 'Invalid input' },
         { status: 400 },
+      );
+    }
+
+    // Count only valid submissions: each one sends two emails
+    const { allowed, resetIn } = checkRateLimit(`contact:${auth.userId}`, 5, 60 * 60 * 1000);
+    if (!allowed) {
+      return NextResponse.json(
+        { error: 'Too many support tickets. Please try again later.' },
+        { status: 429, headers: { 'Retry-After': String(Math.ceil(resetIn / 1000)) } }
       );
     }
 

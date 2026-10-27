@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useRef, useState } from 'react'
+import { Loader2 } from 'lucide-react'
 import { Modal } from '../ui/modal'
 import JsonViewerSections from './JsonViewerSections'
 import { useI18n, interpolate } from '@/app/i18n'
@@ -13,34 +14,6 @@ export interface ActivateFlightModalProps {
   planName: string
 }
 
-// ── Spinner ─────────────────────────────────────────────────────────────────
-
-const Spinner: React.FC<{ size?: number }> = ({ size = 20 }) => (
-  <svg
-    className="animate-spin"
-    xmlns="http://www.w3.org/2000/svg"
-    fill="none"
-    viewBox="0 0 24 24"
-    width={size}
-    height={size}
-    aria-hidden="true"
-  >
-    <circle
-      className="opacity-25"
-      cx="12"
-      cy="12"
-      r="10"
-      stroke="currentColor"
-      strokeWidth="4"
-    />
-    <path
-      className="opacity-75"
-      fill="currentColor"
-      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-    />
-  </svg>
-)
-
 // ── Component ────────────────────────────────────────────────────────────────
 
 export function ActivateFlightModal({
@@ -52,6 +25,7 @@ export function ActivateFlightModal({
 }: ActivateFlightModalProps) {
   const { t } = useI18n()
   const pt = t.planActivation
+  const at = t.activation
 
   // Terms fetch state
   const [termsData, setTermsData] = useState<unknown>(null)
@@ -200,24 +174,23 @@ export function ActivateFlightModal({
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <Modal open={open} onClose={onClose} title={`${pt.modalTitle} — ${planName}`} maxWidth="2xl">
-      {/* Terms section */}
+    <Modal open={open} onClose={onClose} title={`${pt.modalTitle} - ${planName}`} maxWidth="2xl">
+      {/* Terms section (scrollable: focusable so keyboard users can scroll it) */}
       <div
-        className="mb-5 rounded-lg border p-4 max-h-72 overflow-y-auto"
-        style={{
-          borderColor: 'var(--border-primary)',
-          backgroundColor: 'var(--bg-secondary)',
-        }}
+        role="region"
+        aria-label={at.termsRegion}
+        tabIndex={0}
+        className="mb-5 max-h-72 overflow-y-auto rounded-lg border border-line bg-surface-2 p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring"
       >
         {termsLoading && (
-          <div className="flex items-center gap-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
-            <Spinner size={18} />
+          <div role="status" className="flex items-center gap-3 text-sm text-fg-2">
+            <Loader2 className="h-[18px] w-[18px] animate-spin motion-reduce:animate-none" aria-hidden="true" />
             <span>{pt.loadingTerms}</span>
           </div>
         )}
 
         {!termsLoading && termsError && (
-          <p className="text-sm" style={{ color: 'var(--color-error, #ef4444)' }}>
+          <p role="alert" className="text-sm text-danger-text">
             {termsError}
           </p>
         )}
@@ -230,12 +203,7 @@ export function ActivateFlightModal({
       {/* Denial error banner */}
       {activationError && (
         <div
-          className="mb-4 rounded-md border px-4 py-3 text-sm"
-          style={{
-            borderColor: 'var(--color-error, #f87171)',
-            backgroundColor: 'var(--color-error-bg, #fef2f2)',
-            color: 'var(--color-error, #b91c1c)',
-          }}
+          className="mb-4 rounded-md border border-danger-line bg-danger-soft px-4 py-3 text-sm text-danger-text"
           role="alert"
         >
           <span className="font-semibold">{pt.activationDenied}: </span>
@@ -244,10 +212,10 @@ export function ActivateFlightModal({
       )}
 
       {/* Accept terms checkbox */}
-      <label className="mb-5 flex cursor-pointer items-start gap-3 text-sm" style={{ color: 'var(--text-primary)' }}>
+      <label className="mb-5 flex cursor-pointer items-start gap-3 text-sm text-fg">
         <input
           type="checkbox"
-          className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-[var(--brand-primary)]"
+          className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-brand"
           checked={accepted}
           disabled={activating}
           onChange={(e) => {
@@ -262,11 +230,7 @@ export function ActivateFlightModal({
         <button
           type="button"
           onClick={onClose}
-          className="rounded-md px-4 py-2 text-sm font-medium transition-colors"
-          style={{
-            backgroundColor: 'var(--bg-tertiary)',
-            color: 'var(--text-primary)',
-          }}
+          className="rounded-md bg-subtle px-4 py-2 text-sm font-medium text-fg transition-colors hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring"
         >
           {pt.cancel}
         </button>
@@ -275,13 +239,12 @@ export function ActivateFlightModal({
           type="button"
           onClick={handleActivate}
           disabled={!canActivate}
-          className="flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-          style={{
-            backgroundColor: canActivate ? 'var(--brand-primary, #2563eb)' : undefined,
-            color: canActivate ? '#fff' : undefined,
-          }}
+          aria-busy={activating || undefined}
+          className="flex items-center gap-2 rounded-md bg-brand px-4 py-2 text-sm font-medium text-brand-fg transition-colors hover:bg-brand-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring disabled:cursor-not-allowed disabled:border disabled:border-line disabled:bg-surface-2 disabled:text-muted"
         >
-          {activating && <Spinner size={16} />}
+          {activating && (
+            <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+          )}
           {activating
             ? pt.activating
             : isCoolingDown

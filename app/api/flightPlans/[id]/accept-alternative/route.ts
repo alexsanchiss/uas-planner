@@ -22,6 +22,7 @@ import prisma from '@/lib/prisma';
 import { withAuth, isAuthError } from '@/lib/auth-middleware';
 import { parseScrsAlternative } from '@/lib/scrs';
 import { buildQgcPlan, QgcWaypoint } from '@/lib/qgc-plan';
+import { parseId } from '@/lib/http';
 
 /**
  * Params type for dynamic route (Next.js 15 App Router)
@@ -30,14 +31,6 @@ interface RouteParams {
   params: Promise<{
     id: string;
   }>;
-}
-
-/**
- * Parse and validate the flight plan ID from route params.
- */
-function parseId(idParam: string): number | null {
-  const id = parseInt(idParam, 10);
-  return Number.isFinite(id) && id > 0 ? id : null;
 }
 
 /**

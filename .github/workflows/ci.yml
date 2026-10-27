@@ -5,6 +5,10 @@ on: [push, pull_request, workflow_dispatch]
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -21,41 +25,10 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-        id: install
+      - run: npx prisma validate
       - run: npx prisma generate
-        id: prisma
-      # VDS demo gate: affected behavior and files; historical debt stays visible below.
-      - run: node node_modules/jest/bin/jest.js --runInBand --testPathPatterns='by-external-response-number|useTheme'
-      - run: >-
-          node node_modules/eslint/bin/eslint.js --ext .ts,.tsx
-          app/components/header.tsx app/components/brand-mark.tsx app/components/app-choice.tsx
-          app/components/ui/input.tsx app/launch/page.tsx
-          app/components/plan-definition/GeozoneLayer.tsx
-          app/hooks/useTheme.ts app/layout.tsx app/page.tsx
-          app/api/machine/flightPlans/by-external-response-number
-          app/hooks/__tests__/useTheme.test.ts
-        if: ${{ !cancelled() && steps.install.outcome == 'success' && steps.prisma.outcome == 'success' }}
-      - run: npm run build -- --no-lint
-        if: ${{ !cancelled() && steps.install.outcome == 'success' && steps.prisma.outcome == 'success' }}
-
-  baseline-debt:
-    name: Historical full-suite and lint debt (informational)
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    continue-on-error: true
-    env:
-      DATABASE_URL: mysql://ci:ci@127.0.0.1:3306/upps_ci
-      JWT_SECRET: ci-only-placeholder-not-a-deployed-secret
-      MACHINE_API_KEY: ci-only-machine-key
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: npm
-      - run: npm ci
-      - run: npx prisma generate
-      # Six existing assertions fail in auth expiry, activation windows and landing coordinates.
-      - run: node node_modules/jest/bin/jest.js --runInBand
+      - run: npm run typecheck
       - run: npm run lint
-        if: ${{ !cancelled() }}
+      - run: npx jest --runInBand
+      - run: npm run build
+      - run: npm audit --audit-level=moderate --omit=dev

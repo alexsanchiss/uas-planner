@@ -175,24 +175,43 @@ describe('POST /api/flightPlans/[id]/activate', () => {
       mockIsAuthError.mockReturnValue(false);
     });
 
-    it('returns 400 when window is not yet open (scheduledAt 5min in future)', async () => {
-      const futureScheduledAt = new Date(now + 5 * 60 * 1000); // 5min from now
+    // The activation window is scheduledAt +/- 300 s (widened from 60 s in 23bba25).
+    const WINDOW_MS = 300_000;
+
+    it('returns 400 when window is not yet open (scheduledAt 301s in future)', async () => {
+      const futureScheduledAt = new Date(now + WINDOW_MS + 1000);
       mockFindUnique.mockResolvedValue({ ...basePlan, scheduledAt: futureScheduledAt } as never);
 
       const res = await POST(makeRequest(), makeParams());
       const body = await json(res);
       expect(res.status).toBe(400);
       expect(body.error).toBe('Ventana no abierta');
+      expect(mockUpdate).not.toHaveBeenCalled();
     });
 
-    it('returns 400 when window is closed (scheduledAt 5min in past)', async () => {
-      const pastScheduledAt = new Date(now - 5 * 60 * 1000); // 5min ago
+    it('returns 400 when window is closed (scheduledAt 301s in past)', async () => {
+      const pastScheduledAt = new Date(now - WINDOW_MS - 1000);
       mockFindUnique.mockResolvedValue({ ...basePlan, scheduledAt: pastScheduledAt } as never);
 
       const res = await POST(makeRequest(), makeParams());
       const body = await json(res);
       expect(res.status).toBe(400);
       expect(body.error).toBe('Ventana cerrada');
+      expect(mockUpdate).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['exactly 300s before scheduledAt (window opens, inclusive)', now + WINDOW_MS],
+      ['exactly 300s after scheduledAt (window closes, inclusive)', now - WINDOW_MS],
+      ['2 minutes before scheduledAt (inside the old 60s limit would have failed)', now + 120_000],
+    ])('allows activation %s', async (_label, scheduledAtMs) => {
+      mockFindUnique.mockResolvedValue({ ...basePlan, scheduledAt: new Date(scheduledAtMs) } as never);
+      mockUpdate.mockResolvedValue({ ...basePlan, activationStatus: 'autorizado_despegue' } as never);
+      mockFetch.mockResolvedValue({ ok: true, status: 200, json: async () => ({ status: 'authorized' }) } as Response);
+
+      const res = await POST(makeRequest(), makeParams());
+      expect(res.status).toBe(200);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
     });
   });
 

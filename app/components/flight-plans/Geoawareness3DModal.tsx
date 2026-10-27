@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- Cesium loaded dynamically, no static types */
 'use client'
 
 /**
@@ -16,7 +17,9 @@
  * - UOM conversion (M, FT) and AGL height reference
  */
 
-import React, { useEffect, useRef, useState } from 'react'
+import { loadCesium } from '@/lib/cesium-loader'
+import React, { useEffect, useId, useRef, useState } from 'react'
+import { useDialogA11y } from '@/app/hooks/useDialogA11y'
 import { useGeoawarenessWebSocket, type GeozoneData } from '@/app/hooks/useGeoawarenessWebSocket'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -55,25 +58,6 @@ function geozoneColor(type: string | undefined): string {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function loadCesiumScript(): Promise<any> {
-  if ((window as any).Cesium) return Promise.resolve((window as any).Cesium)
-  return new Promise((resolve, reject) => {
-    if (!document.querySelector('link[href="/cesium/Widgets/widgets.css"]')) {
-      const link = document.createElement('link')
-      link.rel = 'stylesheet'
-      link.href = '/cesium/Widgets/widgets.css'
-      document.head.appendChild(link)
-    }
-    const script = document.createElement('script')
-    script.src = '/cesium/Cesium.js'
-    script.onload = () => {
-      ;(window as any).Cesium ? resolve((window as any).Cesium) : reject(new Error('Cesium failed to load'))
-    }
-    script.onerror = () => reject(new Error('Failed to load Cesium script'))
-    document.head.appendChild(script)
-  })
-}
 
 function extractAlt(alt: unknown): number | null {
   if (alt == null) return null
@@ -360,13 +344,9 @@ const Geoawareness3DModal: React.FC<Geoawareness3DModalProps> = ({
         if (destroyed) return
 
         // 2. Load Cesium
-        const Cesium = await loadCesiumScript()
+        const Cesium = await loadCesium(token)
         cesiumRef.current = Cesium
         if (destroyed) return
-
-        // 3. Configure
-        Cesium.Ion.defaultAccessToken = token
-        ;(window as any).CESIUM_BASE_URL = '/cesium'
 
         // 4. Create viewer
         const viewer = new Cesium.Viewer(containerRef.current!, {
@@ -724,13 +704,8 @@ const Geoawareness3DModal: React.FC<Geoawareness3DModalProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, wsReady, wsFailed, trajectory.length, uplanData])
 
-  // Escape key
-  useEffect(() => {
-    if (!isOpen) return
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [isOpen, onClose])
+  const dialogRef = useDialogA11y<HTMLDivElement>(isOpen, onClose)
+  const titleId = useId()
 
   if (!isOpen) return null
 
@@ -739,10 +714,10 @@ const Geoawareness3DModal: React.FC<Geoawareness3DModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-gray-900 rounded-xl shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden relative">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} className="bg-gray-900 rounded-xl shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden relative outline-none">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
-          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+          <h2 id={titleId} className="text-lg font-semibold text-white flex items-center gap-2">
             <svg className="w-5 h-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>

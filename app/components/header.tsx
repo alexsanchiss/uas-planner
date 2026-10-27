@@ -3,138 +3,129 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useRef, useEffect } from "react";
-import { Button } from "./ui/button";
+import { useState, useRef, useEffect, useId } from "react";
+import { ChevronDown, LogOut, Menu, Settings, User, X } from "lucide-react";
 import { ThemeToggle } from "./ui/theme-toggle";
-import { useAuthContext } from "./auth/auth-provider";
+import { useAuth } from "../hooks/useAuth";
+import { useI18n } from "../i18n";
 import { BrandMark } from "./brand-mark";
+
+/** Shared focus ring: visible for keyboard users on both the themed and the transparent (launch) header. */
+const FOCUS = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring";
 
 /**
  * Loading skeleton component for user info
  */
 function UserSkeleton() {
   return (
-    <div className="flex items-center space-x-2 animate-pulse">
-      <div className="w-8 h-8 rounded-full bg-[var(--bg-hover)]" />
-      <div className="w-24 h-4 bg-[var(--bg-hover)] rounded" />
+    <div className="flex items-center space-x-2 animate-pulse motion-reduce:animate-none" aria-hidden="true">
+      <div className="h-8 w-8 rounded-full bg-hover" />
+      <div className="h-4 w-24 rounded bg-hover" />
     </div>
   );
 }
 
 /**
- * User dropdown menu with profile and logout options
+ * User menu: a disclosure with plain links (no ARIA menu role, so no arrow-key contract to fulfil).
+ * Escape closes it and returns focus to the trigger; a click outside closes it.
  */
-function UserDropdown({ 
-  username, 
-  onLogout 
-}: { 
-  username: string; 
+function UserDropdown({
+  username,
+  onLogout,
+  transparent,
+}: {
+  username: string;
   onLogout: () => void;
+  transparent?: boolean;
 }) {
+  const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelId = useId();
 
-  // Close dropdown when clicking outside
   useEffect(() => {
+    if (!isOpen) return;
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  // Close dropdown on escape key
-  useEffect(() => {
     function handleEscape(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setIsOpen(false);
+        triggerRef.current?.focus();
       }
     }
+    document.addEventListener("mousedown", handleClickOutside);
     document.addEventListener("keydown", handleEscape);
-    return () => document.removeEventListener("keydown", handleEscape);
-  }, []);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [isOpen]);
+
+  const itemClass = `flex w-full items-center gap-3 px-4 py-2 text-sm text-fg-2 transition-colors hover:bg-hover hover:text-fg ${FOCUS} focus-visible:ring-inset`;
 
   return (
     <div className="relative" ref={dropdownRef}>
       <button
+        ref={triggerRef}
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-2 p-2 rounded-lg hover:bg-[var(--bg-hover)] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+        className={`flex items-center gap-2 rounded-lg p-2 transition-colors duration-200 ${
+          transparent ? "text-white hover:bg-white/10" : "text-fg-2 hover:bg-hover"
+        } ${FOCUS}`}
         aria-expanded={isOpen}
-        aria-haspopup="true"
+        aria-controls={isOpen ? panelId : undefined}
+        aria-label={`${t.shell.userMenu}: ${username}`}
       >
         <Image
           src="/images/pfp.jpg"
-          alt="User Profile"
+          alt=""
           width={32}
           height={32}
           className="rounded-full"
         />
-        <span className="text-[var(--text-secondary)] transition-colors duration-200">{username}</span>
-        <svg 
-          className={`w-4 h-4 text-[var(--text-muted)] transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
-          fill="none" 
-          stroke="currentColor" 
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
+        <span className="hidden max-w-[10rem] truncate sm:inline">{username}</span>
+        <ChevronDown
+          aria-hidden="true"
+          className={`h-4 w-4 transition-transform duration-200 motion-reduce:transition-none ${isOpen ? "rotate-180" : ""}`}
+        />
       </button>
 
       {isOpen && (
-        <div 
-          className="absolute right-0 mt-2 w-56 bg-[var(--surface-elevated)] rounded-lg shadow-lg border border-[var(--border-primary)] py-1 z-[10000]"
-          role="menu"
-          aria-orientation="vertical"
+        <div
+          id={panelId}
+          className="absolute right-0 z-10 mt-2 w-56 rounded-lg border border-line bg-surface-elevated py-1 shadow-theme-lg"
         >
-          {/* User info header */}
-          <div className="px-4 py-3 border-b border-[var(--border-primary)]">
-            <p className="text-sm text-[var(--text-muted)]">Signed in as</p>
-            <p className="text-sm font-medium text-[var(--text-primary)] truncate">{username}</p>
+          <div className="border-b border-line px-4 py-3">
+            <p className="text-sm text-muted">{t.auth.signedInAs}</p>
+            <p className="truncate text-sm font-medium text-fg">{username}</p>
           </div>
 
-          {/* Menu items */}
           <div className="py-1">
-            <Link
-              href="/profile"
-              className="flex items-center px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors"
-              role="menuitem"
-              onClick={() => setIsOpen(false)}
-            >
-              <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-              Profile
+            <Link href="/profile" className={itemClass} onClick={() => setIsOpen(false)}>
+              <User className="h-4 w-4" aria-hidden="true" />
+              {t.nav.profile}
             </Link>
-            <Link
-              href="/settings"
-              className="flex items-center px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors"
-              role="menuitem"
-              onClick={() => setIsOpen(false)}
-            >
-              <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              Settings
+            <Link href="/settings" className={itemClass} onClick={() => setIsOpen(false)}>
+              <Settings className="h-4 w-4" aria-hidden="true" />
+              {t.nav.settings}
             </Link>
           </div>
 
-          {/* Logout */}
-          <div className="border-t border-[var(--border-primary)] py-1">
+          <div className="border-t border-line py-1">
             <button
+              type="button"
               onClick={() => {
                 setIsOpen(false);
                 onLogout();
               }}
-              className="flex items-center w-full px-4 py-2 text-sm text-[var(--status-error)] hover:bg-[var(--bg-hover)] hover:text-[var(--status-error-hover)] transition-colors"
-              role="menuitem"
+              className={`flex w-full items-center gap-3 px-4 py-2 text-sm text-danger-text transition-colors hover:bg-hover ${FOCUS} focus-visible:ring-inset`}
             >
-              <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-              Log out
+              <LogOut className="h-4 w-4" aria-hidden="true" />
+              {t.auth.logout}
             </button>
           </div>
         </div>
@@ -143,169 +134,175 @@ function UserDropdown({
   );
 }
 
-/**
- * Hamburger menu icon for mobile navigation
- */
-function HamburgerIcon({ open, transparent }: { open: boolean; transparent?: boolean }) {
-  const barColor = transparent ? 'bg-white' : 'bg-[var(--text-secondary)]';
+/** "Log in" link: tokens only, so it stays readable in both themes (the old outline button was gray-on-white in light). */
+function LoginLink({ transparent, compact }: { transparent?: boolean; compact?: boolean }) {
+  const { t } = useI18n();
   return (
-    <div className="w-6 h-6 flex flex-col justify-center items-center">
-      <span
-        className={`block h-0.5 w-6 ${barColor} transition-all duration-300 ${
-          open ? 'rotate-45 translate-y-1.5' : ''
-        }`}
-      />
-      <span
-        className={`block h-0.5 w-6 ${barColor} transition-all duration-300 my-1 ${
-          open ? 'opacity-0' : ''
-        }`}
-      />
-      <span
-        className={`block h-0.5 w-6 ${barColor} transition-all duration-300 ${
-          open ? '-rotate-45 -translate-y-1.5' : ''
-        }`}
-      />
-    </div>
+    <Link
+      href="/login"
+      className={`inline-flex items-center justify-center whitespace-nowrap rounded-md border text-sm font-medium transition-colors ${
+        compact ? "px-3 py-1.5 sm:px-4 sm:py-2" : "px-4 py-2"
+      } ${
+        transparent
+          ? "border-white/40 text-white hover:bg-white/10"
+          : "border-line-2 bg-surface-2 text-fg hover:bg-hover"
+      } ${FOCUS}`}
+    >
+      {t.auth.login}
+    </Link>
   );
 }
 
 export function Header({ transparent = false }: { transparent?: boolean }) {
-  const { user, loading, logout } = useAuthContext();
+  const { user, loading, logout } = useAuth();
+  const { t } = useI18n();
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  const isActive = (path: string) => pathname === path;
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileNavId = useId();
 
   // Close mobile menu when route changes
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [pathname]);
 
-  // Close mobile menu on escape key
+  // Escape closes the mobile menu and gives focus back to its button
   useEffect(() => {
+    if (!mobileMenuOpen) return;
     function handleEscape(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setMobileMenuOpen(false);
+        menuButtonRef.current?.focus();
       }
     }
     document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
-  }, []);
+  }, [mobileMenuOpen]);
 
+  // Flow order: define the plan, get it authorized, activate the flight.
   const navLinks = [
-    { href: "/plan-definition", label: "Plan Definition" },
-    { href: "/plan-authorization", label: "Plan Authorization" },
-    { href: "/plan-activation", label: "Plan Activation" },
+    { href: "/plan-definition", label: t.nav.planGenerator },
+    { href: "/plan-authorization", label: t.nav.trajectoryGenerator },
+    { href: "/plan-activation", label: t.nav.planActivation },
   ];
 
-  return (
-    <header className={`relative z-[9999] ${
+  const pillClass = (active: boolean, mobile: boolean) =>
+    `rounded-full text-sm font-medium transition-colors duration-200 ${FOCUS} ${
+      mobile ? "block px-4 py-3 text-center" : "px-5 py-2"
+    } ${
       transparent
-        ? 'bg-transparent backdrop-blur-md border-b border-white/10'
-        : 'bg-[var(--surface-primary)] shadow-md'
-    }`}>
+        ? active
+          ? "border border-white/25 bg-white/15 text-white"
+          : "border border-transparent text-white/80 hover:border-white/15 hover:bg-white/10 hover:text-white"
+        : active
+          ? "bg-brand text-brand-fg shadow-theme-sm"
+          : "text-fg-2 hover:bg-hover hover:text-fg"
+    }`;
+
+  const accountControls = (compact: boolean) =>
+    loading ? (
+      compact ? (
+        <div className="h-8 w-8 animate-pulse rounded-full bg-hover motion-reduce:animate-none" aria-hidden="true" />
+      ) : (
+        <UserSkeleton />
+      )
+    ) : user ? (
+      <UserDropdown username={user.username} onLogout={logout} transparent={transparent} />
+    ) : (
+      <LoginLink transparent={transparent} compact={compact} />
+    );
+
+  return (
+    <header
+      className={`relative z-[9999] ${
+        transparent
+          ? "border-b border-white/10 bg-transparent backdrop-blur-md"
+          : "bg-surface shadow-theme-md"
+      }`}
+    >
       <div className="container mx-auto px-4 py-3">
         {/* Desktop layout */}
-        <div className="hidden lg:grid lg:grid-cols-3 items-center">
-          {/* Navegación a la izquierda */}
-          <div className="flex items-center space-x-2">
-            {navLinks.map((link) => (
-              <Link key={link.href} href={link.href} className="group">
-                <div
-                  className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-300 cursor-pointer
-                    ${transparent
-                      ? isActive(link.href)
-                        ? "bg-white/15 text-white border border-white/25 shadow-lg shadow-white/5 backdrop-blur-sm"
-                        : "text-white/80 border border-transparent hover:bg-white/10 hover:text-white hover:border-white/15"
-                      : isActive(link.href)
-                        ? "bg-[var(--color-primary)] text-white shadow-lg shadow-blue-500/25"
-                        : "text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
-                    }`}
+        <div className="hidden items-center lg:grid lg:grid-cols-3">
+          <nav aria-label={t.shell.mainNav} className="flex items-center space-x-2">
+            {navLinks.map((link) => {
+              const active = pathname === link.href;
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  aria-current={active ? "page" : undefined}
+                  className={pillClass(active, false)}
                 >
                   {link.label}
-                </div>
-              </Link>
-            ))}
-          </div>
-          {/* Logo centrado */}
-          <div className="flex justify-center flex-shrink-0">
-            <Link href="/" aria-label="PAUTHFLY home" className="flex-shrink-0">
+                </Link>
+              );
+            })}
+          </nav>
+          <div className="flex flex-shrink-0 justify-center">
+            <Link href="/" aria-label={t.shell.brandHome} className={`flex-shrink-0 rounded-md ${FOCUS}`}>
               <BrandMark transparent={transparent} />
             </Link>
           </div>
-          {/* Botones de usuario a la derecha */}
-          <div className="flex justify-end items-center space-x-4">
+          <div className="flex items-center justify-end space-x-4">
             <ThemeToggle />
-            {loading ? (
-              <UserSkeleton />
-            ) : user ? (
-              <UserDropdown username={user.username} onLogout={logout} />
-            ) : (
-              <Link href="/login">
-                <Button variant="outline">Log in</Button>
-              </Link>
-            )}
+            {accountControls(false)}
           </div>
         </div>
 
         {/* Mobile/Tablet layout */}
-        <div className="lg:hidden flex items-center justify-between">
-          {/* Hamburger button */}
+        <div className="flex items-center justify-between lg:hidden">
           <button
+            ref={menuButtonRef}
+            type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 rounded-lg hover:bg-[var(--bg-hover)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
-            aria-label="Toggle menu"
+            className={`rounded-lg p-2 transition-colors ${
+              transparent ? "text-white hover:bg-white/10" : "text-fg-2 hover:bg-hover"
+            } ${FOCUS}`}
+            aria-label={mobileMenuOpen ? t.shell.closeMenu : t.shell.openMenu}
             aria-expanded={mobileMenuOpen}
+            aria-controls={mobileNavId}
           >
-            <HamburgerIcon open={mobileMenuOpen} transparent={transparent} />
+            {mobileMenuOpen ? (
+              <X className="h-6 w-6" aria-hidden="true" />
+            ) : (
+              <Menu className="h-6 w-6" aria-hidden="true" />
+            )}
           </button>
 
-          {/* Logo centered */}
-          <Link href="/" aria-label="PAUTHFLY home" className="flex-shrink-0">
+          <Link href="/" aria-label={t.shell.brandHome} className={`flex-shrink-0 rounded-md ${FOCUS}`}>
             <BrandMark compact transparent={transparent} />
           </Link>
 
-          {/* User controls */}
           <div className="flex items-center space-x-2 sm:space-x-4">
             <ThemeToggle />
-            {loading ? (
-              <div className="w-8 h-8 rounded-full bg-[var(--bg-hover)] animate-pulse" />
-            ) : user ? (
-              <UserDropdown username={user.username} onLogout={logout} />
-            ) : (
-              <Link href="/login">
-                <Button variant="outline" className="text-sm px-2 py-1 sm:px-4 sm:py-2">Log in</Button>
-              </Link>
-            )}
+            {accountControls(true)}
           </div>
         </div>
 
-        {/* Mobile menu dropdown */}
+        {/* Mobile menu */}
         {mobileMenuOpen && (
-          <div className={`lg:hidden mt-3 pb-3 border-t pt-3 animate-fadeIn ${
-            transparent ? 'border-white/10' : 'border-[var(--border-primary)]'
-          }`}>
-            <nav className="flex flex-col space-y-2">
-              {navLinks.map((link) => (
+          <nav
+            id={mobileNavId}
+            aria-label={t.shell.mainNav}
+            className={`mt-3 flex flex-col space-y-2 border-t pb-3 pt-3 lg:hidden ${
+              transparent ? "border-white/10" : "border-line"
+            }`}
+          >
+            {navLinks.map((link) => {
+              const active = pathname === link.href;
+              return (
                 <Link
                   key={link.href}
                   href={link.href}
+                  aria-current={active ? "page" : undefined}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`px-4 py-3 rounded-full transition-all duration-300 text-center font-medium text-sm
-                    ${transparent
-                      ? isActive(link.href)
-                        ? "bg-white/15 text-white border border-white/25"
-                        : "text-white/80 hover:bg-white/10 hover:text-white"
-                      : isActive(link.href)
-                        ? "bg-[var(--color-primary)] text-white shadow-md shadow-blue-500/20"
-                        : "text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
-                    }`}
+                  className={pillClass(active, true)}
                 >
                   {link.label}
                 </Link>
-              ))}
-            </nav>
-          </div>
+              );
+            })}
+          </nav>
         )}
       </div>
     </header>

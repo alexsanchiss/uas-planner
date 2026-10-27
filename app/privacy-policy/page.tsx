@@ -1,9 +1,14 @@
 import React from "react";
+import type { Metadata } from "next";
+import Link from "next/link";
+import { defaultLanguage, getTranslation } from "@/app/i18n/translations";
+
+export const metadata: Metadata = { title: getTranslation(defaultLanguage).titles.privacy };
 
 export default function PrivacyPolicyPage() {
   return (
-    <main className="max-w-2xl mx-auto py-12 px-4">
-      <h1 className="text-3xl font-bold mb-4">Privacy Policy</h1>
+    <div className="max-w-2xl mx-auto py-12 px-4">
+      <h1 className="text-3xl font-bold mb-4 text-fg">Privacy Policy</h1>
       <p className="mb-4">
         At SNA, your privacy and trust are our top priorities. As this is a DEMO
         version of our application, we want to be fully transparent about how we
@@ -35,12 +40,12 @@ export default function PrivacyPolicyPage() {
           <strong>Your Feedback Matters:</strong> As a DEMO user, your feedback
           is invaluable in helping us improve our application. Please reach out
           via the{" "}
-          <a
+          <Link
             href="/contact-us"
-            className="text-blue-400 hover:underline hover:text-blue-300"
+            className="text-brand-text underline hover:no-underline"
           >
             Contact page
-          </a>{" "}
+          </Link>{" "}
           with any questions, suggestions, or concerns.
         </li>
       </ul>
@@ -50,6 +55,6 @@ export default function PrivacyPolicyPage() {
         handle your data, please contact us. Thank you for helping us build a
         better platform.
       </p>
-    </main>
+    </div>
   );
 }

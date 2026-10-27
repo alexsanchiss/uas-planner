@@ -1,7 +1,6 @@
 "use client"
 
-import { ArrowLeft, ArrowRight } from "lucide-react"
-import Image from "next/image"
+import { ArrowLeft, ArrowRight, Map, Radar, ShieldCheck, type LucideIcon } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 
 import { Button } from "@/app/components/ui/button"
@@ -16,8 +15,7 @@ interface GalleryItem {
   id: string
   title: string
   description: string
-  href: string
-  image: string
+  icon: LucideIcon
 }
 
 interface Gallery4Props {
@@ -32,36 +30,21 @@ const defaultItems: GalleryItem[] = [
     title: "Intelligent Flight Planning",
     description:
       "Design precise drone flight paths with our interactive map interface. Set waypoints, define altitudes, and preview your mission before takeoff.",
-    href: "#",
-    image:
-      "https://images.unsplash.com/photo-1473968512647-3e447244af8f?w=800&h=600&fit=crop",
+    icon: Map,
   },
   {
     id: "2",
     title: "Real-Time Airspace Awareness",
     description:
       "Stay informed with live geoawareness data. Monitor restricted zones, weather conditions, and other airspace users in real time.",
-    href: "#",
-    image:
-      "https://images.unsplash.com/photo-1508444845599-5c89863b1c44?w=800&h=600&fit=crop",
+    icon: Radar,
   },
   {
     id: "3",
     title: "Automated Authorization",
     description:
       "Submit flight plans and receive authorization through our streamlined approval pipeline. Compliance made effortless.",
-    href: "#",
-    image:
-      "https://images.unsplash.com/photo-1527977966376-1c8408f9f108?w=800&h=600&fit=crop",
-  },
-  {
-    id: "4",
-    title: "Mission Analytics",
-    description:
-      "Review completed missions with detailed 3D trajectory visualization. Analyze performance and optimize future operations.",
-    href: "#",
-    image:
-      "https://images.unsplash.com/photo-1579829366248-204fe8413f31?w=800&h=600&fit=crop",
+    icon: ShieldCheck,
   },
 ]
 
@@ -108,10 +91,10 @@ const Gallery4 = ({
       <div className="container mx-auto">
         <div className="mb-8 flex flex-col justify-between md:mb-14 md:flex-row md:items-end lg:mb-16">
           <div>
-            <h2 className="mb-3 text-3xl font-semibold md:mb-4 md:text-4xl lg:mb-6 text-white">
+            <h2 className="mb-3 text-3xl font-semibold md:mb-4 md:text-4xl lg:mb-6 text-fg">
               {title}
             </h2>
-            <p className="text-base text-white/60 md:text-lg lg:max-w-2xl">
+            <p className="text-base text-fg-2 md:text-lg lg:max-w-2xl">
               {description}
             </p>
           </div>
@@ -124,8 +107,9 @@ const Gallery4 = ({
               }}
               disabled={!canScrollPrev}
               className="disabled:pointer-events-auto"
+              aria-label="Previous slide"
             >
-              <ArrowLeft className="size-5" />
+              <ArrowLeft className="size-5" aria-hidden="true" />
             </Button>
             <Button
               size="icon"
@@ -135,8 +119,9 @@ const Gallery4 = ({
               }}
               disabled={!canScrollNext}
               className="disabled:pointer-events-auto"
+              aria-label="Next slide"
             >
-              <ArrowRight className="size-5" />
+              <ArrowRight className="size-5" aria-hidden="true" />
             </Button>
           </div>
         </div>
@@ -158,32 +143,21 @@ const Gallery4 = ({
                 key={item.id}
                 className="pl-[20px] md:max-w-[452px]"
               >
-                <a
-                  href={item.href}
-                  className="group flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="flex aspect-[3/2] overflow-clip rounded-xl">
-                      <div className="flex-1">
-                        <div className="relative h-full w-full origin-bottom transition duration-300 group-hover:scale-105">
-                          <Image
-                            src={item.image}
-                            alt={item.title}
-                            fill
-                            className="object-cover object-center"
-                            unoptimized
-                          />
-                        </div>
-                      </div>
-                    </div>
+                <div className="group flex flex-col justify-between">
+                  <div className="flex aspect-[3/2] items-center justify-center overflow-clip rounded-xl bg-gradient-to-br from-surface-2 via-surface to-subtle">
+                    <item.icon
+                      className="h-16 w-16 text-brand-text transition duration-300 group-hover:scale-110 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+                      strokeWidth={1.5}
+                      aria-hidden="true"
+                    />
                   </div>
-                  <div className="mb-2 line-clamp-3 break-words pt-4 text-lg font-medium md:mb-3 md:pt-4 md:text-xl lg:pt-4 lg:text-2xl text-white">
+                  <div className="mb-2 line-clamp-3 break-words pt-4 text-lg font-medium md:mb-3 md:pt-4 md:text-xl lg:pt-4 lg:text-2xl text-fg">
                     {item.title}
                   </div>
-                  <div className="mb-8 line-clamp-2 text-sm text-white/60 md:mb-12 md:text-base lg:mb-9">
+                  <div className="mb-8 line-clamp-2 text-sm text-fg-2 md:mb-12 md:text-base lg:mb-9">
                     {item.description}
                   </div>
-                </a>
+                </div>
               </CarouselItem>
             ))}
           </CarouselContent>
@@ -192,13 +166,15 @@ const Gallery4 = ({
           {items.map((_, index) => (
             <button
               key={index}
+              type="button"
               onClick={() => scrollTo(index)}
-              className={`h-2 rounded-full transition-all duration-300 ${
+              className={`h-2 rounded-full transition-all duration-300 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-ring ${
                 currentIndex === index
-                  ? "w-8 bg-white"
-                  : "w-2 bg-white/30 hover:bg-white/50"
+                  ? "w-8 bg-fg"
+                  : "w-2 bg-line-2 hover:bg-line-hover"
               }`}
               aria-label={`Go to slide ${index + 1}`}
+              aria-current={currentIndex === index || undefined}
             />
           ))}
         </div>
