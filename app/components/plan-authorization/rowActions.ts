@@ -28,7 +28,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import type { Translations } from '@/app/i18n'
-import type { FolderSummary } from '@/app/hooks/useFolders'
+import type { FolderRef } from '@/app/hooks/useFolders'
 import type { MenuEntry } from './ActionMenu'
 import {
   authPhase,
@@ -47,7 +47,7 @@ export interface RowCtx {
   mode: Mode
   a: PlanActions
   busy: Busy
-  folders: FolderSummary[]
+  folders: FolderRef[]
   pa: Translations['planAuth']
 }
 

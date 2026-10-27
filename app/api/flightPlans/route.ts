@@ -19,6 +19,7 @@ import prisma from '@/lib/prisma';
 import { withAuth, isAuthError } from '@/lib/auth-middleware';
 import {
   flightPlanDeleteSchema,
+  flightPlanPageQuerySchema,
   externalUplanSchema,
   checkClientPlanFields,
   AUTH_LOCKED_STATUSES,
@@ -174,6 +175,8 @@ const SUMMARY_SELECT = {
  *   fields=summary (opt-in): rows without fileContent/uplan/activationMessage, plus the
  *   booleans hasFileContent / hasUplan so lists can gate buttons without the heavy text.
  *   Any other value (or none) returns the full rows exactly as before.
+ *   fields=summary&limit=1..100 (opt-in paging): `&offset=n&folderId=<id|none>&q=<name contains>&authorizationStatus=<exact>` ->
+ *   { items: summary rows (id desc), total }. 400 on bad params, 404 for a folder that is not the caller's.
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const auth = await withAuth(request);
@@ -184,6 +187,41 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const { userId } = auth;
 
   try {
+    // Opt-in paging (`limit` present): one page of summary rows + the total of the same filter.
+    // ponytail: skip/take + count; the q filter is a LIKE '%q%' scan of the user's rows (no full-text index), fine up to ~10^5-10^6 rows.
+    if (request.nextUrl.searchParams.has('limit')) {
+      const parsed = safeParseBody(flightPlanPageQuerySchema, Object.fromEntries(request.nextUrl.searchParams));
+      if (!parsed.success) {
+        return NextResponse.json({ error: 'Validation failed', details: parsed.errors }, { status: 400 });
+      }
+      const { limit, offset, folderId, q, authorizationStatus } = parsed.data;
+      if (typeof folderId === 'number' && !(await userOwnsFolders(userId, [folderId]))) {
+        return folderNotFound();
+      }
+      const where: Prisma.flightPlanWhereInput = {
+        userId,
+        ...(folderId !== undefined && { folderId: folderId === 'none' ? null : folderId }),
+        ...(q && { customName: { contains: q } }),
+        ...(authorizationStatus && { authorizationStatus }),
+      };
+      const [rows, total] = await Promise.all([
+        prisma.flightPlan.findMany({ where, select: SUMMARY_SELECT, orderBy: { id: 'desc' }, skip: offset, take: limit }),
+        prisma.flightPlan.count({ where }),
+      ]);
+      // hasFileContent / hasUplan for this page only (primary-key lookups)
+      const pageIds = rows.map((p) => p.id);
+      const [withFile, withUplan] = await Promise.all([
+        prisma.flightPlan.findMany({ where: { id: { in: pageIds }, fileContent: { not: null } }, select: { id: true } }),
+        prisma.flightPlan.findMany({ where: { id: { in: pageIds }, uplan: { not: null } }, select: { id: true } }),
+      ]);
+      const fileIds = new Set(withFile.map((p) => p.id));
+      const uplanIds = new Set(withUplan.map((p) => p.id));
+      return NextResponse.json({
+        items: rows.map((p) => ({ ...p, hasFileContent: fileIds.has(p.id), hasUplan: uplanIds.has(p.id) })),
+        total,
+      });
+    }
+
     if (request.nextUrl.searchParams.get('fields') === 'summary') {
       // IS NOT NULL is answered from the row header: the heavy text is never read.
       const [rows, withFile, withUplan] = await Promise.all([

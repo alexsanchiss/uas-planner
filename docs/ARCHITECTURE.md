@@ -15,7 +15,7 @@ Browser  ──►  Next.js 15 (App Router)  ──►  MySQL (Prisma)  ◄─�
 
 - **UI**: `app/layout.tsx` is a server component; `app/providers.tsx` is the client shell (i18n, theme, auth, toasts). Pages under `app/(protected)/` (plan-definition, plan-authorization, plan-activation, profile, settings) are guarded once in the group layout. `error`, `global-error`, `not-found` and `loading` are the boundaries.
 - **Plan Authorization**: one tree in `app/components/plan-authorization/`. `mode` is `'dev'` or `'prod'` from `NEXT_PUBLIC_PRODUCTION_MODE`; dev is prod plus bulk and researcher tools.
-- **Data hooks**: `useFlightPlans` and `useFolders` (in `app/hooks`) call the API through `lib/api-client.ts` and request `?fields=summary` listings.
+- **Data hooks**: `useFlightPlans` and `useFolders` (in `app/hooks`) call the API through `lib/api-client.ts` and request `?fields=summary` listings. Production Plan Authorization pages them instead (`useFolderPlans`: `?fields=counts` for the folders, 25 plans per expanded folder, server-side search, selected plan by id).
 - **API**: route handlers in `app/api/`. Protected ones use `withAuth()` (`lib/auth-middleware.ts`); input is validated with zod 4 schemas from `lib/validators.ts`. All FAS traffic goes through `lib/fas.ts`.
 - **Database**: Prisma 5 + MySQL. The schema is shared with processes outside Next.js, so it is an external contract.
 - **Standalone processes**: `traj-assigner.js` assigns queued plans to free VMs; `machine-cleaner.js` empties the `machine` table at startup. Both use their own `PrismaClient`.

@@ -9,7 +9,7 @@
 import { useCallback, useState } from 'react'
 import { interpolate, useI18n } from '@/app/i18n'
 import type { UseFlightPlansReturn } from '@/app/hooks/useFlightPlans'
-import type { FolderSummary, UseFoldersReturn } from '@/app/hooks/useFolders'
+import type { FolderRef, FolderSummary, UseFoldersReturn } from '@/app/hooks/useFolders'
 import type { useToast } from '@/app/hooks/useToast'
 import { parseTrajectoryCsv, saveZips, type TrajectoryRow } from './files'
 import { planPhase, randomTimes, type Mode, type PlanRow } from './lib'
@@ -21,15 +21,17 @@ interface Deps {
   mode: Mode
   plans: PlanRow[]
   fp: UseFlightPlansReturn<PlanRow>
-  fo: UseFoldersReturn<FolderSummary>
+  fo: UseFoldersReturn<FolderRef>
   toast: ReturnType<typeof useToast>
   confirm: Confirm
   /** Ids currently ticked (Dev). */
   selected: number[]
   setViewer: (v: ViewerState | null) => void
+  /** Prod (paged list, `plans` is only the loaded part): ids of the approved plans of a folder, all of them. */
+  approvedIdsOf?: (folderId: number) => Promise<number[]>
 }
 
-export function useGroupActions({ mode, plans, fp, fo, toast, confirm, selected, setViewer }: Deps) {
+export function useGroupActions({ mode, plans, fp, fo, toast, confirm, selected, setViewer, approvedIdsOf }: Deps) {
   const { t } = useI18n()
   const pa = t.planAuth
   /** Name of the long-running group operation in flight (disables the bar / dropzone). */
@@ -64,7 +66,7 @@ export function useGroupActions({ mode, plans, fp, fo, toast, confirm, selected,
   )
 
   const renameFolder = useCallback(
-    async (folder: FolderSummary, name: string): Promise<boolean> => {
+    async (folder: FolderRef, name: string): Promise<boolean> => {
       const ok = !!(await fo.updateFolder(folder.id, { name }))
       if (ok) toast.success(pa.toast.folderRenamed)
       else toast.error(pa.toast.folderRenameError)
@@ -73,17 +75,27 @@ export function useGroupActions({ mode, plans, fp, fo, toast, confirm, selected,
     [fo, toast, pa]
   )
 
-  /** The folders route deletes the plans itself but does not cancel them at FAS: pass the plan ids (plans route does). */
+  /**
+   * The folders route deletes the plans itself but does not cancel them at FAS: pass the plan ids (plans route does).
+   * Prod: the plans are paged, so the count comes from the folder (`planCount`) and only the approved ids (the ones FAS
+   * must hear about) are looked up.
+   */
   const deleteFolder = useCallback(
-    (folder: FolderSummary) => {
-      const planIds = idsOf(plansOf(folder.id))
+    (folder: FolderRef & { planCount?: number }) => {
+      const n = folder.planCount ?? plansOf(folder.id).length
       confirm.ask({
         title: pa.confirm.deleteFolderTitle,
-        message: interpolate(planIds.length ? pa.confirm.deleteFolderMessageWithPlans : pa.confirm.deleteFolderMessage, { name: folder.name, n: planIds.length }),
+        message: interpolate(n ? pa.confirm.deleteFolderMessageWithPlans : pa.confirm.deleteFolderMessage, { name: folder.name, n }),
         confirmLabel: pa.confirm.deleteFolderConfirm,
         variant: 'danger',
         onConfirm: () =>
           work('deleteFolder', async () => {
+            let planIds: number[]
+            try {
+              planIds = approvedIdsOf ? await approvedIdsOf(folder.id) : idsOf(plansOf(folder.id))
+            } catch {
+              return toast.error(pa.toast.folderDeleteError) // not deleted: FAS could not be told about its approved plans
+            }
             const ok = await fo.deleteFolder(folder.id, planIds)
             await fp.refresh()
             if (ok) toast.success(pa.toast.folderDeleted)
@@ -91,7 +103,7 @@ export function useGroupActions({ mode, plans, fp, fo, toast, confirm, selected,
           }),
       })
     },
-    [confirm, plansOf, work, fo, fp, toast, pa]
+    [confirm, plansOf, work, fo, fp, toast, pa, approvedIdsOf]
   )
 
   const cloneFolder = useCallback(

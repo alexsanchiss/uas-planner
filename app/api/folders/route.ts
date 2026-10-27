@@ -24,6 +24,7 @@ import { z } from 'zod';
  * Query params: none required (userId from token).
  *   fields=summary (opt-in): each folder carries only `flightPlans: [{ id }]` instead of the
  *   full plan rows (which include fileContent / uplan). Default response is unchanged.
+ *   fields=counts (opt-in): { folders: [folder + planCount], noFolderCount } with no plan rows.
  * 
  * Response: Array of folders with their flight plans
  */
@@ -36,6 +37,19 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const { userId } = auth;
 
   try {
+    // Opt-in `fields=counts`: no plan rows at all, just a count per folder (one GROUP BY over flightPlan(userId)).
+    if (request.nextUrl.searchParams.get('fields') === 'counts') {
+      const [folders, counts] = await Promise.all([
+        prisma.folder.findMany({ where: { userId }, orderBy: { id: 'desc' } }),
+        prisma.flightPlan.groupBy({ by: ['folderId'], where: { userId }, _count: { _all: true } }),
+      ]);
+      const byFolder = new Map(counts.map((c) => [c.folderId, c._count._all]));
+      return NextResponse.json({
+        folders: folders.map((f) => ({ ...f, planCount: byFolder.get(f.id) ?? 0 })),
+        noFolderCount: byFolder.get(null) ?? 0,
+      });
+    }
+
     const folders = await prisma.folder.findMany({
       where: { userId },
       include: {

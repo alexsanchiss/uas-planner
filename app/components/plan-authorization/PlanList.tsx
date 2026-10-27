@@ -4,7 +4,8 @@ import { useEffect, useId, useMemo, useRef, useState, type DragEvent, type React
 import Link from 'next/link'
 import { ChevronDown, CircleCheck, CircleDashed, CircleX, FileJson, FolderPlus, Hourglass, Loader2, Pencil, Search, ShieldCheck, ShieldX, Trash2, Undo2, type LucideIcon } from 'lucide-react'
 import { interpolate, useI18n } from '@/app/i18n'
-import type { FolderSummary } from '@/app/hooks/useFolders'
+import type { FolderCounts } from '@/app/hooks/useFolders'
+import { NO_FOLDER_KEY, SEARCH_KEY, type PlanPages } from '@/app/hooks/useFolderPlans'
 import { ActionMenu, type MenuEntry } from './ActionMenu'
 import { InlineNameForm } from './InlineNameForm'
 import { PLAN_DRAG_TYPE, startPlanDrag, type PlanDragData, type PlanRow, type ProgressKind } from './lib'
@@ -37,21 +38,29 @@ function planDrag(e: DragEvent): PlanDragData | null {
   }
 }
 
+/** Debounce of the server-side name search. */
+const SEARCH_DELAY_MS = 300
+
 interface Group {
   key: string
-  folder: FolderSummary | null
-  /** Plans shown (after the name search). */
-  plans: PlanRow[]
+  folder: FolderCounts | null
+  /** Plans of the group on the server. */
+  count: number
 }
 
 interface Props {
-  folders: FolderSummary[]
-  plans: PlanRow[]
+  folders: FolderCounts[]
+  /** Plans without folder. */
+  noFolderCount: number
+  /** Loaded pages of the groups on screen and the server-side search (useFolderPlans). */
+  list: PlanPages
   selectedId: number | null
+  /** Group of the selected plan: it stays open. */
+  selectedKey: string | null
   onSelect: (id: number) => void
   onCreateFolder: (name: string) => Promise<boolean>
-  onRenameFolder: (folder: FolderSummary, name: string) => Promise<boolean>
-  onDeleteFolder: (folder: FolderSummary) => void
+  onRenameFolder: (folder: FolderCounts, name: string) => Promise<boolean>
+  onDeleteFolder: (folder: FolderCounts) => void
   /** Files chosen to import as external U-plans into a folder. */
   onImport: (files: File[], folderId: number) => void
   onMovePlan: (planId: number, folderId: number | null) => void
@@ -59,13 +68,15 @@ interface Props {
   empty: ReactNode
 }
 
-/** Production plan list: search, folders as collapsible groups, plans without folder, one compact selectable row per plan. */
-export function PlanList({ folders, plans, selectedId, onSelect, onCreateFolder, onRenameFolder, onDeleteFolder, onImport, onMovePlan, empty }: Props) {
+/**
+ * Production plan list: server-side search, folders as collapsible groups (a group loads its first page when it opens,
+ * "Show more" appends the next one), plans without folder, one compact selectable row per plan.
+ */
+export function PlanList({ folders, noFolderCount, list, selectedId, selectedKey, onSelect, onCreateFolder, onRenameFolder, onDeleteFolder, onImport, onMovePlan, empty }: Props) {
   const { t, language } = useI18n()
   const pa = t.planAuth
   const w = pa.workspace
   const [query, setQuery] = useState('')
-  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set())
   const [newOpen, setNewOpen] = useState(false)
   const [renaming, setRenaming] = useState<number | null>(null)
   const [over, setOver] = useState<string | null>(null)
@@ -75,17 +86,20 @@ export function PlanList({ folders, plans, selectedId, onSelect, onCreateFolder,
   const importFolder = useRef<number | null>(null)
   const newInput = useRef<HTMLInputElement>(null)
 
-  const q = query.trim().toLowerCase()
+  const hasPlans = folders.length > 0 || noFolderCount > 0
   const groups = useMemo<Group[]>(() => {
-    const match = (p: PlanRow) => !q || p.customName.toLowerCase().includes(q)
-    const out: Group[] = folders.map((f) => ({ key: String(f.id), folder: f, plans: plans.filter((p) => p.folderId === f.id && match(p)) }))
-    const loose = plans.filter((p) => p.folderId === null)
-    if (loose.length > 0) out.push({ key: 'none', folder: null, plans: loose.filter(match) })
-    return q ? out.filter((g) => g.plans.length > 0) : out
-  }, [folders, plans, q])
+    const out: Group[] = folders.map((f) => ({ key: String(f.id), folder: f, count: f.planCount }))
+    if (noFolderCount > 0) out.push({ key: NO_FOLDER_KEY, folder: null, count: noFolderCount })
+    return out
+  }, [folders, noFolderCount])
 
-  const selected = selectedId === null ? undefined : plans.find((p) => p.id === selectedId)
-  const selectedKey = selected ? String(selected.folderId ?? 'none') : null
+  // The name search runs on the server, once typing pauses
+  const { setQuery: runSearch } = list
+  useEffect(() => {
+    const id = setTimeout(() => runSearch(query), SEARCH_DELAY_MS)
+    return () => clearTimeout(id)
+  }, [query, runSearch])
+  const search = list.search
 
   useEffect(() => {
     if (newOpen) newInput.current?.focus()
@@ -96,19 +110,62 @@ export function PlanList({ folders, plans, selectedId, onSelect, onCreateFolder,
     if (selectedId !== null) document.querySelector(`[data-plan-row="${selectedId}"]`)?.scrollIntoView({ block: 'nearest' })
   }, [selectedId])
 
-  const toggle = (key: string) =>
-    setCollapsed((prev) => {
-      const next = new Set(prev)
-      if (!next.delete(key)) next.add(key)
-      return next
-    })
-
   const pickImport = (folderId: number) => {
     importFolder.current = folderId
     fileInput.current?.click()
   }
 
   const existingNames = folders.map((f) => f.name)
+
+  const planRows = (rows: PlanRow[]) => (
+    <ul className="flex flex-col gap-0.5">
+      {rows.map((plan) => {
+        const status = planStatusText(plan, w, language)
+        const { Icon, tone, spin } = ICONS[status.progress.kind === 'step' && status.progress.step === 4 ? 'review' : status.progress.kind]
+        const isSelected = plan.id === selectedId
+        return (
+          <li key={plan.id} draggable onDragStart={(e) => startPlanDrag(e, plan)}>
+            <button
+              type="button"
+              data-plan-row={plan.id}
+              aria-current={isSelected ? 'true' : undefined}
+              onClick={() => onSelect(plan.id)}
+              className={`flex min-h-14 w-full items-center gap-3 rounded-md border-l-2 px-3 py-2 text-left ${isSelected ? 'border-brand bg-subtle' : 'border-transparent hover:bg-hover'}`}
+            >
+              <Icon className={`h-5 w-5 shrink-0 ${tone} ${spin ? 'animate-spin motion-reduce:animate-none' : ''}`} aria-hidden="true" />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-medium text-fg">{plan.customName}</span>
+                <span className="block truncate text-xs text-fg-2">{status.line}</span>
+              </span>
+            </button>
+          </li>
+        )
+      })}
+    </ul>
+  )
+
+  /** Rows of a group + its "Show more (N left)". */
+  const pageOf = (key: string, rows: PlanRow[]) => {
+    const left = (list.totalOf(key) ?? 0) - rows.length
+    return (
+      <>
+        {planRows(rows)}
+        {left > 0 && (
+          <button type="button" onClick={() => list.more(key)} className={`${SECONDARY} mt-1 w-full justify-center`}>
+            {interpolate(w.showMore, { n: left })}
+          </button>
+        )}
+      </>
+    )
+  }
+  const loadingText = (
+    <p role="status" className="px-2 py-2 text-sm text-fg-2">
+      {w.loadingPlans}
+    </p>
+  )
+
+  const searchRows = search ? list.rowsOf(SEARCH_KEY) : []
+  const searchTotal = list.totalOf(SEARCH_KEY)
 
   return (
     <section aria-labelledby={headId} className="flex flex-col gap-3">
@@ -134,7 +191,7 @@ export function PlanList({ folders, plans, selectedId, onSelect, onCreateFolder,
         />
       )}
 
-      {plans.length > 0 && (
+      {hasPlans && (
         <div className="relative">
           <label htmlFor={searchId} className="sr-only">
             {w.searchLabel}
@@ -151,12 +208,30 @@ export function PlanList({ folders, plans, selectedId, onSelect, onCreateFolder,
         </div>
       )}
 
-      {plans.length === 0 && <div className="lg:hidden">{empty}</div>}
+      {!hasPlans && <div className="lg:hidden">{empty}</div>}
 
-      <ul className="flex flex-col gap-2">
-        {groups.map((g) => {
-          const forced = g.key === selectedKey || !!q // the group of the selected plan (and any search hit) stays open
-          const open = forced || !collapsed.has(g.key)
+      {search ? (
+        <div role="region" aria-label={w.searchResults} className="rounded-lg border border-line bg-surface px-1 pb-1">
+          <p className="flex min-h-11 items-center justify-between gap-2 px-3 text-sm font-semibold text-fg">
+            <span>{w.searchResults}</span>
+            <span className="text-xs tabular-nums text-fg-2">{searchTotal}</span>
+          </p>
+          {searchRows.length > 0 ? (
+            pageOf(SEARCH_KEY, searchRows)
+          ) : searchTotal === undefined ? (
+            loadingText
+          ) : (
+            <p role="status" className="px-2 py-2 text-sm text-fg-2">
+              {interpolate(w.noMatches, { q: search.text })}
+            </p>
+          )}
+        </div>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {groups.map((g) => {
+          const forced = g.key === selectedKey // the group of the selected plan stays open
+          const open = forced || list.openKeys.has(g.key)
+          const rows = open ? list.rowsOf(g.key) : []
           const name = g.folder ? g.folder.name : pa.folders.noFolder
           const bodyId = `${headId}-${g.key}`
           const head = (
@@ -164,8 +239,8 @@ export function PlanList({ folders, plans, selectedId, onSelect, onCreateFolder,
               <ChevronDown className={`h-4 w-4 shrink-0 text-fg-2 transition-transform motion-reduce:transition-none ${open ? '' : '-rotate-90'}`} aria-hidden="true" />
               <span className="min-w-0 flex-1 truncate text-sm font-semibold text-fg">{name}</span>
               <span className="text-xs tabular-nums text-fg-2">
-                <span className="sr-only">{interpolate(pa.folders.plansCount, { n: g.plans.length })}</span>
-                <span aria-hidden="true">{g.plans.length}</span>
+                <span className="sr-only">{interpolate(pa.folders.plansCount, { n: g.count })}</span>
+                <span aria-hidden="true">{g.count}</span>
               </span>
             </>
           )
@@ -214,7 +289,7 @@ export function PlanList({ folders, plans, selectedId, onSelect, onCreateFolder,
                   {forced ? (
                     <div className={HEAD}>{head}</div>
                   ) : (
-                    <button type="button" aria-expanded={open} aria-controls={bodyId} onClick={() => toggle(g.key)} className={`${HEAD} hover:bg-hover`}>
+                    <button type="button" aria-expanded={open} aria-controls={bodyId} onClick={() => list.toggle(g.key)} className={`${HEAD} hover:bg-hover`}>
                       {head}
                     </button>
                   )}
@@ -224,31 +299,10 @@ export function PlanList({ folders, plans, selectedId, onSelect, onCreateFolder,
 
               {open && (
                 <div id={bodyId} className="px-1 pb-1">
-                  {g.plans.length > 0 ? (
-                    <ul className="flex flex-col gap-0.5">
-                      {g.plans.map((plan) => {
-                        const status = planStatusText(plan, w, language)
-                        const { Icon, tone, spin } = ICONS[status.progress.kind === 'step' && status.progress.step === 4 ? 'review' : status.progress.kind]
-                        const isSelected = plan.id === selectedId
-                        return (
-                          <li key={plan.id} draggable onDragStart={(e) => startPlanDrag(e, plan)}>
-                            <button
-                              type="button"
-                              data-plan-row={plan.id}
-                              aria-current={isSelected ? 'true' : undefined}
-                              onClick={() => onSelect(plan.id)}
-                              className={`flex min-h-14 w-full items-center gap-3 rounded-md border-l-2 px-3 py-2 text-left ${isSelected ? 'border-brand bg-subtle' : 'border-transparent hover:bg-hover'}`}
-                            >
-                              <Icon className={`h-5 w-5 shrink-0 ${tone} ${spin ? 'animate-spin motion-reduce:animate-none' : ''}`} aria-hidden="true" />
-                              <span className="min-w-0 flex-1">
-                                <span className="block truncate text-sm font-medium text-fg">{plan.customName}</span>
-                                <span className="block truncate text-xs text-fg-2">{status.line}</span>
-                              </span>
-                            </button>
-                          </li>
-                        )
-                      })}
-                    </ul>
+                  {rows.length > 0 ? (
+                    pageOf(g.key, rows)
+                  ) : list.totalOf(g.key) === undefined ? (
+                    loadingText
                   ) : (
                     folder && (
                       <div className="px-2 pb-2 pt-1">
@@ -271,11 +325,6 @@ export function PlanList({ folders, plans, selectedId, onSelect, onCreateFolder,
           )
         })}
       </ul>
-
-      {q && groups.length === 0 && (
-        <p role="status" className="px-1 text-sm text-fg-2">
-          {interpolate(w.noMatches, { q: query.trim() })}
-        </p>
       )}
 
       <input

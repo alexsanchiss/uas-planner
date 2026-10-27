@@ -8,6 +8,8 @@
  * - CRUD operations (create, update, delete) plus clone and process-folder
  * - `summary: true` -> GET /api/folders?fields=summary: folder.flightPlans is only [{ id }]
  *   (the full plan rows come from useFlightPlans)
+ * - `counts: true` -> GET /api/folders?fields=counts: no plan rows, `planCount` per folder plus
+ *   `noFolderCount` (production list: the plans come page by page from useFolderPlans)
  * - Uses useAuth for authentication token
  * - Type-safe API responses
  * - Optimistic updates for immediate UI feedback
@@ -20,6 +22,10 @@ import type { FlightPlan } from './useFlightPlans'
 
 /** Folder row of ?fields=summary: plans reduced to their ids. */
 export type FolderSummary = Omit<Folder, 'flightPlans'> & { flightPlans: { id: number }[] }
+/** Folder without any plan data: what the folder actions need (FolderSummary and FolderCounts are both one). */
+export type FolderRef = Omit<Folder, 'flightPlans'>
+/** Folder row of ?fields=counts: how many plans it holds, no plan rows. */
+export type FolderCounts = FolderRef & { planCount: number }
 
 /**
  * Folder data structure
@@ -60,11 +66,15 @@ interface UseFoldersOptions {
   pollingEnabled?: boolean
   /** Fetch ?fields=summary: rows are FolderSummary (default: false) */
   summary?: boolean
+  /** Fetch ?fields=counts: rows are FolderCounts and `noFolderCount` is filled (default: false) */
+  counts?: boolean
 }
 
 export interface UseFoldersReturn<TFolder = Folder> {
   /** Array of folders */
   folders: TFolder[]
+  /** Plans without folder (only with `counts: true`, else 0) */
+  noFolderCount: number
   /** Loading state for initial fetch */
   loading: boolean
   /** Error from the last fetch attempt */
@@ -103,16 +113,24 @@ export interface UseFoldersReturn<TFolder = Folder> {
   optimisticRemove: (id: number) => void
 }
 
+type AnyFolder = Folder | FolderSummary | FolderCounts
+interface FoldersPayload {
+  folders: AnyFolder[]
+  noFolderCount: number
+}
+
 /**
  * Fetch all folders from the API
  */
-async function fetchFolders(summary: boolean): Promise<(Folder | FolderSummary)[]> {
+async function fetchFolders(mode: 'full' | 'summary' | 'counts'): Promise<FoldersPayload> {
   const token = getAuthToken()
   if (!token) {
     throw new Error('Not authenticated')
   }
 
-  return apiJson<(Folder | FolderSummary)[]>(summary ? '/api/folders?fields=summary' : '/api/folders')
+  if (mode === 'counts') return apiJson<FoldersPayload>('/api/folders?fields=counts')
+  const folders = await apiJson<AnyFolder[]>(mode === 'summary' ? '/api/folders?fields=summary' : '/api/folders')
+  return { folders, noFolderCount: 0 }
 }
 
 /**
@@ -135,13 +153,15 @@ async function fetchFolders(summary: boolean): Promise<(Folder | FolderSummary)[
  * await deleteFolder(folderId)
  * ```
  */
+export function useFolders(options: UseFoldersOptions & { counts: true }): UseFoldersReturn<FolderCounts>
 export function useFolders(options: UseFoldersOptions & { summary: true }): UseFoldersReturn<FolderSummary>
 export function useFolders(options?: UseFoldersOptions): UseFoldersReturn<Folder>
-export function useFolders(options: UseFoldersOptions = {}): UseFoldersReturn<Folder | FolderSummary> {
+export function useFolders(options: UseFoldersOptions = {}): UseFoldersReturn<AnyFolder> {
   const {
     pollingInterval = 0,
     pollingEnabled = false,
     summary = false,
+    counts = false,
   } = options
 
   // Local state for optimistic updates
@@ -150,17 +170,19 @@ export function useFolders(options: UseFoldersOptions = {}): UseFoldersReturn<Fo
 
   // Use polling hook for data fetching (polling disabled by default for folders)
   const {
-    data: serverData,
+    data: payload,
     loading,
     error,
     refresh,
     isPolling,
     startPolling,
     stopPolling,
-  } = usePolling<(Folder | FolderSummary)[]>(() => fetchFolders(summary), {
+  } = usePolling<FoldersPayload>(() => fetchFolders(counts ? 'counts' : summary ? 'summary' : 'full'), {
     interval: pollingInterval,
     enabled: pollingEnabled,
   })
+
+  const serverData = payload?.folders
 
   // Merge server data with optimistic updates
   const folders = useMemo(() => {
@@ -177,7 +199,7 @@ export function useFolders(options: UseFoldersOptions = {}): UseFoldersReturn<Fo
   /**
    * Optimistically update a folder in local state
    */
-  const optimisticUpdate = useCallback((id: number, data: Partial<Folder | FolderSummary>) => {
+  const optimisticUpdate = useCallback((id: number, data: Partial<AnyFolder>) => {
     setOptimisticState(prev => {
       const next = new Map(prev)
       const existing = next.get(id) || {}
@@ -305,7 +327,8 @@ export function useFolders(options: UseFoldersOptions = {}): UseFoldersReturn<Fo
    * Queue every plan of a folder for processing (one bulk PUT)
    */
   const processFolder = useCallback(async (id: number, planIds?: number[]) => {
-    const ids = planIds ?? serverData?.find(f => f.id === id)?.flightPlans.map(p => p.id) ?? []
+    const found = serverData?.find(f => f.id === id)
+    const ids = planIds ?? (found && 'flightPlans' in found ? found.flightPlans.map(p => p.id) : [])
     if (ids.length === 0) return { count: 0 }
     try {
       return await apiJson<{ count: number }>('/api/flightPlans', {
@@ -321,12 +344,13 @@ export function useFolders(options: UseFoldersOptions = {}): UseFoldersReturn<Fo
   /**
    * Get a folder by ID
    */
-  const getFolder = useCallback((id: number): Folder | FolderSummary | undefined => {
+  const getFolder = useCallback((id: number): AnyFolder | undefined => {
     return folders.find(folder => folder.id === id)
   }, [folders])
 
   return {
     folders,
+    noFolderCount: payload?.noFolderCount ?? 0,
     loading,
     error,
     refresh,
