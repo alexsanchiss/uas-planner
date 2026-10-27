@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import { TriangleAlert, type LucideIcon } from 'lucide-react'
 import { useI18n } from '@/app/i18n'
 
-/** Loading placeholder with the shape of the final layout (folder column + table rows). */
+/** Dev loading placeholder with the shape of the final layout (folder column + table rows). */
 export function PlanAuthSkeleton() {
   const { t } = useI18n()
   const bar = 'animate-pulse rounded-md bg-subtle motion-reduce:animate-none'
@@ -20,6 +20,28 @@ export function PlanAuthSkeleton() {
         {[0, 1, 2, 3, 4].map((i) => (
           <div key={i} className={`${bar} h-12`} />
         ))}
+      </div>
+      <span className="sr-only">{t.planAuth.states.loading}</span>
+    </div>
+  )
+}
+
+/** Production loading placeholder: the plan list column and the workspace (desktop only). */
+export function PlanListSkeleton() {
+  const { t } = useI18n()
+  const bar = 'animate-pulse rounded-md bg-subtle motion-reduce:animate-none'
+  return (
+    <div role="status" aria-busy="true" aria-label={t.planAuth.states.loading} className="grid min-h-[40dvh] gap-6 lg:grid-cols-[19rem_minmax(0,1fr)]">
+      <div className="space-y-2">
+        <div className={`${bar} h-11`} />
+        {[0, 1, 2, 3, 4].map((i) => (
+          <div key={i} className={`${bar} h-14`} />
+        ))}
+      </div>
+      <div className="hidden space-y-4 lg:block">
+        <div className={`${bar} h-8 w-1/2`} />
+        <div className={`${bar} h-10`} />
+        <div className={`${bar} h-40`} />
       </div>
       <span className="sr-only">{t.planAuth.states.loading}</span>
     </div>

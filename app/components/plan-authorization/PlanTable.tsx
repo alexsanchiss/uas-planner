@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useRef, useState, type DragEvent } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ArrowDown, ArrowUp, ArrowUpDown, GripVertical } from 'lucide-react'
 import { interpolate, useI18n } from '@/app/i18n'
 import { ActionMenu } from './ActionMenu'
-import { authPhase, isScheduleLocked, planPhase, PLAN_DRAG_TYPE, type PlanDragData, type PlanRow as Plan } from './lib'
+import { authPhase, isScheduleLocked, planPhase, startPlanDrag, type PlanRow as Plan } from './lib'
 import { PlanName } from './PlanName'
 import { PrimaryAction } from './PrimaryAction'
 import { planMenuEntries, type RowCtx } from './rowActions'
@@ -15,14 +15,6 @@ export type SortKey = 'name' | 'scheduled'
 export interface SortState {
   key: SortKey
   dir: 'asc' | 'desc'
-}
-
-/** HTML5 drag payload of a plan (dropped on a folder, or on "plans without folder"). */
-export function startPlanDrag(e: DragEvent, plan: Plan) {
-  const data: PlanDragData = { planId: plan.id, planName: plan.customName, sourceFolderId: plan.folderId }
-  e.dataTransfer.setData(PLAN_DRAG_TYPE, JSON.stringify(data))
-  e.dataTransfer.setData('text/plain', plan.customName)
-  e.dataTransfer.effectAllowed = 'move'
 }
 
 interface RowProps {

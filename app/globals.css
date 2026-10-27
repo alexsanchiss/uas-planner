@@ -15,6 +15,14 @@ body {
   color: var(--text-primary);
 }
 
+/* Plan authorization (phones): the fixed action bar covers the page bottom, so reserve its height under the footer.
+   PlanWorkspace sets data-action-bar on <body> while the bar is mounted. */
+@media (max-width: 1023.98px) {
+  body[data-action-bar] {
+    padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+  }
+}
+
 /* Add any other global styles your application needs */
 
 /* App sidebar background color (used for all left columns) */

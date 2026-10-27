@@ -88,14 +88,16 @@ interface Props {
   children?: ReactNode
   align?: 'start' | 'center' | 'end'
   disabled?: boolean
+  /** Icon trigger sized for touch (44 px) below lg. */
+  touch?: boolean
   className?: string
 }
 
 /** Keyboard-operable action menu on Base UI Menu (arrow keys, type-ahead, Escape, focus return). */
-export function ActionMenu({ label, entries, children, align = 'end', disabled, className = '' }: Props) {
+export function ActionMenu({ label, entries, children, align = 'end', disabled, touch, className = '' }: Props) {
   const base = children
     ? 'inline-flex min-h-9 items-center gap-1.5 rounded-md border border-line-2 bg-surface px-3 text-sm font-medium text-fg hover:bg-hover'
-    : 'inline-flex h-9 w-9 items-center justify-center rounded-md text-fg-2 hover:bg-hover hover:text-fg'
+    : `inline-flex items-center justify-center rounded-md text-fg-2 hover:bg-hover hover:text-fg ${touch ? 'h-11 w-11 lg:h-9 lg:w-9' : 'h-9 w-9'}`
   return (
     <Menu.Root>
       <Menu.Trigger

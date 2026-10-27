@@ -68,10 +68,4 @@ export function useI18n(): I18nContextType {
   return context
 }
 
-/**
- * Helper function to interpolate variables in translation strings
- * Usage: interpolate(t.time.minutesAgo, { n: 5 }) -> "5 minutes ago"
- */
-export function interpolate(template: string, vars: Record<string, string | number>): string {
-  return template.replace(/{(\w+)}/g, (_, key) => String(vars[key] ?? `{${key}}`))
-}
+export { interpolate } from './interpolate'

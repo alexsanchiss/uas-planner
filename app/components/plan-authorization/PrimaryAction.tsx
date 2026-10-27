@@ -14,11 +14,13 @@ const TONE = {
 interface Props {
   plan: PlanRow
   ctx: RowCtx
+  /** Touch-sized (44 px) below lg. */
+  touch?: boolean
   className?: string
 }
 
 /** The row's single contextual action: Set time, Process, Request authorization or View result (or its waiting state). */
-export function PrimaryAction({ plan, ctx, className = '' }: Props) {
+export function PrimaryAction({ plan, ctx, touch, className = '' }: Props) {
   const view = primaryView(plan, ctx)
   if (!view) return null
 
@@ -40,7 +42,7 @@ export function PrimaryAction({ plan, ctx, className = '' }: Props) {
       disabled={view.disabled || view.loading}
       onClick={view.run}
       aria-busy={view.loading || undefined}
-      className={`inline-flex min-h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-3 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-70 ${TONE[view.tone]} ${className}`}
+      className={`inline-flex ${touch ? 'min-h-11 lg:min-h-10' : 'min-h-9'} items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-3 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-70 ${TONE[view.tone]} ${className}`}
     >
       {view.loading ? (
         <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
