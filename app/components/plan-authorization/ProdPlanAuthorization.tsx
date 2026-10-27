@@ -255,11 +255,8 @@ export function ProdPlanAuthorization() {
       <ViewerHost
         viewer={actions.viewer}
         onClose={actions.closeViewer}
-        scrs={actions.scrs}
-        onCloseScrs={actions.closeScrs}
         acceptingScrs={actions.acceptingScrs}
-        onAcceptScrs={() => void actions.acceptScrs()}
-        onOpenScrs={actions.openScrsFromResult}
+        onAcceptScrs={(id) => void actions.acceptScrs(id)}
         onFormSaved={() => void fp.refresh()}
         onFormRequestAuth={actions.requestAuthById}
       />

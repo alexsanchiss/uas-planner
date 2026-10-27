@@ -8,28 +8,24 @@
 
 import { useCallback, useRef, useState } from 'react'
 import { ApiError } from '@/lib/api-client'
-import { parseScrsAlternative } from '@/lib/scrs'
 import { shouldGenerateRandomUplan } from '@/lib/uplan/random-data'
 import { interpolate, useI18n } from '@/app/i18n'
 import type { UseFlightPlansReturn } from '@/app/hooks/useFlightPlans'
 import type { useToast } from '@/app/hooks/useToast'
+import type { Preset } from '@/app/components/plan-viewer/viewerStyle'
 import { saveText } from './files'
 import {
   authPhase,
   hasVolumes,
-  messageText,
   parseJson,
   parseWaypointsFromPlan,
   planPhase,
-  uplanWaypoints,
-  uspaceOf,
-
   type PlanRow,
   type UplanData,
 } from './lib'
 import type { Busy } from './useBusy'
 import type { Confirm } from './useConfirm'
-import type { ScrsState, ViewerState } from './ViewerHost'
+import type { ViewerState } from './ViewerHost'
 
 /** Message of a failed call: the server's `{ error }` text when there is one. */
 export function errorMessage(e: unknown, fallback: string): string {
@@ -52,11 +48,9 @@ export function usePlanActions({ plans, fp, toast, confirm, busy }: Deps) {
   plansRef.current = plans
 
   const [viewer, setViewer] = useState<ViewerState | null>(null)
-  const [scrs, setScrs] = useState<ScrsState | null>(null)
   const [acceptingScrs, setAcceptingScrs] = useState(false)
 
   const closeViewer = useCallback(() => setViewer(null), [])
-  const closeScrs = useCallback(() => setScrs(null), [])
 
   /** U-plan of a plan with its operation volumes: generated (and saved by the server) when missing. */
   const uplanWithVolumes = useCallback(
@@ -87,89 +81,36 @@ export function usePlanActions({ plans, fp, toast, confirm, busy }: Deps) {
 
   // ---- Viewers ---------------------------------------------------------------------
 
-  const openWaypoints = useCallback(
-    (plan: PlanRow) =>
+  /**
+   * The ONE plan viewer, opened with a preset (route / uplan / result). A single GET /api/flightPlans/[id] feeds it; the
+   * trajectory CSV and the live geozones are fetched by the viewer only when their layers are switched on. Empty states
+   * keep their toast (the "U-plan" preset generates the operation volumes first when the plan has none).
+   */
+  const openViewer = useCallback(
+    (plan: PlanRow, preset: Preset) =>
       open(plan, async () => {
         const d = await fp.fetchPlanDetail(plan.id)
-        const waypoints = parseWaypointsFromPlan(d.fileContent)
-        if (waypoints.length === 0) {
+        const hasCsv = !!d.csvResult
+        const uplan = preset === 'uplan' ? await uplanWithVolumes(plan.id, d.uplan, hasCsv) : parseJson<UplanData>(d.uplan)
+        if (preset === 'route' && !hasCsv && parseWaypointsFromPlan(d.fileContent).length === 0) {
           toast.warning(pa.toast.noWaypoints)
           return
         }
-        setViewer({ kind: 'waypoints', planName: plan.customName, waypoints })
-      }),
-    [open, fp, toast, pa]
-  )
-
-  const openTrajectory2d = useCallback(
-    (plan: PlanRow) => {
-      if (!plan.csvResult) return toast.warning(pa.toast.noTrajectory)
-      setViewer({ kind: 'trajectory2d', planId: plan.id, planName: plan.customName })
-    },
-    [toast, pa]
-  )
-
-  const openTrajectory3d = useCallback(
-    (plan: PlanRow) => {
-      if (!plan.csvResult) return toast.warning(pa.toast.noTrajectory)
-      setViewer({ kind: 'trajectory3d', planId: plan.id, planName: plan.customName })
-    },
-    [toast, pa]
-  )
-
-  const openUplan3d = useCallback(
-    (plan: PlanRow) =>
-      open(plan, async () => {
-        const d = await fp.fetchPlanDetail(plan.id)
-        const uplan = await uplanWithVolumes(plan.id, d.uplan, !!d.csvResult)
-        if (!uplan || !hasVolumes(uplan)) {
+        if (preset === 'uplan' && !hasVolumes(uplan)) {
           toast.warning(pa.toast.noVolumes)
           return
         }
-        setViewer({ kind: 'uplan3d', uplanData: uplan })
-      }),
-    [open, fp, uplanWithVolumes, toast, pa]
-  )
-
-  const openUplan2d = useCallback(
-    (plan: PlanRow) =>
-      open(plan, async () => {
-        const d = await fp.fetchPlanDetail(plan.id)
-        const uplan = await uplanWithVolumes(plan.id, d.uplan, !!d.csvResult)
-        setViewer({ kind: 'uplan2d', name: plan.customName, uplan, fileContent: d.fileContent ?? null })
-      }),
-    [open, fp, uplanWithVolumes]
-  )
-
-  const openGeo3d = useCallback(
-    (plan: PlanRow) => {
-      const uspaceId = uspaceOf(plan.geoawarenessData)
-      if (!uspaceId) return toast.error(pa.toast.noUspace)
-      return open(plan, async () => {
-        const d = await fp.fetchPlanDetail(plan.id)
-        const uplan = await uplanWithVolumes(plan.id, d.uplan, !!d.csvResult)
-        setViewer({ kind: 'geo3d', planId: plan.id, uspaceId, uplanData: uplan })
-      })
-    },
-    [open, fp, uplanWithVolumes, toast, pa]
-  )
-
-  const openResult = useCallback(
-    (plan: PlanRow) =>
-      open(plan, async () => {
-        const d = await fp.fetchPlanDetail(plan.id)
-        const phase = authPhase(plan)
         setViewer({
-          kind: 'result',
+          kind: 'planViewer',
+          preset,
           planId: plan.id,
           planName: plan.customName,
-          status: phase === 'approved' ? 'aprobado' : phase === 'withdrawn' ? 'withdrawn' : 'denegado',
-          reason: messageText(d.authorizationMessage),
-          uplanData: parseJson<UplanData>(d.uplan),
-          geoawarenessData: d.geoawarenessData ?? null,
+          plan: planPhase(plan),
+          auth: authPhase(plan),
+          detail: { fileContent: d.fileContent ?? null, uplan, geoawarenessData: d.geoawarenessData ?? null, authorizationMessage: d.authorizationMessage ?? null, hasCsv },
         })
       }),
-    [open, fp]
+    [open, fp, uplanWithVolumes, toast, pa]
   )
 
   const openUplanForm = useCallback(
@@ -191,41 +132,22 @@ export function usePlanActions({ plans, fp, toast, confirm, busy }: Deps) {
     [open, fp]
   )
 
-  /** SCRS proposal vs the current route (from the plan menu / panel). */
-  const openScrs = useCallback(
-    (plan: PlanRow) =>
-      open(plan, async () => {
-        const d = await fp.fetchPlanDetail(plan.id)
-        const text = messageText(d.authorizationMessage)
-        const alternative = text ? parseScrsAlternative(text) : null
-        if (!alternative) return toast.warning(pa.toast.noAlternative)
-        setScrs({ planId: plan.id, current: uplanWaypoints(parseJson(d.uplan)), alternative: alternative.flatWaypoints })
-      }),
-    [open, fp, toast, pa]
-  )
-
-  /** SCRS proposal opened from the result modal (both routes come from that modal). */
-  const openScrsFromResult = useCallback(
-    (current: ScrsState['current'], alternative: ScrsState['alternative']) => {
-      if (viewer?.kind === 'result') setScrs({ planId: viewer.planId, current, alternative })
+  /** Accept the SCRS alternative of the plan shown in the viewer: the plan goes back to unprocessed. */
+  const acceptScrs = useCallback(
+    async (planId: number) => {
+      setAcceptingScrs(true)
+      try {
+        await fp.acceptAlternative(planId)
+        setViewer(null)
+        toast.success(pa.toast.alternativeAccepted)
+      } catch (e) {
+        toast.error(errorMessage(e, pa.toast.alternativeError))
+      } finally {
+        setAcceptingScrs(false)
+      }
     },
-    [viewer]
+    [fp, toast, pa]
   )
-
-  const acceptScrs = useCallback(async () => {
-    if (!scrs) return
-    setAcceptingScrs(true)
-    try {
-      await fp.acceptAlternative(scrs.planId)
-      setScrs(null)
-      setViewer(null)
-      toast.success(pa.toast.alternativeAccepted)
-    } catch (e) {
-      toast.error(errorMessage(e, pa.toast.alternativeError))
-    } finally {
-      setAcceptingScrs(false)
-    }
-  }, [scrs, fp, toast, pa])
 
   // ---- Downloads -------------------------------------------------------------------
 
@@ -419,20 +341,10 @@ export function usePlanActions({ plans, fp, toast, confirm, busy }: Deps) {
     viewer,
     closeViewer,
     setViewer,
-    scrs,
-    closeScrs,
     acceptingScrs,
     acceptScrs,
-    openScrsFromResult,
-    openWaypoints,
-    openTrajectory2d,
-    openTrajectory3d,
-    openUplan3d,
-    openUplan2d,
-    openGeo3d,
-    openResult,
+    openViewer,
     openUplanForm,
-    openScrs,
     downloadUplanJson,
     downloadCsv,
     schedule,

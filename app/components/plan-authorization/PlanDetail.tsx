@@ -51,7 +51,7 @@ export function PlanDetail({ plan, ctx, onClose }: Props) {
               ? pa.prompts.error
               : pa.prompts.decided
 
-  const viewers = quick(planPhase(plan) === 'done' ? ['editUplan', 'uplan3d', 'trajectory3d', 'geo3d', 'downloadUplan', 'result', 'scrs'] : ['waypoints', 'editUplan'])
+  const viewers = quick(planPhase(plan) === 'done' ? ['editUplan', 'route', 'uplan', 'downloadUplan', 'result'] : ['route', 'editUplan'])
 
   return (
     <section aria-label={interpolate(pa.panelFor, { name: plan.customName })} className="rounded-lg border border-line bg-surface p-4 sm:p-5">

@@ -21,11 +21,13 @@ app/error|global-error|not-found|loading.tsx   boundaries
 app/api/                        route handlers (inventory and contracts: docs/API.md)
 app/components/plan-authorization/   the ONE Plan Authorization tree; mode 'dev'|'prod'
 app/components/{plan-definition,plan-activation,flight-plans,auth,ui}/   feature components; ui/ = Base UI primitives
+app/components/plan-viewer/       the ONE plan viewer (2D Leaflet | 3D Cesium, layers, 4D slider); presets route / uplan / result
 app/hooks/                      useFlightPlans / useFolders (?fields=summary), usePolling, useAuth, useTheme ...
 app/i18n/                       en (default) / es dictionaries; add every user-facing string to both
 app/styles/themes.css           CSS variables behind the Tailwind semantic tokens (tailwind.config.ts)
 lib/                            auth.ts, auth-middleware.ts, api-client.ts, fas.ts, request-ip.ts, validators.ts,
-                                zod-config.ts, email.ts, cesium-loader.ts, scan-generator.ts, scrs.ts, uplan/
+                                zod-config.ts, email.ts, cesium-loader.ts, cesium-scene.ts, altitude.ts (altitude references,
+                                ONE rule per data source), plan-view-model.ts, scan-generator.ts, scrs.ts, uplan/
 prisma/schema.prisma            MySQL schema (shared with external processes, see Contracts)
 traj-assigner.js, machine-cleaner.js   standalone Node processes, outside Next.js
 Traj-runner/                    VM image/entrypoint for the trajectory runner

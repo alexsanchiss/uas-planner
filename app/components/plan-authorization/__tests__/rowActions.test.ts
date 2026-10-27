@@ -2,7 +2,9 @@
  * app/components/plan-authorization/rowActions.ts: which entries a plan offers in each state.
  * planViewEntries (production tiles / Dev menu views and files), planManageEntries (production "..." menu) and
  * planMenuEntries (Dev "More" menu = rename + views + manage tail). Only what applies is listed: nothing greyed out,
- * and an unprocessed plan never offers trajectory / U-plan / geoawareness views or downloads.
+ * and an unprocessed plan never offers the U-plan / result views or downloads.
+ * Viewer entries are `route`, `uplan`, `result` (F13: ONE plan viewer opened with a preset); geoawareness and the SCRS
+ * alternative are layers inside it, so the old ids (waypoints, trajectory2d/3d, uplan2d/3d, geo3d, scrs) never appear.
  */
 
 import { getTranslation } from '@/app/i18n/translations'
@@ -92,49 +94,59 @@ const STATES = {
 } satisfies Record<string, PlanRow>
 type StateName = keyof typeof STATES
 
-const NOT_BEFORE_PROCESSING = ['trajectory2d', 'trajectory3d', 'uplan2d', 'uplan3d', 'geo3d', 'downloadUplan', 'downloadCsv', 'result', 'scrs']
+const NOT_BEFORE_PROCESSING = ['uplan', 'downloadUplan', 'downloadCsv', 'result']
+/** Ids of the 12 old viewers: replaced by route / uplan / result, must not come back in any state or mode. */
+const REMOVED_IDS = ['waypoints', 'trajectory2d', 'trajectory3d', 'uplan2d', 'uplan3d', 'geo3d', 'scrs']
 const UNPROCESSED: StateName[] = ['unprocessedFile', 'unprocessedDraft', 'unprocessedNoFile', 'scheduled']
 const IN_FLIGHT_OR_FAILED: StateName[] = ['queued', 'processing', 'error']
 
 describe('planViewEntries: production (tiles)', () => {
   const view = (s: StateName) => ids(planViewEntries(STATES[s], ctx('prod')))
 
-  it('an unprocessed plan only offers its waypoints, even with a stored U-plan draft', () => {
-    expect(view('unprocessedFile')).toEqual(['waypoints'])
-    expect(view('unprocessedDraft')).toEqual(['waypoints'])
-    expect(view('scheduled')).toEqual(['waypoints'])
+  it('an unprocessed plan only offers its route (waypoints), even with a stored U-plan draft', () => {
+    expect(view('unprocessedFile')).toEqual(['route'])
+    expect(view('unprocessedDraft')).toEqual(['route'])
+    expect(view('scheduled')).toEqual(['route'])
     expect(view('unprocessedNoFile')).toEqual([])
   })
 
-  it('never lists trajectory, U-plan, geoawareness, edit, download or result entries before processing', () => {
+  it('never lists the removed viewer ids (waypoints, trajectory2d/3d, uplan2d/3d, geo3d, scrs) in any state or mode', () => {
+    for (const mode of ['prod', 'dev'] as const)
+      for (const s of Object.keys(STATES) as StateName[]) {
+        const got = [...ids(planViewEntries(STATES[s], ctx(mode))), ...ids(planMenuEntries(STATES[s], ctx(mode, [folder(1)]), noop))]
+        for (const id of REMOVED_IDS) expect({ mode, s, id, listed: got.includes(id) }).toEqual({ mode, s, id, listed: false })
+      }
+  })
+
+  it('never lists U-plan, edit, download or result entries before processing', () => {
     for (const s of UNPROCESSED) {
       const got = view(s)
       for (const id of [...NOT_BEFORE_PROCESSING, 'editUplan']) expect({ s, id, listed: got.includes(id) }).toEqual({ s, id, listed: false })
     }
   })
 
-  it('queued, processing and failed plans offer waypoints only (no trajectory was produced)', () => {
-    for (const s of IN_FLIGHT_OR_FAILED) expect({ s, got: view(s) }).toEqual({ s, got: ['waypoints'] })
+  it('queued, processing and failed plans offer the route only (no trajectory was produced)', () => {
+    for (const s of IN_FLIGHT_OR_FAILED) expect({ s, got: view(s) }).toEqual({ s, got: ['route'] })
   })
 
-  it('processed, not yet requested: views, then edit and download of the U-plan (geoawareness only with a U-space)', () => {
-    expect(view('processedNoUspace')).toEqual(['waypoints', 'trajectory2d', 'trajectory3d', 'uplan3d', 'uplan2d', 'editUplan', 'downloadUplan'])
-    expect(view('processedUspace')).toEqual(['waypoints', 'trajectory2d', 'trajectory3d', 'uplan3d', 'uplan2d', 'geo3d', 'editUplan', 'downloadUplan'])
+  it('processed, not yet requested: route and U-plan, then edit and download of the U-plan (a U-space adds no entry: geozones are a layer)', () => {
+    expect(view('processedNoUspace')).toEqual(['route', 'uplan', 'editUplan', 'downloadUplan'])
+    expect(view('processedUspace')).toEqual(['route', 'uplan', 'editUplan', 'downloadUplan'])
   })
 
-  it('processed without a generated U-plan: no U-plan views and no edit', () => {
-    expect(view('processedNoUplan')).toEqual(['waypoints', 'trajectory2d', 'trajectory3d', 'downloadUplan'])
+  it('processed without a generated U-plan: no U-plan view and no edit', () => {
+    expect(view('processedNoUplan')).toEqual(['route', 'downloadUplan'])
   })
 
   it('pending: same views, no edit (FAS is working on it)', () => {
-    expect(view('pending')).toEqual(['waypoints', 'trajectory2d', 'trajectory3d', 'uplan3d', 'uplan2d', 'geo3d', 'downloadUplan'])
+    expect(view('pending')).toEqual(['route', 'uplan', 'downloadUplan'])
   })
 
-  it('approved / denied / withdrawn add the result; only denied with an SCRS alternative adds the alternative', () => {
-    expect(view('approved')).toEqual(['waypoints', 'trajectory2d', 'trajectory3d', 'uplan3d', 'uplan2d', 'geo3d', 'result', 'downloadUplan'])
-    expect(view('deniedNoAlt')).toEqual(['waypoints', 'trajectory2d', 'trajectory3d', 'uplan3d', 'uplan2d', 'result', 'downloadUplan'])
-    expect(view('deniedAlt')).toEqual(['waypoints', 'trajectory2d', 'trajectory3d', 'uplan3d', 'uplan2d', 'result', 'scrs', 'downloadUplan'])
-    expect(view('withdrawn')).toEqual(['waypoints', 'trajectory2d', 'trajectory3d', 'uplan3d', 'uplan2d', 'result', 'downloadUplan'])
+  it('approved / denied / withdrawn add the result; the SCRS alternative is inside the result viewer, never a separate entry', () => {
+    expect(view('approved')).toEqual(['route', 'uplan', 'result', 'downloadUplan'])
+    expect(view('deniedNoAlt')).toEqual(['route', 'uplan', 'result', 'downloadUplan'])
+    expect(view('deniedAlt')).toEqual(['route', 'uplan', 'result', 'downloadUplan'])
+    expect(view('withdrawn')).toEqual(['route', 'uplan', 'result', 'downloadUplan'])
   })
 
   it('production never offers the CSV download (researcher tool)', () => {
@@ -160,7 +172,7 @@ describe('planViewEntries: production (tiles)', () => {
 describe('planViewEntries: Dev (menu views and files)', () => {
   const view = (s: StateName) => ids(planViewEntries(STATES[s], ctx('dev')))
 
-  it('an unprocessed plan has no trajectory / U-plan view, no geoawareness, no download and no result', () => {
+  it('an unprocessed plan has no U-plan view, no download and no result', () => {
     for (const s of UNPROCESSED) {
       const got = view(s)
       for (const id of NOT_BEFORE_PROCESSING) expect({ s, id, listed: got.includes(id) }).toEqual({ s, id, listed: false })
@@ -174,10 +186,10 @@ describe('planViewEntries: Dev (menu views and files)', () => {
   })
 
   it('Dev adds the CSV download after the U-plan download, only when a trajectory exists', () => {
-    expect(view('processedNoUspace')).toEqual(['waypoints', 'trajectory2d', 'trajectory3d', 'uplan3d', 'uplan2d', 'editUplan', 'downloadUplan', 'downloadCsv'])
-    expect(view('approved')).toEqual(['waypoints', 'trajectory2d', 'trajectory3d', 'uplan3d', 'uplan2d', 'geo3d', 'result', 'downloadUplan', 'downloadCsv'])
-    expect(view('unprocessedFile')).toEqual(['waypoints', 'editUplan'])
-    expect(view('error')).toEqual(['waypoints', 'editUplan'])
+    expect(view('processedNoUspace')).toEqual(['route', 'uplan', 'editUplan', 'downloadUplan', 'downloadCsv'])
+    expect(view('approved')).toEqual(['route', 'uplan', 'result', 'downloadUplan', 'downloadCsv'])
+    expect(view('unprocessedFile')).toEqual(['route', 'editUplan'])
+    expect(view('error')).toEqual(['route', 'editUplan'])
   })
 
   it('production and Dev differ only by editUplan before processing and by downloadCsv', () => {
@@ -239,17 +251,17 @@ describe('planMenuEntries: Dev "More" menu', () => {
 
   it('is rename + views/files + move/reset/delete, in the order of the pre-redesign menu', () => {
     expect(menu('approved', [folder(1)])).toEqual([
-      'rename', 'waypoints', 'trajectory2d', 'trajectory3d', 'uplan3d', 'uplan2d', 'geo3d', 'result', 'downloadUplan', 'downloadCsv', 'move', 'reset', 'delete',
+      'rename', 'route', 'uplan', 'result', 'downloadUplan', 'downloadCsv', 'move', 'reset', 'delete',
     ])
     expect(menu('processedNoUspace', [folder(1)])).toEqual([
-      'rename', 'waypoints', 'trajectory2d', 'trajectory3d', 'uplan3d', 'uplan2d', 'editUplan', 'downloadUplan', 'downloadCsv', 'move', 'reset', 'delete',
+      'rename', 'route', 'uplan', 'editUplan', 'downloadUplan', 'downloadCsv', 'move', 'reset', 'delete',
     ])
-    expect(menu('deniedAlt')).toEqual(['rename', 'waypoints', 'trajectory2d', 'trajectory3d', 'uplan3d', 'uplan2d', 'result', 'scrs', 'downloadUplan', 'downloadCsv', 'reset', 'delete'])
+    expect(menu('deniedAlt')).toEqual(['rename', 'route', 'uplan', 'result', 'downloadUplan', 'downloadCsv', 'reset', 'delete'])
   })
 
-  it('unprocessed: rename, waypoints, edit (Dev only), move, delete; no reset', () => {
-    expect(menu('unprocessedFile', [folder(1)])).toEqual(['rename', 'waypoints', 'editUplan', 'move', 'delete'])
-    expect(menu('unprocessedDraft', [folder(1)])).toEqual(['rename', 'waypoints', 'editUplan', 'move', 'delete'])
+  it('unprocessed: rename, route, edit (Dev only), move, delete; no reset', () => {
+    expect(menu('unprocessedFile', [folder(1)])).toEqual(['rename', 'route', 'editUplan', 'move', 'delete'])
+    expect(menu('unprocessedDraft', [folder(1)])).toEqual(['rename', 'route', 'editUplan', 'move', 'delete'])
     expect(menu('unprocessedNoFile')).toEqual(['rename', 'editUplan', 'delete'])
   })
 
@@ -311,63 +323,101 @@ describe('R5 regressions', () => {
   const unprocessedUspace = plan({ geoawarenessData: USPACE })
   const resetUspace = plan({ geoawarenessData: USPACE, scheduledAt: WHEN })
 
-  it('prod: a new plan created with a U-space offers only its waypoints (no "View geoawareness 3D")', () => {
-    expect(ids(planViewEntries(unprocessedUspace, ctx('prod')))).toEqual(['waypoints'])
+  it('prod: a new plan created with a U-space offers only its route (U-space data adds no entry)', () => {
+    expect(ids(planViewEntries(unprocessedUspace, ctx('prod')))).toEqual(['route'])
   })
-  it('prod: a reset plan that keeps its U-space offers only its waypoints', () => {
-    expect(ids(planViewEntries(resetUspace, ctx('prod')))).toEqual(['waypoints'])
+  it('prod: a reset plan that keeps its U-space offers only its route', () => {
+    expect(ids(planViewEntries(resetUspace, ctx('prod')))).toEqual(['route'])
   })
-  it('Dev: an unprocessed plan with U-space data lists no geoawareness view', () => {
-    expect(ids(planViewEntries(unprocessedUspace, ctx('dev')))).not.toContain('geo3d')
+  it('Dev: an unprocessed plan with U-space data lists the route and the edit, nothing else', () => {
+    expect(ids(planViewEntries(unprocessedUspace, ctx('dev')))).toEqual(['route', 'editUplan'])
   })
-  it('geoawareness waits for phase done, not for a trajectory: queued, processing and failed plans with U-space data have none', () => {
+  it('the U-plan / result / download gates wait for phase done: queued, processing and failed plans with U-space data, a trajectory and a stored U-plan only have the route', () => {
     for (const status of ['en cola', 'procesando', 'error'] as const)
       for (const mode of ['prod', 'dev'] as const) {
-        const got = ids(planViewEntries(plan({ status, scheduledAt: WHEN, geoawarenessData: USPACE, csvResult: 1, hasUplan: true }), ctx(mode))).includes('geo3d')
-        expect({ status, mode, got }).toEqual({ status, mode, got: false })
+        const got = ids(planViewEntries(plan({ status, scheduledAt: WHEN, geoawarenessData: USPACE, csvResult: 1, hasUplan: true }), ctx(mode)))
+        expect({ status, mode, got: got.filter((id) => id !== 'editUplan') }).toEqual({ status, mode, got: ['route'] })
       }
   })
-  it('a processed plan with U-space data and no trajectory (imported) does offer geoawareness (the gate is the phase)', () => {
+  it('a processed plan with U-space data and no trajectory (imported) offers the U-plan (the gate is the phase, not the U-space)', () => {
     const p = plan({ status: 'procesado', hasFileContent: false, hasUplan: true, csvResult: 0, geoawarenessData: USPACE })
-    expect(ids(planViewEntries(p, ctx('prod')))).toContain('geo3d')
+    expect(ids(planViewEntries(p, ctx('prod')))).toEqual(['uplan', 'editUplan', 'downloadUplan'])
   })
 
   // POST /api/flightPlans {type:'external_uplan'} creates status 'procesado', fileContent null, csvResult 0, uplan set:
   // U-plan views / edit / download must not depend on csvResult (trajectory and CSV still do).
   const imported = plan({ status: 'procesado', hasFileContent: false, hasUplan: true, csvResult: 0, scheduledAt: WHEN })
 
-  it('prod: an imported external U-plan offers U-plan 3D / 2D, review/edit and download (no trajectory, no waypoints)', () => {
-    expect(ids(planViewEntries(imported, ctx('prod')))).toEqual(['uplan3d', 'uplan2d', 'editUplan', 'downloadUplan'])
+  it('prod: an imported external U-plan offers the U-plan, review/edit and download (no route: no waypoints, no trajectory)', () => {
+    expect(ids(planViewEntries(imported, ctx('prod')))).toEqual(['uplan', 'editUplan', 'downloadUplan'])
   })
-  it('Dev: an imported external U-plan keeps U-plan 2D / 3D, edit and download, but no trajectory or CSV', () => {
-    expect(ids(planViewEntries(imported, ctx('dev')))).toEqual(['uplan3d', 'uplan2d', 'editUplan', 'downloadUplan'])
+  it('Dev: an imported external U-plan keeps the U-plan, edit and download, but no route or CSV', () => {
+    expect(ids(planViewEntries(imported, ctx('dev')))).toEqual(['uplan', 'editUplan', 'downloadUplan'])
   })
   it('imported plan: edit disappears once FAS has it; views, result and download stay', () => {
     const pending = plan({ ...imported, authorizationStatus: 'pendiente' })
     const approved = plan({ ...imported, authorizationStatus: 'aprobado' })
-    expect(ids(planViewEntries(pending, ctx('prod')))).toEqual(['uplan3d', 'uplan2d', 'downloadUplan'])
-    expect(ids(planViewEntries(approved, ctx('prod')))).toEqual(['uplan3d', 'uplan2d', 'result', 'downloadUplan'])
+    expect(ids(planViewEntries(pending, ctx('prod')))).toEqual(['uplan', 'downloadUplan'])
+    expect(ids(planViewEntries(approved, ctx('prod')))).toEqual(['uplan', 'result', 'downloadUplan'])
   })
-  it('the U-plan gate needs a processed plan: an unprocessed / queued / failed plan with a stored U-plan (even with csvResult set) has no U-plan, download or trajectory entries', () => {
+  it('the U-plan gate needs a processed plan: an unprocessed / queued / failed plan with a stored U-plan (even with csvResult set) has no U-plan, download or result entry', () => {
     for (const mode of ['prod', 'dev'] as const)
       for (const status of ['sin procesar', 'en cola', 'procesando', 'error'] as const) {
         const got = ids(planViewEntries(plan({ status, hasUplan: true, csvResult: 1, scheduledAt: WHEN }), ctx(mode)))
-        for (const id of ['uplan3d', 'uplan2d', 'downloadUplan', 'trajectory2d', 'trajectory3d']) expect({ mode, status, id, listed: got.includes(id) }).toEqual({ mode, status, id, listed: false })
+        for (const id of ['uplan', 'downloadUplan', 'downloadCsv', 'result']) expect({ mode, status, id, listed: got.includes(id) }).toEqual({ mode, status, id, listed: false })
       }
+  })
+  it('a trajectory alone does not give a route before processing (the gate is the waypoints file, or a processed trajectory)', () => {
+    for (const mode of ['prod', 'dev'] as const)
+      for (const status of ['sin procesar', 'en cola', 'procesando', 'error'] as const) {
+        const got = ids(planViewEntries(plan({ status, hasFileContent: false, csvResult: 1, scheduledAt: WHEN }), ctx(mode)))
+        expect({ mode, status, route: got.includes('route') }).toEqual({ mode, status, route: false })
+      }
+  })
+  it('a processed plan with a trajectory but no waypoints file still offers the route', () => {
+    const p = plan({ status: 'procesado', hasFileContent: false, csvResult: 1, hasUplan: false, scheduledAt: WHEN })
+    expect(ids(planViewEntries(p, ctx('prod')))).toEqual(['route', 'downloadUplan'])
   })
   it('download of the U-plan needs a trajectory or a stored U-plan: processed with neither has no file entries', () => {
     const none = plan({ status: 'procesado', csvResult: 0, hasUplan: false, scheduledAt: WHEN })
-    expect(ids(planViewEntries(none, ctx('prod')))).toEqual(['waypoints'])
+    expect(ids(planViewEntries(none, ctx('prod')))).toEqual(['route'])
     const traj = plan({ status: 'procesado', csvResult: 1, hasUplan: false, scheduledAt: WHEN })
     expect(ids(planViewEntries(traj, ctx('prod')))).toContain('downloadUplan')
   })
-  it('trajectory views and the CSV still depend on csvResult (an imported plan has none)', () => {
+  it('the CSV download still depends on csvResult and on Dev (an imported plan has none)', () => {
     for (const mode of ['prod', 'dev'] as const) {
       const got = ids(planViewEntries(imported, ctx(mode)))
-      for (const id of ['trajectory2d', 'trajectory3d', 'downloadCsv']) expect({ mode, id, listed: got.includes(id) }).toEqual({ mode, id, listed: false })
+      expect({ mode, listed: got.includes('downloadCsv') }).toEqual({ mode, listed: false })
     }
   })
   it('imported plan: the primary action is still "request authorization"', () => {
     expect(primaryView(imported, ctx('prod'))?.id).toBe('requestAuth')
+  })
+})
+
+/**
+ * F13: every viewer entry opens the ONE plan viewer through `usePlanActions.openViewer(plan, preset)`; the preset decides
+ * the initial layers, so a swapped preset would open the wrong view. Entries only close over the actions: a recording
+ * stub is enough.
+ */
+describe('viewer entries open the plan viewer with the right preset', () => {
+  const calls: [number, string][] = []
+  const rec = (): RowCtx => ({ ...ctx('dev'), a: { openViewer: (p: PlanRow, preset: string) => calls.push([p.id, preset]) } as unknown as RowCtx['a'] })
+  const run = (id: string, p: PlanRow) => {
+    calls.length = 0
+    planViewEntries(p, rec()).find((e) => e.id === id)?.onSelect?.()
+    return [...calls]
+  }
+  it.each([
+    ['route', 'route'],
+    ['uplan', 'uplan'],
+    ['result', 'result'],
+  ])('entry %s opens preset %s', (id, preset) => {
+    expect(run(id, STATES.approved)).toEqual([[7, preset]])
+  })
+  it('the primary action "view result" opens the result preset', () => {
+    calls.length = 0
+    primaryView(STATES.approved, rec())?.run?.()
+    expect(calls).toEqual([[7, 'result']])
   })
 })
