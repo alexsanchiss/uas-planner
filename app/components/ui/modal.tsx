@@ -11,7 +11,7 @@ interface ModalProps {
   children: React.ReactNode;
   /** Use 'wide' for map modals that need more horizontal space */
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '4xl' | 'full';
-  /** Tailwind z-index class for the overlay (default: 'z-50') */
+  /** Tailwind z-index class for the overlay. Default z-[10000]: above the site header (z-[9999]); toasts and tooltips sit at z-[10001]. */
   overlayZIndex?: string;
   /**
    * Viewer layout: full-screen (dvh) on phones, a large panel from `sm` up. No padding, no built-in close button and a
@@ -41,7 +41,7 @@ export const Modal: React.FC<ModalProps> = ({
   title,
   children,
   maxWidth = 'md',
-  overlayZIndex = 'z-50',
+  overlayZIndex = 'z-[10000]',
   fullscreen = false,
 }) => {
   const widthClass = maxWidthClasses[maxWidth] || 'max-w-md';

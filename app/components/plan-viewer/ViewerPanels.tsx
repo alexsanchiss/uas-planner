@@ -25,11 +25,11 @@ function range(alts: Alt[]): [Alt, Alt] | null {
 }
 
 /** One line per visible layer that carries heights, each with its reference ("10-122 m AGL"). */
-function heightLines(model: PlanViewModel, layers: Layers, t: ViewerT): { id: string; text: string }[] {
+function heightLines(model: PlanViewModel, layers: Layers, t: ViewerT, locale: string): { id: string; text: string }[] {
   const out: { id: string; text: string }[] = []
   const add = (id: string, name: string, alts: Alt[]) => {
     const r = range(alts)
-    if (r) out.push({ id, text: `${name}: ${labelAltRange(r[0], r[1], t.alt)}` })
+    if (r) out.push({ id, text: `${name}: ${labelAltRange(r[0], r[1], t.alt, locale)}` })
   }
   if (layers.waypoints) add('waypoints', t.layers.waypoints, model.waypoints.map((w) => w.alt))
   if (layers.trajectory) add('trajectory', t.layers.trajectory, model.trajectory.map((w) => w.alt))
@@ -54,10 +54,17 @@ interface LegendProps {
   open: boolean
   onToggle: () => void
   t: ViewerT
+  locale: string
+  /** 3D: top-left, so it never covers the Cesium ion logo and data attribution along the bottom edge. */
+  placement: 'top' | 'bottom'
+  /** Every visible feature, reachable by keyboard / touch (the maps themselves are not walkable). */
+  items: (FeatureInfo & { id: string })[]
+  selected: string | null
+  onPick: (id: string) => void
 }
 
-/** Bottom-left of the map: swatches of the visible layers, the height reference of each, and the warnings (always visible). */
-export function Legend({ model, layers, palette: p, warnings, open, onToggle, t }: LegendProps) {
+/** Corner of the map: swatches of the visible layers, the height reference of each, the feature list and the warnings (always visible). */
+export function Legend({ model, layers, palette: p, warnings, open, onToggle, t, locale, placement, items, selected, onPick }: LegendProps) {
   const bodyId = useId()
   const l = t.legend
   const rows: { key: string; color: string; label: string; line?: boolean; dashed?: boolean }[] = []
@@ -75,10 +82,10 @@ export function Legend({ model, layers, palette: p, warnings, open, onToggle, t 
   if (model.zones.some((z) => layers.zones || (layers.result && z.conflicting))) rows.push({ key: 'zone', color: p.muted, label: l.zone })
   if (layers.result && model.zones.some((z) => z.conflicting)) rows.push({ key: 'zconf', color: p.danger, label: l.zoneConflicting, dashed: true })
   if (layers.scrs && model.scrs) rows.push({ key: 'cur', color: p.muted, label: l.currentRoute, line: true, dashed: true }, { key: 'alt', color: p.success, label: l.alternative, line: true })
-  const heights = heightLines(model, layers, t)
+  const heights = heightLines(model, layers, t, locale)
 
   return (
-    <div className="pointer-events-none absolute bottom-3 left-3 z-10 flex max-w-[calc(100%-1.5rem)] flex-col gap-2 sm:max-w-sm">
+    <div className={`pointer-events-none absolute left-3 z-10 flex max-w-[calc(100%-1.5rem)] flex-col gap-2 sm:max-w-sm ${placement === 'top' ? 'top-3' : 'bottom-3'}`}>
       {warnings.map((w) => (
         <div key={w.id} role="status" className="pointer-events-auto flex items-start gap-2 rounded-md border border-warning-line bg-surface p-2 text-xs text-warning-text shadow-theme-md">
           {w.busy ? <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />}
@@ -90,7 +97,7 @@ export function Legend({ model, layers, palette: p, warnings, open, onToggle, t 
           )}
         </div>
       ))}
-      {(rows.length > 0 || heights.length > 0) && (
+      {(rows.length > 0 || heights.length > 0 || items.length > 0) && (
         <section aria-label={l.title} className="pointer-events-auto rounded-md border border-line bg-surface text-xs text-fg-2 shadow-theme-md">
           <button
             type="button"
@@ -122,6 +129,26 @@ export function Legend({ model, layers, palette: p, warnings, open, onToggle, t 
                     ))}
                   </ul>
                 </div>
+              )}
+              {items.length > 0 && (
+                <details>
+                  <summary className="flex min-h-11 cursor-pointer items-center font-semibold text-fg sm:min-h-8">{interpolate(l.elements, { n: items.length })}</summary>
+                  <ul className="max-h-[28dvh] space-y-0.5 overflow-y-auto">
+                    {items.map((it) => (
+                      <li key={it.id}>
+                        <button
+                          type="button"
+                          aria-pressed={selected === it.id}
+                          onClick={() => onPick(it.id)}
+                          className={`flex min-h-11 w-full flex-col items-start rounded px-2 py-1 text-left hover:bg-hover sm:min-h-8 ${selected === it.id ? 'bg-subtle' : ''}`}
+                        >
+                          <span className="font-medium text-fg">{it.title}</span>
+                          {it.summary && <span className="text-fg-2">{it.summary}</span>}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
               )}
             </div>
           )}

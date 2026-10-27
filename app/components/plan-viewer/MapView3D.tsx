@@ -7,7 +7,7 @@ import { Loader2 } from 'lucide-react'
 import { useI18n } from '@/app/i18n'
 import { toEllipsoid } from '@/lib/altitude'
 import { addLine, addPoint, addPrism, createPlanScene, moveEntity, setPrismStyle, type PlanScene } from '@/lib/cesium-scene'
-import { droneAt, resolveHeights, ringCentroid, zoneNeedsTerrain, type PlanViewModel, type VmVolume, type VmZone } from '@/lib/plan-view-model'
+import { droneAt, resolveHeights, ringCentroid, trajectoryBelowTerrain, zoneNeedsTerrain, type PlanViewModel, type VmVolume, type VmZone } from '@/lib/plan-view-model'
 import { featureId } from './featureInfo'
 import { DIM_ALPHA, FILL_ALPHA, isActive, volumeColor, volumeState, zoneColor, zoneShown, type Layers, type Palette } from './viewerStyle'
 
@@ -16,6 +16,10 @@ export interface Status3D {
   terrainDown: boolean
   /** Geozones that should be visible but have no terrain height (left out instead of drawn underground). */
   skippedZones: number
+  /** Things measured above the takeoff cannot be placed: no takeoff point, or no terrain height under it. */
+  noTakeoff: boolean
+  /** The trajectory (takeoff + Alt) runs under the local terrain: how many sampled points and the worst depth in metres. */
+  below: { points: number; meters: number } | null
 }
 
 interface Props {
@@ -31,9 +35,11 @@ interface Drawn {
   vols: { e: any; v: VmVolume }[]
   zones: { e: any; z: VmZone }[]
   drone: any | null
-  takeoffH: number
-  skippedZones: number
+  takeoffH: number | null
 }
+
+/** One batch of terrain samples per trajectory load: at most this many points, evenly spaced. */
+const MAX_TRAJECTORY_SAMPLES = 2000
 
 const DATA_LAYERS = ['waypoints', 'trajectory', 'volumes', 'zones', 'scrs'] as const
 
@@ -57,6 +63,10 @@ export default function MapView3D({ model, layers, palette: p, timeMs, onSelect,
   const [failed, setFailed] = useState(false)
   const [attempt, setAttempt] = useState(0)
   const [takeoffH, setTakeoffH] = useState<number | null>(null)
+  const [takeoffState, setTakeoffState] = useState<'pending' | 'ok' | 'none'>('pending')
+  const [below, setBelow] = useState<Status3D['below']>(null)
+  const trajectoryRef = useRef(model.trajectory)
+  trajectoryRef.current = model.trajectory
   const [zonesVersion, setZonesVersion] = useState(0)
   const [drawVersion, setDrawVersion] = useState(0)
   const [terrainDown, setTerrainDown] = useState(false)
@@ -91,14 +101,19 @@ export default function MapView3D({ model, layers, palette: p, timeMs, onSelect,
   const tLon = model.takeoff?.lon
   const tLat = model.takeoff?.lat
   useEffect(() => {
-    if (!scene || !scene.terrainReady || tLon == null || tLat == null) return
+    if (!scene) return
+    if (tLon == null || tLat == null) {
+      setTakeoffState('none')
+      return
+    }
+    if (!scene.terrainReady) return
     let dead = false
     scene
       .sampleGround([{ lon: tLon, lat: tLat }])
       .then(([h]) => {
         if (dead) return
-        if (Number.isFinite(h)) setTakeoffH(h)
-        else setTerrainDown(true)
+        setTakeoffH(Number.isFinite(h) ? h : null)
+        setTakeoffState(Number.isFinite(h) ? 'ok' : 'none')
       })
       .catch(() => !dead && setTerrainDown(true))
     return () => {
@@ -125,12 +140,32 @@ export default function MapView3D({ model, layers, palette: p, timeMs, onSelect,
     }
   }, [scene, model.zones, layers])
 
-  // 4. Entities: rebuilt when the data or the heights change (never the viewer)
+  // 3b. Safety check: terrain under the trajectory points (one batch per load); only a warning, the height rule is unchanged
+  const trajKey = model.trajectory.length > 0 ? `${model.trajectory.length}:${model.trajectory[0].lat}:${model.trajectory[model.trajectory.length - 1].lon}` : ''
   useEffect(() => {
-    if (!scene || takeoffH == null) return
-    const abs = resolveHeights(model, { takeoffH, zoneH: zoneH.current })
+    if (!scene || !scene.terrainReady || takeoffState !== 'ok' || takeoffH == null || !trajKey) {
+      setBelow(null)
+      return
+    }
+    const step = Math.ceil(trajectoryRef.current.length / MAX_TRAJECTORY_SAMPLES)
+    const pts = trajectoryRef.current.filter((_, i) => i % step === 0)
+    let dead = false
+    scene
+      .sampleGround(pts)
+      .then((hs) => !dead && setBelow(trajectoryBelowTerrain(pts, hs, takeoffH)))
+      .catch(() => !dead && setBelow(null))
+    return () => {
+      dead = true
+    }
+  }, [scene, takeoffState, takeoffH, trajKey])
+
+  // 4. Entities: rebuilt when the data or the heights change (never the viewer). What depends on the takeoff waits for its
+  // terrain height; without one the rest (AMSL / WGS84 limits, zones with their own terrain height) is still drawn.
+  useEffect(() => {
+    if (!scene || terrainDown || takeoffState === 'pending') return
+    const abs = resolveHeights(model, { takeoffH: takeoffState === 'ok' ? takeoffH : null, zoneH: zoneH.current })
     DATA_LAYERS.forEach((n) => scene.layer(n).entities.removeAll())
-    const d: Drawn = { vols: [], zones: [], drone: null, takeoffH, skippedZones: 0 }
+    const d: Drawn = { vols: [], zones: [], drone: null, takeoffH: takeoffState === 'ok' ? takeoffH : null }
 
     if (abs.waypoints.length > 1) addLine(scene, 'waypoints', { id: 'route', name: vt.layers.waypoints, points: abs.waypoints, css: p.muted, width: 2, dashed: true })
     abs.waypoints.forEach((w, i) => {
@@ -161,7 +196,7 @@ export default function MapView3D({ model, layers, palette: p, timeMs, onSelect,
       }
     }
     setDrawVersion((v) => v + 1)
-  }, [scene, model, takeoffH, zonesVersion, p, vt])
+  }, [scene, model, terrainDown, takeoffState, takeoffH, zonesVersion, p, vt])
 
   // 5. Style: layer visibility, volume colours and time dimming, zone visibility, drone position (cheap: no entity is rebuilt)
   useEffect(() => {
@@ -180,9 +215,8 @@ export default function MapView3D({ model, layers, palette: p, timeMs, onSelect,
       const c = z.conflicting ? p.danger : zoneColor(z.type, p)
       setPrismStyle(scene, e, c, z.conflicting ? 0.4 : 0.2, c)
     })
-    d.skippedZones = model.zones.filter((z) => zoneShown(z, layers)).length - shown
-    setSkipped(d.skippedZones)
-    if (d.drone) {
+    setSkipped(model.zones.filter((z) => zoneShown(z, layers)).length - shown)
+    if (d.drone && d.takeoffH != null) {
       const pos = timeMs != null ? droneAt(model.trajectory, (timeMs - (model.timeline?.startMs ?? 0)) / 1000) : null
       d.drone.show = !!pos
       if (pos) moveEntity(scene, d.drone, { lon: pos.lon, lat: pos.lat, h: toEllipsoid(pos.alt, { terrainH: d.takeoffH, takeoffH: d.takeoffH, geoidN: 0 }) })
@@ -190,9 +224,11 @@ export default function MapView3D({ model, layers, palette: p, timeMs, onSelect,
     scene.render()
   }, [scene, drawVersion, model, layers, p, timeMs])
 
+  const dependsOnTakeoff = model.waypoints.length + model.trajectory.length + model.volumes.length > 0 || !!model.scrs
+  const noTakeoff = takeoffState === 'none' && dependsOnTakeoff
   useEffect(() => {
-    onStatus({ terrainDown, skippedZones: skipped })
-  }, [onStatus, terrainDown, skipped])
+    onStatus({ terrainDown, skippedZones: skipped, noTakeoff, below })
+  }, [onStatus, terrainDown, skipped, noTakeoff, below])
 
   return (
     <div className="relative h-full w-full bg-subtle">

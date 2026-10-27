@@ -1,12 +1,32 @@
 /**
- * useFolderPlans (F12): the production list loads, per refresh, only what is on screen. The hook is rendered once with
- * react-dom/server (no DOM needed; effects do not run) over a mocked useFlightPlans, which hands us the `fetcher` the hook
- * passes to it: that is `loadAll`, the function every poll / mutation / "show more" runs. A fake server answers the paging
- * URLs, so the assertions are on WHICH requests a refresh makes and which rows it publishes.
+ * useFolderPlans (F12): the production list loads, per refresh, only what is on screen. The hook runs on a tiny hooks
+ * runtime (jest.mock of 'react': state / refs live in slots, `rerender()` runs the hook again, effects never run, so no DOM
+ * is needed) over a mocked useFlightPlans, which hands us the `fetcher` the hook passes to it: that is `loadAll`, the
+ * function every poll / mutation / "show more" runs, and takes back the rows it published (`seen.plans`). A fake server
+ * answers the paging URLs, so the assertions are on WHICH requests a refresh makes and what the list then shows.
  */
 
-import { createElement } from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
+jest.mock('react', () => {
+  const actual = jest.requireActual('react');
+  const rt = { slots: [] as unknown[], idx: 0 };
+  (globalThis as unknown as { __hooks: typeof rt }).__hooks = rt;
+  const slot = <T,>(init: () => T): [number, T] => {
+    const i = rt.idx++;
+    if (!(i in rt.slots)) rt.slots[i] = init();
+    return [i, rt.slots[i] as T];
+  };
+  return {
+    ...actual,
+    useState: (init: unknown) => {
+      const [i, v] = slot(() => (typeof init === 'function' ? (init as () => unknown)() : init));
+      return [v, (n: unknown) => void (rt.slots[i] = typeof n === 'function' ? (n as (p: unknown) => unknown)(rt.slots[i]) : n)];
+    },
+    useRef: (init: unknown) => slot(() => ({ current: init }))[1],
+    useCallback: (fn: unknown) => fn,
+    useMemo: (fn: () => unknown) => fn(),
+    useEffect: () => undefined,
+  };
+});
 
 const mockApiJson = jest.fn();
 jest.mock('@/lib/api-client', () => {
@@ -18,15 +38,16 @@ jest.mock('@/lib/api-client', () => {
   return { ApiError, apiJson: (...a: unknown[]) => mockApiJson(...a) };
 });
 
-const seen: { opts: { fetcher: () => Promise<Row[]>; summary: boolean } | null; refresh: jest.Mock; mutate: Record<string, jest.Mock> } = {
+const seen: { opts: { fetcher: () => Promise<Row[]>; summary: boolean } | null; refresh: jest.Mock; mutate: Record<string, jest.Mock>; plans: Row[] } = {
   opts: null,
   refresh: jest.fn(async () => {}),
   mutate: {},
+  plans: [],
 };
 jest.mock('../useFlightPlans', () => ({
   useFlightPlans: (opts: { fetcher: () => Promise<Row[]>; summary: boolean }) => {
     seen.opts = opts;
-    return { flightPlans: [], refresh: seen.refresh, loading: false, error: null, ...seen.mutate };
+    return { flightPlans: seen.plans, refresh: seen.refresh, loading: false, error: null, ...seen.mutate };
   },
 }));
 
@@ -50,6 +71,7 @@ let plans: Row[] = [];
 let deletedFolders = new Set<number>();
 const requests: string[] = [];
 let failPages = false;
+let legacyDetail = false; // the detail route of an older server: the full row even with ?fields=summary
 
 const mkPlans = (folderId: number | null, n: number, startId: number, name = 'plan'): Row[] =>
   Array.from({ length: n }, (_, i) => ({ id: startId + i, folderId, customName: `${name} ${startId + i}`, authorizationStatus: 'sin autorización', hasFileContent: true, hasUplan: false }));
@@ -75,7 +97,8 @@ mockApiJson.mockImplementation(async (url: string) => {
   if (m) {
     const p = plans.find((x) => x.id === Number(m[1]));
     if (!p) throw new ApiError(404, null);
-    // the detail route: the full row, heavy columns included
+    if (u.searchParams.get('fields') === 'summary' && !legacyDetail) return { ...p }; // the light row, flags from the server
+    // the full detail row, heavy columns included
     const { hasFileContent, hasUplan, ...rest } = p;
     void hasFileContent;
     void hasUplan;
@@ -86,15 +109,30 @@ mockApiJson.mockImplementation(async (url: string) => {
 
 // ---- helpers ------------------------------------------------------------------------------------
 
-function mount(selectedId: number | null = null, onCountsStale?: () => void) {
+/** The hook on the mini runtime: `api()` is the result of the LAST render, `rerender()` runs the hook again (new state / rows). */
+function mountLive(selectedId: number | null = null, onCountsStale?: () => void) {
+  const rt = (globalThis as unknown as { __hooks: { slots: unknown[]; idx: number } }).__hooks;
+  rt.slots.length = 0;
+  const props = { selectedId, onCountsStale };
   let api!: ReturnType<typeof useFolderPlans>;
-  const C = () => {
-    api = useFolderPlans({ selectedId, onCountsStale });
-    return null;
+  const render = () => {
+    rt.idx = 0;
+    // eslint-disable-next-line react-hooks/rules-of-hooks -- this IS the hook harness: a render function over the mini runtime
+    api = useFolderPlans(props);
   };
-  renderToStaticMarkup(createElement(C));
-  return api;
+  render();
+  return { api: () => api, rerender: render };
 }
+type Live = ReturnType<typeof mountLive>;
+const mount = (selectedId: number | null = null, onCountsStale?: () => void) => mountLive(selectedId, onCountsStale).api();
+/** One refresh as the poll runs it: load, publish the rows (what useFlightPlans would hand back), render again. */
+async function settle(h: Live): Promise<Row[]> {
+  const rows = await loadAll();
+  seen.plans = rows;
+  h.rerender();
+  return rows;
+}
+const byIdRequests = () => requests.filter((r) => /^\/api\/flightPlans\/\d+(\?|$)/.test(r));
 const loadAll = () => seen.opts!.fetcher();
 const pageRequests = () => requests.filter((r) => r.startsWith('/api/flightPlans?'));
 const params = (url: string) => Object.fromEntries(new URL(url, 'http://x').searchParams);
@@ -104,6 +142,8 @@ beforeEach(() => {
   requests.length = 0;
   deletedFolders = new Set();
   failPages = false;
+  legacyDetail = false;
+  seen.plans = [];
   seen.opts = null;
   seen.refresh.mockImplementation(async () => {});
   seen.mutate = {};
@@ -259,23 +299,49 @@ describe('useFolderPlans: the selected plan', () => {
     const api = mount(1119);
     api.open('1');
     await loadAll();
-    expect(requests.filter((r) => /\/api\/flightPlans\/\d+$/.test(r))).toEqual([]);
+    expect(byIdRequests()).toEqual([]);
   });
 
-  it('a plan on no loaded page (deep link ?selectPlan=) is fetched by id, published as a LIGHT row, and its folder opens', async () => {
-    const api = mount(1005); // folder 1 has 120 rows: 1005 is on page 5
-    void api;
+  it('a plan on no loaded page (deep link ?selectPlan=) is fetched by id with ?fields=summary, published as a LIGHT row, and its folder opens', async () => {
+    mount(1005); // folder 1 has 120 rows: 1005 is on page 5
     const rows = await loadAll();
-    expect(requests).toContain('/api/flightPlans/1005');
+    expect(byIdRequests()).toEqual(['/api/flightPlans/1005?fields=summary']);
+    expect(requests).not.toContain('/api/flightPlans/1005'); // never the full row (fileContent + uplan)
     const sel = rows.find((r) => r.id === 1005)!;
     expect(sel).toBeDefined();
     expect(sel).not.toHaveProperty('fileContent');
     expect(sel).not.toHaveProperty('uplan');
     expect(sel).not.toHaveProperty('activationMessage');
-    expect([sel.hasFileContent, sel.hasUplan]).toEqual([true, true]);
+    expect([sel.hasFileContent, sel.hasUplan]).toEqual([true, false]); // as the server said (the fake plan has a file and no U-plan)
     // its group is open now: the same refresh loaded the first page of folder 1 too
     expect(pageRequests().map((r) => params(r).folderId)).toContain('1');
     expect(rows.length).toBe(26); // 25 of the group + the selected one (not on the first page)
+  });
+
+  it('the selected plan is read ONCE per refresh even though the refresh repeats itself when its group opens; the next refresh reads it once again', async () => {
+    mount(1005);
+    await loadAll();
+    expect(byIdRequests()).toHaveLength(1); // was 2 before the fix: once before the group opened, once after
+    requests.length = 0;
+    await loadAll(); // the group is open now, the plan is still on no loaded page
+    expect(byIdRequests()).toEqual(['/api/flightPlans/1005?fields=summary']);
+  });
+
+  it('the flags of the light row are the server\'s: a plan without file keeps hasFileContent false', async () => {
+    plans.find((p) => p.id === 1005)!.hasFileContent = false;
+    mount(1005);
+    const rows = await loadAll();
+    expect(rows.find((r) => r.id === 1005)?.hasFileContent).toBe(false);
+  });
+
+  it('an older server that ignores ?fields=summary and sends the full row: still published light, flags from the heavy columns', async () => {
+    legacyDetail = true;
+    mount(1005);
+    const sel = (await loadAll()).find((r) => r.id === 1005)!;
+    expect(sel).not.toHaveProperty('fileContent');
+    expect(sel).not.toHaveProperty('uplan');
+    expect(sel).not.toHaveProperty('activationMessage');
+    expect([sel.hasFileContent, sel.hasUplan]).toEqual([true, true]);
   });
 
   it('after the group opened, the next refresh no longer needs the by-id request when the plan is on a loaded page', async () => {
@@ -284,7 +350,7 @@ describe('useFolderPlans: the selected plan', () => {
     await loadAll();
     requests.length = 0;
     await loadAll();
-    expect(requests.some((r) => /\/api\/flightPlans\/\d+$/.test(r))).toBe(false);
+    expect(byIdRequests()).toEqual([]);
   });
 
   it('a plan that does not exist (404) or is not the caller\'s (403) is not an error: the refresh still resolves', async () => {
@@ -410,5 +476,136 @@ describe('group keys', () => {
   it('the search key cannot collide with a folder key', () => {
     expect(SEARCH_KEY).not.toBe(NO_FOLDER_KEY);
     expect(Number.isNaN(Number(SEARCH_KEY))).toBe(true);
+  });
+});
+
+describe('useFolderPlans: what the list shows (rowsOf / totalOf / loadedOf / openKeys)', () => {
+  const ids = (rows: { id: number }[]) => rows.map((r) => r.id);
+  const newest = (n: number, from = 1119) => Array.from({ length: n }, (_, i) => from - i);
+
+  it('an open group lists its loaded page newest first, with the server total and the loaded count', async () => {
+    const h = mountLive();
+    h.api().open('1');
+    await settle(h);
+    expect(ids(h.api().rowsOf('1'))).toEqual(newest(25));
+    expect(h.api().totalOf('1')).toBe(120);
+    expect(h.api().loadedOf('1')).toBe(25);
+    expect(h.api().openKeys.has('1')).toBe(true);
+  });
+
+  it('a group that was never opened lists nothing and has no total yet', async () => {
+    const h = mountLive();
+    h.api().open('1');
+    await settle(h);
+    expect(h.api().rowsOf('2')).toEqual([]);
+    expect(h.api().totalOf('2')).toBeUndefined();
+    expect(h.api().loadedOf('2')).toBe(0);
+    expect(h.api().openKeys.has('2')).toBe(false);
+  });
+
+  it('"show more" grows the group: 50 rows, still no repeats, loadedOf follows', async () => {
+    const h = mountLive();
+    h.api().open('1');
+    h.api().more('1');
+    await settle(h);
+    expect(ids(h.api().rowsOf('1'))).toEqual(newest(50));
+    expect(h.api().loadedOf('1')).toBe(50);
+  });
+
+  describe('the selected plan is on no loaded page (deep link ?selectPlan=1005, page 5 of folder 1)', () => {
+    it('its row is PINNED at the top of its own group, and its group is open', async () => {
+      const h = mountLive(1005);
+      await settle(h);
+      expect(h.api().openKeys.has('1')).toBe(true);
+      const rows = ids(h.api().rowsOf('1'));
+      expect(rows[0]).toBe(1005);
+      expect(rows.slice(1)).toEqual(newest(25));
+      expect(rows).toHaveLength(26);
+    });
+
+    it('the pinned row is not counted as loaded: "Show more (N left)" = total - loadedOf stays 95', async () => {
+      const h = mountLive(1005);
+      await settle(h);
+      expect(h.api().loadedOf('1')).toBe(25);
+      expect((h.api().totalOf('1') ?? 0) - h.api().loadedOf('1')).toBe(95);
+    });
+
+    it('it is pinned only in its own folder, never in another group', async () => {
+      const h = mountLive(1005);
+      h.api().open('2');
+      await settle(h);
+      expect(ids(h.api().rowsOf('2'))).toEqual([2002, 2001, 2000]);
+      expect(ids(h.api().rowsOf('1'))).toContain(1005);
+    });
+
+    it('it is not pinned into the search results (they show what matches)', async () => {
+      const h = mountLive(1005);
+      h.api().setQuery('small');
+      await settle(h);
+      expect(h.api().search).toEqual({ text: 'small' });
+      expect(ids(h.api().rowsOf(SEARCH_KEY))).toEqual([2002, 2001, 2000]);
+      expect(h.api().totalOf(SEARCH_KEY)).toBe(3);
+    });
+
+    it('once "show more" reaches it, it sits in its natural place: no pin, no duplicate', async () => {
+      const h = mountLive(1005);
+      await settle(h);
+      for (let i = 0; i < 4; i++) h.api().more('1'); // 25 + 100 = 125 wanted, the folder has 120
+      await settle(h);
+      const rows = ids(h.api().rowsOf('1'));
+      expect(rows).toHaveLength(120);
+      expect(new Set(rows).size).toBe(120);
+      expect(rows[114]).toBe(1005); // 1119 - 1005
+      expect(h.api().loadedOf('1')).toBe(120);
+    });
+
+    it('selectedMissing stays false for a plan that exists', async () => {
+      const h = mountLive(1005);
+      await settle(h);
+      expect(h.api().selectedMissing).toBe(false);
+    });
+  });
+
+  it('a selected plan on the first page is neither pinned nor repeated', async () => {
+    const h = mountLive(1119);
+    await settle(h);
+    const rows = ids(h.api().rowsOf('1'));
+    expect(rows).toEqual(newest(25));
+    expect(rows.filter((id) => id === 1119)).toHaveLength(1);
+  });
+
+  it('a selected plan without a folder is pinned at the top of the "none" group only when its page does not reach it', async () => {
+    plans.push(...mkPlans(null, 30, 4000, 'many')); // 34 loose plans: 25 on the first page
+    const h = mountLive(3000); // the oldest of them (3000 < 3001..3003 < 4000..4029)
+    await settle(h);
+    const rows = ids(h.api().rowsOf(NO_FOLDER_KEY));
+    expect(rows[0]).toBe(3000);
+    expect(rows).toHaveLength(26);
+  });
+
+  it('a selected plan that does not exist is "missing" (the URL can be cleaned), and the list is not an error', async () => {
+    const h = mountLive(999999);
+    await expect(settle(h)).resolves.toEqual([]);
+    expect(h.api().selectedMissing).toBe(true);
+  });
+
+  it('closing a group drops its rows; the search brings its own list and clearing it brings the groups back', async () => {
+    const h = mountLive();
+    h.api().open('2');
+    await settle(h);
+    expect(h.api().rowsOf('2')).toHaveLength(3);
+    h.api().close('2');
+    h.rerender();
+    expect(h.api().rowsOf('2')).toEqual([]);
+    expect(h.api().openKeys.has('2')).toBe(false);
+    h.api().open('2');
+    await settle(h);
+    h.api().setQuery('big');
+    await settle(h);
+    expect(h.api().search).toEqual({ text: 'big' });
+    h.api().setQuery('');
+    await settle(h);
+    expect(h.api().search).toBeNull();
+    expect(h.api().rowsOf('2')).toHaveLength(3);
   });
 });

@@ -6,8 +6,9 @@
  *   - one group per expanded folder (`folderKey(id)`) or for the plans without folder (`'none'`):
  *     the first PLANS_PER_PAGE rows, `more(key)` appends the next page;
  *   - while a name search is active, the matches across folders (`SEARCH_KEY`) instead of the folder groups;
- *   - the selected plan, from GET /api/flightPlans/[id], when no loaded page has it (?selectPlan=<id> to a plan
- *     that is not in a page). Its group is opened too, so its row is in the list.
+ *   - the selected plan, from GET /api/flightPlans/[id]?fields=summary, when no loaded page has it (?selectPlan=<id> to a plan
+ *     that is not in a page). Its group is opened too, and its row is pinned at the top of that group when the
+ *     group's pages do not reach it (rowsOf).
  * Every refresh (adaptive poll, after a mutation, `reload`) re-reads exactly those pages (the first `want` rows of
  * each, in chunks of 100) and publishes the union as `fp.flightPlans`. `fp` is a normal useFlightPlans (same
  * optimistic updates, adaptive 3 s / 15 s polling, pause while the tab is hidden), so usePlanActions /
@@ -57,11 +58,11 @@ async function fetchPage(key: string, query: string, n: number): Promise<PageRes
   return { items, total }
 }
 
-/** Row of GET /api/flightPlans/[id] as a summary row: the heavy text is dropped right away. */
-function toSummary(d: FlightPlan & { activationMessage?: unknown }): FlightPlanSummary {
+/** Row of GET /api/flightPlans/[id]?fields=summary. Tolerates a full row (older server): the heavy text is dropped right away. */
+function toSummary(d: FlightPlanSummary & Partial<Pick<FlightPlan, 'fileContent' | 'uplan'>> & { activationMessage?: unknown }): FlightPlanSummary {
   const { fileContent, uplan, activationMessage, ...rest } = d
   void activationMessage
-  return { ...rest, hasFileContent: fileContent != null, hasUplan: uplan != null }
+  return { ...rest, hasFileContent: d.hasFileContent ?? fileContent != null, hasUplan: d.hasUplan ?? uplan != null }
 }
 
 interface Options {
@@ -93,6 +94,7 @@ export function useFolderPlans({ selectedId, onCountsStale }: Options) {
     let fresh: Record<string, Page>
     let missing: number | null
     let v: number
+    let selected: FlightPlanSummary | null | undefined // the selected plan's own row: read once per load, not once per repeat
     do {
       v = version.current
       rows = new Map()
@@ -113,14 +115,17 @@ export function useFolderPlans({ selectedId, onCountsStale }: Options) {
       )
       const id = selectedRef.current
       if (id !== null && !rows.has(id)) {
-        // ponytail: the detail route returns the full row (fileContent / uplan), dropped here; only hit while the selected
-        // plan is on no loaded page. A `fields=summary` on that route would make this poll light.
-        try {
-          rows.set(id, toSummary(await apiJson<FlightPlan>(`/api/flightPlans/${id}`)))
-        } catch (e) {
-          if (e instanceof ApiError && (e.status === 404 || e.status === 403)) missing = id
-          else throw e
+        // Only hit while the selected plan is on no loaded page (light row: ?fields=summary)
+        if (selected === undefined) {
+          try {
+            selected = toSummary(await apiJson<FlightPlanSummary>(`/api/flightPlans/${id}?fields=summary`))
+          } catch (e) {
+            if (e instanceof ApiError && (e.status === 404 || e.status === 403)) selected = null
+            else throw e
+          }
         }
+        if (selected) rows.set(id, selected)
+        else missing = id
       }
       const sel = id !== null ? rows.get(id) : undefined
       if (sel && !want.current.has(folderKey(sel.folderId))) {
@@ -211,8 +216,12 @@ export function useFolderPlans({ selectedId, onCountsStale }: Options) {
   }, [])
 
   const byId = useMemo(() => new Map(base.flightPlans.map((p) => [p.id, p])), [base.flightPlans])
-  const rowsOf = (key: string): FlightPlanSummary[] =>
-    (pages[key]?.ids ?? []).map((id) => byId.get(id)).filter((p): p is FlightPlanSummary => !!p)
+  const rowsOf = (key: string): FlightPlanSummary[] => {
+    const rows = (pages[key]?.ids ?? []).map((id) => byId.get(id)).filter((p): p is FlightPlanSummary => !!p)
+    // The selected plan of this folder that the loaded pages do not reach: pinned at the top (not counted in "N left")
+    const sel = selectedId !== null ? byId.get(selectedId) : undefined
+    return sel && key !== SEARCH_KEY && folderKey(sel.folderId) === key && !rows.includes(sel) ? [sel, ...rows] : rows
+  }
 
   // The mutations that change a folder's count refresh the counts too (the folder hook refreshes its own)
   const counted =
@@ -241,6 +250,8 @@ export function useFolderPlans({ selectedId, onCountsStale }: Options) {
     rowsOf,
     /** Plans of the group on the server (undefined until its first page arrives: the group is loading). */
     totalOf: (key: string): number | undefined => pages[key]?.total,
+    /** Rows of the group's loaded pages (without a pinned selected plan). */
+    loadedOf: (key: string): number => pages[key]?.ids.length ?? 0,
     open,
     close,
     toggle,
@@ -257,4 +268,4 @@ export function useFolderPlans({ selectedId, onCountsStale }: Options) {
 export type FolderPlans = ReturnType<typeof useFolderPlans>
 
 /** What the plan list needs from the hook. */
-export type PlanPages = Pick<FolderPlans, 'openKeys' | 'rowsOf' | 'toggle' | 'more' | 'search' | 'setQuery' | 'totalOf'>
+export type PlanPages = Pick<FolderPlans, 'openKeys' | 'rowsOf' | 'toggle' | 'more' | 'search' | 'setQuery' | 'totalOf' | 'loadedOf'>

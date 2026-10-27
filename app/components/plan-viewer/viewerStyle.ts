@@ -13,11 +13,8 @@ export type Layers = Record<LayerId, boolean>
 export type Preset = 'route' | 'uplan' | 'result'
 export const LAYER_IDS: LayerId[] = ['waypoints', 'trajectory', 'volumes', 'zones', 'result', 'scrs']
 
-/** Layers that have data for this plan (a chip only appears for these). */
-export type Availability = Layers
-
-/** Layers switched on when the viewer opens with a preset (only the ones that have data). */
-export function initialLayers(preset: Preset, has: Availability): Layers {
+/** Layers switched on when the viewer opens with a preset (only the ones that have data: `has`). */
+export function initialLayers(preset: Preset, has: Layers): Layers {
   const on: LayerId[] = preset === 'route' ? ['waypoints', 'trajectory'] : preset === 'uplan' ? ['volumes'] : ['volumes', 'result', 'scrs']
   return Object.fromEntries(LAYER_IDS.map((id) => [id, on.includes(id) && has[id]])) as Layers
 }

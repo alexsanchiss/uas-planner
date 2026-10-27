@@ -61,7 +61,7 @@ export function FieldHelp({ text }: FieldHelpProps) {
         <div
           ref={tooltipRef}
           style={{ position: 'absolute', top: pos.top, left: pos.left, transform: 'translate(-50%, -100%)' }}
-          className="z-[9999] w-64 px-3 py-2 text-xs text-[var(--text-secondary)] bg-[var(--surface-primary)] border border-[var(--border-primary)] rounded-lg shadow-lg pointer-events-auto"
+          className="z-[10001] w-64 px-3 py-2 text-xs text-[var(--text-secondary)] bg-[var(--surface-primary)] border border-[var(--border-primary)] rounded-lg shadow-lg pointer-events-auto"
         >
           <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px">
             <div className="w-2 h-2 rotate-45 bg-[var(--surface-primary)] border-r border-b border-[var(--border-primary)]" />

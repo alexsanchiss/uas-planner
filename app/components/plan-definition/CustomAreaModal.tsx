@@ -66,8 +66,7 @@ export default function CustomAreaModal({ open, onClose, onCreate }: CustomAreaM
   };
 
   return (
-    // The app header sits at z-[9999], so the dialog must be above it.
-    <Modal open={open} onClose={close} title={c.title} maxWidth="md" overlayZIndex="z-[10000]">
+    <Modal open={open} onClose={close} title={c.title} maxWidth="md">
       <form onSubmit={submit} noValidate className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-2">
           <Input label={c.id} type="text" value={id} onChange={(e) => setId(e.target.value)} error={errors.id} required />

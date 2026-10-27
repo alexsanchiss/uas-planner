@@ -387,8 +387,8 @@ export function buildPlanViewModel(input: PlanViewInput): PlanViewModel {
 // ---- Absolute heights (3D) -------------------------------------------------------------
 
 export interface TerrainSample {
-  /** Terrain height at the takeoff point (metres above the ellipsoid). */
-  takeoffH: number
+  /** Terrain height at the takeoff point (metres above the ellipsoid); null = unknown (no takeoff point, or no terrain data there). */
+  takeoffH: number | null
   /** Terrain height at each zone centroid, by zone id (only zones with an AGL limit need one). */
   zoneH: Record<string, number>
 }
@@ -403,17 +403,23 @@ export interface AbsPlan {
   geoidKnown: boolean
 }
 
-/** Every height of the model as metres above the ellipsoid. A zone that needs a terrain height and has none is left out. */
+/**
+ * Every height of the model as metres above the ellipsoid. What cannot be placed is left out instead of drawn at a
+ * wrong height: a zone that needs a terrain height and has none, and everything measured above the takeoff (HAT)
+ * when the takeoff terrain height is unknown.
+ */
 export function resolveHeights(model: PlanViewModel, terrain: TerrainSample): AbsPlan {
   const n = geoidNFor(model.uspaceId)
   const geoidN = n ?? 0
-  const ctx = (terrainH: number): AltCtx => ({ terrainH, takeoffH: terrain.takeoffH, geoidN })
-  const base = ctx(terrain.takeoffH)
-  const hs = <T extends { alt: Alt }>(list: T[]): H<T>[] => list.map((p) => ({ ...p, h: toEllipsoid(p.alt, base) }))
-  const volumes = model.volumes.flatMap((v) => (v.min && v.max ? [{ ...v, lowerH: toEllipsoid(v.min, base), upperH: toEllipsoid(v.max, base) }] : []))
+  const takeoffH = terrain.takeoffH ?? NaN
+  const ctx = (terrainH: number): AltCtx => ({ terrainH, takeoffH, geoidN })
+  const base = ctx(takeoffH)
+  const placed = (a: Alt) => a.ref !== 'HAT' || Number.isFinite(takeoffH)
+  const hs = <T extends { alt: Alt }>(list: T[]): H<T>[] => list.filter((p) => placed(p.alt)).map((p) => ({ ...p, h: toEllipsoid(p.alt, base) }))
+  const volumes = model.volumes.flatMap((v) => (v.min && v.max && placed(v.min) && placed(v.max) ? [{ ...v, lowerH: toEllipsoid(v.min, base), upperH: toEllipsoid(v.max, base) }] : []))
   const zones = model.zones.flatMap((z) => {
     const th = terrain.zoneH[z.id]
-    if (zoneNeedsTerrain(z) && !Number.isFinite(th)) return []
+    if ((zoneNeedsTerrain(z) && !Number.isFinite(th)) || !placed(z.lower) || !placed(z.upper)) return []
     const c = ctx(th)
     return [{ ...z, lowerH: toEllipsoid(z.lower, c), upperH: toEllipsoid(z.upper, c) }]
   })
@@ -425,4 +431,25 @@ export function resolveHeights(model: PlanViewModel, terrain: TerrainSample): Ab
     scrs: model.scrs ? { current: hs(model.scrs.current), alternative: hs(model.scrs.alternative) } : null,
     geoidKnown: n != null,
   }
+}
+
+/** A trajectory point this close to (or under) the terrain is not reported: terrain sampling is not exact to the metre. */
+export const BELOW_TERRAIN_TOLERANCE_M = 0.5
+
+/**
+ * Safety check, not a height rule: the trajectory is drawn at takeoffH + Alt (HAT), so on sloped terrain some points can end
+ * up below the local ground. `points` and `terrainH` are parallel (terrain height under each point, NaN = no data).
+ * Returns how many points are under the terrain and by how much the worst one is, or null when none is.
+ */
+export function trajectoryBelowTerrain(points: VmTrajPoint[], terrainH: number[], takeoffH: number): { points: number; meters: number } | null {
+  let count = 0
+  let worst = 0
+  points.forEach((p, i) => {
+    const depth = terrainH[i] - toEllipsoid(p.alt, { terrainH: 0, takeoffH, geoidN: 0 })
+    if (depth > BELOW_TERRAIN_TOLERANCE_M) {
+      count++
+      worst = Math.max(worst, depth)
+    }
+  })
+  return count > 0 ? { points: count, meters: worst } : null
 }

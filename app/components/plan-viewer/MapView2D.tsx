@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { CircleMarker, MapContainer, Polygon, Polyline, TileLayer, Tooltip, useMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useI18n } from '@/app/i18n'
+import { localeOf } from '@/lib/altitude'
 import { droneAt, type PlanViewModel, type Ring } from '@/lib/plan-view-model'
 import { describeFeature, featureId } from './featureInfo'
 import { DIM_ALPHA, FILL_ALPHA, isActive, volumeColor, volumeState, zoneColor, zoneShown, type Layers, type Palette } from './viewerStyle'
@@ -58,7 +59,7 @@ function Framing({ points }: { points: LatLng[] }) {
 }
 
 export default function MapView2D({ model, layers, palette: p, timeMs, selected, onSelect }: Props) {
-  const { t } = useI18n()
+  const { t, language } = useI18n()
   const vt = t.planAuth.viewer
 
   const framed = useMemo(() => {
@@ -78,7 +79,7 @@ export default function MapView2D({ model, layers, palette: p, timeMs, selected,
 
   const drone = timeMs != null && layers.trajectory ? droneAt(model.trajectory, (timeMs - (model.timeline?.startMs ?? 0)) / 1000) : null
   const tip = (id: string) => {
-    const info = describeFeature(id, model, vt)
+    const info = describeFeature(id, model, vt, localeOf(language))
     return info ? (
       <Tooltip sticky>
         <strong>{info.title}</strong>

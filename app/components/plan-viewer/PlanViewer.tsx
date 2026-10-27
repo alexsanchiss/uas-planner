@@ -6,7 +6,7 @@
  * 3D (Cesium) loads on demand and lives only while it is shown. Altitude rules: lib/altitude.ts and lib/plan-view-model.ts.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { FileText, Loader2, X } from 'lucide-react'
 import { interpolate, useI18n } from '@/app/i18n'
@@ -14,11 +14,11 @@ import { Modal } from '@/app/components/ui/modal'
 import { useGeoawarenessWebSocket } from '@/app/hooks/useGeoawarenessWebSocket'
 import { useMediaQuery } from '@/app/hooks/useMediaQuery'
 import { apiJson } from '@/lib/api-client'
-import { geoidNFor } from '@/lib/altitude'
+import { formatNumber, geoidNFor, localeOf } from '@/lib/altitude'
 import { buildPlanViewModel } from '@/lib/plan-view-model'
 import { parseWaypointsFromPlan, uspaceOf, type AuthPhase, type PlanPhase } from '@/app/components/plan-authorization/lib'
 import { AuthStatusBadge, PlanStatusBadge } from '@/app/components/plan-authorization/StatusBadge'
-import { describeFeature } from './featureInfo'
+import { describeFeature, listFeatures } from './featureInfo'
 import MapView2D from './MapView2D'
 import type { Status3D } from './MapView3D'
 import { DetailsPanel, InfoCard, Legend, TimeBar, type Warning } from './ViewerPanels'
@@ -79,8 +79,9 @@ function useTrajectoryCsv(planId: number, enabled: boolean) {
 const CHIP_COLOR: Record<LayerId, keyof Palette> = { waypoints: 'info', trajectory: 'accent', volumes: 'info', zones: 'warning', result: 'danger', scrs: 'success' }
 
 export default function PlanViewer({ preset, planId, planName, plan, auth, detail, onClose, accepting, onAcceptScrs }: PlanViewerProps) {
-  const { t } = useI18n()
+  const { t, language } = useI18n()
   const vt = t.planAuth.viewer
+  const locale = localeOf(language)
   const palette = usePalette()
   const wide = useMediaQuery('(min-width: 640px)')
 
@@ -145,9 +146,9 @@ export default function PlanViewer({ preset, planId, planName, plan, auth, detai
   const [selected, setSelected] = useState<string | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [legendOpen, setLegendOpen] = useState<boolean | null>(null)
-  const [st3d, setSt3d] = useState<Status3D>({ terrainDown: false, skippedZones: 0 })
-  const onStatus = useCallback((s: Status3D) => setSt3d(s), [])
-  const info = describeFeature(selected, model, vt)
+  const [st3d, setSt3d] = useState<Status3D>({ terrainDown: false, skippedZones: 0, noTakeoff: false, below: null })
+  const info = describeFeature(selected, model, vt, locale)
+  const items = useMemo(() => listFeatures(model, layers, vt, locale), [model, layers, vt, locale])
 
   const toggle = (id: LayerId) => setLayers((l) => ({ ...l, [id]: !l[id] }))
 
@@ -156,6 +157,8 @@ export default function PlanViewer({ preset, planId, planName, plan, auth, detai
   if (view === '3d') {
     if (st3d.terrainDown) warnings.push({ id: 'terrain', text: vt.warn.terrain })
     else if (st3d.skippedZones > 0) warnings.push({ id: 'skipped', text: interpolate(vt.warn.zonesSkipped, { n: st3d.skippedZones }) })
+    if (st3d.noTakeoff && !st3d.terrainDown) warnings.push({ id: 'takeoff', text: vt.warn.noTakeoff })
+    if (st3d.below && layers.trajectory) warnings.push({ id: 'below', text: interpolate(vt.warn.belowTerrain, { m: formatNumber(st3d.below.meters, locale), k: st3d.below.points }) })
     const amsl = model.zones.some((z) => zoneShown(z, layers) && (z.lower.ref === 'AMSL' || z.upper.ref === 'AMSL'))
     if (amsl && geoidNFor(uspaceId) == null) warnings.push({ id: 'geoid', text: vt.warn.geoid })
   }
@@ -233,11 +236,11 @@ export default function PlanViewer({ preset, planId, planName, plan, auth, detai
           {view === '2d' ? (
             <MapView2D model={model} layers={layers} palette={palette} timeMs={timeMs} selected={selected} onSelect={setSelected} />
           ) : (
-            <MapView3D model={model} layers={layers} palette={palette} timeMs={timeMs} onSelect={setSelected} onStatus={onStatus} />
+            <MapView3D model={model} layers={layers} palette={palette} timeMs={timeMs} onSelect={setSelected} onStatus={setSt3d} />
           )}
         </div>
         {info && <InfoCard info={info} onClose={() => setSelected(null)} t={vt} />}
-        <Legend model={model} layers={layers} palette={palette} warnings={warnings} open={legendOpen ?? wide} onToggle={() => setLegendOpen(!(legendOpen ?? wide))} t={vt} />
+        <Legend model={model} layers={layers} palette={palette} warnings={warnings} open={legendOpen ?? wide} onToggle={() => setLegendOpen(!(legendOpen ?? wide))} t={vt} locale={locale} placement={view === '3d' ? 'top' : 'bottom'} items={items} selected={selected} onPick={(id) => { setSelected(id); if (!wide) setLegendOpen(false) }} />
         {detailsOpen && <DetailsPanel model={model} onClose={() => setDetailsOpen(false)} t={vt} />}
       </div>
 

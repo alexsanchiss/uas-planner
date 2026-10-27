@@ -53,7 +53,7 @@ export const GEOID_N_BY_USPACE: Record<string, number> = {
 
 /** Geoid height of a U-space, or null when the U-space is unknown (callers then use 0 and warn). */
 export function geoidNFor(uspaceId: string | null | undefined): number | null {
-  return uspaceId && uspaceId in GEOID_N_BY_USPACE ? GEOID_N_BY_USPACE[uspaceId] : null
+  return uspaceId && Object.hasOwn(GEOID_N_BY_USPACE, uspaceId) ? GEOID_N_BY_USPACE[uspaceId] : null
 }
 
 function refOf(reference: unknown, fallback: AltRef): AltRef {
@@ -105,16 +105,25 @@ export function toEllipsoid(a: Alt, ctx: AltCtx): number {
 /** Label templates per reference, `{n}` is the number (i18n: planAuth.viewer.alt). */
 export type AltFormats = Record<AltRef, string>
 
-const round1 = (m: number) => Math.round(m * 10) / 10
+/** BCP 47 locale of the app language (the same mapping the date helpers use). */
+export const localeOf = (language: string): string => (language === 'es' ? 'es-ES' : 'en-GB')
+
+const nf = new Map<string, Intl.NumberFormat>()
+/** A number with at most one decimal, in the locale's own notation (1,5 in Spanish, 1.5 in English). */
+export function formatNumber(n: number, locale = 'en-GB'): string {
+  let f = nf.get(locale)
+  if (!f) nf.set(locale, (f = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 })))
+  return f.format(n)
+}
 
 /** "40 m above takeoff", "120 m AGL", "300 m AMSL": the reference is always part of the text. */
-export function labelAlt(a: Alt, formats: AltFormats): string {
-  return formats[a.declared ?? a.ref].replace('{n}', String(round1(a.meters)))
+export function labelAlt(a: Alt, formats: AltFormats, locale?: string): string {
+  return formats[a.declared ?? a.ref].replace('{n}', formatNumber(a.meters, locale))
 }
 
 /** "10-122 m AGL" for two altitudes of the same reference, else both labels joined by " / ". */
-export function labelAltRange(a: Alt, b: Alt, formats: AltFormats): string {
+export function labelAltRange(a: Alt, b: Alt, formats: AltFormats, locale?: string): string {
   const ra = a.declared ?? a.ref
-  if (ra !== (b.declared ?? b.ref)) return `${labelAlt(a, formats)} / ${labelAlt(b, formats)}`
-  return formats[ra].replace('{n}', `${round1(a.meters)}-${round1(b.meters)}`)
+  if (ra !== (b.declared ?? b.ref)) return `${labelAlt(a, formats, locale)} / ${labelAlt(b, formats, locale)}`
+  return formats[ra].replace('{n}', `${formatNumber(a.meters, locale)}-${formatNumber(b.meters, locale)}`)
 }

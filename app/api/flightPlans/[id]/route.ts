@@ -7,7 +7,7 @@
  * Authorization: User can only access their own flight plans
  * 
  * Endpoints:
- * - GET    /api/flightPlans/[id] - Get a single flight plan by ID
+ * - GET    /api/flightPlans/[id] - Get a single flight plan by ID (opt-in `?fields=summary`: no fileContent/uplan, plus hasFileContent/hasUplan)
  * - PUT    /api/flightPlans/[id] - Update a single flight plan by ID
  * - DELETE /api/flightPlans/[id] - Delete a single flight plan by ID (with CSV cascade)
  */
@@ -26,6 +26,7 @@ import { logger } from '@/lib/logger';
 import type { Prisma } from '@prisma/client';
 import { sendFasCancellation } from '@/lib/fas';
 import { parseId, userOwnsFolders } from '@/lib/http';
+import { SUMMARY_SELECT } from '@/lib/flight-plan-summary';
 
 /**
  * Params type for dynamic route
@@ -110,12 +111,11 @@ export async function GET(
   }
 
   try {
-    const flightPlan = await prisma.flightPlan.findUnique({
-      where: { id },
-      include: {
-        folder: true,
-      },
-    });
+    // Opt-in light row (the polled refresh of the selected plan): same lookup and ownership checks, heavy columns never read
+    const summary = request.nextUrl.searchParams.get('fields') === 'summary';
+    const flightPlan = summary
+      ? await prisma.flightPlan.findUnique({ where: { id }, select: SUMMARY_SELECT })
+      : await prisma.flightPlan.findUnique({ where: { id }, include: { folder: true } });
 
     if (!flightPlan) {
       return NextResponse.json(
@@ -130,6 +130,15 @@ export async function GET(
         { error: 'Access denied' },
         { status: 403 }
       );
+    }
+
+    if (summary) {
+      // IS NOT NULL is answered from the row header (same trick as the list)
+      const [withFile, withUplan] = await Promise.all([
+        prisma.flightPlan.findFirst({ where: { id, fileContent: { not: null } }, select: { id: true } }),
+        prisma.flightPlan.findFirst({ where: { id, uplan: { not: null } }, select: { id: true } }),
+      ]);
+      return NextResponse.json({ ...flightPlan, hasFileContent: !!withFile, hasUplan: !!withUplan });
     }
 
     return NextResponse.json(flightPlan);

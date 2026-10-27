@@ -8,7 +8,7 @@
  */
 
 import { getTranslation } from '@/app/i18n/translations'
-import { FT_TO_M, GEOID_N_BY_USPACE, geoidNFor, labelAlt, labelAltRange, parseAlt, toEllipsoid, volumeAlt, type Alt, type AltCtx } from '../altitude'
+import { FT_TO_M, GEOID_N_BY_USPACE, formatNumber, geoidNFor, labelAlt, labelAltRange, localeOf, parseAlt, toEllipsoid, volumeAlt, type Alt, type AltCtx } from '../altitude'
 
 const CTX: AltCtx = { terrainH: 160, takeoffH: 100, geoidN: 50.5492 }
 const fmt = getTranslation('en').planAuth.viewer.alt
@@ -140,11 +140,10 @@ describe('geoidNFor', () => {
     for (const id of ['GLOBAL_U_SPACE', 'U-SPACE-1', 'vlcuspace', '', null, undefined]) expect(geoidNFor(id)).toBeNull()
   })
 
-  // BUG (R6 review): `uspaceId in GEOID_N_BY_USPACE` also matches Object.prototype keys, so geoidNFor('constructor')
-  // returns a function. The U-space id comes from the stored geoawarenessData, which the plan owner can write. Delete
-  // `.failing` when geoidNFor uses Object.hasOwn.
-  it.failing('ignores Object.prototype keys', () => {
-    for (const id of ['constructor', 'toString', 'hasOwnProperty', '__proto__']) expect(geoidNFor(id)).toBeNull()
+  // The U-space id comes from the stored geoawarenessData, which the plan owner can write: `in` would also match
+  // Object.prototype keys and hand back a function (R6 round 1), so only the own keys count.
+  it('ignores Object.prototype keys (the id is user-writable data)', () => {
+    for (const id of ['constructor', 'toString', 'hasOwnProperty', '__proto__', 'valueOf']) expect({ id, n: geoidNFor(id) }).toEqual({ id, n: null })
   })
 })
 
@@ -163,6 +162,38 @@ describe('labels (the reference is always part of the text)', () => {
 
   it('rounds to one decimal (feet conversions)', () => {
     expect(labelAlt({ meters: 121.92, ref: 'AGL' }, fmt)).toBe('121.9 m AGL')
+  })
+
+  it('numbers follow the language: Spanish writes 121,9 and English 121.9; the reference text is the language\'s own', () => {
+    const fmtEs = getTranslation('es').planAuth.viewer.alt
+    expect(labelAlt({ meters: 121.92, ref: 'AGL' }, fmt, localeOf('en'))).toBe('121.9 m AGL')
+    expect(labelAlt({ meters: 121.92, ref: 'AGL' }, fmtEs, localeOf('es'))).toBe('121,9 m AGL')
+    expect(labelAlt({ meters: 40.5, ref: 'HAT' }, fmtEs, localeOf('es'))).toBe('40,5 m sobre el despegue')
+    expect(labelAlt({ meters: 40.5, ref: 'HAT' }, fmt, localeOf('en'))).toBe('40.5 m above takeoff')
+  })
+
+  it('without a locale the English notation is used (the old behaviour), and the height is never changed by the language', () => {
+    expect(labelAlt({ meters: 121.92, ref: 'AGL' }, fmt)).toBe('121.9 m AGL')
+    expect(labelAlt({ meters: 0, ref: 'AGL' }, fmt, 'es-ES')).toBe('0 m AGL')
+    expect(labelAlt({ meters: -3, ref: 'AMSL' }, fmt, 'es-ES')).toBe('-3 m AMSL')
+  })
+
+  it('labelAltRange formats both ends with the locale, in a same-reference range and in a mixed one', () => {
+    const fmtEs = getTranslation('es').planAuth.viewer.alt
+    expect(labelAltRange({ meters: 10.5, ref: 'AGL' }, { meters: 121.92, ref: 'AGL' }, fmtEs, 'es-ES')).toBe('10,5-121,9 m AGL')
+    expect(labelAltRange({ meters: 0.5, ref: 'AGL' }, { meters: 300.25, ref: 'AMSL' }, fmtEs, 'es-ES')).toBe('0,5 m AGL / 300,3 m AMSL')
+    expect(labelAltRange({ meters: 10.5, ref: 'AGL' }, { meters: 121.92, ref: 'AGL' }, fmt, 'en-GB')).toBe('10.5-121.9 m AGL')
+  })
+
+  it('formatNumber: at most one decimal, a trailing .0 is dropped, thousands per locale; localeOf maps the app languages', () => {
+    expect(formatNumber(1234.5, 'en-GB')).toBe('1,234.5')
+    expect(formatNumber(1234.5, 'es-ES')).toBe('1234,5')
+    expect(formatNumber(2, 'es-ES')).toBe('2')
+    expect(formatNumber(2.04, 'es-ES')).toBe('2')
+    expect(formatNumber(2.06, 'es-ES')).toBe('2,1')
+    expect(localeOf('es')).toBe('es-ES')
+    expect(localeOf('en')).toBe('en-GB')
+    expect(localeOf('fr')).toBe('en-GB') // anything else: the default language
   })
 
   it('labelAltRange joins same-reference limits, and spells both when they differ', () => {

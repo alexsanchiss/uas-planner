@@ -146,7 +146,7 @@ export function PlanList({ folders, noFolderCount, list, selectedId, selectedKey
 
   /** Rows of a group + its "Show more (N left)". */
   const pageOf = (key: string, rows: PlanRow[]) => {
-    const left = (list.totalOf(key) ?? 0) - rows.length
+    const left = (list.totalOf(key) ?? 0) - list.loadedOf(key)
     return (
       <>
         {planRows(rows)}

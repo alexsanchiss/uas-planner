@@ -7,6 +7,7 @@
  */
 
 import {
+  BELOW_TERRAIN_TOLERANCE_M,
   buildPlanViewModel,
   droneAt,
   isConflicting,
@@ -15,6 +16,7 @@ import {
   resolveHeights,
   ringCentroid,
   ringOf,
+  trajectoryBelowTerrain,
   zoneNeedsTerrain,
   type PlanViewInput,
   type PlanViewModel,
@@ -506,5 +508,152 @@ describe('resolveHeights (terrain(takeoff) = 100 m, terrain(volume centroid) = 1
     const m = buildPlanViewModel(input({ uplan: UPLAN, authorizationMessage: scrs, authStatus: 'denied' }))
     const abs = resolveHeights(m, sample)
     expect(abs.scrs?.alternative.map((p) => p.h)).toEqual([155, 160])
+  })
+})
+
+// ---- resolveHeights without a takeoff terrain height (R6 round 2) --------------------------------------
+
+describe('resolveHeights with takeoffH = null (no takeoff point, or no terrain data under it)', () => {
+  const zone = (id: string, centre: [number, number], vertical: object) => ({
+    uas_geozones_identifier: id,
+    properties: { name: id, type: 'PROHIBITED' },
+    geometry: { type: 'Polygon', coordinates: [square(centre[0], centre[1], 0.01)], verticalReference: vertical },
+  })
+  const AGL = { lower: 0, upper: 100, lowerReference: 'AGL', upperReference: 'AGL', uom: 'M' }
+  const AMSL = { lower: 800, upper: 900, lowerReference: 'AMSL', upperReference: 'AMSL', uom: 'M' }
+  const WGS = { lower: 150, upper: 250, lowerReference: 'WGS84', upperReference: 'WGS84', uom: 'M' }
+  const SCRS = JSON.stringify({
+    scr_dispatch: {
+      sent: true,
+      status_code: 200,
+      response: { status: 'success', uplan_id: 'u', segments: [{ segment: 1, start: { type: 'Point', coordinates: [-0.45, 39.7, 50] }, end: { type: 'Point', coordinates: [-0.44, 39.71, 60] }, solution_method: 'ML', route_path: [{ type: 'Point', coordinates: [-0.449, 39.701, 55] }, { type: 'Point', coordinates: [-0.445, 39.705, 60] }] }] },
+    },
+  })
+  const full = () =>
+    slopeModel({
+      authorizationMessage: SCRS,
+      authStatus: 'denied',
+      liveZones: [zone('A', [-0.4, 39.72], AGL), zone('M', [-0.41, 39.73], AMSL), zone('W', [-0.42, 39.74], WGS)],
+    })
+
+  it('everything measured above the takeoff is left out (waypoints, trajectory, volumes, SCRS) instead of drawn at a wrong height', () => {
+    const abs = resolveHeights(full(), { takeoffH: null, zoneH: {} })
+    expect(abs.waypoints).toEqual([])
+    expect(abs.trajectory).toEqual([])
+    expect(abs.volumes).toEqual([])
+    expect(abs.scrs).toEqual({ current: [], alternative: [] })
+  })
+
+  it('what does not depend on the takeoff is still placed: AMSL and WGS84 zones, and AGL zones that have their own terrain height', () => {
+    const abs = resolveHeights(full(), { takeoffH: null, zoneH: { A: 700 } })
+    const byId = Object.fromEntries(abs.zones.map((z) => [z.id, [z.lowerH, z.upperH]]))
+    expect(Object.keys(byId).sort()).toEqual(['A', 'M', 'W'])
+    expect(byId.A).toEqual([700, 800])
+    expect(byId.M[0]).toBeCloseTo(850.5492, 10)
+    expect(byId.W).toEqual([150, 250])
+  })
+
+  it('an AGL zone without its own terrain height is still left out (the takeoff is not a substitute for it)', () => {
+    const abs = resolveHeights(full(), { takeoffH: null, zoneH: {} })
+    expect(abs.zones.map((z) => z.id).sort()).toEqual(['M', 'W'])
+  })
+
+  it('NaN is the same as null, and no returned height is ever NaN', () => {
+    for (const takeoffH of [null, NaN]) {
+      const abs = resolveHeights(full(), { takeoffH, zoneH: { A: 700 } })
+      const all = [...abs.waypoints.map((w) => w.h), ...abs.trajectory.map((p) => p.h), ...abs.volumes.flatMap((v) => [v.lowerH, v.upperH]), ...abs.zones.flatMap((z) => [z.lowerH, z.upperH]), ...(abs.scrs?.alternative.map((p) => p.h) ?? [])]
+      expect(all.length).toBeGreaterThan(0)
+      expect(all.every(Number.isFinite)).toBe(true)
+    }
+  })
+
+  it('a volume that declares WGS84 (not measured from the takeoff) is still placed', () => {
+    const m = buildPlanViewModel(
+      input({
+        uspaceId: 'VLCUspace',
+        uplan: {
+          operationVolumes: [
+            { ordinal: 0, geometry: { type: 'Polygon', coordinates: [square(-0.45, 39.7)] }, minAltitude: { value: 100, reference: 'WGS84' }, maxAltitude: { value: 160, reference: 'WGS84' } },
+            { ordinal: 1, geometry: { type: 'Polygon', coordinates: [square(-0.45, 39.7)] }, minAltitude: { value: 0, reference: 'AGL' }, maxAltitude: { value: 50, reference: 'AGL' } },
+          ],
+        },
+      })
+    )
+    const v = resolveHeights(m, { takeoffH: null, zoneH: {} }).volumes
+    expect(v.map((x) => [x.ordinal, x.lowerH, x.upperH])).toEqual([[0, 100, 160]]) // the AGL one (drawn from the takeoff) waits
+  })
+
+  it('with a known takeoff nothing is dropped (same counts as the model)', () => {
+    const m = full()
+    const abs = resolveHeights(m, { takeoffH: TAKEOFF_H, zoneH: { A: 700 } })
+    expect(abs.waypoints).toHaveLength(m.waypoints.length)
+    expect(abs.trajectory).toHaveLength(m.trajectory.length)
+    expect(abs.volumes).toHaveLength(m.volumes.length)
+    expect(abs.zones).toHaveLength(3)
+    expect(abs.scrs?.alternative).toHaveLength(m.scrs?.alternative.length ?? -1)
+  })
+
+  it('a model with no route at all (geozones only: a decided plan without U-plan) is placed without any takeoff', () => {
+    const m = buildPlanViewModel(input({ uspaceId: 'VLCUspace', geoawarenessData: { features: [zone('A', [-0.4, 39.72], AGL), zone('M', [-0.41, 39.73], AMSL)] } }))
+    expect(m.takeoff).toBeNull()
+    const abs = resolveHeights(m, { takeoffH: null, zoneH: { A: 650 } })
+    expect(abs.zones.map((z) => z.id).sort()).toEqual(['A', 'M'])
+    expect(abs.zones.find((z) => z.id === 'A')?.lowerH).toBe(650)
+  })
+})
+
+// ---- trajectoryBelowTerrain ---------------------------------------------------------------------------
+
+describe('trajectoryBelowTerrain (the trajectory is drawn at takeoff + Alt: on a slope it can run under the ground)', () => {
+  const pts = parseTrajectory(CSV) // 25-ish rows: Alt 0, 30, 35, 40, 45, 0 (see CSV above)
+  const flat = (n: number, h: number) => Array.from({ length: n }, () => h)
+
+  it('tolerance is half a metre', () => {
+    expect(BELOW_TERRAIN_TOLERANCE_M).toBe(0.5)
+  })
+
+  it('flat terrain at the takeoff height: nothing under ground -> null (a point AT the ground is not a problem)', () => {
+    expect(trajectoryBelowTerrain(pts, flat(pts.length, TAKEOFF_H), TAKEOFF_H)).toBeNull()
+  })
+
+  it('terrain that climbs faster than the flight: counts the points under it and reports the worst depth', () => {
+    const rows = parseTrajectory('SimTime,Lat,Lon,Alt\n' + Array.from({ length: 25 }, (_, i) => `${i},39.7,-0.45,${i === 0 ? 0 : 40 + (i - 1) * 3.5}`).join('\n'))
+    const terrain = rows.map((_, i) => TAKEOFF_H + 8 * i) // 100 .. 292 m
+    const r = trajectoryBelowTerrain(rows, terrain, TAKEOFF_H)
+    // depth_i = 8 i - alt_i = 4.5 i - 36.5 : positive beyond 0.5 for i = 9..24 (16 points), worst at i = 24 (71.5 m)
+    expect(r?.points).toBe(16)
+    expect(r?.meters).toBeCloseTo(71.5, 9)
+  })
+
+  it('the reference is the TAKEOFF terrain, not the terrain under each point: same alt, higher ground under the point = under it', () => {
+    const one = parseTrajectory('SimTime,Lat,Lon,Alt\n0,39.7,-0.45,30')
+    expect(trajectoryBelowTerrain(one, [160], 100)).toEqual({ points: 1, meters: 30 }) // flies at 130, ground 160
+    expect(trajectoryBelowTerrain(one, [100], 100)).toBeNull() // ground at the takeoff height: 30 m above it
+  })
+
+  it('exactly the tolerance is not reported; just beyond it is', () => {
+    const one = parseTrajectory('SimTime,Lat,Lon,Alt\n0,39.7,-0.45,10')
+    expect(trajectoryBelowTerrain(one, [110.5], 100)).toBeNull()
+    const r = trajectoryBelowTerrain(one, [110.51], 100)
+    expect(r?.points).toBe(1)
+    expect(r?.meters).toBeCloseTo(0.51, 9)
+  })
+
+  it('points without terrain data (NaN, or a shorter terrain list) are ignored, not counted as under ground', () => {
+    const three = parseTrajectory('SimTime,Lat,Lon,Alt\n0,39.7,-0.45,10\n1,39.7,-0.45,10\n2,39.7,-0.45,10')
+    expect(trajectoryBelowTerrain(three, [NaN, NaN, NaN], 100)).toBeNull()
+    expect(trajectoryBelowTerrain(three, [200], 100)).toEqual({ points: 1, meters: 90 })
+  })
+
+  it('no points -> null', () => {
+    expect(trajectoryBelowTerrain([], [], 100)).toBeNull()
+  })
+
+  it('a sloped fixture: terrain climbing 15 m per row under the CSV above', () => {
+    // terrain rising 15 m per row from the takeoff: the cruise rows (Alt 30..45) end up under it from the 3rd row on
+    const terrain = pts.map((_, i) => TAKEOFF_H + 15 * i)
+    const r = trajectoryBelowTerrain(pts, terrain, TAKEOFF_H)
+    // rows: 0 (alt 0, ground 100) ok; 1 (30 vs 15) ok; 2 (35 vs 30) ok; 3 (40 vs 45) under by 5; 4 (45 vs 60) by 15; 5 (alt 0 vs 75) by 75
+    expect(r).toEqual({ points: 3, meters: 75 })
   })
 })

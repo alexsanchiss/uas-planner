@@ -48,7 +48,7 @@ The email link `/verify-email?token=` is also **EXTERNAL**.
 | POST `/api/flightPlans` | JWT | Single `{customName, status, fileContent, folderId?, uplan?, scheduledAt?, geoawarenessData?}` returns 201 plan; bulk `{items:[...]}` (max 2000) returns 201 `{createdCount, items}`; external `{type:'external_uplan', uplan, folderId, customName}` returns 201 plan already `procesado`. |
 | PUT `/api/flightPlans` | JWT | Three shapes: `{id, data}` returns the plan (404 if not yours); `{ids, data}` (max 100000) and `{items:[{id,data}]}` (max 2000) return `{count}`. Writable fields: see Conventions. |
 | DELETE `/api/flightPlans` | JWT | `{id}` or `{ids}`; 200 `{deletedPlans, deletedCsvs, totalDeleted, message}`; 404. Approved plans are cancelled in FAS and the owner is emailed. |
-| GET, PUT, DELETE `/api/flightPlans/[id]` | JWT, owner | Full row + folder. DELETE returns `{message, deletedPlan, deletedCsvResult}`. |
+| GET, PUT, DELETE `/api/flightPlans/[id]` | JWT, owner | Full row + folder. GET **`?fields=summary`** (opt-in): the list's summary row (no `fileContent`, `uplan`, `activationMessage`; plus `hasFileContent`, `hasUplan`), same 404 / 403 checks. DELETE returns `{message, deletedPlan, deletedCsvResult}`. |
 | POST `/[id]/generate-volumes` | JWT, owner | 200 `{success, volumesGenerated, randomDataGenerated, uplan}` |
 | POST `/[id]/uplan` | JWT, owner | No body. Sends the U-Plan to FAS. 200 `{uplan, authorizationMessage}` and `pendiente`; FAS 4xx is persisted (`withdrawn` for 400, else `denegado`) and answered with FAS's status; 503 if FAS is unreachable or keeps answering 500. |
 | POST `/[id]/reset` | JWT, owner | 200 `{message, flightPlan, csvResultDeleted}`; 400 `{code:'ALREADY_UNPROCESSED'}` or external plan |
