@@ -8,31 +8,42 @@ type DecimalInputProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, "valu
   onValue: (v: number | "") => void;
 };
 
-/** Text input for numbers that accepts "." or "," as decimal separator; reports finite numbers live. */
-export function DecimalInput({ value, onValue, onBlur, ...props }: DecimalInputProps) {
+/**
+ * Draft state of a decimal text field that accepts "." or "," as separator: reports finite numbers live,
+ * keeps partial states ("5,", "-", "") and resyncs when the parent changes or clamps the value.
+ * Spread the result on any text input (plain <input> or the styled ui/Input).
+ */
+export function useDecimalDraft(value: number | "", onValue: (v: number | "") => void) {
   const [draft, setDraft] = useState(String(value));
-  // Resync when the draft is a complete number the parent no longer holds (changed or clamped);
-  // partial states ("5,", "-", "") stay untouched.
   const parsed = parseDecimal(draft);
   if (value !== "" && Number.isFinite(parsed) && parsed !== value) setDraft(String(value));
+  return {
+    type: "text" as const,
+    inputMode: "decimal" as const,
+    autoComplete: "off",
+    value: draft,
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+      const next = e.target.value;
+      setDraft(next);
+      if (next.trim() === "") onValue("");
+      else {
+        const n = parseDecimal(next);
+        if (Number.isFinite(n)) onValue(n);
+      }
+    },
+    onBlur: () => setDraft(String(value)),
+  };
+}
+
+/** Text input for numbers that accepts "." or "," as decimal separator; reports finite numbers live. */
+export function DecimalInput({ value, onValue, onBlur, ...props }: DecimalInputProps) {
+  const draft = useDecimalDraft(value, onValue);
   return (
     <input
       {...props}
-      type="text"
-      inputMode="decimal"
-      autoComplete="off"
-      value={draft}
-      onChange={(e) => {
-        const next = e.target.value;
-        setDraft(next);
-        if (next.trim() === "") onValue("");
-        else {
-          const n = parseDecimal(next);
-          if (Number.isFinite(n)) onValue(n);
-        }
-      }}
+      {...draft}
       onBlur={(e) => {
-        setDraft(String(value));
+        draft.onBlur();
         onBlur?.(e);
       }}
     />
