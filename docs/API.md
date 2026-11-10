@@ -44,11 +44,12 @@ The email link `/verify-email?token=` is also **EXTERNAL**.
 
 | Method and path | Auth | Body and behaviour |
 |---|---|---|
-| GET `/api/flightPlans` | JWT | All plans of the user, newest first. **`?fields=summary`**: rows without `fileContent`, `uplan`, `activationMessage`, plus booleans `hasFileContent`, `hasUplan`. Any other value returns full rows. **`?fields=summary&limit=1..100`** (opt-in paging): `&offset=n` `&folderId=<id\|none>` `&q=<name contains>` `&authorizationStatus=<exact>` -> `{ items, total }` (summary rows, newest first); 400 on bad params, 404 for a folder that is not the caller's. |
+| GET `/api/flightPlans` | JWT | All plans of the user, newest first. Every row (summary or full, paged or not; also GET `/[id]`) carries `queuePosition` (1-based) and `queueLength` (all users' `en cola` plans, assigner order), both `null` unless the row is `en cola`; and the 7 simulation/processing columns below. **`?fields=summary`**: rows without `fileContent`, `uplan`, `activationMessage`, plus booleans `hasFileContent`, `hasUplan`. Any other value returns full rows. **`?fields=summary&limit=1..100`** (opt-in paging): `&offset=n` `&folderId=<id\|none>` `&q=<name contains>` `&authorizationStatus=<exact>` -> `{ items, total }` (summary rows, newest first); 400 on bad params, 404 for a folder that is not the caller's. |
 | POST `/api/flightPlans` | JWT | Single `{customName, status, fileContent, folderId?, uplan?, scheduledAt?, geoawarenessData?}` returns 201 plan; bulk `{items:[...]}` (max 2000) returns 201 `{createdCount, items}`; external `{type:'external_uplan', uplan, folderId, customName}` returns 201 plan already `procesado`. |
 | PUT `/api/flightPlans` | JWT | Three shapes: `{id, data}` returns the plan (404 if not yours); `{ids, data}` (max 100000) and `{items:[{id,data}]}` (max 2000) return `{count}`. Writable fields: see Conventions. |
 | DELETE `/api/flightPlans` | JWT | `{id}` or `{ids}`; 200 `{deletedPlans, deletedCsvs, totalDeleted, message}`; 404. Approved plans are cancelled in FAS and the owner is emailed. |
 | GET, PUT, DELETE `/api/flightPlans/[id]` | JWT, owner | Full row + folder. GET **`?fields=summary`** (opt-in): the list's summary row (no `fileContent`, `uplan`, `activationMessage`; plus `hasFileContent`, `hasUplan`), same 404 / 403 checks. DELETE returns `{message, deletedPlan, deletedCsvResult}`. |
+| PUT `/api/flightPlans/simulation` | JWT | `{ids (1..1000, unique), airframe:'multirotor'|'fixedwing', wind: null | {speed 0..30 m/s, direction 0..360 deg, gust? null|speed..40}}` sets `simAirframe`, `windSpeed`, `windDirection` (360 stored as 0), `windGust` of all `ids` in one `updateMany` (`wind:null` nulls the three wind columns). 200 `{updated}`; 400 validation; 404 if any id is not the caller's; 409 `{error, ids:[notEditable]}` unless every plan is `sin procesar` or `error` and not `aprobado`/`pendiente`. |
 | POST `/[id]/generate-volumes` | JWT, owner | 200 `{success, volumesGenerated, randomDataGenerated, uplan}` |
 | POST `/[id]/uplan` | JWT, owner | No body. Sends the U-Plan to FAS. 200 `{uplan, authorizationMessage}` and `pendiente`; FAS 4xx is persisted (`withdrawn` for 400, else `denegado`) and answered with FAS's status; 503 if FAS is unreachable or keeps answering 500. |
 | POST `/[id]/reset` | JWT, owner | 200 `{message, flightPlan, csvResultDeleted}`; 400 `{code:'ALREADY_UNPROCESSED'}` or external plan |
@@ -116,6 +117,19 @@ All in `lib/fas.ts`; base URL is `FAS_API_URL` (default is a fixed SNA lab addre
 ## Other external contracts
 
 - Shared MySQL schema (`prisma/schema.prisma`), read and written directly by the VMs/traj-runner, `traj-assigner.js` and `machine-cleaner.js`: table and column names, `flightPlan.status` values, `machine.status` (`Disponible`/`Ocupada`), `csvResult.id == flightPlan.id`.
+  New nullable `flightplan` columns (additive; DDL in the CHANGELOG entry):
+
+  | column | type | written by | meaning |
+  |---|---|---|---|
+  | `simAirframe` | VARCHAR(16) | UI | `'multirotor'` or `'fixedwing'`; NULL = multirotor |
+  | `windSpeed` | DOUBLE | UI | mean wind m/s; NULL or 0 = no wind |
+  | `windDirection` | DOUBLE | UI | degrees 0-359, direction the wind blows FROM, clockwise from north |
+  | `windGust` | DOUBLE | UI | max gust m/s (>= windSpeed); NULL = constant wind |
+  | `progress` | SMALLINT | runner | 0-100 while `procesando`; NULL = not started. `traj-assigner.js` resets it to NULL on assignment |
+  | `processingEta` | DATETIME(3) | runner | estimated end, UTC; reset by the assigner |
+  | `processingError` | TEXT | runner | `"<code>: <detail>"` when `status='error'`; reset by the assigner. Codes: `no_plan_file`, `invalid_plan`, `px4_start`, `mission_rejected`, `takeoff_failed`, `timeout`, `incomplete`, `internal`. An unknown or missing code is shown as plain text (`parseProcessingError` in `lib/simulation.ts`). |
+
+- Queue order of `traj-assigner.js`: `scheduledAt` asc (NULL last), `createdAt` asc, `id` asc. `queuePosition` in the API uses the same order.
 - Email links `APP_URL/verify-email?token=` and `APP_URL/reset-password?token=`.
 - Browser persistence: localStorage `authToken`, cookie `refreshToken`, JWT claims `userId` and `type`.
 

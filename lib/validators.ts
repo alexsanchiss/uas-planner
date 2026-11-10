@@ -24,6 +24,7 @@
 
 import { z } from 'zod'
 import './zod-config'
+import { WIND_GUST_MAX, WIND_SPEED_MAX } from './simulation'
 
 // ============================================================================
 // Common Schemas & Utilities
@@ -204,6 +205,22 @@ export const flightPlanDeleteSchema = z.object({
   message: 'Either id or ids must be provided',
 });
 export type FlightPlanDeleteInput = z.infer<typeof flightPlanDeleteSchema>;
+
+/**
+ * Body of PUT /api/flightPlans/simulation: airframe + wind for a set of plans.
+ * wind null = no wind. direction 360 is accepted and normalised to 0 by the route; gust must be >= speed.
+ */
+export const simulationUpdateSchema = z.object({
+  ids: z.array(z.number().int().positive()).min(1).max(1000)
+    .refine((ids) => new Set(ids).size === ids.length, { message: 'ids must be unique' }),
+  airframe: z.enum(['multirotor', 'fixedwing']),
+  wind: z.object({
+    speed: z.number().min(0).max(WIND_SPEED_MAX),
+    direction: z.number().min(0).max(360),
+    gust: z.number().max(WIND_GUST_MAX).nullable().optional(),
+  }).refine((w) => w.gust == null || w.gust >= w.speed, { message: 'gust must be >= speed', path: ['gust'] }).nullable(),
+});
+export type SimulationUpdateInput = z.infer<typeof simulationUpdateSchema>;
 
 /** Query params for listing flight plans */
 export const flightPlanQuerySchema = z.object({

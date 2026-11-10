@@ -25,5 +25,12 @@ export const SUMMARY_SELECT = {
   activatedAt: true,
   termsAcceptedAt: true,
   lastActivationAttempt: true,
+  simAirframe: true,
+  windSpeed: true,
+  windDirection: true,
+  windGust: true,
+  progress: true,
+  processingEta: true,
+  processingError: true,
   folder: true,
 } satisfies Prisma.flightPlanSelect;

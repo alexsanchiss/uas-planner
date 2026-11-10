@@ -5,6 +5,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [Unreleased] - 2026-11-10 (simulation settings and processing feedback)
+
+### Before deploying (operators)
+
+- Run the DDL BEFORE deploying: `tasks/2026-11-10/F2/alter.sql` (one `ALTER TABLE flightplan ADD COLUMN` with 7 nullable columns: `simAirframe`, `windSpeed`, `windDirection`, `windGust`, `progress`, `processingEta`, `processingError`; rollback in the same file). Additive; existing rows get NULL.
+- Run `npx prisma generate` with the `UPPS_TP` service stopped (its `node` process locks the Prisma engine), then restart it. `UPPS_TP` (`RUN-UPPS_TP.bat`) now runs only `traj-assigner.js`; start the traj-runner containers and `machine-cleaner.js` by hand with `ultimatum_v2.bat`.
+
+### Added
+
+- `PUT /api/flightPlans/simulation`: airframe and wind for a set of plans (only `sin procesar` / `error`, not approved or pending).
+- Plan rows carry the simulation and processing columns plus `queuePosition` / `queueLength`; `lib/simulation.ts` has the shared types and `parseProcessingError`.
+
+### Changed
+
+- `traj-assigner.js`: clears `progress`, `processingEta`, `processingError` on assignment, adds `id` as the last ordering key, and no longer re-queues short CSV results (`cleanSmallCsvResults` removed; the runner validates its own output).
+- `RUN-UPPS_TP.bat`: only runs the assigner and appends timestamped output to `D:SPIRITLOGSUPPS_TP.log`. It no longer touches Docker, node processes or the VHDX.
+
 ## [Unreleased] - 2026-10-26 (restructure)
 
 ### Before deploying (operators)

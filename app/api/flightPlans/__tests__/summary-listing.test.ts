@@ -64,7 +64,8 @@ describe('GET /api/flightPlans', () => {
       expect(res.status).toBe(200);
       expect(mockPlanFindMany).toHaveBeenCalledTimes(1);
       expect(mockPlanFindMany).toHaveBeenCalledWith({ where: { userId: USER }, include: { folder: true }, orderBy: { id: 'desc' } });
-      expect(await res.text()).toBe(JSON.stringify([FULL_ROW]));
+      // rows are untouched; only the queue fields (null: none is 'en cola') are appended
+      expect(await res.text()).toBe(JSON.stringify([{ ...FULL_ROW, queuePosition: null, queueLength: null }]));
     },
   );
 
@@ -95,8 +96,8 @@ describe('GET /api/flightPlans', () => {
     });
     const body = await (await get(getPlans, '/api/flightPlans?fields=summary')).json();
     expect(body).toEqual([
-      { id: 7, customName: 'a', hasFileContent: true, hasUplan: false },
-      { id: 6, customName: 'b', hasFileContent: true, hasUplan: true },
+      { id: 7, customName: 'a', hasFileContent: true, hasUplan: false, queuePosition: null, queueLength: null },
+      { id: 6, customName: 'b', hasFileContent: true, hasUplan: true, queuePosition: null, queueLength: null },
     ]);
     for (const row of body) for (const col of HEAVY) expect(row).not.toHaveProperty(col);
     // every query stays scoped to the caller

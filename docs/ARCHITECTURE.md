@@ -29,9 +29,10 @@ sin procesar ─► en cola ─► procesando ─► procesado ─► U-Plan ─
 ```
 
 1. **sin procesar**: the plan is created (Plan Definition, file upload or external U-Plan).
-2. **en cola**: the user sends it to processing (status set through `PUT /api/flightPlans`).
-3. **procesando**: `traj-assigner.js` takes the next queued plan, picks a `Disponible` machine, sets the plan to `procesando` and the machine to `Ocupada`. The VM runs traj-runner.
-4. **procesado**: the VM writes the `csvResult` row and sets `flightPlan.csvResult = 1`. Failures end in `error`.
+   Before queueing, the user can set the simulation (airframe, wind) with `PUT /api/flightPlans/simulation` (only `sin procesar` / `error` plans); the runner reads those columns when it starts the plan.
+2. **en cola**: the user sends it to processing (status set through `PUT /api/flightPlans`). Plan rows carry `queuePosition` / `queueLength`, computed per request in the assigner's order (`scheduledAt` asc NULLs last, `createdAt`, `id`) over every user's queued plans (`lib/processing-queue.ts`).
+3. **procesando**: `traj-assigner.js` takes the next queued plan, picks a `Disponible` machine, sets the plan to `procesando` and the machine to `Ocupada`, and clears `progress`, `processingEta`, `processingError`. The VM runs traj-runner, which writes `progress` (0-100) and `processingEta` back while it runs.
+4. **procesado**: the VM writes the `csvResult` row and sets `flightPlan.csvResult = 1`. Failures end in `error` with `processingError = "<code>: <detail>"`; the runner validates its own CSV (there is no cleaner re-queueing short results).
 5. **U-Plan**: `POST /api/flightPlans/[id]/generate-volumes` builds the 4D volumes (and random placeholder data unless `NEXT_PUBLIC_GENERATE_RANDOM_UPLAN_DATA=false`) into `flightPlan.uplan`.
 6. **FAS**: `POST /api/flightPlans/[id]/uplan` sends the U-Plan to `FAS_API_URL` (timeout 120 s) and stores `externalResponseNumber`, `authorizationStatus: pendiente`. A FAS 400 marks the plan `withdrawn`, other 4xx `denegado`; HTTP 500 is retried; unreachable FAS answers 503.
 7. **callback**: FAS calls `PUT /api/fas/[externalResponseNumber]` with `{state, message}`. `ACCEPTED` becomes `aprobado`, anything else `denegado`; the owner gets an email.
@@ -59,6 +60,6 @@ Afterwards an approved plan can be activated near its `scheduledAt` (`/plan-acti
 
 ## Deployment
 
-Production runs as 3 Windows instances on the VDS (ports 3002, 3003, 3004) behind Caddy, started with `RUN-UPPS.bat` / `RUN-UPPS_TP.bat` (the latter also starts `machine-cleaner.js` and `traj-assigner.js`). It is not Docker. Each instance has its own `.env`.
+Production runs as 3 Windows instances on the VDS (ports 3002, 3003, 3004) behind Caddy, started with `RUN-UPPS.bat`; the trajectory side is the NSSM service `UPPS_TP` (`RUN-UPPS_TP.bat`, runs only `traj-assigner.js`). The traj-runner containers and `machine-cleaner.js` are launched by hand with `ultimatum_v2.bat`. It is not Docker. Each instance has its own `.env`.
 
-On every upgrade, per instance: `npm ci` (native binaries for `bcrypt` 6 and `sharp` 0.35), `npx prisma generate`, `npm run build`, restart. Node >= 20.9 is required. `NEXT_PUBLIC_*` variables are baked in at build time. `MACHINE_API_KEY` is needed only on instances that serve `/api/machine/*`.
+On every upgrade, per instance: `npm ci` (native binaries for `bcrypt` 6 and `sharp` 0.35), `npx prisma generate` (stop `UPPS_TP` first: its `node` process locks the Prisma engine DLL), `npm run build`, restart. Node >= 20.9 is required. `NEXT_PUBLIC_*` variables are baked in at build time. `MACHINE_API_KEY` is needed only on instances that serve `/api/machine/*`.

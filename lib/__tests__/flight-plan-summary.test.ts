@@ -22,7 +22,7 @@ describe('SUMMARY_SELECT', () => {
 
   it('pins the column list: a new column is a conscious decision', () => {
     expect(Object.keys(SUMMARY_SELECT).sort()).toEqual(
-      ['activatedAt', 'activationStatus', 'authorizationMessage', 'authorizationStatus', 'createdAt', 'csvResult', 'customName', 'externalResponseNumber', 'folder', 'folderId', 'geoawarenessData', 'id', 'lastActivationAttempt', 'machineAssignedId', 'scheduledAt', 'status', 'termsAcceptedAt', 'userId'].sort()
+      ['activatedAt', 'activationStatus', 'authorizationMessage', 'authorizationStatus', 'createdAt', 'csvResult', 'customName', 'externalResponseNumber', 'folder', 'folderId', 'geoawarenessData', 'id', 'lastActivationAttempt', 'machineAssignedId', 'scheduledAt', 'status', 'termsAcceptedAt', 'userId', 'simAirframe', 'windSpeed', 'windDirection', 'windGust', 'progress', 'processingEta', 'processingError'].sort()
     )
   })
 })
