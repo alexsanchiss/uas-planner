@@ -5,8 +5,10 @@ import { interpolate, useI18n } from '@/app/i18n'
 import { hasFailedScrsAlternative } from '@/lib/scrs'
 import { authPhase, currentStep, getWorkflowState, isScheduleLocked, messageText, planPhase, type PlanRow } from './lib'
 import { PrimaryAction } from './PrimaryAction'
+import { ProcessingStatus } from './ProcessingStatus'
 import { planMenuEntries, type RowCtx } from './rowActions'
 import { ScheduleField } from './SchedulePopover'
+import { SimulationChip } from './SimulationBadges'
 import { AuthStatusBadge, PlanStatusBadge } from './StatusBadge'
 import { WorkflowStepper } from './WorkflowStepper'
 
@@ -61,6 +63,7 @@ export function PlanDetail({ plan, ctx, onClose }: Props) {
           <div className="mt-1.5 flex flex-wrap gap-1">
             <PlanStatusBadge phase={planPhase(plan)} />
             <AuthStatusBadge phase={auth} />
+            {planPhase(plan) !== 'idle' && <SimulationChip plan={plan} />}
           </div>
         </div>
         <button type="button" onClick={onClose} className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-md px-2 text-sm text-fg-2 hover:bg-hover hover:text-fg" aria-label={pa.close}>
@@ -96,6 +99,7 @@ export function PlanDetail({ plan, ctx, onClose }: Props) {
 
         <div className={`rounded-lg border border-line bg-surface-2 p-4 ${showSchedule ? '' : 'md:col-span-2'}`}>
           <p className="text-sm text-fg-2">{prompt}</p>
+          <ProcessingStatus plan={plan} variant="full" className="mt-3" />
           {viewers.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-2">
               {viewers.map((e) => {

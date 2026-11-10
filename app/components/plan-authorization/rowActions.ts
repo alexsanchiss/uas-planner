@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   Table2,
   Trash2,
+  Wind,
   type LucideIcon,
 } from 'lucide-react'
 import type { Translations } from '@/app/i18n'
@@ -28,6 +29,7 @@ import type { FolderRef } from '@/app/hooks/useFolders'
 import type { MenuEntry } from './ActionMenu'
 import {
   authPhase,
+  isSimEditable,
   planPhase,
   primaryActionId,
   type Mode,
@@ -158,7 +160,12 @@ export function planManageEntries(plan: PlanRow, ctx: RowCtx, startRename: () =>
   return [renameEntry(ctx, startRename), ...manageTail(plan, ctx)]
 }
 
-/** Dev's "More" menu (table row and card): rename, every view / file, then move, reset, delete. */
+/** Aircraft and wind of the simulation (Dev menu): only while the settings can still change. */
+export function simulationEntries(plan: PlanRow, { a, pa }: RowCtx): MenuEntry[] {
+  return isSimEditable(plan) ? [{ id: 'simulation', label: pa.sim.menuEntry, icon: Wind, onSelect: () => a.openSimulation([plan]) }] : []
+}
+
+/** Dev's "More" menu (table row and card): rename, simulation settings, every view / file, then move, reset, delete. */
 export function planMenuEntries(plan: PlanRow, ctx: RowCtx, startRename: () => void): MenuEntry[] {
-  return [renameEntry(ctx, startRename), ...planViewEntries(plan, ctx), ...manageTail(plan, ctx)]
+  return [renameEntry(ctx, startRename), ...simulationEntries(plan, ctx), ...planViewEntries(plan, ctx), ...manageTail(plan, ctx)]
 }

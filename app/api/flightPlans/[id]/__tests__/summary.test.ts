@@ -127,7 +127,7 @@ describe('GET /api/flightPlans/[id]: the default is unchanged', () => {
       expect(calls.findUnique).toEqual([{ where: { id }, include: { folder: true } }]);
       expect(calls.findFirst).toHaveLength(0);
       const row = dbRows.find((r) => r.id === id)!;
-      expect(await res.text()).toBe(JSON.stringify({ ...row, folder: row.folderId === null ? null : FOLDERS[row.folderId] }));
+      expect(await res.text()).toBe(JSON.stringify({ ...row, folder: row.folderId === null ? null : FOLDERS[row.folderId], queuePosition: null, queueLength: null }));
     }
   );
 

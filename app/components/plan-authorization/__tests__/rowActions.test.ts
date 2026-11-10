@@ -10,7 +10,7 @@
 import { getTranslation } from '@/app/i18n/translations'
 import type { FolderSummary } from '@/app/hooks/useFolders'
 import { type Mode, type PlanRow } from '../lib'
-import { planManageEntries, planMenuEntries, planViewEntries, primaryView, type RowCtx } from '../rowActions'
+import { planManageEntries, planMenuEntries, planViewEntries, primaryView, simulationEntries, type RowCtx } from '../rowActions'
 
 const pa = getTranslation('en').planAuth
 
@@ -259,18 +259,19 @@ describe('planMenuEntries: Dev "More" menu', () => {
     expect(menu('deniedAlt')).toEqual(['rename', 'route', 'uplan', 'result', 'downloadUplan', 'downloadCsv', 'reset', 'delete'])
   })
 
-  it('unprocessed: rename, route, edit (Dev only), move, delete; no reset', () => {
-    expect(menu('unprocessedFile', [folder(1)])).toEqual(['rename', 'route', 'editUplan', 'move', 'delete'])
-    expect(menu('unprocessedDraft', [folder(1)])).toEqual(['rename', 'route', 'editUplan', 'move', 'delete'])
-    expect(menu('unprocessedNoFile')).toEqual(['rename', 'editUplan', 'delete'])
+  it('unprocessed: rename, simulation settings, route, edit (Dev only), move, delete; no reset', () => {
+    expect(menu('unprocessedFile', [folder(1)])).toEqual(['rename', 'simulation', 'route', 'editUplan', 'move', 'delete'])
+    expect(menu('unprocessedDraft', [folder(1)])).toEqual(['rename', 'simulation', 'route', 'editUplan', 'move', 'delete'])
+    expect(menu('unprocessedNoFile')).toEqual(['rename', 'simulation', 'editUplan', 'delete'])
   })
 
-  it('is exactly planManageEntries + planViewEntries (one source of truth)', () => {
+  it('is exactly planManageEntries + simulationEntries + planViewEntries (one source of truth)', () => {
     for (const s of Object.keys(STATES) as StateName[]) {
       const c = ctx('dev', [folder(1), folder(2)])
       const manageIds = ids(planManageEntries(STATES[s], c, noop))
       const viewIds = ids(planViewEntries(STATES[s], c))
-      expect({ s, got: ids(planMenuEntries(STATES[s], c, noop)) }).toEqual({ s, got: [manageIds[0], ...viewIds, ...manageIds.slice(1)] })
+      const simIds = ids(simulationEntries(STATES[s], c))
+      expect({ s, got: ids(planMenuEntries(STATES[s], c, noop)) }).toEqual({ s, got: [manageIds[0], ...simIds, ...viewIds, ...manageIds.slice(1)] })
     }
   })
 

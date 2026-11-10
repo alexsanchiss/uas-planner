@@ -10,42 +10,6 @@ if (!fs.existsSync(logFile)) {
   fs.writeFileSync(logFile, 'id,CustomName,Inicio\n');
 }
 
-// ---- FUNCIÓN DE LIMPIEZA SOLO DE PROCESADOS CON csvResult < 2KB ----
-const cleanSmallCsvResults = async () => {
-  try {
-    // 1. Seleccionar solo IDs de csvResult con menos de 2KB
-    const rows = await prisma.$queryRawUnsafe(`
-      SELECT fp.id
-      FROM flightPlan fp
-      JOIN csvResult cr ON cr.id = fp.id
-      WHERE fp.status = "procesado"
-        AND fp.csvResult = 1
-        AND OCTET_LENGTH(cr.csvResult) < 2048
-    `);
-
-    const smallIds = rows.map(r => r.id);
-    if (smallIds.length === 0) {
-      console.log('📁 No hay planes con csvResult < 2KB.');
-      return;
-    }
-
-    // 2. Resetear flightPlan asociado
-    const resetSmall = await prisma.flightPlan.updateMany({
-      where: { id: { in: smallIds } },
-      data: { status: 'en cola', machineAssignedId: null, csvResult: null },
-    });
-
-    // 3. Eliminar filas de csvResult
-    const deleted = await prisma.csvResult.deleteMany({
-      where: { id: { in: smallIds } },
-    });
-
-    console.log(`📉 Reestablecidos ${resetSmall.count} planes y eliminados ${deleted.count} registros de csvResult (< 2KB).`);
-  } catch (error) {
-    console.error('❌ Error en cleanSmallCsvResults:', error);
-  }
-};
-
 // ---- FUNCIÓN DE ASIGNACIÓN ----
 const assignNextPlan = async () => {
   if (isProcessing) return;
@@ -75,6 +39,9 @@ const assignNextPlan = async () => {
         {
           createdAt: 'asc', // Luego por orden de creación
         },
+        {
+          id: 'asc', // Desempate estable (la UI calcula la posición en cola con este mismo orden)
+        },
       ],
     });
 
@@ -87,6 +54,10 @@ const assignNextPlan = async () => {
       data: {
         status: 'procesando',
         machineAssignedId: availableMachine.id,
+        // Reinicia el feedback de un intento anterior; el runner lo vuelve a escribir
+        progress: null,
+        processingEta: null,
+        processingError: null,
       },
     });
 
@@ -110,9 +81,6 @@ const assignNextPlan = async () => {
 const main = async () => {
   // Ejecutar asignación cada 10ms
   setInterval(assignNextPlan, 10);
-
-  // Ejecutar limpieza de planes procesados con csvResult < 2KB cada 5 minutos
-  setInterval(cleanSmallCsvResults, 60 * 5000);
 };
 
 main().catch((e) => {

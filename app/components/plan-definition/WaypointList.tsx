@@ -8,6 +8,8 @@ import React, { useState } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { ChevronDown, ChevronUp, GripVertical, Plus, Trash2 } from "lucide-react";
 import { interpolate, useI18n } from "@/app/i18n";
+import { DecimalInput } from "@/app/components/ui/decimal-input";
+import { parseDecimal } from "@/lib/decimal";
 
 export interface Waypoint {
   lat: number;
@@ -39,8 +41,6 @@ function NumberField({
   value,
   onChange,
   disabled,
-  min = 0,
-  max,
   title,
 }: {
   id: string;
@@ -48,8 +48,6 @@ function NumberField({
   value: number | string;
   onChange: (value: number | "") => void;
   disabled?: boolean;
-  min?: number;
-  max?: number;
   title?: string;
 }) {
   return (
@@ -57,13 +55,10 @@ function NumberField({
       <label htmlFor={id} className="mb-1 block text-xs text-muted" title={title}>
         {label}
       </label>
-      <input
+      <DecimalInput
         id={id}
-        type="number"
-        min={min}
-        max={max}
-        value={value}
-        onChange={(e) => onChange(e.target.value === "" ? "" : Number(e.target.value))}
+        value={value === "" ? "" : Number(value)}
+        onValue={onChange}
         className="input px-2 py-1 text-xs"
         disabled={disabled}
       />
@@ -94,7 +89,7 @@ function CoordField({
         inputMode="decimal"
         defaultValue={Number(value).toFixed(7)}
         onBlur={(e) => {
-          const val = parseFloat(e.target.value);
+          const val = parseDecimal(e.target.value);
           if (!isNaN(val)) {
             onCommit(val);
           } else {
@@ -255,7 +250,6 @@ export default function WaypointList({
                             label={wl.pause}
                             title={wl.pauseHint}
                             value={wp.pauseDuration}
-                            max={3600}
                             onChange={(v) => onChange(idx, "pauseDuration", v)}
                           />
                         </div>
@@ -316,7 +310,7 @@ export default function WaypointList({
             className="space-y-2 rounded-md border border-line bg-canvas p-3"
             onSubmit={(e) => {
               e.preventDefault();
-              if (onAddAt(parseFloat(addLat), parseFloat(addLng))) setAddOpen(false);
+              if (onAddAt(parseDecimal(addLat), parseDecimal(addLng))) setAddOpen(false);
             }}
           >
             <div className="text-xs font-semibold text-fg-2">{wl.newWaypoint}</div>

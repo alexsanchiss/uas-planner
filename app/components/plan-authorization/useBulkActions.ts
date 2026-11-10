@@ -8,10 +8,11 @@
 
 import { useCallback } from 'react'
 import { interpolate, useI18n } from '@/app/i18n'
+import { simulationOf } from '@/lib/simulation'
 import type { UseFlightPlansReturn } from '@/app/hooks/useFlightPlans'
 import type { useToast } from '@/app/hooks/useToast'
 import { mapLimit, saveZips } from './files'
-import { authPhase, hasScrsAlternative, parseJson, planPhase, type PlanRow, type UplanData } from './lib'
+import { authPhase, hasScrsAlternative, isSimEditable, parseJson, planPhase, type PlanRow, type UplanData } from './lib'
 import { errorMessage } from './usePlanActions'
 import type { Confirm } from './useConfirm'
 import type { GroupActions } from './useGroupActions'
@@ -41,6 +42,13 @@ export function useBulkActions({ fp, toast, confirm, setViewer, group }: BulkDep
       }),
     [work, fp, selectedPlans, toast, pa]
   )
+
+  /** Opens the settings dialog for the ticked plans that are editable; the others are left out (and counted). 409 stays as a fallback. */
+  const simulationSelected = useCallback(() => {
+    const editable = selectedPlans.filter(isSimEditable)
+    if (editable.length === 0) return toast.warning(pa.sim.noneEditable)
+    setViewer({ kind: 'simulation', ids: idsOf(editable), initial: simulationOf(editable[0]), skipped: selectedPlans.length - editable.length })
+  }, [selectedPlans, setViewer, toast, pa])
 
   const viewSelected = useCallback(() => viewTrajectories(selectedPlans, pa.viewers.selectedTrajectories), [viewTrajectories, selectedPlans, pa])
   const downloadSelectedCsv = useCallback(() => downloadCsvs(selectedPlans, 'selected_plans'), [downloadCsvs, selectedPlans])
@@ -201,6 +209,7 @@ export function useBulkActions({ fp, toast, confirm, setViewer, group }: BulkDep
 
   return {
     processSelected,
+    simulationSelected,
     viewSelected,
     downloadSelectedCsv,
     downloadSelectedPlans,

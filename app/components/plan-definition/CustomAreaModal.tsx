@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Modal } from "@/app/components/ui/modal";
 import { Input } from "@/app/components/ui/input";
 import { useI18n } from "@/app/i18n";
+import { parseDecimal } from "@/lib/decimal";
 import type { USpace } from "@/app/hooks/useUspaces";
 
 interface CustomAreaModalProps {
@@ -34,10 +35,10 @@ export default function CustomAreaModal({ open, onClose, onCreate }: CustomAreaM
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    const latMinNum = parseFloat(latMin);
-    const latMaxNum = parseFloat(latMax);
-    const lonMinNum = parseFloat(lonMin);
-    const lonMaxNum = parseFloat(lonMax);
+    const latMinNum = parseDecimal(latMin);
+    const latMaxNum = parseDecimal(latMax);
+    const lonMinNum = parseDecimal(lonMin);
+    const lonMaxNum = parseDecimal(lonMax);
     const next: Errors = {};
     if (!id.trim()) next.id = c.errors.idRequired;
     if (!name.trim()) next.name = c.errors.nameRequired;
@@ -75,10 +76,10 @@ export default function CustomAreaModal({ open, onClose, onCreate }: CustomAreaM
         <fieldset>
           <legend className="mb-2 text-sm font-medium text-fg-2">{c.limits}</legend>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Input label={c.latMin} type="number" step="any" value={latMin} onChange={(e) => setLatMin(e.target.value)} error={errors.latMin} required />
-            <Input label={c.latMax} type="number" step="any" value={latMax} onChange={(e) => setLatMax(e.target.value)} error={errors.latMax} required />
-            <Input label={c.lonMin} type="number" step="any" value={lonMin} onChange={(e) => setLonMin(e.target.value)} error={errors.lonMin} required />
-            <Input label={c.lonMax} type="number" step="any" value={lonMax} onChange={(e) => setLonMax(e.target.value)} error={errors.lonMax} required />
+            <Input label={c.latMin} type="text" inputMode="decimal" value={latMin} onChange={(e) => setLatMin(e.target.value)} error={errors.latMin} required />
+            <Input label={c.latMax} type="text" inputMode="decimal" value={latMax} onChange={(e) => setLatMax(e.target.value)} error={errors.latMax} required />
+            <Input label={c.lonMin} type="text" inputMode="decimal" value={lonMin} onChange={(e) => setLonMin(e.target.value)} error={errors.lonMin} required />
+            <Input label={c.lonMax} type="text" inputMode="decimal" value={lonMax} onChange={(e) => setLonMax(e.target.value)} error={errors.lonMax} required />
           </div>
         </fieldset>
         <div className="flex justify-end gap-2 pt-2">

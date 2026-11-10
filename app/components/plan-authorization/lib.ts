@@ -195,6 +195,13 @@ export function isScheduleLocked(p: PlanRow): boolean {
   return getWorkflowState(p) !== 'unprocessed' || acceptedAlternative
 }
 
+/** Simulation settings can change: not queued / processed, authorization not approved or pending (same rule as PUT /api/flightPlans/simulation). */
+export function isSimEditable(p: PlanRow): boolean {
+  const phase = planPhase(p)
+  const auth = authPhase(p)
+  return (phase === 'idle' || phase === 'error') && auth !== 'approved' && auth !== 'pending'
+}
+
 /** Current step of the 5-step guide (old getCurrentStep). */
 export function currentStep(p: PlanRow | null): WorkflowStep {
   if (!p) return 'select'

@@ -1,9 +1,9 @@
 'use client'
 
-import { AlertCircle, Eye, FileJson, Loader2, Play, RotateCcw, Route, Send, ShieldCheck, ShieldOff, Table2, Trash2, X } from 'lucide-react'
+import { AlertCircle, Eye, FileJson, Loader2, Play, RotateCcw, Route, Send, ShieldCheck, ShieldOff, Table2, Trash2, Wind, X } from 'lucide-react'
 import { interpolate, useI18n } from '@/app/i18n'
 import { ActionMenu, type MenuEntry } from './ActionMenu'
-import { authPhase, hasScrsAlternative, planPhase } from './lib'
+import { authPhase, hasScrsAlternative, isSimEditable, planPhase } from './lib'
 import { useBulkActions, type BulkDeps } from './useBulkActions'
 
 interface Props {
@@ -37,7 +37,8 @@ export function BulkActionBar({ deps, onClear }: Props) {
   ]
 
   const more: MenuEntry[] = [
-    { id: 'uplans', label: pa.viewUplans, icon: ShieldCheck, disabled: !hasApproved, reason: pa.noApproved, onSelect: g.viewAuthorizedUplans },
+    { id: 'simulation', label: t.planAuth.sim.menuEntry, icon: Wind, disabled: !list.some(isSimEditable), reason: t.planAuth.sim.noneEditable, onSelect: g.simulationSelected },
+    { id: 'uplans', separatorBefore: true, label: pa.viewUplans, icon: ShieldCheck, disabled: !hasApproved, reason: pa.noApproved, onSelect: g.viewAuthorizedUplans },
     { id: 'errors', label: pa.viewErrors, icon: AlertCircle, disabled: !hasErrors, reason: pa.noErrors, onSelect: g.viewErrors },
     { id: 'alternatives', label: pa.acceptAlternatives, icon: Route, disabled: !hasAlternative, reason: pa.noAlternatives, onSelect: g.acceptAlternativesSelected },
     { id: 'resetAuth', label: pa.resetAuth, icon: ShieldOff, separatorBefore: true, onSelect: g.resetAuthSelected },

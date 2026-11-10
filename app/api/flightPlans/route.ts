@@ -32,6 +32,7 @@ import logger from '@/lib/logger';
 import { userOwnsFolders } from '@/lib/http';
 import { sendFasCancellation } from '@/lib/fas';
 import { SUMMARY_SELECT } from '@/lib/flight-plan-summary';
+import { queueInfo } from '@/lib/processing-queue';
 
 // Constants for bulk operation limits
 const MAX_BULK_IDS = 100000;
@@ -148,6 +149,7 @@ function generateInitialUplan(fileContent: string): object | null {
  *   fields=summary (opt-in): rows without fileContent/uplan/activationMessage, plus the
  *   booleans hasFileContent / hasUplan so lists can gate buttons without the heavy text.
  *   Any other value (or none) returns the full rows exactly as before.
+ *   Every row list also carries queuePosition / queueLength (null unless status 'en cola').
  *   fields=summary&limit=1..100 (opt-in paging): `&offset=n&folderId=<id|none>&q=<name contains>&authorizationStatus=<exact>` ->
  *   { items: summary rows (id desc), total }. 400 on bad params, 404 for a folder that is not the caller's.
  */
@@ -189,8 +191,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       ]);
       const fileIds = new Set(withFile.map((p) => p.id));
       const uplanIds = new Set(withUplan.map((p) => p.id));
+      const queued = await queueInfo(rows);
       return NextResponse.json({
-        items: rows.map((p) => ({ ...p, hasFileContent: fileIds.has(p.id), hasUplan: uplanIds.has(p.id) })),
+        items: queued.map((p) => ({ ...p, hasFileContent: fileIds.has(p.id), hasUplan: uplanIds.has(p.id) })),
         total,
       });
     }
@@ -204,8 +207,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       ]);
       const fileIds = new Set(withFile.map((p) => p.id));
       const uplanIds = new Set(withUplan.map((p) => p.id));
+      const queued = await queueInfo(rows);
       return NextResponse.json(
-        rows.map((p) => ({ ...p, hasFileContent: fileIds.has(p.id), hasUplan: uplanIds.has(p.id) }))
+        queued.map((p) => ({ ...p, hasFileContent: fileIds.has(p.id), hasUplan: uplanIds.has(p.id) }))
       );
     }
 
@@ -217,7 +221,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       orderBy: { id: 'desc' },
     });
 
-    return NextResponse.json(flightPlans);
+    return NextResponse.json(await queueInfo(flightPlans));
   } catch (error) {
     console.error('Error fetching flight plans:', error);
     return NextResponse.json(

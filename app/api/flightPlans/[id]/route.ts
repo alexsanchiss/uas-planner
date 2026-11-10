@@ -27,6 +27,7 @@ import type { Prisma } from '@prisma/client';
 import { sendFasCancellation } from '@/lib/fas';
 import { parseId, userOwnsFolders } from '@/lib/http';
 import { SUMMARY_SELECT } from '@/lib/flight-plan-summary';
+import { queueInfo } from '@/lib/processing-queue';
 
 /**
  * Params type for dynamic route
@@ -138,10 +139,12 @@ export async function GET(
         prisma.flightPlan.findFirst({ where: { id, fileContent: { not: null } }, select: { id: true } }),
         prisma.flightPlan.findFirst({ where: { id, uplan: { not: null } }, select: { id: true } }),
       ]);
-      return NextResponse.json({ ...flightPlan, hasFileContent: !!withFile, hasUplan: !!withUplan });
+      const [queued] = await queueInfo([flightPlan]);
+      return NextResponse.json({ ...queued, hasFileContent: !!withFile, hasUplan: !!withUplan });
     }
 
-    return NextResponse.json(flightPlan);
+    const [queued] = await queueInfo([flightPlan]);
+    return NextResponse.json(queued);
   } catch (error) {
     console.error('Error fetching flight plan:', error);
     return NextResponse.json(

@@ -8,7 +8,9 @@ import { getAuthToken } from '@/lib/api-client'
 import type { Preset } from '@/app/components/plan-viewer/viewerStyle'
 import type { ViewerDetail } from '@/app/components/plan-viewer/PlanViewer'
 import type { TrajectoryRow } from './files'
+import type { SimulationSettings } from '@/lib/simulation'
 import type { AuthPhase, PlanPhase, UplanData } from './lib'
+import { SimulationSettingsForm } from './SimulationSettingsForm'
 
 // Heavy viewers (Leaflet / Cesium) load on demand and never during SSR.
 const PlanViewer = dynamic(() => import('@/app/components/plan-viewer/PlanViewer'), { ssr: false })
@@ -32,6 +34,8 @@ export type ViewerState =
   | { kind: 'multiTrajectory'; title: string; trajectories: TrajectoryRow[][]; names: string[] }
   | { kind: 'bulkUplans'; uplans: UplanData[]; names: string[] }
   | { kind: 'bulkErrors'; errors: { name: string; message: unknown }[] }
+  /** Simulation settings of one plan (planName) or of the ticked plans (no planName). */
+  | { kind: 'simulation'; ids: number[]; planName?: string; initial: SimulationSettings; skipped?: number }
 
 function MultiTrajectory({ title, trajectories, names, onClose }: { title: string; trajectories: TrajectoryRow[][]; names: string[]; onClose: () => void }) {
   const [idxs, setIdxs] = useState<number[]>(() => trajectories.map(() => 0))
@@ -61,6 +65,27 @@ function BulkErrors({ errors, onClose }: { errors: { name: string; message: unkn
   )
 }
 
+/** Aircraft and wind of one plan or of the ticked plans, in a dialog (Dev). */
+function SimulationDialog({ ids, planName, initial, skipped, onSave, onClose }: { ids: number[]; planName?: string; initial: SimulationSettings; skipped?: number; onSave: Props['onSaveSimulation']; onClose: () => void }) {
+  const { t } = useI18n()
+  const s = t.planAuth.sim
+  return (
+    <Modal open onClose={onClose} title={s.settingsTitle} maxWidth="lg">
+      <p className="mb-4 break-words text-sm text-fg-2">{planName ? interpolate(s.forPlan, { name: planName }) : interpolate(s.selectedPlans, { n: ids.length })}</p>
+      {!!skipped && <p className="mb-4 text-sm text-warning-text">{interpolate(s.skippedNote, { skipped })}</p>}
+      <SimulationSettingsForm
+        initial={initial}
+        onCancel={onClose}
+        onSubmit={async (settings) => {
+          const ok = await onSave(ids, settings, skipped)
+          if (ok) onClose()
+          return ok
+        }}
+      />
+    </Modal>
+  )
+}
+
 interface Props {
   viewer: ViewerState | null
   onClose: () => void
@@ -71,10 +96,12 @@ interface Props {
   onFormSaved: () => void
   /** "Save & request authorization" inside the U-plan form. */
   onFormRequestAuth: (planId: number) => void
+  /** Saves the simulation settings of the plans; true when saved. */
+  onSaveSimulation: (ids: number[], settings: SimulationSettings, skipped?: number) => Promise<boolean>
 }
 
 /** Mounts the viewer that is open (conditionally, so every open starts from a fresh state). */
-export function ViewerHost({ viewer, onClose, acceptingScrs, onAcceptScrs, onFormSaved, onFormRequestAuth }: Props) {
+export function ViewerHost({ viewer, onClose, acceptingScrs, onAcceptScrs, onFormSaved, onFormRequestAuth, onSaveSimulation }: Props) {
   return (
     <>
       {viewer?.kind === 'planViewer' && (
@@ -111,6 +138,7 @@ export function ViewerHost({ viewer, onClose, acceptingScrs, onAcceptScrs, onFor
       {viewer?.kind === 'multiTrajectory' && <MultiTrajectory title={viewer.title} trajectories={viewer.trajectories} names={viewer.names} onClose={onClose} />}
       {viewer?.kind === 'bulkUplans' && <BulkUplanViewModal open onClose={onClose} uplans={viewer.uplans} names={viewer.names} />}
       {viewer?.kind === 'bulkErrors' && <BulkErrors errors={viewer.errors} onClose={onClose} />}
+      {viewer?.kind === 'simulation' && <SimulationDialog ids={viewer.ids} planName={viewer.planName} initial={viewer.initial} skipped={viewer.skipped} onSave={onSaveSimulation} onClose={onClose} />}
     </>
   )
 }
