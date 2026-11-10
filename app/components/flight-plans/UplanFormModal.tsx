@@ -20,6 +20,7 @@ import React, { useState, useEffect, useCallback, useId, useRef } from 'react';
 import { useDialogA11y } from '@/app/hooks/useDialogA11y';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
+import { useDecimalDraft } from '../ui/decimal-input';
 import { Checkbox } from '../ui/checkbox';
 import { LoadingSpinner } from '../ui/loading-spinner';
 import { FieldHelp } from '../ui/field-help';
@@ -177,6 +178,15 @@ interface SelectFieldProps {
   className?: string;
   /** TASK-003: Whether this field has a validation error (for red highlighting) */
   hasValidationError?: boolean;
+}
+
+/** Styled Input for decimals that accepts "." or "," as separator (empty -> undefined). */
+function DecimalField({ value, onValue, ...props }: Omit<React.ComponentProps<typeof Input>, 'value' | 'onChange' | 'type'> & {
+  value: number | undefined | null;
+  onValue: (v: number | undefined) => void;
+}) {
+  const draft = useDecimalDraft(value ?? '', (v) => onValue(v === '' ? undefined : v));
+  return <Input {...props} {...draft} />;
 }
 
 function SelectField({ value, onChange, options, placeholder = 'Select...', disabled = false, className = '', hasValidationError }: SelectFieldProps) {
@@ -1305,13 +1315,10 @@ export default function UplanFormModal({
                     hasValidationError={hasFieldError('uas.flightCharacteristics.uasMTOM')}
                     helpText="Maximum Take-Off Mass — total mass of the UAS at takeoff including payload and batteries, in kilograms"
                   >
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.uas?.flightCharacteristics?.uasMTOM ?? ''}
-                      onChange={(e) => {
-                        let val: number | undefined = e.target.value ? parseFloat(e.target.value) : undefined;
+                    <DecimalField
+                      value={formData.uas?.flightCharacteristics?.uasMTOM}
+                      onValue={(v) => {
+                        let val = v;
                         const selectedClass = formData.uas?.generalCharacteristics?.uasClass;
                         const constraints = selectedClass ? UAS_CLASS_CONSTRAINTS[selectedClass] : null;
                         if (constraints?.maxMTOM !== null && constraints?.maxMTOM !== undefined && val !== undefined && !isNaN(val) && val > constraints.maxMTOM) {
@@ -1331,13 +1338,10 @@ export default function UplanFormModal({
                     hasValidationError={hasFieldError('uas.flightCharacteristics.uasMaxSpeed')}
                     helpText="Maximum flight speed of the UAS in meters per second"
                   >
-                    <Input
-                      type="number"
-                      step="0.1"
-                      min="0"
-                      value={formData.uas?.flightCharacteristics?.uasMaxSpeed ?? ''}
-                      onChange={(e) => {
-                        let val: number | undefined = e.target.value ? parseFloat(e.target.value) : undefined;
+                    <DecimalField
+                      value={formData.uas?.flightCharacteristics?.uasMaxSpeed}
+                      onValue={(v) => {
+                        let val = v;
                         const selectedClass = formData.uas?.generalCharacteristics?.uasClass;
                         const constraints = selectedClass ? UAS_CLASS_CONSTRAINTS[selectedClass] : null;
                         if (constraints?.maxSpeed !== undefined && val !== undefined && !isNaN(val) && val > constraints.maxSpeed) {
