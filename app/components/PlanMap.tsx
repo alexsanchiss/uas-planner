@@ -9,6 +9,8 @@ import { GeozoneLayer } from "./plan-definition/GeozoneLayer";
 import { GeozoneInfoPopup } from "./plan-definition/GeozoneInfoPopup";
 import { interpolate, useI18n } from "@/app/i18n";
 import { MapPin } from "lucide-react";
+import { DecimalInput } from "@/app/components/ui/decimal-input";
+import { parseDecimal } from "@/lib/decimal";
 import type { GeozoneData, WebSocketStatus } from "@/app/hooks/useGeoawarenessWebSocket";
 
 // TASK-152: Large bounds for overlay outside service area (covers the world)
@@ -165,6 +167,17 @@ function PopupInput({ label, ...props }: { label: string } & React.InputHTMLAttr
   );
 }
 
+/** Labelled popup number input accepting "." or "," as decimal separator. */
+function PopupDecimal({ label, ...props }: { label: string } & React.ComponentProps<typeof DecimalInput>) {
+  const id = React.useId();
+  return (
+    <div className="mb-1.5">
+      <label htmlFor={id} className={popupLabel}>{label}</label>
+      <DecimalInput id={id} className={popupInput} {...props} />
+    </div>
+  );
+}
+
 function EditablePopupContent({ wp, idx, onWaypointChange }: {
   wp: PopupWaypoint;
   idx: number;
@@ -181,8 +194,8 @@ function EditablePopupContent({ wp, idx, onWaypointChange }: {
   }, [wp.lat, wp.lng]);
 
   const handleOk = () => {
-    const lat = parseFloat(localLat);
-    const lng = parseFloat(localLng);
+    const lat = parseDecimal(localLat);
+    const lng = parseDecimal(localLng);
     if (!isNaN(lat)) onWaypointChange(idx, 'lat', lat);
     if (!isNaN(lng)) onWaypointChange(idx, 'lng', lng);
     map.closePopup();
@@ -195,21 +208,21 @@ function EditablePopupContent({ wp, idx, onWaypointChange }: {
       <div className={popupTitle}>
         {t.flightPlans.waypoint} {idx + 1} <span className="capitalize" style={{ color: typeColor }}>({wp.type})</span>
       </div>
-      <PopupInput label={t.planGenerator.latitude} type="text" value={localLat}
+      <PopupInput label={t.planGenerator.latitude} type="text" inputMode="decimal" value={localLat}
         onChange={(e) => setLocalLat(e.target.value)}
-        onBlur={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v)) { onWaypointChange(idx, 'lat', v); } else { setLocalLat(wp.lat.toFixed(7)); } }}
+        onBlur={(e) => { const v = parseDecimal(e.target.value); if (!isNaN(v)) { onWaypointChange(idx, 'lat', v); } else { setLocalLat(wp.lat.toFixed(7)); } }}
         onKeyDown={(e) => { if (e.key === 'Enter') handleOk(); }} />
-      <PopupInput label={t.planGenerator.longitude} type="text" value={localLng}
+      <PopupInput label={t.planGenerator.longitude} type="text" inputMode="decimal" value={localLng}
         onChange={(e) => setLocalLng(e.target.value)}
-        onBlur={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v)) { onWaypointChange(idx, 'lng', v); } else { setLocalLng(wp.lng.toFixed(7)); } }}
+        onBlur={(e) => { const v = parseDecimal(e.target.value); if (!isNaN(v)) { onWaypointChange(idx, 'lng', v); } else { setLocalLng(wp.lng.toFixed(7)); } }}
         onKeyDown={(e) => { if (e.key === 'Enter') handleOk(); }} />
-      <PopupInput label={`${t.planGenerator.altitude} (m)`} type="number" min={0} value={wp.altitude}
-        onChange={(e) => { const v = Number(e.target.value); if (!isNaN(v)) onWaypointChange(idx, 'altitude', v); }}
+      <PopupDecimal label={`${t.planGenerator.altitude} (m)`} value={Number(wp.altitude)}
+        onValue={(v) => onWaypointChange(idx, 'altitude', v === '' ? 0 : v)}
         disabled={wp.type === 'landing'} />
-      <PopupInput label={`${t.planGenerator.speed} (m/s)`} type="number" min={0} step="0.1" value={wp.speed}
-        onChange={(e) => { const v = Number(e.target.value); if (!isNaN(v)) onWaypointChange(idx, 'speed', v); }} />
-      <PopupInput label={`${t.planGenerator.pause} (s)`} type="number" min={0} max={3600} value={wp.pauseDuration || 0}
-        onChange={(e) => { const v = Number(e.target.value); if (!isNaN(v)) onWaypointChange(idx, 'pauseDuration', v); }} />
+      <PopupDecimal label={`${t.planGenerator.speed} (m/s)`} value={Number(wp.speed)}
+        onValue={(v) => onWaypointChange(idx, 'speed', v === '' ? 0 : v)} />
+      <PopupDecimal label={`${t.planGenerator.pause} (s)`} value={Number(wp.pauseDuration) || 0}
+        onValue={(v) => onWaypointChange(idx, 'pauseDuration', v === '' ? 0 : v)} />
       {wp.type === 'cruise' && (
         <label className="mt-1 flex cursor-pointer items-center gap-1.5 text-[11px]">
           <input type="checkbox" checked={wp.flyOverMode || false}
@@ -362,8 +375,8 @@ function ScanPopupContent({ title, subtitle, lat, lng, onCommit }: {
   }, [lat, lng]);
 
   const handleOk = () => {
-    const parsedLat = parseFloat(localLat);
-    const parsedLng = parseFloat(localLng);
+    const parsedLat = parseDecimal(localLat);
+    const parsedLng = parseDecimal(localLng);
     if (!isNaN(parsedLat) && !isNaN(parsedLng)) {
       onCommit(parsedLat, parsedLng);
     }
@@ -376,10 +389,10 @@ function ScanPopupContent({ title, subtitle, lat, lng, onCommit }: {
         {title}
         {subtitle}
       </div>
-      <PopupInput label={t.planGenerator.latitude} type="text" value={localLat}
+      <PopupInput label={t.planGenerator.latitude} type="text" inputMode="decimal" value={localLat}
         onChange={(e) => setLocalLat(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter') handleOk(); }} />
-      <PopupInput label={t.planGenerator.longitude} type="text" value={localLng}
+      <PopupInput label={t.planGenerator.longitude} type="text" inputMode="decimal" value={localLng}
         onChange={(e) => setLocalLng(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter') handleOk(); }} />
       <div className={popupFooter}>

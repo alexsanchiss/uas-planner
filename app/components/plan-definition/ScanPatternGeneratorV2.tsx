@@ -46,6 +46,8 @@ import {
   normalizeAngle,
 } from "@/lib/scan-generator";
 import { useI18n } from "@/app/i18n";
+import { DecimalInput } from "@/app/components/ui/decimal-input";
+import { parseDecimal } from "@/lib/decimal";
 
 // ============================================================================
 // TYPES
@@ -149,8 +151,8 @@ function EditableCoord({
   }, [lat, lng]);
 
   const commit = (newLat: string, newLng: string) => {
-    const parsedLat = parseFloat(newLat);
-    const parsedLng = parseFloat(newLng);
+    const parsedLat = parseDecimal(newLat);
+    const parsedLng = parseDecimal(newLng);
     if (isNaN(parsedLat) || isNaN(parsedLng)) {
       setError(t.planGenerator.invalidNumber);
       return;
@@ -177,8 +179,8 @@ function EditableCoord({
         <label htmlFor={`${uid}-lat`} className="text-[10px] text-muted w-6">Lat</label>
         <input
           id={`${uid}-lat`}
-          type="number"
-          step="0.000001"
+          type="text"
+          inputMode="decimal"
           value={localLat}
           onChange={(e) => setLocalLat(e.target.value)}
           onBlur={() => commit(localLat, localLng)}
@@ -188,8 +190,8 @@ function EditableCoord({
         <label htmlFor={`${uid}-lng`} className="text-[10px] text-muted w-6">Lng</label>
         <input
           id={`${uid}-lng`}
-          type="number"
-          step="0.000001"
+          type="text"
+          inputMode="decimal"
           value={localLng}
           onChange={(e) => setLocalLng(e.target.value)}
           onBlur={() => commit(localLat, localLng)}
@@ -478,8 +480,8 @@ export default function ScanPatternGeneratorV2({
   }, [onDragHandlers, handleExternalTakeoffUpdate, handleExternalLandingUpdate, handleVertexUpdate]);
 
   const handleAddVertex = () => {
-    const lat = parseFloat(addVertexLat);
-    const lng = parseFloat(addVertexLng);
+    const lat = parseDecimal(addVertexLat);
+    const lng = parseDecimal(addVertexLng);
     if (isNaN(lat) || isNaN(lng)) {
       setAddVertexError(t.planGenerator.invalidNumber);
       return;
@@ -938,13 +940,10 @@ export default function ScanPatternGeneratorV2({
                   <span className="text-xs text-muted ml-2">(0-200m)</span>
                 </label>
                 <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    min={0}
-                    max={200}
+                  <DecimalInput
                     id="scan-altitude"
                     value={altitude}
-                    onChange={(e) => setAltitude(Math.max(0, Math.min(200, Number(e.target.value))))}
+                    onValue={(v) => v !== "" && setAltitude(Math.max(0, Math.min(200, v)))}
                     className="flex-1 px-3 py-2 bg-input border border-input rounded text-fg text-sm focus:outline-none focus:ring-2 focus:ring-brand-ring"
                   />
                   <span className="text-xs text-muted w-8">m</span>
@@ -958,14 +957,10 @@ export default function ScanPatternGeneratorV2({
                   <span className="text-xs text-muted ml-2">({t.planGenerator.distanceBetweenLines})</span>
                 </label>
                 <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    min={1}
-                    max={500}
-                    step={1}
+                  <DecimalInput
                     id="scan-spacing"
                     value={spacing}
-                    onChange={(e) => setSpacing(Math.max(1, Math.min(500, Number(e.target.value))))}
+                    onValue={(v) => v !== "" && setSpacing(Math.max(1, Math.min(500, v)))}
                     className="flex-1 px-3 py-2 bg-input border border-input rounded text-fg text-sm focus:outline-none focus:ring-2 focus:ring-brand-ring"
                   />
                   <span className="text-xs text-muted w-8">m</span>
@@ -989,12 +984,9 @@ export default function ScanPatternGeneratorV2({
                     onChange={(e) => setAngle(Number(e.target.value))}
                     className="flex-1 h-2 bg-subtle rounded-lg appearance-none cursor-pointer accent-[var(--color-accent)]"
                   />
-                  <input
-                    type="number"
-                    min={0}
-                    max={360}
+                  <DecimalInput
                     value={angle}
-                    onChange={(e) => setAngle(normalizeAngle(Number(e.target.value)))}
+                    onValue={(v) => v !== "" && setAngle(normalizeAngle(v))}
                     aria-label={t.planGenerator.scanAngleLabel}
                     className="w-16 px-2 py-1 bg-input border border-input rounded text-fg text-sm text-center focus:outline-none focus:ring-2 focus:ring-brand-ring"
                   />
@@ -1037,14 +1029,10 @@ export default function ScanPatternGeneratorV2({
                       <span className="text-xs text-muted ml-2">(m/s)</span>
                     </label>
                     <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        min={1}
-                        max={30}
-                        step={0.5}
+                      <DecimalInput
                         id="scan-speed"
                         value={speed}
-                        onChange={(e) => setSpeed(Math.max(1, Math.min(30, Number(e.target.value))))}
+                        onValue={(v) => v !== "" && setSpeed(Math.max(1, Math.min(30, v)))}
                         className="flex-1 px-3 py-2 bg-input border border-input rounded text-fg text-sm focus:outline-none focus:ring-2 focus:ring-brand-ring"
                       />
                       <span className="text-xs text-muted w-8">m/s</span>
