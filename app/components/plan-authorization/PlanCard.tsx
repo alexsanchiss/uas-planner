@@ -6,8 +6,10 @@ import { ActionMenu } from './ActionMenu'
 import { authPhase, isScheduleLocked, planPhase, type PlanRow } from './lib'
 import { PlanName } from './PlanName'
 import { PrimaryAction } from './PrimaryAction'
+import { ProcessingStatus } from './ProcessingStatus'
 import { planMenuEntries, type RowCtx } from './rowActions'
 import { PlanSchedulePopover } from './SchedulePopover'
+import { SimulationLine } from './SimulationBadges'
 import { AuthStatusBadge, PlanStatusBadge } from './StatusBadge'
 
 interface Props {
@@ -58,6 +60,8 @@ export function PlanCard({ plan, ctx, focused, selected, selectable, onToggleSel
         <PlanStatusBadge phase={planPhase(plan)} />
         <AuthStatusBadge phase={authPhase(plan)} />
       </div>
+      <ProcessingStatus plan={plan} variant="compact" className="mt-2" />
+      <SimulationLine plan={plan} className="mt-1" />
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
         <PlanSchedulePopover plan={plan} locked={isScheduleLocked(plan)} variant="cell" onSchedule={(iso) => ctx.a.schedule(plan, iso)} />
         <PrimaryAction plan={plan} ctx={ctx} />

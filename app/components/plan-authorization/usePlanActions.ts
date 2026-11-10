@@ -9,6 +9,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { ApiError } from '@/lib/api-client'
 import { shouldGenerateRandomUplan } from '@/lib/uplan/random-data'
+import { simulationOf, type SimulationSettings } from '@/lib/simulation'
 import { interpolate, useI18n } from '@/app/i18n'
 import type { UseFlightPlansReturn } from '@/app/hooks/useFlightPlans'
 import type { useToast } from '@/app/hooks/useToast'
@@ -197,6 +198,36 @@ export function usePlanActions({ plans, fp, toast, confirm, busy }: Deps) {
     [busy, fp, toast, pa]
   )
 
+  /** PUT the simulation settings of one or several plans; one toast says how it went (409: the plans that could not be changed). */
+  const saveSimulation = useCallback(
+    async (ids: number[], settings: SimulationSettings, skipped = 0): Promise<boolean> => {
+      try {
+        const { updated } = await fp.updateSimulation(ids, settings)
+        if (skipped > 0) toast.warning(interpolate(pa.sim.savedSkipped, { n: updated, skipped }))
+        else toast.success(ids.length > 1 ? interpolate(pa.sim.savedMany, { n: updated }) : pa.sim.saved)
+        return true
+      } catch (e) {
+        if (e instanceof ApiError && e.status === 409) {
+          const blocked = (e.data as { ids?: unknown } | null)?.ids
+          toast.error(interpolate(pa.sim.notEditable, { n: Array.isArray(blocked) ? blocked.length : ids.length }))
+        } else {
+          toast.error(errorMessage(e, pa.sim.saveError))
+        }
+        return false
+      }
+    },
+    [fp, toast, pa]
+  )
+
+  /** Opens the settings dialog for these plans (Dev); starts from the first plan's settings. */
+  const openSimulation = useCallback(
+    (list: PlanRow[]) => {
+      if (list.length === 0) return
+      setViewer({ kind: 'simulation', ids: list.map((p) => p.id), planName: list.length === 1 ? list[0].customName : undefined, initial: simulationOf(list[0]) })
+    },
+    []
+  )
+
   const rename = useCallback(
     (plan: PlanRow, name: string) =>
       busy.run('rename', plan.id, async () => {
@@ -348,6 +379,8 @@ export function usePlanActions({ plans, fp, toast, confirm, busy }: Deps) {
     downloadUplanJson,
     downloadCsv,
     schedule,
+    saveSimulation,
+    openSimulation,
     rename,
     move,
     processPlan,

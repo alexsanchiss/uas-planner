@@ -7,8 +7,10 @@ import { ActionMenu } from './ActionMenu'
 import { authPhase, isScheduleLocked, planPhase, startPlanDrag, type PlanRow as Plan } from './lib'
 import { PlanName } from './PlanName'
 import { PrimaryAction } from './PrimaryAction'
+import { ProcessingStatus } from './ProcessingStatus'
 import { planMenuEntries, type RowCtx } from './rowActions'
 import { PlanSchedulePopover } from './SchedulePopover'
+import { SimulationLine } from './SimulationBadges'
 import { AuthStatusBadge, PlanStatusBadge } from './StatusBadge'
 
 export type SortKey = 'name' | 'scheduled'
@@ -68,6 +70,8 @@ function PlanTableRow({ plan, ctx, focused, selected, selectable, onToggleSelect
           <PlanStatusBadge phase={planPhase(plan)} />
           <AuthStatusBadge phase={authPhase(plan)} />
         </div>
+        <ProcessingStatus plan={plan} variant="compact" className="mt-1.5 w-44 max-w-full" />
+        <SimulationLine plan={plan} className="mt-1 max-w-44" />
       </td>
       <td className="px-2 py-2">
         <PlanSchedulePopover plan={plan} locked={isScheduleLocked(plan)} variant="cell" onSchedule={(iso) => ctx.a.schedule(plan, iso)} />

@@ -24,6 +24,7 @@
 
 import { useState, useCallback, useMemo, useRef } from 'react'
 import { apiJson, getAuthToken, ApiError } from '@/lib/api-client'
+import type { SimulationSettings } from '@/lib/simulation'
 import { usePolling } from './usePolling'
 
 /**
@@ -89,6 +90,18 @@ export interface FlightPlan {
 export type FlightPlanSummary = Omit<FlightPlan, 'fileContent' | 'uplan'> & {
   hasFileContent: boolean
   hasUplan: boolean
+  /** Simulation settings (written by the UI): null airframe = multirotor, null / 0 windSpeed = no wind (see simulationOf). */
+  simAirframe: string | null
+  windSpeed: number | null
+  windDirection: number | null
+  windGust: number | null
+  /** Written by the runner: 0-100 while 'procesando' (null = not started), estimated end (ISO UTC), "<code>: <detail>" on 'error'. */
+  progress: number | null
+  processingEta: string | null
+  processingError: string | null
+  /** Only while 'en cola': 1-based position over everybody's queue and its length (null otherwise). */
+  queuePosition: number | null
+  queueLength: number | null
 }
 
 /**
@@ -210,6 +223,8 @@ export interface UseFlightPlansReturn<TPlan = FlightPlan> {
   moveFlightPlan: (id: number, folderId: number | null) => Promise<FlightPlan | null>
   /** PUT { id, data: { geoawarenessData: { uspace_identifier } } } */
   setFlightPlanUspace: (id: number, uspaceId: string) => Promise<FlightPlan | null>
+  /** PUT /api/flightPlans/simulation { ids, airframe, wind }, then refresh. Throws ApiError (400, 404, 409 with `data.ids` = not editable). */
+  updateSimulation: (ids: number[], settings: SimulationSettings) => Promise<{ updated: number }>
   /** PUT /api/flightPlans/[id] { uplan } (what UplanFormModal sends). Throws. */
   saveUplan: (id: number, uplan: unknown) => Promise<void>
 
@@ -646,6 +661,17 @@ export function useFlightPlans(
     })
   }, [updateFlightPlans])
 
+  const updateSimulation = useCallback(
+    async (ids: number[], { airframe, wind }: SimulationSettings): Promise<{ updated: number }> => {
+      try {
+        return await apiJson<{ updated: number }>('/api/flightPlans/simulation', { method: 'PUT', body: { ids, airframe, wind } })
+      } finally {
+        await refresh() // also after a 409: the rows that changed state show their new state
+      }
+    },
+    [refresh]
+  )
+
   const saveUplan = useCallback(async (id: number, uplan: unknown): Promise<void> => {
     await apiJson(`/api/flightPlans/${id}`, { method: 'PUT', body: { uplan } })
     await refresh()
@@ -784,6 +810,7 @@ export function useFlightPlans(
     moveFlightPlan,
     setFlightPlanUspace,
     saveUplan,
+    updateSimulation,
     processFlightPlans,
     scheduleFlightPlans,
     resetAuthorization,

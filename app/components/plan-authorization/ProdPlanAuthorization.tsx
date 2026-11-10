@@ -259,6 +259,7 @@ export function ProdPlanAuthorization() {
         onAcceptScrs={(id) => void actions.acceptScrs(id)}
         onFormSaved={() => void fp.refresh()}
         onFormRequestAuth={actions.requestAuthById}
+        onSaveSimulation={actions.saveSimulation}
       />
     </div>
   )

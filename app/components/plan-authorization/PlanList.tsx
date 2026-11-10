@@ -11,6 +11,7 @@ import { InlineNameForm } from './InlineNameForm'
 import { PLAN_DRAG_TYPE, startPlanDrag, type PlanDragData, type PlanRow, type ProgressKind } from './lib'
 import { NewFolderForm } from './NewFolderForm'
 import { planStatusText } from './planStatus'
+import { ProcessingStatus } from './ProcessingStatus'
 
 const ICONS: Record<ProgressKind | 'review', { Icon: LucideIcon; tone: string; spin?: boolean }> = {
   noFile: { Icon: CircleDashed, tone: 'text-muted' },
@@ -136,6 +137,7 @@ export function PlanList({ folders, noFolderCount, list, selectedId, selectedKey
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-medium text-fg">{plan.customName}</span>
                 <span className="block truncate text-xs text-fg-2">{status.line}</span>
+                <ProcessingStatus plan={plan} variant="compact" className="mt-1" />
               </span>
             </button>
           </li>

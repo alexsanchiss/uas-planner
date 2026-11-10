@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from 'react'
 
-export type BusyKind = 'process' | 'auth' | 'reset' | 'delete' | 'rename' | 'move' | 'download' | 'viewer' | 'schedule'
+export type BusyKind = 'process' | 'auth' | 'reset' | 'delete' | 'rename' | 'move' | 'download' | 'viewer' | 'schedule' | 'simulation'
 
 /** Per-plan "operation in flight" flags, so rows can show spinners and disable their buttons. */
 export function useBusy() {

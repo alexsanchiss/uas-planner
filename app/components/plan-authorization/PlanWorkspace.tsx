@@ -4,13 +4,18 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { ArrowLeft, CalendarClock, Loader2, Lock, SearchX } from 'lucide-react'
 import { interpolate, useI18n } from '@/app/i18n'
 import { hasFailedScrsAlternative } from '@/lib/scrs'
+import { simulationOf } from '@/lib/simulation'
 import { ActionMenu } from './ActionMenu'
 import { InlineNameForm } from './InlineNameForm'
-import { authPhase, formatDateTime, formatShortDateTime, isScheduleLocked, messageText, planPhase, type PlanRow, type ProgressKind } from './lib'
+import { authPhase, formatDateTime, formatShortDateTime, isScheduleLocked, isSimEditable, messageText, planPhase, type PlanRow, type ProgressKind } from './lib'
 import { planStatusText } from './planStatus'
 import { PrimaryAction } from './PrimaryAction'
+import { ProcessingStatus } from './ProcessingStatus'
 import { planManageEntries, planViewEntries, primaryView, type RowCtx } from './rowActions'
 import { ScheduleField } from './SchedulePopover'
+import { SimulationChip } from './SimulationBadges'
+import { SimulationSettingsForm } from './SimulationSettingsForm'
+import { simulationSummary } from './simulationText'
 import { AuthStatusBadge, PlanStatusBadge } from './StatusBadge'
 import { WorkflowStepper } from './WorkflowStepper'
 
@@ -41,6 +46,7 @@ export function PlanWorkspace({ plan, ctx, focusOnOpen, onBack }: Props) {
   const w = pa.workspace
   const [renaming, setRenaming] = useState(false)
   const [changing, setChanging] = useState(false)
+  const [simOpen, setSimOpen] = useState(false)
   const heading = useRef<HTMLHeadingElement>(null)
   const wasRenaming = useRef(false)
   const timeFormId = useId()
@@ -73,6 +79,9 @@ export function PlanWorkspace({ plan, ctx, focusOnOpen, onBack }: Props) {
   const processStep = kind === 'step' && step === 3
   const savingTime = ctx.busy.is('schedule', plan.id)
   const hasBar = !!primary
+  const simEditable = plan.hasFileContent && isSimEditable(plan)
+  const simShown = !simEditable && planPhase(plan) !== 'idle' // processing started or done: read-only chip
+  const simBtn = 'inline-flex min-h-11 items-center rounded-md px-1 font-medium text-brand-text hover:underline lg:min-h-9'
 
   // Phones: the action bar is fixed; the page reserves its height (rule in globals.css) while it is mounted
   useEffect(() => {
@@ -129,6 +138,7 @@ export function PlanWorkspace({ plan, ctx, focusOnOpen, onBack }: Props) {
             <div className="mt-2 flex flex-wrap gap-1.5">
               <PlanStatusBadge phase={planPhase(plan)} />
               <AuthStatusBadge phase={auth} />
+              {simShown && <SimulationChip plan={plan} />}
               {scheduledShort && (
                 <span
                   className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-line bg-subtle px-2 py-0.5 text-xs font-medium text-fg-2"
@@ -173,6 +183,8 @@ export function PlanWorkspace({ plan, ctx, focusOnOpen, onBack }: Props) {
           {copy.title}
         </h3>
         <p className="mt-1 max-w-prose text-sm text-fg-2">{copy.body}</p>
+
+        {(kind === 'processing' || kind === 'error') && <ProcessingStatus plan={plan} variant="full" className="mt-3 max-w-md" />}
 
         {timeStep && (
           <div className="mt-4 max-w-sm">
@@ -231,6 +243,33 @@ export function PlanWorkspace({ plan, ctx, focusOnOpen, onBack }: Props) {
             <SearchX className="h-4 w-4" aria-hidden="true" />
             {pa.workflow.noAlternativeFound}
           </p>
+        )}
+
+        {simEditable && (
+          <div className="mt-4 max-w-xl rounded-lg border border-line bg-surface-2 p-3 sm:p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <h4 className="text-sm font-semibold text-fg">{pa.sim.title}</h4>
+                <p className="break-words text-sm text-fg-2">{simulationSummary(simulationOf(plan), pa.sim, language)}</p>
+              </div>
+              <button type="button" aria-expanded={simOpen} onClick={() => setSimOpen((o) => !o)} className={`${simBtn} shrink-0`}>
+                {pa.sim.change}
+              </button>
+            </div>
+            {simOpen && (
+              <div className="mt-3 border-t border-line pt-3">
+                <SimulationSettingsForm
+                  initial={simulationOf(plan)}
+                  onCancel={() => setSimOpen(false)}
+                  onSubmit={async (settings) => {
+                    const ok = await ctx.a.saveSimulation([plan.id], settings)
+                    if (ok) setSimOpen(false)
+                    return ok
+                  }}
+                />
+              </div>
+            )}
+          </div>
         )}
       </section>
 

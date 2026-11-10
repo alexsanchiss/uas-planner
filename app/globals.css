@@ -303,6 +303,27 @@ body {
   }
 }
 
+/* Progress bar without a known value yet (plan processing, no progress reported): a segment sliding along the track */
+@keyframes progressIndeterminate {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+.progress-indeterminate {
+  width: 40%;
+  animation: progressIndeterminate 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .progress-indeterminate {
+    animation: none;
+    width: 100%;
+    opacity: 0.4;
+  }
+}
+
 /* ============================================
    TASK-176: Success Animations
    Visual feedback when operations complete
