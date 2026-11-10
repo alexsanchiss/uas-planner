@@ -29,8 +29,8 @@ lib/                            auth.ts, auth-middleware.ts, api-client.ts, fas.
                                 zod-config.ts, email.ts, cesium-loader.ts, cesium-scene.ts, altitude.ts (altitude references,
                                 ONE rule per data source), plan-view-model.ts, scan-generator.ts, scrs.ts, uplan/
 prisma/schema.prisma            MySQL schema (shared with external processes, see Contracts)
-traj-assigner.js, machine-cleaner.js   standalone Node processes, outside Next.js
-Traj-runner/                    VM image/entrypoint for the trajectory runner
+traj-assigner.js, machine-cleaner.js   standalone Node processes, outside Next.js (assigner = NSSM service UPPS_TP via RUN-UPPS_TP.bat)
+Traj-runner/                    old copy of the runner image files; the live runner is github.com/alexsanchiss/traj-runner (master)
 docs/                           ARCHITECTURE.md, API.md, icd/ (ICD v2.4.0 .tex/.pdf, do not edit), requirements/
 tasks/                          local only (git-excluded): todo.md plan, lessons.md, audit/ reports, runs/ evidence
 ```
@@ -87,6 +87,8 @@ Full list with shapes: `docs/API.md`.
 - Production is 3 Windows instances on the VDS (ports 3002/3003/3004 behind Caddy), not Docker. `Dockerfile`/`docker-compose.yml` are not the deploy path.
 - Never commit secrets or `.env*` files.
 - One `next build`/`next dev` per checkout at a time: they share `.next`. Parallel agents stop at typecheck/lint/jest; browser smoke uses `next start -p 3013`, never the production port.
+- Processing feedback: traj-runner writes `progress`, `processingEta` (always `UTC_TIMESTAMP`, Prisma reads UTC) and `processingError` (`"<code>: <detail>"`, codes in `lib/simulation.ts`); the UI writes `simAirframe`/`wind*`. A schema change needs the ALTER in production BEFORE deploying, and on the main instance `npx prisma generate` with `UPPS_TP` stopped (the running assigner locks the Prisma engine).
+- traj-runner containers (WSL `Ubuntu-24.04` on SNA-SERVER) `git pull` traj-runner master at start: pushing master + recreating the containers is its deploy. Restart order (as ultimatum_v2.bat): stop `UPPS_TP`, `docker compose down`, `node machine-cleaner.js`, `docker compose up -d`, start `UPPS_TP`; otherwise ghost machines stay `Disponible`.
 
 ## Working as an agent here
 
