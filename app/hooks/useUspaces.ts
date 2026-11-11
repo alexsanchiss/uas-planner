@@ -1,11 +1,10 @@
 /**
  * useUspaces Hook - U-space data fetching
- * 
- * TASK-040: Hook for loading the list of available U-spaces from the
- * geoawareness service.
- * 
+ *
+ * TASK-040: Hook for loading the list of available U-spaces from the CISP.
+ *
  * Features:
- * - Fetches /api/geoawareness/uspaces for available U-spaces
+ * - Fetches /api/uspaces (relay to the CISP) for available U-spaces
  * - Provides loading, error, and refetch states
  * - Type-safe API responses
  * - Caches data to avoid unnecessary refetches
@@ -13,29 +12,12 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { apiFetch } from '@/lib/api-client'
+import type { USpace } from '@/lib/cisp'
+
+export type { USpace, USpaceBoundaryPoint } from '@/lib/cisp'
 
 /**
- * U-Space boundary point
- */
-export interface USpaceBoundaryPoint {
-  latitude: number
-  longitude: number
-}
-
-/**
- * U-Space data structure
- */
-export interface USpace {
-  /** Human-readable name of the U-space */
-  name: string
-  /** Unique identifier for the U-space */
-  id: string
-  /** Boundary polygon as array of lat/lon points */
-  boundary: USpaceBoundaryPoint[]
-}
-
-/**
- * API response from /api/geoawareness/uspaces
+ * API response from /api/uspaces
  */
 interface USpacesApiResponse {
   success: boolean
@@ -111,19 +93,13 @@ export function useUspaces(): UseUspacesReturn {
     }
 
     try {
-      const response = await apiFetch('/api/geoawareness/uspaces').catch(() => null)
+      const response = await apiFetch('/api/uspaces').catch(() => null)
       if (!response) throw new Error('Failed to fetch U-spaces')
       const data = (await response.json().catch(() => null)) as USpacesApiResponse | null
 
       if (!mountedRef.current) return
 
-      if (!response.ok) {
-        throw new Error(
-          response.status === 503 ? 'Geoawareness service is not configured or unavailable'
-          : response.status === 504 ? 'Geoawareness service timeout'
-          : data?.error || 'Failed to fetch U-spaces'
-        )
-      }
+      if (!response.ok) throw new Error(data?.error || 'Failed to fetch U-spaces')
 
       if (data?.success && data.uspaces) {
         setUspaces(data.uspaces)

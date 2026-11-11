@@ -95,11 +95,16 @@ The CSV row has the same id as its plan (`flightPlan.csvResult` is a 0/1 flag).
 
 The consumers of everything except `by-external-response-number/[n]` are not identified: treat all of it as EXTERNAL.
 
+## U-spaces (EXTERNAL upstream: CISP)
+
+| Method and path | Auth | Notes |
+|---|---|---|
+| GET `/api/uspaces` | public | `{success, uspaces:[{id, name, boundary:[{latitude, longitude}]}], count}`; upstream `GET {CISP_USPACES_URL}` (default `http://sna-server.upvnet.upv.es:8000/spirit_cisp/uspaces`, timeout 15 s, no cache), mapped in `lib/cisp.ts`: `id` = `properties.identifier`, `name` = `name`, `boundary` = outer ring of the `Polygon` (lon/lat swapped to latitude/longitude). Features without identifier or polygon ring are skipped. 503 unreachable, 504 timeout, 502 non-2xx or not `{uspaces:[...]}`. Replaces `/api/geoawareness/uspaces` (removed 2026-11-11 with its fixed test list). |
+
 ## Geoawareness (EXTERNAL upstream)
 
 | Method and path | Auth | Notes |
 |---|---|---|
-| GET `/api/geoawareness/uspaces` | public | `{success, uspaces:[{id, name, boundary:[{latitude, longitude}]}], count}`; upstream `GET http://{GEOAWARENESS_SERVICE_IP}/{GEOAWARENESS_USPACES_ENDPOINT}` (timeout 15 s, expects `{u_spaces:[...]}`); 502/503/504. `GEOAWARENESS_USPACES_ENDPOINT=PRUEBA` returns fixed test U-spaces. |
 | GET `/api/geoawareness/stream/[uspaceId]` | public | `text/event-stream`. Opens `ws://{GEOAWARENESS_SERVICE_IP}/{GEOAWARENESS_ENDPOINT}{uspaceId}` and forwards each upstream message verbatim as `data:`; extra events `connected`, `error`, `close`. 400 on ids not matching `^[a-zA-Z0-9_-]{1,50}$`. |
 | GET `/api/deprecated/geoawareness-geozones?uspaceId=` | public | Fixed fallback geozones; deprecated |
 

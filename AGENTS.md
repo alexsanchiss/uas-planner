@@ -26,7 +26,7 @@ app/hooks/                      useFlightPlans / useFolders (?fields=summary), u
 app/i18n/                       en (default) / es dictionaries; add every user-facing string to both
 app/styles/themes.css           CSS variables behind the Tailwind semantic tokens (tailwind.config.ts)
 lib/                            auth.ts, auth-middleware.ts, api-client.ts, fas.ts, request-ip.ts, validators.ts,
-                                zod-config.ts, email.ts, cesium-loader.ts, cesium-scene.ts, altitude.ts (altitude references,
+                                zod-config.ts, email.ts, cisp.ts (CISP U-space list), cesium-loader.ts, cesium-scene.ts, altitude.ts (altitude references,
                                 ONE rule per data source), plan-view-model.ts, scan-generator.ts, scrs.ts, uplan/
 prisma/schema.prisma            MySQL schema (shared with external processes, see Contracts)
 traj-assigner.js, machine-cleaner.js   standalone Node processes, outside Next.js (assigner = NSSM service UPPS_TP via RUN-UPPS_TP.bat)
@@ -79,7 +79,7 @@ Full list with shapes: `docs/API.md`.
 - Auth: access JWT 7 d in localStorage `authToken`, refresh JWT 30 d in an httpOnly cookie (`lib/auth.ts`). Client calls go through `apiFetch`/`apiJson` in `lib/api-client.ts` (one refresh retry). Protected routes use `withAuth()`.
 - `?fields=summary` on `GET /api/flightPlans` and `/api/folders` returns light rows (no `fileContent`/`uplan`); detail comes from `GET /api/flightPlans/[id]`.
 - Statuses: `sin procesar` -> `en cola` -> `procesando` -> `procesado` | `error`. Authorization: `sin autorización`, `pendiente`, `aprobado`, `denegado`, `withdrawn`.
-- All FAS access goes through `lib/fas.ts` (timeout 30 s; U-Plan POST 120 s). Client IP behind the proxy: `lib/request-ip.ts`. Cesium loading: `lib/cesium-loader.ts`.
+- All FAS access goes through `lib/fas.ts` (timeout 30 s; U-Plan POST 120 s). U-spaces come from the CISP directly (`lib/cisp.ts`, `GET /api/uspaces`), not from the Geoawareness service; the CISP `properties.identifier` is the id the geoawareness stream and `uspace_identifier` use. Client IP behind the proxy: `lib/request-ip.ts`. Cesium loading: `lib/cesium-loader.ts`.
 - Styling: use semantic Tailwind tokens, never hardcoded hex. Dark variant follows the app toggle (`data-theme`), not the OS.
 - zod 4 is configured in `lib/zod-config.ts`; import schemas from `lib/validators.ts`.
 - `next build` does not lint. CI does, so run `npm run lint` yourself.

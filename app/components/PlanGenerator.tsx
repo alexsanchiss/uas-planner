@@ -146,7 +146,8 @@ function generateQGCPlan(waypoints: Waypoint[]): unknown {
   );
 }
 
-// U-spaces offered as shortcuts in step 1 (same boundaries as before)
+// U-spaces offered as shortcuts in step 1. DEFAULT_USPACE is the fallback when the CISP list
+// did not load; otherwise the CISP's own VLCUspace is used.
 const DEFAULT_USPACE: USpace = {
   id: 'VLCUspace',
   name: 'VLCUspace',
@@ -217,7 +218,7 @@ export default function PlanGenerator() {
   
   // TASK-043: U-space selection state
   const [selectedUspace, setSelectedUspace] = useState<USpace | null>(null);
-  const { getUspaceBounds, getUspaceCenter } = useUspaces();
+  const { uspaces, getUspaceBounds, getUspaceCenter } = useUspaces();
   
   // TASK-082: Connect to geoawareness WebSocket when U-space is selected
   const {
@@ -738,7 +739,7 @@ export default function PlanGenerator() {
           <div className="mt-6">
             <p className="mb-3 text-sm text-muted">{pd.area.fallbackPrompt}</p>
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => handleUspaceSelect(DEFAULT_USPACE)} className={secondaryButton}>
+              <button type="button" onClick={() => handleUspaceSelect(uspaces.find((u) => u.id === DEFAULT_USPACE.id) ?? DEFAULT_USPACE)} className={secondaryButton}>
                 {pd.area.useDefault}
               </button>
               <button type="button" onClick={() => setCustomAreaModalOpen(true)} className={secondaryButton}>
