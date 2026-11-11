@@ -5,6 +5,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [Unreleased] - 2026-11-11 (U-spaces from the CISP)
+
+### Changed
+
+- Plan Definition lists the U-spaces published by the CISP (`GET /api/uspaces`, relayed through `lib/cisp.ts`) instead of the fixed test list. UPPS calls the CISP directly, not through the Geoawareness service. The "default service area" shortcut uses the CISP's `VLCUspace` when the list loaded.
+
+### Removed
+
+- `GET /api/geoawareness/uspaces` and `GEOAWARENESS_USPACES_ENDPOINT` (including the `PRUEBA` fixed list). Operators: the variable can be deleted from `.env`; `CISP_USPACES_URL` is optional (default `http://sna-server.upvnet.upv.es:8000/spirit_cisp/uspaces`).
+
 ## [Unreleased] - 2026-11-10 (simulation settings and processing feedback)
 
 ### Before deploying (operators)

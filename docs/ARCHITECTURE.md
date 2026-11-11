@@ -9,7 +9,8 @@ Browser  ──►  Next.js 15 (App Router)  ──►  MySQL (Prisma)  ◄─�
                     │   ▲
                     │   └── PUT /api/fas/[n]  ◄── FAS
                     ├──► FAS (U-Plan, cancel, terms, activation)
-                    ├──► Geoawareness service (HTTP uspaces, WebSocket relayed as SSE)
+                    ├──► CISP (U-space list, lib/cisp.ts)
+                    ├──► Geoawareness service (WebSocket relayed as SSE)
                     └──► MailerSend (transactional email)
 ```
 
