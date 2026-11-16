@@ -17,6 +17,7 @@
  * 5. Clear uplan (set to null)
  * 6. Clear externalResponseNumber (set to null)
  * 7. Clear machineAssignedId (set to null)
+ * 8. Clear the activation state of the previous flight (CLEARED_ACTIVATION)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -26,6 +27,7 @@ import { sendPlanDeletionEmail } from '@/lib/email';
 import { logger } from '@/lib/logger';
 import { sendFasCancellation } from '@/lib/fas';
 import { parseId } from '@/lib/http';
+import { CLEARED_ACTIVATION } from '@/lib/activation';
 
 /**
  * Params type for dynamic route
@@ -184,6 +186,7 @@ export async function POST(
           uplan: resetUplan, // null or minimal structure with waypoints
           externalResponseNumber: null,
           machineAssignedId: null,
+          ...CLEARED_ACTIVATION,
         },
         include: {
           folder: true,

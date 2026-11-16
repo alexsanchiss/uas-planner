@@ -45,6 +45,7 @@ jest.mock('@/lib/email', () => ({
 
 import { NextRequest } from 'next/server';
 import { generateToken } from '@/lib/auth';
+import { CLEARED_ACTIVATION } from '@/lib/activation';
 
 const OWNER = 10;
 const ORIGINAL_FAS_API_URL = process.env.FAS_API_URL;
@@ -148,6 +149,34 @@ describe('FAS response handling (unchanged)', () => {
       where: { id: 5 },
       data: { authorizationStatus: 'pendiente', authorizationMessage: 'FAS procesando...', externalResponseNumber: 'EXT-12345' },
     });
+  });
+
+  it('a new authorization drops the activation of the previous flight (reused plan)', async () => {
+    // Plan that was approved, activated and flown, then reset and re-processed: stale activation columns in the row
+    mockPlanFindUnique.mockResolvedValue({
+      ...plan(),
+      authorizationStatus: 'sin autorización',
+      activationStatus: 'autorizado_despegue',
+      activatedAt: new Date('2029-12-01T10:00:00Z'),
+      activationMessage: '{"message":"old flight"}',
+      termsAcceptedAt: new Date('2029-12-01T09:59:00Z'),
+      lastActivationAttempt: new Date('2029-12-01T10:00:00Z'),
+    });
+
+    const res = await submit();
+
+    expect(res.status).toBe(200);
+    const { data } = mockPlanUpdate.mock.calls[0][0];
+    expect(data.authorizationStatus).toBe('pendiente');
+    for (const [key, value] of Object.entries(CLEARED_ACTIVATION)) {
+      expect(data).toHaveProperty(key, value);
+    }
+    // pinned to the schema defaults, so it also fails if the constant is emptied
+    expect(data.activationStatus).toBe('no activable');
+    expect(data.activatedAt).toBeNull();
+    expect(data.activationMessage).toBeNull();
+    expect(data.termsAcceptedAt).toBeNull();
+    expect(data.lastActivationAttempt).toBeNull();
   });
 
   it('stringifies a JSON answer', async () => {
