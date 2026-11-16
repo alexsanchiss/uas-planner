@@ -37,6 +37,7 @@ import { sendAuthorizationResultEmail } from '@/lib/email';
 import axios from 'axios';
 import { parseId } from '@/lib/http';
 import { getFasApiUrl, FAS_UPLAN_TIMEOUT_MS } from '@/lib/fas';
+import { CLEARED_ACTIVATION } from '@/lib/activation';
 
 /**
  * Params type for dynamic route
@@ -226,7 +227,8 @@ export async function POST(
         // Convert uplan to JSON string for database storage
         const uplanString = JSON.stringify(uplan);
 
-        // Save as processing (FAS will update status later)
+        // Save as processing (FAS will update status later). A new authorization is a new flight:
+        // drop the activation of any previous one, whatever path brought the plan back here.
         await prisma.flightPlan.update({
           where: { id },
           data: {
@@ -234,6 +236,7 @@ export async function POST(
             authorizationStatus: 'pendiente',
             authorizationMessage: 'FAS procesando...',
             externalResponseNumber,
+            ...CLEARED_ACTIVATION,
           },
         });
 
