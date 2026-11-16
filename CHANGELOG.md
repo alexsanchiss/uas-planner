@@ -5,6 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [Unreleased] - 2026-11-16 (reused plans can be activated again)
+
+### Fixed
+
+- A plan reused after Reset (new date, processed and approved again) could not be activated: Plan Activation still saw the previous flight's `activatedAt` and kept Activate disabled. The reset and the U-Plan submission that moves a plan to `pendiente` now put the activation columns back to their defaults (`lib/activation.ts`), so the earlier flight no longer shows in that plan's activation history. Deploy is code only, with no schema or `.env` change.
+
 ## [Unreleased] - 2026-11-11 (U-spaces from the CISP)
 
 ### Changed
