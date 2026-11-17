@@ -5,6 +5,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [Unreleased] - 2026-11-17 (CSV download in production, SCAN polygon closing)
+
+### Fixed
+
+- Production Plan Authorization offers "Download trajectory CSV" again for every processed plan with a trajectory. The restructure had left it in Dev only; production had it before.
+- SCAN pattern: a click closes the polygon when it lands within 30 px of the first vertex on screen, at the current zoom. The old rule (closer than 100 m) closed small polygons on the 4th vertex. Code only: no schema or `.env` change.
+
 ## [Unreleased] - 2026-11-16 (reused plans can be activated again)
 
 ### Fixed

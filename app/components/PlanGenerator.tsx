@@ -67,7 +67,7 @@ import { ConfirmDialog } from './ui/confirm-dialog';
 
 const PlanMap = dynamic(() => import('./PlanMap'), { ssr: false });
 const UspaceSelector = dynamic(() => import('./plan-definition/UspaceSelector'), { ssr: false });
-import ScanPatternGeneratorV2 from './plan-definition/ScanPatternGeneratorV2';
+import ScanPatternGeneratorV2, { type ScanMapClick } from './plan-definition/ScanPatternGeneratorV2';
 import WaypointList, { type Waypoint } from './plan-definition/WaypointList';
 import PlannerSection from './plan-definition/PlannerSection';
 import CustomAreaModal from './plan-definition/CustomAreaModal';
@@ -272,12 +272,12 @@ export default function PlanGenerator() {
   // TASK-216: Custom map click handler for SCAN mode using ref for stability
   // Using a ref ensures the handler identity is stable across renders,
   // preventing unnecessary cleanup/re-registration cycles
-  const scanMapClickHandlerRef = useRef<((lat: number, lng: number) => void) | null>(null);
+  const scanMapClickHandlerRef = useRef<ScanMapClick | null>(null);
   
   // Stable callback for setting the SCAN map click handler
   // This function identity never changes, preventing useEffect cleanup issues
   // PlanMap reads the handler via a ref, so no remount is needed
-  const handleSetScanMapClickHandler = useCallback((handler: ((lat: number, lng: number) => void) | null) => {
+  const handleSetScanMapClickHandler = useCallback((handler: ScanMapClick | null) => {
     scanMapClickHandlerRef.current = handler;
   }, []);
 

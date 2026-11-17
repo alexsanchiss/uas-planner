@@ -108,7 +108,7 @@ function facts(plan: PlanRow, ctx: RowCtx) {
  * current state is listed (nothing greyed out). Menu order; `separatorBefore` only matters to menus.
  */
 export function planViewEntries(plan: PlanRow, ctx: RowCtx): MenuEntry[] {
-  const { a, mode, pa } = ctx
+  const { a, pa } = ctx
   const l = pa.actions
   const { hasTrajectory, hasStoredUplan, viewing, downloading, decided, canEditUplan } = facts(plan, ctx)
 
@@ -125,7 +125,7 @@ export function planViewEntries(plan: PlanRow, ctx: RowCtx): MenuEntry[] {
   const fileEntries: (MenuEntry | false)[] = [
     canEditUplan && { id: 'editUplan', label: l.editUplan, icon: FileJson, loading: viewing, onSelect: () => a.openUplanForm(plan) },
     (hasTrajectory || hasStoredUplan) && { id: 'downloadUplan', label: l.downloadUplan, icon: Download, loading: downloading, onSelect: () => a.downloadUplanJson(plan) },
-    mode === 'dev' && hasTrajectory && { id: 'downloadCsv', label: l.downloadCsv, icon: Table2, loading: downloading, onSelect: () => a.downloadCsv(plan) },
+    hasTrajectory && { id: 'downloadCsv', label: l.downloadCsv, icon: Table2, loading: downloading, onSelect: () => a.downloadCsv(plan) },
   ]
   fileEntries.filter((e): e is MenuEntry => !!e).forEach((e, i) => entries.push(i === 0 ? { ...e, separatorBefore: true } : e))
   return entries

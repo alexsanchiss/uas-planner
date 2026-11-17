@@ -172,7 +172,7 @@ export function usePlanActions({ plans, fp, toast, confirm, busy }: Deps) {
     [busy, fp, toast, pa]
   )
 
-  /** Trajectory CSV of one processed plan (Dev). The CSV id is the plan id. */
+  /** Trajectory CSV of one processed plan (both modes). The CSV id is the plan id. */
   const downloadCsv = useCallback(
     (plan: PlanRow) =>
       busy.run('download', plan.id, async () => {
