@@ -4,7 +4,7 @@
  * 
  * Redesigned with a guided workflow:
  * 1. Set Takeoff Point (click on map)
- * 2. Draw Polygon Area (click to add vertices, click first vertex or button to close)
+ * 2. Draw Polygon Area (click to add vertices, click near the first vertex on screen, or the button, to close)
  * 3. Set Landing Point (click on map)
  * 4. Configure Parameters (altitude, spacing, angle)
  * 5. Preview & Apply
@@ -48,12 +48,19 @@ import {
 import { useI18n } from "@/app/i18n";
 import { DecimalInput } from "@/app/components/ui/decimal-input";
 import { parseDecimal } from "@/lib/decimal";
+import type { Map as LeafletMap } from "leaflet";
 
 // ============================================================================
 // TYPES
 // ============================================================================
 
 export type ScanStep = 1 | 2 | 3 | 4; // 1: Takeoff, 2: Polygon, 3: Landing, 4: Parameters
+
+/** Map click in SCAN mode; the map is passed so on-screen distances can be measured at the current zoom. */
+export type ScanMapClick = (lat: number, lng: number, map: LeafletMap) => void;
+
+/** A click this close to the first vertex ON SCREEN (px, any zoom) closes the polygon; the first marker is 28 px wide. */
+const CLOSE_POLYGON_RADIUS_PX = 30;
 
 export interface ScanPatternGeneratorV2Props {
   /** Callback when waypoints are generated and applied */
@@ -63,7 +70,7 @@ export interface ScanPatternGeneratorV2Props {
   /** Service area bounds for validation [minLng, minLat, maxLng, maxLat] */
   serviceBounds?: [number, number, number, number];
   /** Callback when map click should be handled - uses ref internally for stability */
-  onMapClick?: (callback: ((lat: number, lng: number) => void) | null) => void;
+  onMapClick?: (callback: ScanMapClick | null) => void;
   /** Callback to update map overlays */
   onOverlaysChange?: (overlays: {
     takeoffPoint: Point | null;
@@ -286,13 +293,10 @@ export default function ScanPatternGeneratorV2({
     serviceBoundsRef.current = serviceBounds;
   }, [serviceBounds]);
 
-  // Track last click for double-click detection on polygon closing
-  const lastClickRef = useRef<{ lat: number; lng: number; timestamp: number } | null>(null);
-
   // ---- TASK-216: Single stable map click handler using refs ----
   // This handler is created once and uses refs to access current state,
   // avoiding stale closure issues that occur with callback props
-  const stableMapClickHandler = useCallback((lat: number, lng: number) => {
+  const stableMapClickHandler = useCallback<ScanMapClick>((lat, lng, map) => {
     // Access current state from ref
     const state = stateRef.current;
     const bounds = serviceBoundsRef.current;
@@ -315,35 +319,16 @@ export default function ScanPatternGeneratorV2({
       const newVertex: Point = { lat, lng };
       const currentVertices = state.polygonVertices;
       
-      // Check if clicking near first vertex to close polygon
+      // A click near the first vertex closes the polygon. "Near" is measured in screen pixels at the current zoom,
+      // not in metres, so a polygon a few metres wide can still be drawn when zoomed in.
       if (currentVertices.length >= 3) {
-        const firstVertex = currentVertices[0];
-        const distance = Math.sqrt(
-          Math.pow((lat - firstVertex.lat) * 111320, 2) +
-          Math.pow((lng - firstVertex.lng) * 111320 * Math.cos(lat * Math.PI / 180), 2)
-        );
-        
-        // Check for double-click on first vertex (within 400ms and close proximity)
-        const now = Date.now();
-        const lastClick = lastClickRef.current;
-        const isDoubleClick = lastClick && 
-          (now - lastClick.timestamp) < 400 &&
-          Math.abs(lat - lastClick.lat) < 0.0001 && // ~11 meters
-          Math.abs(lng - lastClick.lng) < 0.0001;
-        
-        // Close polygon if:
-        // 1. Very close to first vertex (< 10m) - single click is enough
-        // 2. Within 100 meters and double-clicking
-        // 3. Within 100 meters of first vertex (generous threshold)
-        if (distance < 10 || (isDoubleClick && distance < 150) || distance < 100) {
+        const first = currentVertices[0];
+        const px = map.latLngToContainerPoint([first.lat, first.lng]).distanceTo(map.latLngToContainerPoint([lat, lng]));
+        if (px <= CLOSE_POLYGON_RADIUS_PX) {
           setPolygonClosed(true);
           setCurrentStep(3);
-          lastClickRef.current = null; // Reset double-click tracking
           return;
         }
-        
-        // Track this click for double-click detection
-        lastClickRef.current = { lat, lng, timestamp: now };
       }
       
       setPolygonVertices(prev => [...prev, newVertex]);

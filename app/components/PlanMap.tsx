@@ -12,6 +12,7 @@ import { MapPin } from "lucide-react";
 import { DecimalInput } from "@/app/components/ui/decimal-input";
 import { parseDecimal } from "@/lib/decimal";
 import type { GeozoneData, WebSocketStatus } from "@/app/hooks/useGeoawarenessWebSocket";
+import type { ScanMapClick } from "./plan-definition/ScanPatternGeneratorV2";
 
 // TASK-152: Large bounds for overlay outside service area (covers the world)
 const WORLD_BOUNDS: [number, number][] = [
@@ -281,7 +282,7 @@ function MapClickHandler({
   onAddWaypoint: (wp: any) => void; 
   onToast: (msg: string) => void; 
   bounds: [[number, number], [number, number]];
-  customClickHandler?: ((lat: number, lng: number) => void) | null;
+  customClickHandler?: ScanMapClick | null;
   scanMode?: boolean;
   areaName?: string;
 }) {
@@ -311,7 +312,7 @@ function MapClickHandler({
         const handler = customClickHandlerRef.current;
         if (handler) {
           if (isWithinBounds) {
-            handler(e.latlng.lat, e.latlng.lng);
+            handler(e.latlng.lat, e.latlng.lng, e.target as L.Map);
           } else {
             onToast(interpolate(pd.toast.pointWithin, { name: displayName }));
           }
@@ -663,7 +664,7 @@ interface PlanMapProps {
     previewWaypoints: ScanWaypoint[];
     scanAngle: number;
   };
-  customClickHandler?: ((lat: number, lng: number) => void) | null;
+  customClickHandler?: ScanMapClick | null;
   // TASK-051: Geozone layer props
   geozonesData?: GeozoneData[];
   geozonesVisible?: boolean;
